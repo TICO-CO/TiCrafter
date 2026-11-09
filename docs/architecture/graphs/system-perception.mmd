@@ -1,0 +1,44 @@
+flowchart LR
+n210["Ring Sampler"]
+n211["Chunk Snapshot Encoder"]
+n212["Block Update Listener"]
+n213["Path and Road Detector"]
+n214["House Detector"]
+n215["Farm Detector"]
+n216["Storage and Workstation Detector"]
+n217["Linear Structure Detector"]
+n218["Detector Pipeline"]
+n152["Landmark Candidate Emitter"]
+n219["Perception Rate Limiter"]
+n50["Mineflayer Event Bridge (Bot Runtime and Mineflayer Adapter)"]
+n108["Perception Host (Bot Runtime and Mineflayer Adapter)"]
+n51["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
+n220["Detector Fixtures (Testing and Evaluation)"]
+n147["Event Stream (Transport and Protocol)"]
+n143["Profile Resolver (Config and Profiles)"]
+n50 -->|delegates_to| n212
+n108 -->|depends_on| n218
+n108 -->|depends_on| n210
+n51 -->|depends_on| n50
+n51 -->|delegates_to| n210
+n220 -->|depends_on| n218
+n211 -->|depends_on| n210
+n218 -->|depends_on| n211
+n218 -->|depends_on| n215
+n218 -->|depends_on| n214
+n218 -->|depends_on| n217
+n218 -->|depends_on| n213
+n218 -->|depends_on| n216
+n215 -->|depends_on| n211
+n214 -->|depends_on| n211
+n152 -->|depends_on| n218
+n152 -->|publishes| n147
+n217 -->|depends_on| n211
+n213 -->|depends_on| n211
+n219 -->|depends_on| n143
+n210 -->|depends_on| n219
+n216 -->|depends_on| n211
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n210,n211,n212,n213,n214,n215,n216,n217,n218,n152,n219 internal;
+class n50,n108,n51,n220,n147,n143 external;

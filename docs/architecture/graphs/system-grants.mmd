@@ -1,0 +1,67 @@
+flowchart LR
+n193["Grant Repository"]
+n170["Collaboration Policy Evaluator"]
+n168["Compatibility Checker"]
+n169["Design Revision Guard"]
+n129["Grant Issuer"]
+n192["Grant Revoker"]
+n194["Owner Offline Policy"]
+n142["Grant Expiry"]
+n151["Arbitration Adapter"]
+n166["Delta Sync Planner (Bot Registry and Profiles)"]
+n26["Command Router (Coordinator Runtime)"]
+n29["Restart Recovery Orchestrator (Coordinator Runtime)"]
+n147["Event Stream (Transport and Protocol)"]
+n189["Claim Repository (Claims and Leases)"]
+n161["Rules Store (Shared Infrastructure Plan)"]
+n156["Structure Store (Shared Infrastructure Plan)"]
+n162["SIP Revision Manager (Shared Infrastructure Plan)"]
+n133["Transaction Manager (Memory and Persistence)"]
+n126["Fencing Token Authority (Claims and Leases)"]
+n145["Presence Tracker (Bot Registry and Profiles)"]
+n187["Bot Profile Store (Bot Registry and Profiles)"]
+n46["Planner Arbitration Handler (Cloud Planner)"]
+n166 -->|depends_on| n187
+n166 -->|reads| n193
+n166 -->|reads| n162
+n145 -->|depends_on| n187
+n187 -->|depends_on| n133
+n189 -->|depends_on| n133
+n126 -->|depends_on| n133
+n26 -->|controls| n129
+n29 -->|delegates_to| n142
+n29 -->|depends_on| n133
+n151 -->|depends_on| n168
+n151 -->|publishes| n147
+n168 -->|reads| n189
+n168 -->|depends_on| n193
+n168 -->|depends_on| n161
+n168 -->|depends_on| n156
+n169 -->|depends_on| n193
+n169 -->|controls| n192
+n169 -->|reads| n162
+n142 -->|writes| n193
+n129 -->|depends_on| n168
+n129 -->|depends_on| n169
+n129 -->|writes| n193
+n129 -->|depends_on| n170
+n193 -->|depends_on| n133
+n192 -->|depends_on| n126
+n192 -->|writes| n193
+n194 -->|reads| n145
+n194 -->|reads| n187
+n194 -->|depends_on| n168
+n170 -->|depends_on| n193
+n170 -->|depends_on| n156
+n46 -->|reads| n168
+n46 -->|proposes_to| n129
+n46 -->|subscribes| n147
+n162 -->|publishes| n169
+n162 -->|depends_on| n133
+n162 -->|depends_on| n161
+n161 -->|depends_on| n133
+n156 -->|depends_on| n133
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n193,n170,n168,n169,n129,n192,n194,n142,n151 internal;
+class n166,n26,n29,n147,n189,n161,n156,n162,n133,n126,n145,n187,n46 external;

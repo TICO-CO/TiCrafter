@@ -1,0 +1,26 @@
+flowchart LR
+n243["Trace Exporter"]
+n252["Labeling Pipeline"]
+n253["Reward Computer"]
+n254["Fine-tune Runner"]
+n255["ONNX Exporter"]
+n224["Calibration Fitter"]
+n251["Promotion Gate"]
+n35["Confidence Calibrator (Laya Decision Service)"]
+n223["Laya Benchmark Harness (Testing and Evaluation)"]
+n188["Event Log Writer (Memory and Persistence)"]
+n224 -->|reads| n35
+n224 -->|depends_on| n243
+n254 -->|depends_on| n252
+n254 -->|depends_on| n253
+n252 -->|depends_on| n243
+n255 -->|depends_on| n254
+n251 -->|depends_on| n223
+n251 -->|depends_on| n224
+n251 -->|depends_on| n255
+n253 -->|depends_on| n243
+n243 -->|reads| n188
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n243,n252,n253,n254,n255,n224,n251 internal;
+class n35,n223,n188 external;

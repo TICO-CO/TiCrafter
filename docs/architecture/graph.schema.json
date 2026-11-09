@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ticrafter.local/architecture/graph.schema.json",
+  "title": "TiCrafter Architecture Graph",
+  "type": "object",
+  "required": ["meta", "externals", "systems", "stateOwnership", "relations"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["title", "version", "generatedFrom", "updated", "relationTypes", "allowedCycles", "forbiddenEdges"],
+      "additionalProperties": true,
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "generatedFrom": { "type": "string", "minLength": 1 },
+        "updated": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "relationTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["depends_on", "controls", "reads", "writes", "proposes_to", "validates", "publishes", "subscribes", "persists_to", "observes", "delegates_to"] }
+        },
+        "allowedCycles": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "forbiddenEdges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "fromPattern", "toPattern", "types", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "fromPattern": { "type": "string", "minLength": 1 },
+              "toPattern": { "type": "string", "minLength": 1 },
+              "types": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "externals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind", "boundary", "contracts", "failureModes"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^ext\\." },
+          "name": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["service", "api", "runtime", "environment", "actor"] },
+          "boundary": { "type": "string", "minLength": 1 },
+          "contracts": { "type": "array", "items": { "type": "string" } },
+          "failureModes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "systems": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "purpose", "ownerPackage", "milestone", "sourceRefs", "invariants", "allowedDependencies", "forbiddenDependencies", "components"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^sys\\." },
+          "name": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "ownerPackage": { "type": "string", "minLength": 1 },
+          "milestone": { "type": "integer", "minimum": 1 },
+          "sourceRefs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "invariants": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "allowedDependencies": { "type": "array", "items": { "type": "string" } },
+          "forbiddenDependencies": { "type": "array", "items": { "type": "string" } },
+          "components": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/component" }
+          }
+        }
+      }
+    },
+    "stateOwnership": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["state", "owner", "writers", "readers"],
+        "additionalProperties": false,
+        "properties": {
+          "state": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "writers": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "readers": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "relations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/relation" }
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "required": ["id", "name", "responsibility", "plannedPath", "provides", "requires", "ownsState", "invariants", "failureModes", "tests", "metrics", "sourceRefs", "milestone"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "responsibility": { "type": "string", "minLength": 1 },
+        "plannedPath": { "type": "string", "minLength": 1 },
+        "provides": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "requires": { "type": "array", "items": { "type": "string" } },
+        "ownsState": { "type": "array", "items": { "type": "string" } },
+        "invariants": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "failureModes": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "tests": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "metrics": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "milestone": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "required": ["id", "from", "to", "type", "protocol", "payload", "sync", "criticality", "failureBehavior", "notes"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^rel\\.[0-9]{4}$" },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["depends_on", "controls", "reads", "writes", "proposes_to", "validates", "publishes", "subscribes", "persists_to", "observes", "delegates_to"] },
+        "protocol": { "type": "string", "minLength": 1 },
+        "payload": { "type": "string", "minLength": 1 },
+        "sync": { "type": "boolean" },
+        "criticality": { "enum": ["hard", "soft"] },
+        "failureBehavior": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+flowchart LR
+n30["Model Loader"]
+n31["Execution Provider Selector"]
+n67["Decision Queue"]
+n68["Decision Rate Limiter"]
+n69["Digest Cache"]
+n70["Digest Assembler"]
+n32["Batch Runner"]
+n33["Single In-flight Guard"]
+n34["Output Parser"]
+n35["Confidence Calibrator"]
+n36["Timeout and Fallback Handler"]
+n71["Latency Metrics"]
+n53["Deterministic Policy (Bot Runtime and Mineflayer Adapter)"]
+n137["Config Schema Validator (Config and Profiles)"]
+n132["Message Schema Registry (Transport and Protocol)"]
+n221["Hardware Probe (Config and Profiles)"]
+n123["Structured Logger (Ops and Observability)"]
+n122["Metrics Registry (Ops and Observability)"]
+n222["Laya Runtime Resolver (Config and Profiles)"]
+n23(["ONNX Runtime / WebGPU Driver"])
+n147["Event Stream (Transport and Protocol)"]
+n143["Profile Resolver (Config and Profiles)"]
+n223["Laya Benchmark Harness (Testing and Evaluation)"]
+n124["Health and Readiness (Ops and Observability)"]
+n224["Calibration Fitter (Laya Training)"]
+n53 -->|subscribes| n147
+n221 -->|depends_on| n143
+n222 -->|depends_on| n221
+n222 -->|depends_on| n143
+n143 -->|depends_on| n137
+n32 -->|depends_on| n69
+n32 -->|depends_on| n30
+n32 -->|depends_on| n67
+n35 -->|proposes_to| n53
+n35 -->|depends_on| n137
+n35 -->|depends_on| n34
+n70 -->|depends_on| n132
+n69 -->|depends_on| n67
+n31 -->|depends_on| n221
+n31 -->|controls| n30
+n31 -->|observes| n123
+n71 -->|observes| n122
+n71 -->|writes| n122
+n30 -->|depends_on| n222
+n30 -->|depends_on| n23
+n34 -->|depends_on| n32
+n34 -->|publishes| n147
+n67 -->|subscribes| n147
+n68 -->|depends_on| n143
+n68 -->|depends_on| n67
+n33 -->|controls| n32
+n36 -->|controls| n34
+n36 -->|depends_on| n67
+n223 -->|depends_on| n71
+n223 -->|depends_on| n30
+n124 -->|depends_on| n30
+n224 -->|reads| n35
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n30,n31,n67,n68,n69,n70,n32,n33,n34,n35,n36,n71 internal;
+class n53,n137,n132,n221,n123,n122,n222,n147,n143,n223,n124,n224,n23 external;

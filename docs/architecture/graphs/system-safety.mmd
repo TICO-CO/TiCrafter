@@ -1,0 +1,80 @@
+flowchart LR
+n56["Reflex Guardian Loop"]
+n109["Hazard Evaluator"]
+n110["Mob Threat Evaluator"]
+n111["Hunger Evaluator"]
+n112["Stuck and Timeout Evaluator"]
+n113["Inventory Evaluator"]
+n114["Claim Loss Evaluator"]
+n115["Protected BBox Rule"]
+n116["Active Bot Support Rule"]
+n117["Material Ban Rule"]
+n118["Safety Policy Engine"]
+n57["Action Veto Gate"]
+n58["Recovery Ladder"]
+n59["Emergency Stop Controller"]
+n119["Incident Journal"]
+n52["Action Executor (Bot Runtime and Mineflayer Adapter)"]
+n106["Affordance Enumerator (Bot Runtime and Mineflayer Adapter)"]
+n107["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
+n49["Block Executor (Building)"]
+n62["Fleet Emergency Stop (Ops and Observability)"]
+n189["Claim Repository (Claims and Leases)"]
+n172["Spatial Query Engine (World Model and Landmarks)"]
+n26["Command Router (Coordinator Runtime)"]
+n147["Event Stream (Transport and Protocol)"]
+n188["Event Log Writer (Memory and Persistence)"]
+n161["Rules Store (Shared Infrastructure Plan)"]
+n39["Planner Trigger Evaluator (Cloud Planner)"]
+n81["Skill Preemption Handler (Skill Runtime)"]
+n76["Skill Tick Scheduler (Skill Runtime)"]
+n235["Clear (Skill Library)"]
+n233["Flee or Defend (Skill Library)"]
+n52 -->|depends_on| n57
+n106 -->|depends_on| n56
+n107 -->|depends_on| n57
+n107 -->|depends_on| n56
+n49 -->|depends_on| n52
+n49 -->|depends_on| n57
+n62 -->|controls| n59
+n62 -->|depends_on| n147
+n57 -->|validates| n52
+n57 -->|validates| n49
+n57 -->|depends_on| n56
+n57 -->|depends_on| n118
+n116 -->|reads| n189
+n116 -->|reads| n172
+n114 -->|reads| n189
+n59 -->|controls| n52
+n59 -->|controls| n26
+n59 -->|depends_on| n147
+n56 -->|controls| n57
+n56 -->|depends_on| n114
+n56 -->|depends_on| n109
+n56 -->|depends_on| n111
+n56 -->|depends_on| n113
+n56 -->|depends_on| n110
+n56 -->|depends_on| n112
+n119 -->|writes| n188
+n115 -->|reads| n189
+n115 -->|reads| n161
+n58 -->|proposes_to| n26
+n58 -->|proposes_to| n39
+n58 -->|controls| n59
+n58 -->|depends_on| n147
+n118 -->|reads| n189
+n118 -->|depends_on| n116
+n118 -->|depends_on| n117
+n118 -->|depends_on| n115
+n118 -->|reads| n161
+n118 -->|reads| n172
+n81 -->|reads| n57
+n76 -->|reads| n56
+n235 -->|depends_on| n49
+n235 -->|depends_on| n57
+n233 -->|depends_on| n52
+n233 -->|depends_on| n110
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n56,n109,n110,n111,n112,n113,n114,n115,n116,n117,n118,n57,n58,n59,n119 internal;
+class n52,n106,n107,n49,n62,n189,n172,n26,n147,n188,n161,n39,n81,n76,n235,n233 external;

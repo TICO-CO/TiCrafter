@@ -1,0 +1,80 @@
+flowchart LR
+n63["Process Bootstrap"]
+n64["Service Composition"]
+n65["Bot Session Manager"]
+n26["Command Router"]
+n27["Coordinator Epoch Authority"]
+n28["Global Scheduler"]
+n29["Restart Recovery Orchestrator"]
+n66["Backpressure Controller"]
+n126["Fencing Token Authority (Claims and Leases)"]
+n127["Flow Control (Transport and Protocol)"]
+n128["Atomic Claim Acquirer (Claims and Leases)"]
+n129["Grant Issuer (Edit Grants and Collaboration)"]
+n130["SIP Transactional Committer (Shared Infrastructure Plan)"]
+n131["Atomic Task Claimer (Task Board)"]
+n132["Message Schema Registry (Transport and Protocol)"]
+n133["Transaction Manager (Memory and Persistence)"]
+n134["Lease Reaper (Claims and Leases)"]
+n135["Retention Pruner (Memory and Persistence)"]
+n39["Planner Trigger Evaluator (Cloud Planner)"]
+n136["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
+n137["Config Schema Validator (Config and Profiles)"]
+n138["Environment Parser (Config and Profiles)"]
+n139["Migration Runner (Memory and Persistence)"]
+n140["WebSocket Codec (Transport and Protocol)"]
+n141["Resume Orchestrator (Bot Registry and Profiles)"]
+n142["Grant Expiry (Edit Grants and Collaboration)"]
+n143["Profile Resolver (Config and Profiles)"]
+n144["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n145["Presence Tracker (Bot Registry and Profiles)"]
+n59["Emergency Stop Controller (Autonomy and Safety)"]
+n58["Recovery Ladder (Autonomy and Safety)"]
+n141 -->|delegates_to| n136
+n128 -->|depends_on| n133
+n126 -->|depends_on| n27
+n126 -->|depends_on| n133
+n137 -->|depends_on| n138
+n143 -->|depends_on| n137
+n66 -->|depends_on| n127
+n26 -->|controls| n128
+n26 -->|controls| n129
+n26 -->|controls| n130
+n26 -->|controls| n131
+n26 -->|depends_on| n132
+n27 -->|controls| n126
+n27 -->|depends_on| n133
+n28 -->|delegates_to| n134
+n28 -->|depends_on| n27
+n28 -->|delegates_to| n135
+n28 -->|delegates_to| n39
+n28 -->|delegates_to| n136
+n63 -->|depends_on| n137
+n63 -->|depends_on| n138
+n63 -->|depends_on| n29
+n63 -->|depends_on| n64
+n63 -->|depends_on| n139
+n63 -->|depends_on| n140
+n29 -->|depends_on| n141
+n29 -->|delegates_to| n134
+n29 -->|delegates_to| n142
+n29 -->|depends_on| n133
+n29 -->|depends_on| n136
+n64 -->|depends_on| n143
+n64 -->|depends_on| n28
+n65 -->|depends_on| n144
+n65 -->|publishes| n145
+n65 -->|depends_on| n140
+n135 -->|depends_on| n133
+n59 -->|controls| n26
+n58 -->|proposes_to| n26
+n58 -->|proposes_to| n39
+n58 -->|controls| n59
+n136 -->|depends_on| n130
+n130 -->|depends_on| n133
+n131 -->|depends_on| n133
+n140 -->|depends_on| n132
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n63,n64,n65,n26,n27,n28,n29,n66 internal;
+class n126,n127,n128,n129,n130,n131,n132,n133,n134,n135,n39,n136,n137,n138,n139,n140,n141,n142,n143,n144,n145,n59,n58 external;

@@ -1,0 +1,144 @@
+flowchart LR
+n0["Coordinator Runtime"]
+n1["Transport and Protocol"]
+n2["Shared Infrastructure Plan"]
+n3["Task Board"]
+n4["Claims and Leases"]
+n5["Edit Grants and Collaboration"]
+n6["Bot Registry and Profiles"]
+n7["World Model and Landmarks"]
+n8["Perception"]
+n9["Laya Decision Service"]
+n10["Cloud Planner"]
+n11["Skill Runtime"]
+n12["Skill Library"]
+n13["Building"]
+n14["Bot Runtime and Mineflayer Adapter"]
+n15["Autonomy and Safety"]
+n16["Memory and Persistence"]
+n17["Ops and Observability"]
+n18["Config and Profiles"]
+n19["Testing and Evaluation"]
+n20["Laya Training"]
+n21(["Minecraft 1.20.1 LAN Server"])
+n22(["Muse Spark Planner Endpoint"])
+n23(["ONNX Runtime / WebGPU Driver"])
+n24(["Host Hardware"])
+n25(["Fleet Operator"])
+n14 -->|depends_on×4| n15
+n14 -->|depends_on×3, delegates_to×1| n11
+n14 -->|depends_on×3| n18
+n14 -->|depends_on×1| n21
+n14 -->|reads×1, delegates_to×1| n6
+n14 -->|subscribes×1, depends_on×1, publishes×1| n1
+n14 -->|delegates_to×2, depends_on×2| n8
+n6 -->|reads×1| n5
+n6 -->|reads×1, delegates_to×1| n2
+n6 -->|reads×1| n3
+n6 -->|depends_on×2| n18
+n6 -->|depends_on×1| n16
+n6 -->|delegates_to×1| n4
+n6 -->|reads×1| n11
+n13 -->|depends_on×2, reads×1| n14
+n13 -->|depends_on×1| n15
+n13 -->|reads×4, writes×1| n7
+n13 -->|depends_on×1, reads×2| n2
+n13 -->|reads×1| n11
+n13 -->|writes×1| n16
+n13 -->|subscribes×1| n1
+n4 -->|depends_on×3| n16
+n4 -->|depends_on×2| n3
+n4 -->|observes×1| n17
+n4 -->|depends_on×1| n0
+n4 -->|depends_on×1| n2
+n18 -->|depends_on×1| n24
+n0 -->|depends_on×4| n1
+n0 -->|controls×2, delegates_to×2| n4
+n0 -->|controls×1, delegates_to×1| n5
+n0 -->|controls×1, delegates_to×1, depends_on×1| n2
+n0 -->|controls×1| n3
+n0 -->|depends_on×3, delegates_to×1| n16
+n0 -->|delegates_to×1| n10
+n0 -->|depends_on×3| n18
+n0 -->|depends_on×2, publishes×1| n6
+n9 -->|proposes_to×1| n14
+n9 -->|depends_on×4| n18
+n9 -->|depends_on×1, publishes×1, subscribes×1| n1
+n9 -->|observes×2, writes×1| n17
+n9 -->|depends_on×1| n23
+n19 -->|depends_on×1| n4
+n19 -->|depends_on×1| n3
+n19 -->|depends_on×1| n8
+n19 -->|depends_on×1| n21
+n19 -->|depends_on×2| n9
+n19 -->|observes×1| n17
+n19 -->|depends_on×1| n16
+n25 -->|controls×1| n17
+n5 -->|publishes×1| n1
+n5 -->|reads×1, depends_on×1| n4
+n5 -->|depends_on×3, reads×1| n2
+n5 -->|depends_on×1| n16
+n5 -->|reads×2| n6
+n17 -->|reads×2, depends_on×1| n16
+n17 -->|controls×1| n15
+n17 -->|depends_on×3| n1
+n17 -->|depends_on×1| n9
+n17 -->|controls×1| n14
+n17 -->|depends_on×2| n6
+n17 -->|depends_on×1, reads×1| n2
+n17 -->|reads×1| n4
+n17 -->|reads×1| n3
+n8 -->|publishes×1| n1
+n8 -->|depends_on×1| n18
+n10 -->|reads×1, proposes_to×1| n5
+n10 -->|subscribes×1| n1
+n10 -->|observes×2| n17
+n10 -->|reads×1| n6
+n10 -->|reads×4, depends_on×1, proposes_to×1| n2
+n10 -->|reads×2, proposes_to×1| n3
+n10 -->|reads×2| n7
+n10 -->|depends_on×2| n18
+n10 -->|depends_on×1| n22
+n10 -->|depends_on×1| n16
+n10 -->|reads×1| n11
+n15 -->|validates×1, controls×1| n14
+n15 -->|validates×1| n13
+n15 -->|reads×4| n4
+n15 -->|reads×2| n7
+n15 -->|controls×1, proposes_to×1| n0
+n15 -->|depends_on×2| n1
+n15 -->|writes×1| n16
+n15 -->|reads×2| n2
+n15 -->|proposes_to×1| n10
+n2 -->|depends_on×9| n16
+n2 -->|depends_on×2, reads×1, publishes×1| n7
+n2 -->|publishes×1| n5
+n11 -->|depends_on×1| n16
+n11 -->|reads×1| n14
+n11 -->|reads×1| n2
+n11 -->|reads×1, depends_on×1| n7
+n11 -->|publishes×2| n1
+n11 -->|reads×2| n15
+n11 -->|observes×1| n17
+n12 -->|depends_on×8| n13
+n12 -->|depends_on×2| n15
+n12 -->|depends_on×12| n14
+n12 -->|depends_on×4| n11
+n12 -->|depends_on×4| n7
+n12 -->|depends_on×3| n2
+n3 -->|depends_on×3| n16
+n3 -->|reads×1| n7
+n3 -->|reads×1| n6
+n20 -->|reads×1| n9
+n20 -->|depends_on×1| n19
+n20 -->|reads×1| n16
+n1 -->|depends_on×1| n6
+n1 -->|depends_on×1| n18
+n1 -->|publishes×1| n7
+n7 -->|depends_on×2| n16
+n7 -->|reads×2| n2
+n7 -->|subscribes×1, reads×1| n1
+classDef system fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n0,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,n18,n19,n20 system;
+class n21,n22,n23,n24,n25 external;

@@ -1,0 +1,48 @@
+flowchart LR
+n1["Transport and Protocol"]
+n2["Shared Infrastructure Plan"]
+n7["World Model and Landmarks"]
+n8["Perception"]
+n9["Laya Decision Service"]
+n10["Cloud Planner"]
+n11["Skill Runtime"]
+n12["Skill Library"]
+n13["Building"]
+n14["Bot Runtime and Mineflayer Adapter"]
+n15["Autonomy and Safety"]
+n16["Memory and Persistence"]
+n14 -->|subscribes| n1
+n14 -->|publishes| n1
+n13 -->|reads| n7
+n13 -->|writes| n7
+n13 -->|reads| n11
+n13 -->|reads| n14
+n13 -->|writes| n16
+n13 -->|reads| n2
+n13 -->|subscribes| n1
+n9 -->|proposes_to| n14
+n9 -->|publishes| n1
+n9 -->|subscribes| n1
+n8 -->|publishes| n1
+n10 -->|subscribes| n1
+n10 -->|reads| n2
+n10 -->|reads| n7
+n10 -->|reads| n11
+n10 -->|proposes_to| n2
+n15 -->|reads| n7
+n15 -->|writes| n16
+n15 -->|reads| n2
+n15 -->|proposes_to| n10
+n2 -->|reads| n7
+n2 -->|publishes| n7
+n11 -->|reads| n14
+n11 -->|reads| n2
+n11 -->|reads| n7
+n11 -->|publishes| n1
+n11 -->|reads| n15
+n1 -->|publishes| n7
+n7 -->|reads| n2
+n7 -->|subscribes| n1
+n7 -->|reads| n1
+classDef system fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+class n1,n2,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16 system;

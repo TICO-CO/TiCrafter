@@ -1,0 +1,91 @@
+flowchart LR
+n226["Navigate"]
+n175["Follow Path"]
+n228["Mine"]
+n229["Collect"]
+n225["Craft"]
+n230["Smelt"]
+n231["Eat"]
+n206["Deposit"]
+n209["Withdraw"]
+n232["Sleep"]
+n233["Flee or Defend"]
+n207["Explore"]
+n234["Bridge"]
+n235["Clear"]
+n227["Place Build"]
+n236["Schematic Build"]
+n237["Repair"]
+n176["Harvest Farm"]
+n177["Plant Farm"]
+n208["Skill Shared Utilities"]
+n49["Block Executor (Building)"]
+n57["Action Veto Gate (Autonomy and Safety)"]
+n52["Action Executor (Bot Runtime and Mineflayer Adapter)"]
+n48["Skill Context Builder (Skill Runtime)"]
+n171["Container Memory (World Model and Landmarks)"]
+n172["Spatial Query Engine (World Model and Landmarks)"]
+n110["Mob Threat Evaluator (Autonomy and Safety)"]
+n160["Path Graph Store (Shared Infrastructure Plan)"]
+n158["Farm Store (Shared Infrastructure Plan)"]
+n73["Skill Contract (Skill Runtime)"]
+n94["Schematic Diff (Building)"]
+n96["Build Order Planner (Building)"]
+n95["Work Package Partitioner (Building)"]
+n52 -->|depends_on| n57
+n49 -->|depends_on| n52
+n49 -->|depends_on| n57
+n96 -->|depends_on| n95
+n94 -->|reads| n172
+n57 -->|validates| n52
+n57 -->|validates| n49
+n48 -->|reads| n172
+n234 -->|depends_on| n49
+n234 -->|depends_on| n226
+n235 -->|depends_on| n49
+n235 -->|depends_on| n57
+n229 -->|depends_on| n52
+n229 -->|depends_on| n228
+n229 -->|depends_on| n226
+n225 -->|depends_on| n52
+n225 -->|depends_on| n48
+n206 -->|depends_on| n52
+n206 -->|depends_on| n171
+n231 -->|depends_on| n52
+n207 -->|depends_on| n226
+n207 -->|depends_on| n172
+n233 -->|depends_on| n52
+n233 -->|depends_on| n110
+n233 -->|depends_on| n226
+n175 -->|depends_on| n160
+n175 -->|depends_on| n226
+n176 -->|depends_on| n52
+n176 -->|depends_on| n158
+n176 -->|depends_on| n226
+n228 -->|depends_on| n52
+n228 -->|depends_on| n226
+n226 -->|depends_on| n52
+n226 -->|depends_on| n73
+n227 -->|depends_on| n49
+n227 -->|depends_on| n48
+n177 -->|depends_on| n52
+n177 -->|depends_on| n158
+n177 -->|depends_on| n226
+n237 -->|depends_on| n49
+n237 -->|depends_on| n94
+n236 -->|depends_on| n49
+n236 -->|depends_on| n96
+n236 -->|depends_on| n95
+n208 -->|depends_on| n48
+n208 -->|depends_on| n172
+n232 -->|depends_on| n52
+n232 -->|depends_on| n226
+n230 -->|depends_on| n52
+n230 -->|depends_on| n226
+n209 -->|depends_on| n52
+n209 -->|depends_on| n171
+n172 -->|reads| n160
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n226,n175,n228,n229,n225,n230,n231,n206,n209,n232,n233,n207,n234,n235,n227,n236,n237,n176,n177,n208 internal;
+class n49,n57,n52,n48,n171,n172,n110,n160,n158,n73,n94,n96,n95 external;

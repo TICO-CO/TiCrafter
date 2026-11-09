@@ -1,0 +1,45 @@
+flowchart LR
+n246["Unit Fixtures"]
+n220["Detector Fixtures"]
+n247["Docker Server Harness"]
+n248["Scenario Runner"]
+n242["Replay Engine"]
+n186["Contention Harness"]
+n244["Metrics Reporter"]
+n249["Soak Runner"]
+n250["Architecture Guard Tests"]
+n223["Laya Benchmark Harness"]
+n189["Claim Repository (Claims and Leases)"]
+n178["Task Repository (Task Board)"]
+n218["Detector Pipeline (Perception)"]
+n21(["Minecraft 1.20.1 LAN Server"])
+n71["Latency Metrics (Laya Decision Service)"]
+n30["Model Loader (Laya Decision Service)"]
+n122["Metrics Registry (Ops and Observability)"]
+n188["Event Log Writer (Memory and Persistence)"]
+n251["Promotion Gate (Laya Training)"]
+n71 -->|observes| n122
+n71 -->|writes| n122
+n250 -->|depends_on| n246
+n186 -->|depends_on| n189
+n186 -->|delegates_to| n248
+n186 -->|depends_on| n178
+n220 -->|depends_on| n246
+n220 -->|depends_on| n218
+n247 -->|depends_on| n246
+n247 -->|depends_on| n21
+n223 -->|depends_on| n71
+n223 -->|depends_on| n30
+n223 -->|delegates_to| n248
+n244 -->|observes| n122
+n242 -->|depends_on| n248
+n242 -->|depends_on| n188
+n248 -->|controls| n247
+n248 -->|publishes| n244
+n249 -->|depends_on| n244
+n249 -->|delegates_to| n248
+n251 -->|depends_on| n223
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n246,n220,n247,n248,n242,n186,n244,n249,n250,n223 internal;
+class n189,n178,n218,n71,n30,n122,n188,n251,n21 external;

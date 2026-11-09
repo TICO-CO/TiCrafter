@@ -1,0 +1,126 @@
+flowchart LR
+n155["Zone Store"]
+n156["Structure Store"]
+n157["Road Store"]
+n158["Farm Store"]
+n159["Container Registry"]
+n160["Path Graph Store"]
+n161["Rules Store"]
+n162["SIP Revision Manager"]
+n163["Spatial Overlap Validator"]
+n164["Dependency Validator"]
+n165["SIP Mutation Proposer"]
+n130["SIP Transactional Committer"]
+n136["SIP Reconciliation Engine"]
+n166["Delta Sync Planner (Bot Registry and Profiles)"]
+n141["Resume Orchestrator (Bot Registry and Profiles)"]
+n83["Blueprint Validator (Building)"]
+n101["Rollback Journal (Building)"]
+n95["Work Package Partitioner (Building)"]
+n167["Overlap Margin Checker (Claims and Leases)"]
+n26["Command Router (Coordinator Runtime)"]
+n28["Global Scheduler (Coordinator Runtime)"]
+n29["Restart Recovery Orchestrator (Coordinator Runtime)"]
+n168["Compatibility Checker (Edit Grants and Collaboration)"]
+n169["Design Revision Guard (Edit Grants and Collaboration)"]
+n170["Collaboration Policy Evaluator (Edit Grants and Collaboration)"]
+n121["SIP Dump (Ops and Observability)"]
+n120["Status Aggregator (Ops and Observability)"]
+n38["Planner Context Builder (Cloud Planner)"]
+n47["Keep Last Good Fallback (Cloud Planner)"]
+n41["Planner Semantic Validator (Cloud Planner)"]
+n43["SIP Mutation Translator (Cloud Planner)"]
+n39["Planner Trigger Evaluator (Cloud Planner)"]
+n115["Protected BBox Rule (Autonomy and Safety)"]
+n118["Safety Policy Engine (Autonomy and Safety)"]
+n133["Transaction Manager (Memory and Persistence)"]
+n171["Container Memory (World Model and Landmarks)"]
+n172["Spatial Query Engine (World Model and Landmarks)"]
+n173["World Reconciler (World Model and Landmarks)"]
+n174["Plan Tagging (World Model and Landmarks)"]
+n48["Skill Context Builder (Skill Runtime)"]
+n175["Follow Path (Skill Library)"]
+n176["Harvest Farm (Skill Library)"]
+n177["Plant Farm (Skill Library)"]
+n166 -->|reads| n162
+n141 -->|depends_on| n166
+n141 -->|delegates_to| n136
+n83 -->|depends_on| n161
+n101 -->|reads| n156
+n95 -->|reads| n156
+n167 -->|depends_on| n163
+n26 -->|controls| n130
+n28 -->|delegates_to| n39
+n28 -->|delegates_to| n136
+n29 -->|depends_on| n141
+n29 -->|depends_on| n133
+n29 -->|depends_on| n136
+n168 -->|depends_on| n161
+n168 -->|depends_on| n156
+n169 -->|reads| n162
+n170 -->|depends_on| n156
+n121 -->|depends_on| n162
+n120 -->|reads| n162
+n38 -->|reads| n162
+n38 -->|reads| n172
+n47 -->|reads| n162
+n41 -->|depends_on| n164
+n41 -->|reads| n161
+n41 -->|reads| n172
+n43 -->|proposes_to| n165
+n39 -->|delegates_to| n38
+n39 -->|reads| n162
+n115 -->|reads| n161
+n118 -->|depends_on| n115
+n118 -->|reads| n161
+n118 -->|reads| n172
+n159 -->|depends_on| n133
+n159 -->|depends_on| n171
+n164 -->|depends_on| n159
+n164 -->|depends_on| n158
+n164 -->|depends_on| n160
+n164 -->|depends_on| n157
+n164 -->|depends_on| n156
+n164 -->|reads| n172
+n158 -->|depends_on| n133
+n165 -->|depends_on| n164
+n165 -->|depends_on| n162
+n165 -->|depends_on| n163
+n160 -->|depends_on| n133
+n136 -->|depends_on| n158
+n136 -->|depends_on| n157
+n136 -->|depends_on| n156
+n136 -->|depends_on| n130
+n136 -->|depends_on| n173
+n162 -->|publishes| n169
+n162 -->|depends_on| n133
+n162 -->|depends_on| n161
+n162 -->|publishes| n174
+n157 -->|depends_on| n133
+n161 -->|depends_on| n133
+n163 -->|reads| n161
+n163 -->|depends_on| n156
+n163 -->|depends_on| n155
+n156 -->|depends_on| n133
+n130 -->|depends_on| n133
+n130 -->|writes| n159
+n130 -->|writes| n158
+n130 -->|writes| n160
+n130 -->|depends_on| n162
+n130 -->|writes| n157
+n130 -->|writes| n161
+n130 -->|writes| n156
+n130 -->|writes| n155
+n155 -->|depends_on| n133
+n48 -->|reads| n162
+n48 -->|reads| n172
+n175 -->|depends_on| n160
+n176 -->|depends_on| n158
+n177 -->|depends_on| n158
+n171 -->|reads| n159
+n172 -->|reads| n160
+n173 -->|depends_on| n172
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n155,n156,n157,n158,n159,n160,n161,n162,n163,n164,n165,n130,n136 internal;
+class n166,n141,n83,n101,n95,n167,n26,n28,n29,n168,n169,n170,n121,n120,n38,n47,n41,n43,n39,n115,n118,n133,n171,n172,n173,n174,n48,n175,n176,n177 external;

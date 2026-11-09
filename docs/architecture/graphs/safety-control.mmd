@@ -1,0 +1,86 @@
+flowchart TD
+n0["Coordinator Runtime"]
+n9["Laya Decision Service"]
+n10["Cloud Planner"]
+n11["Skill Runtime"]
+n13["Building"]
+n14["Bot Runtime and Mineflayer Adapter"]
+n15["Autonomy and Safety"]
+n17["Ops and Observability"]
+n25(["Fleet Operator"])
+n14 -->|delegates_to| n11
+n0 -->|delegates_to| n10
+n9 -->|proposes_to| n14
+n17 -->|controls| n15
+n17 -->|controls| n14
+n15 -->|validates| n14
+n15 -->|validates| n13
+n15 -->|controls| n14
+n15 -->|controls| n0
+n15 -->|proposes_to| n0
+n15 -->|proposes_to| n10
+n26["Command Router"]
+n27["Coordinator Epoch Authority"]
+n28["Global Scheduler"]
+n29["Restart Recovery Orchestrator"]
+n30["Model Loader"]
+n31["Execution Provider Selector"]
+n32["Batch Runner"]
+n33["Single In-flight Guard"]
+n34["Output Parser"]
+n35["Confidence Calibrator"]
+n36["Timeout and Fallback Handler"]
+n37["OpenAI-Compatible Client"]
+n38["Planner Context Builder"]
+n39["Planner Trigger Evaluator"]
+n40["Planner Schema Validator"]
+n41["Planner Semantic Validator"]
+n42["Planner Repair Loop"]
+n43["SIP Mutation Translator"]
+n44["Task DAG Translator"]
+n45["Planner Budget Limiter"]
+n46["Planner Arbitration Handler"]
+n47["Keep Last Good Fallback"]
+n48["Skill Context Builder"]
+n49["Block Executor"]
+n50["Mineflayer Event Bridge"]
+n51["World Cache Adapter"]
+n52["Action Executor"]
+n53["Deterministic Policy"]
+n54["Skill Host"]
+n55["Reconnect Supervisor"]
+n56["Reflex Guardian Loop"]
+n57["Action Veto Gate"]
+n58["Recovery Ladder"]
+n59["Emergency Stop Controller"]
+n60["Ops API"]
+n61["Pause and Resume Controller"]
+n62["Fleet Emergency Stop"]
+n51 -->|delegates_to| n48
+n28 -->|delegates_to| n39
+n35 -->|proposes_to| n53
+n31 -->|controls| n30
+n33 -->|controls| n32
+n36 -->|controls| n34
+n62 -->|controls| n59
+n61 -->|controls| n54
+n45 -->|controls| n37
+n37 -->|delegates_to| n46
+n42 -->|controls| n47
+n40 -->|controls| n42
+n41 -->|controls| n42
+n39 -->|delegates_to| n38
+n57 -->|validates| n52
+n57 -->|validates| n49
+n59 -->|controls| n52
+n59 -->|controls| n26
+n56 -->|controls| n57
+n58 -->|proposes_to| n26
+n58 -->|proposes_to| n39
+n58 -->|controls| n59
+classDef system fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef component fill:#f8fafc,stroke:#64748b,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n0,n9,n10,n11,n13,n14,n15,n17 system;
+class n26,n27,n28,n29,n30,n31,n32,n33,n34,n35,n36,n37,n38,n39,n40,n41,n42,n43,n44,n45,n46,n47,n48,n49,n50,n51,n52,n53,n54,n55,n56,n57,n58,n59,n60,n61,n62 component;
+class n25 external;

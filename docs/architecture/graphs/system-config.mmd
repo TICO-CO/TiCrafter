@@ -1,0 +1,57 @@
+flowchart LR
+n138["Environment Parser"]
+n137["Config Schema Validator"]
+n143["Profile Resolver"]
+n221["Hardware Probe"]
+n153["Secrets Loader"]
+n199["Name Pool Validator"]
+n222["Laya Runtime Resolver"]
+n245["Fail Fast Handler"]
+n102["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
+n103["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
+n104["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
+n144["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n198["Name Pool Allocator (Bot Registry and Profiles)"]
+n24(["Host Hardware"])
+n63["Process Bootstrap (Coordinator Runtime)"]
+n64["Service Composition (Coordinator Runtime)"]
+n35["Confidence Calibrator (Laya Decision Service)"]
+n31["Execution Provider Selector (Laya Decision Service)"]
+n30["Model Loader (Laya Decision Service)"]
+n68["Decision Rate Limiter (Laya Decision Service)"]
+n219["Perception Rate Limiter (Perception)"]
+n37["OpenAI-Compatible Client (Cloud Planner)"]
+n150["Transport Authentication (Transport and Protocol)"]
+n102 -->|depends_on| n137
+n103 -->|depends_on| n102
+n103 -->|depends_on| n143
+n104 -->|depends_on| n137
+n144 -->|depends_on| n153
+n198 -->|depends_on| n199
+n137 -->|depends_on| n138
+n245 -->|depends_on| n137
+n221 -->|depends_on| n143
+n221 -->|depends_on| n24
+n222 -->|depends_on| n221
+n222 -->|depends_on| n143
+n199 -->|depends_on| n137
+n143 -->|depends_on| n137
+n153 -->|depends_on| n138
+n63 -->|depends_on| n137
+n63 -->|depends_on| n138
+n63 -->|depends_on| n64
+n64 -->|depends_on| n143
+n35 -->|depends_on| n137
+n31 -->|depends_on| n221
+n31 -->|controls| n30
+n30 -->|depends_on| n222
+n68 -->|depends_on| n143
+n219 -->|depends_on| n143
+n37 -->|depends_on| n137
+n37 -->|depends_on| n153
+n150 -->|depends_on| n144
+n150 -->|depends_on| n153
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n138,n137,n143,n221,n153,n199,n222,n245 internal;
+class n102,n103,n104,n144,n198,n63,n64,n35,n31,n30,n68,n219,n37,n150,n24 external;

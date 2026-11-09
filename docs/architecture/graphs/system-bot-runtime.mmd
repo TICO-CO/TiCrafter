@@ -1,0 +1,125 @@
+flowchart LR
+n102["Connection Lifecycle"]
+n103["Join and Auth"]
+n50["Mineflayer Event Bridge"]
+n51["World Cache Adapter"]
+n104["Reach and Rate Guard"]
+n52["Action Executor"]
+n105["State Digest Collector"]
+n106["Affordance Enumerator"]
+n53["Deterministic Policy"]
+n107["Guardian Hook"]
+n54["Skill Host"]
+n108["Perception Host"]
+n55["Reconnect Supervisor"]
+n57["Action Veto Gate (Autonomy and Safety)"]
+n56["Reflex Guardian Loop (Autonomy and Safety)"]
+n74["Skill Registry (Skill Runtime)"]
+n137["Config Schema Validator (Config and Profiles)"]
+n21(["Minecraft 1.20.1 LAN Server"])
+n196["Behavior Profile Manager (Bot Registry and Profiles)"]
+n147["Event Stream (Transport and Protocol)"]
+n212["Block Update Listener (Perception)"]
+n143["Profile Resolver (Config and Profiles)"]
+n218["Detector Pipeline (Perception)"]
+n210["Ring Sampler (Perception)"]
+n166["Delta Sync Planner (Bot Registry and Profiles)"]
+n149["Reconnect Supervisor (Transport and Protocol)"]
+n75["Skill Lifecycle Executor (Skill Runtime)"]
+n76["Skill Tick Scheduler (Skill Runtime)"]
+n48["Skill Context Builder (Skill Runtime)"]
+n49["Block Executor (Building)"]
+n100["Container Refill Adapter (Building)"]
+n97["Reachability and Scaffold Planner (Building)"]
+n35["Confidence Calibrator (Laya Decision Service)"]
+n61["Pause and Resume Controller (Ops and Observability)"]
+n59["Emergency Stop Controller (Autonomy and Safety)"]
+n229["Collect (Skill Library)"]
+n225["Craft (Skill Library)"]
+n206["Deposit (Skill Library)"]
+n231["Eat (Skill Library)"]
+n233["Flee or Defend (Skill Library)"]
+n176["Harvest Farm (Skill Library)"]
+n228["Mine (Skill Library)"]
+n226["Navigate (Skill Library)"]
+n177["Plant Farm (Skill Library)"]
+n232["Sleep (Skill Library)"]
+n230["Smelt (Skill Library)"]
+n209["Withdraw (Skill Library)"]
+n52 -->|depends_on| n102
+n52 -->|depends_on| n104
+n52 -->|depends_on| n57
+n106 -->|depends_on| n51
+n106 -->|depends_on| n56
+n106 -->|depends_on| n74
+n102 -->|depends_on| n137
+n102 -->|depends_on| n21
+n53 -->|depends_on| n106
+n53 -->|depends_on| n105
+n53 -->|reads| n196
+n53 -->|subscribes| n147
+n50 -->|depends_on| n102
+n50 -->|delegates_to| n212
+n107 -->|depends_on| n57
+n107 -->|depends_on| n56
+n103 -->|depends_on| n102
+n103 -->|depends_on| n143
+n108 -->|depends_on| n218
+n108 -->|depends_on| n210
+n104 -->|depends_on| n137
+n55 -->|depends_on| n102
+n55 -->|delegates_to| n166
+n55 -->|depends_on| n149
+n54 -->|depends_on| n75
+n54 -->|depends_on| n76
+n105 -->|depends_on| n102
+n105 -->|depends_on| n51
+n105 -->|publishes| n147
+n51 -->|depends_on| n50
+n51 -->|delegates_to| n210
+n51 -->|delegates_to| n48
+n49 -->|depends_on| n52
+n49 -->|depends_on| n57
+n100 -->|depends_on| n52
+n97 -->|reads| n51
+n143 -->|depends_on| n137
+n35 -->|proposes_to| n53
+n35 -->|depends_on| n137
+n61 -->|controls| n54
+n61 -->|depends_on| n147
+n57 -->|validates| n52
+n57 -->|validates| n49
+n57 -->|depends_on| n56
+n59 -->|controls| n52
+n59 -->|depends_on| n147
+n56 -->|controls| n57
+n48 -->|reads| n51
+n75 -->|depends_on| n48
+n75 -->|depends_on| n74
+n76 -->|reads| n56
+n76 -->|depends_on| n75
+n229 -->|depends_on| n52
+n229 -->|depends_on| n228
+n229 -->|depends_on| n226
+n225 -->|depends_on| n52
+n225 -->|depends_on| n48
+n206 -->|depends_on| n52
+n231 -->|depends_on| n52
+n233 -->|depends_on| n52
+n233 -->|depends_on| n226
+n176 -->|depends_on| n52
+n176 -->|depends_on| n226
+n228 -->|depends_on| n52
+n228 -->|depends_on| n226
+n226 -->|depends_on| n52
+n177 -->|depends_on| n52
+n177 -->|depends_on| n226
+n232 -->|depends_on| n52
+n232 -->|depends_on| n226
+n230 -->|depends_on| n52
+n230 -->|depends_on| n226
+n209 -->|depends_on| n52
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n102,n103,n50,n51,n104,n52,n105,n106,n53,n107,n54,n108,n55 internal;
+class n57,n56,n74,n137,n196,n147,n212,n143,n218,n210,n166,n149,n75,n76,n48,n49,n100,n97,n35,n61,n59,n229,n225,n206,n231,n233,n176,n228,n226,n177,n232,n230,n209,n21 external;

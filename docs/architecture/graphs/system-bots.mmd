@@ -1,0 +1,74 @@
+flowchart LR
+n144["Bot Identity Authenticator"]
+n187["Bot Profile Store"]
+n195["Role Manager"]
+n196["Behavior Profile Manager"]
+n197["Relationship Store"]
+n145["Presence Tracker"]
+n166["Delta Sync Planner"]
+n141["Resume Orchestrator"]
+n198["Name Pool Allocator"]
+n53["Deterministic Policy (Bot Runtime and Mineflayer Adapter)"]
+n55["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
+n193["Grant Repository (Edit Grants and Collaboration)"]
+n162["SIP Revision Manager (Shared Infrastructure Plan)"]
+n178["Task Repository (Task Board)"]
+n153["Secrets Loader (Config and Profiles)"]
+n199["Name Pool Validator (Config and Profiles)"]
+n133["Transaction Manager (Memory and Persistence)"]
+n185["Claim Releaser (Claims and Leases)"]
+n136["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
+n78["Skill Checkpoint Manager (Skill Runtime)"]
+n29["Restart Recovery Orchestrator (Coordinator Runtime)"]
+n65["Bot Session Manager (Coordinator Runtime)"]
+n194["Owner Offline Policy (Edit Grants and Collaboration)"]
+n61["Pause and Resume Controller (Ops and Observability)"]
+n120["Status Aggregator (Ops and Observability)"]
+n38["Planner Context Builder (Cloud Planner)"]
+n181["Priority Scheduler (Task Board)"]
+n150["Transport Authentication (Transport and Protocol)"]
+n53 -->|reads| n196
+n55 -->|delegates_to| n166
+n196 -->|depends_on| n187
+n166 -->|depends_on| n187
+n166 -->|reads| n193
+n166 -->|reads| n162
+n166 -->|reads| n178
+n144 -->|depends_on| n187
+n144 -->|depends_on| n153
+n198 -->|depends_on| n187
+n198 -->|depends_on| n199
+n145 -->|depends_on| n187
+n187 -->|depends_on| n133
+n197 -->|depends_on| n187
+n141 -->|depends_on| n166
+n141 -->|depends_on| n187
+n141 -->|delegates_to| n185
+n141 -->|delegates_to| n136
+n141 -->|reads| n78
+n195 -->|depends_on| n187
+n29 -->|depends_on| n141
+n29 -->|depends_on| n133
+n29 -->|depends_on| n136
+n65 -->|depends_on| n144
+n65 -->|publishes| n145
+n193 -->|depends_on| n133
+n194 -->|reads| n145
+n194 -->|reads| n187
+n61 -->|depends_on| n145
+n120 -->|depends_on| n145
+n120 -->|reads| n162
+n120 -->|reads| n178
+n38 -->|reads| n187
+n38 -->|reads| n162
+n38 -->|reads| n178
+n162 -->|depends_on| n133
+n78 -->|depends_on| n133
+n181 -->|reads| n187
+n178 -->|depends_on| n133
+n150 -->|depends_on| n144
+n150 -->|depends_on| n153
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n144,n187,n195,n196,n197,n145,n166,n141,n198 internal;
+class n53,n55,n193,n162,n178,n153,n199,n133,n185,n136,n78,n29,n65,n194,n61,n120,n38,n181,n150 external;
