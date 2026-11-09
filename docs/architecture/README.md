@@ -17,6 +17,8 @@ Do not edit generated Markdown. Edit `graph.json`, then regenerate.
 ## Commands
 
 ```sh
+npm run bootstrap
+npm run bootstrap:check
 node tools/architecture/validate-graph.mjs
 node tools/architecture/render-graphs.mjs
 ```
@@ -35,6 +37,9 @@ node tools/architecture/render-graphs.mjs
 - unlisted cross-system `depends_on` cycles
 - source refs that do not resolve to `main.md` headings
 - placeholder invariants
+- missing dependency policy or unpinned package specs
+- bootstrap components missing from the graph
+- runtime systems depending on `sys.toolchain`
 
 `render-graphs.mjs` is deterministic. Re-running it with the same `graph.json` produces identical output.
 
@@ -119,22 +124,24 @@ These rules are intentionally encoded as data, not prose. Add new forbidden edge
 
 ## Rendering
 
-GitHub renders the fenced Mermaid blocks in `diagrams.md`. For local SVG or PNG output:
+GitHub renders the fenced Mermaid blocks in `diagrams.md`. For local SVG or PNG output, use the installed Firefox browser through the repo-local Mermaid CLI:
 
 ```sh
-npx @mermaid-js/mermaid-cli -i docs/architecture/graphs/fleet-overview.mmd -o /tmp/fleet-overview.svg
+npm run render:svg -- docs/architecture/graphs/fleet-overview.mmd /tmp/fleet-overview.svg
 ```
+
+Set `FIREFOX=/path/to/firefox` to override browser detection. No Chromium download is performed.
 
 ## Coverage
 
 Current graph:
 
-- 22 internal systems
-- 233 owned components
-- 489 typed relations
+- 23 internal systems
+- 238 owned components
+- 493 typed relations
 - 5 external actors and services
 - 21 state owners
-- 22 component templates
+- 23 component templates
 - 7 protocols
 
 The graph is intentionally at module/service granularity. A component is not a function. If a proposed component has no owned interface, state, test, or failure mode, it should remain part of its parent component.

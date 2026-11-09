@@ -1,81 +1,81 @@
 flowchart LR
-n135["Message Schema Registry"]
-n143["WebSocket Codec"]
-n149["Request Correlator"]
-n150["Event Stream"]
-n151["Delta Sync Protocol"]
-n152["Reconnect Supervisor"]
-n153["Transport Authentication"]
-n130["Flow Control"]
-n66["Deterministic Policy (Brains)"]
-n58["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
-n108["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
-n105["Rollback Journal (Building)"]
-n70["Backpressure Controller (Coordinator Runtime)"]
-n27["Command Router (Coordinator Runtime)"]
-n67["Process Bootstrap (Coordinator Runtime)"]
-n69["Bot Session Manager (Coordinator Runtime)"]
-n74["Digest Assembler (Laya Decision Service)"]
-n36["Output Parser (Laya Decision Service)"]
-n71["Decision Queue (Laya Decision Service)"]
-n154["Arbitration Adapter (Edit Grants and Collaboration)"]
-n64["Fleet Emergency Stop (Ops and Observability)"]
-n62["Ops API (Ops and Observability)"]
-n63["Pause and Resume Controller (Ops and Observability)"]
-n155["Landmark Candidate Emitter (Perception)"]
-n48["Planner Arbitration Handler (Cloud Planner)"]
-n61["Emergency Stop Controller (Autonomy and Safety)"]
-n60["Recovery Ladder (Autonomy and Safety)"]
-n84["Typed Effects Emitter (Skill Runtime)"]
-n81["Skill Progress Reporter (Skill Runtime)"]
-n147["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n156["Secrets Loader (Config and Profiles)"]
-n157["Observation Ingestor (World Model and Landmarks)"]
-n128["Laya Client (Brains)"]
-n66 -->|depends_on| n108
-n66 -->|subscribes| n150
-n58 -->|depends_on| n152
-n108 -->|publishes| n150
-n147 -->|depends_on| n156
-n105 -->|subscribes| n150
-n70 -->|depends_on| n130
-n27 -->|depends_on| n135
-n67 -->|depends_on| n143
-n69 -->|depends_on| n147
-n69 -->|depends_on| n143
-n74 -->|depends_on| n135
-n36 -->|publishes| n150
-n71 -->|subscribes| n150
-n154 -->|publishes| n150
-n64 -->|controls| n61
-n64 -->|depends_on| n150
-n62 -->|depends_on| n64
-n62 -->|depends_on| n63
-n62 -->|depends_on| n135
-n63 -->|depends_on| n150
-n155 -->|publishes| n150
-n48 -->|subscribes| n150
-n61 -->|controls| n27
-n61 -->|depends_on| n150
-n60 -->|proposes_to| n27
-n60 -->|controls| n61
-n60 -->|depends_on| n150
-n84 -->|publishes| n150
-n81 -->|publishes| n150
-n153 -->|depends_on| n147
-n153 -->|depends_on| n156
-n151 -->|depends_on| n135
-n150 -->|depends_on| n143
-n150 -->|publishes| n157
-n130 -->|depends_on| n149
-n152 -->|depends_on| n143
-n149 -->|depends_on| n143
-n143 -->|depends_on| n135
-n157 -->|subscribes| n150
-n157 -->|reads| n135
-n128 -->|depends_on| n143
-n128 -->|depends_on| n66
+n136["Message Schema Registry"]
+n144["WebSocket Codec"]
+n150["Request Correlator"]
+n151["Event Stream"]
+n152["Delta Sync Protocol"]
+n153["Reconnect Supervisor"]
+n154["Transport Authentication"]
+n131["Flow Control"]
+n67["Deterministic Policy (Brains)"]
+n59["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
+n109["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
+n106["Rollback Journal (Building)"]
+n71["Backpressure Controller (Coordinator Runtime)"]
+n28["Command Router (Coordinator Runtime)"]
+n68["Process Bootstrap (Coordinator Runtime)"]
+n70["Bot Session Manager (Coordinator Runtime)"]
+n75["Digest Assembler (Laya Decision Service)"]
+n37["Output Parser (Laya Decision Service)"]
+n72["Decision Queue (Laya Decision Service)"]
+n155["Arbitration Adapter (Edit Grants and Collaboration)"]
+n65["Fleet Emergency Stop (Ops and Observability)"]
+n63["Ops API (Ops and Observability)"]
+n64["Pause and Resume Controller (Ops and Observability)"]
+n156["Landmark Candidate Emitter (Perception)"]
+n49["Planner Arbitration Handler (Cloud Planner)"]
+n62["Emergency Stop Controller (Autonomy and Safety)"]
+n61["Recovery Ladder (Autonomy and Safety)"]
+n85["Typed Effects Emitter (Skill Runtime)"]
+n82["Skill Progress Reporter (Skill Runtime)"]
+n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n157["Secrets Loader (Config and Profiles)"]
+n158["Observation Ingestor (World Model and Landmarks)"]
+n129["Laya Client (Brains)"]
+n67 -->|depends_on| n109
+n67 -->|subscribes| n151
+n59 -->|depends_on| n153
+n109 -->|publishes| n151
+n148 -->|depends_on| n157
+n106 -->|subscribes| n151
+n71 -->|depends_on| n131
+n28 -->|depends_on| n136
+n68 -->|depends_on| n144
+n70 -->|depends_on| n148
+n70 -->|depends_on| n144
+n75 -->|depends_on| n136
+n37 -->|publishes| n151
+n72 -->|subscribes| n151
+n155 -->|publishes| n151
+n65 -->|controls| n62
+n65 -->|depends_on| n151
+n63 -->|depends_on| n65
+n63 -->|depends_on| n64
+n63 -->|depends_on| n136
+n64 -->|depends_on| n151
+n156 -->|publishes| n151
+n49 -->|subscribes| n151
+n62 -->|controls| n28
+n62 -->|depends_on| n151
+n61 -->|proposes_to| n28
+n61 -->|controls| n62
+n61 -->|depends_on| n151
+n85 -->|publishes| n151
+n82 -->|publishes| n151
+n154 -->|depends_on| n148
+n154 -->|depends_on| n157
+n152 -->|depends_on| n136
+n151 -->|depends_on| n144
+n151 -->|publishes| n158
+n131 -->|depends_on| n150
+n153 -->|depends_on| n144
+n150 -->|depends_on| n144
+n144 -->|depends_on| n136
+n158 -->|subscribes| n151
+n158 -->|reads| n136
+n129 -->|depends_on| n144
+n129 -->|depends_on| n67
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n135,n143,n149,n150,n151,n152,n153,n130 internal;
-class n66,n58,n108,n105,n70,n27,n67,n69,n74,n36,n71,n154,n64,n62,n63,n155,n48,n61,n60,n84,n81,n147,n156,n157,n128 external;
+class n136,n144,n150,n151,n152,n153,n154,n131 internal;
+class n67,n59,n109,n106,n71,n28,n68,n70,n75,n37,n72,n155,n65,n63,n64,n156,n49,n62,n61,n85,n82,n148,n157,n158,n129 external;

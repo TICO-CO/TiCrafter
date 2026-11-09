@@ -1,70 +1,70 @@
 flowchart LR
-n62["Ops API"]
-n121["Status Aggregator"]
-n63["Pause and Resume Controller"]
-n64["Fleet Emergency Stop"]
-n122["SIP Dump"]
-n123["Metrics Registry"]
-n124["Structured Logger"]
-n125["Health and Readiness"]
-n126["Audit Viewer"]
-n194["Contention Metrics (Claims and Leases)"]
-n33["Execution Provider Selector (Laya Decision Service)"]
-n75["Latency Metrics (Laya Decision Service)"]
-n248["Metrics Reporter (Testing and Evaluation)"]
-n26(["Fleet Operator"])
-n241["Block Changelog Writer (Memory and Persistence)"]
-n191["Event Log Writer (Memory and Persistence)"]
-n61["Emergency Stop Controller (Autonomy and Safety)"]
-n150["Event Stream (Transport and Protocol)"]
-n32["Model Loader (Laya Decision Service)"]
-n242["SQLite Runtime (Memory and Persistence)"]
-n135["Message Schema Registry (Transport and Protocol)"]
-n57["Skill Host (Bot Runtime and Mineflayer Adapter)"]
-n148["Presence Tracker (Bot Registry and Profiles)"]
-n165["SIP Revision Manager (Shared Infrastructure Plan)"]
-n192["Claim Repository (Claims and Leases)"]
-n181["Task Repository (Task Board)"]
-n47["Planner Budget Limiter (Cloud Planner)"]
-n41["Planner Trigger Evaluator (Cloud Planner)"]
-n81["Skill Progress Reporter (Skill Runtime)"]
-n245["Episode Store (Memory and Persistence)"]
-n194 -->|depends_on| n192
-n194 -->|observes| n123
-n33 -->|controls| n32
-n33 -->|observes| n124
-n75 -->|observes| n123
-n75 -->|writes| n123
-n248 -->|observes| n123
-n26 -->|controls| n62
-n126 -->|reads| n241
-n126 -->|reads| n191
-n64 -->|controls| n61
-n64 -->|depends_on| n150
-n125 -->|depends_on| n32
-n125 -->|depends_on| n242
-n125 -->|depends_on| n121
-n62 -->|depends_on| n64
-n62 -->|depends_on| n63
-n62 -->|depends_on| n121
-n62 -->|depends_on| n135
-n63 -->|controls| n57
-n63 -->|depends_on| n148
-n63 -->|depends_on| n150
-n122 -->|depends_on| n165
-n121 -->|depends_on| n148
-n121 -->|reads| n192
-n121 -->|observes| n123
-n121 -->|reads| n165
-n121 -->|reads| n181
-n47 -->|observes| n123
-n41 -->|observes| n123
-n41 -->|reads| n165
-n61 -->|depends_on| n150
-n81 -->|observes| n123
-n81 -->|publishes| n150
-n126 -->|reads| n245
+n63["Ops API"]
+n122["Status Aggregator"]
+n64["Pause and Resume Controller"]
+n65["Fleet Emergency Stop"]
+n123["SIP Dump"]
+n124["Metrics Registry"]
+n125["Structured Logger"]
+n126["Health and Readiness"]
+n127["Audit Viewer"]
+n195["Contention Metrics (Claims and Leases)"]
+n34["Execution Provider Selector (Laya Decision Service)"]
+n76["Latency Metrics (Laya Decision Service)"]
+n249["Metrics Reporter (Testing and Evaluation)"]
+n27(["Fleet Operator"])
+n242["Block Changelog Writer (Memory and Persistence)"]
+n192["Event Log Writer (Memory and Persistence)"]
+n62["Emergency Stop Controller (Autonomy and Safety)"]
+n151["Event Stream (Transport and Protocol)"]
+n33["Model Loader (Laya Decision Service)"]
+n243["SQLite Runtime (Memory and Persistence)"]
+n136["Message Schema Registry (Transport and Protocol)"]
+n58["Skill Host (Bot Runtime and Mineflayer Adapter)"]
+n149["Presence Tracker (Bot Registry and Profiles)"]
+n166["SIP Revision Manager (Shared Infrastructure Plan)"]
+n193["Claim Repository (Claims and Leases)"]
+n182["Task Repository (Task Board)"]
+n48["Planner Budget Limiter (Cloud Planner)"]
+n42["Planner Trigger Evaluator (Cloud Planner)"]
+n82["Skill Progress Reporter (Skill Runtime)"]
+n246["Episode Store (Memory and Persistence)"]
+n195 -->|depends_on| n193
+n195 -->|observes| n124
+n34 -->|controls| n33
+n34 -->|observes| n125
+n76 -->|observes| n124
+n76 -->|writes| n124
+n249 -->|observes| n124
+n27 -->|controls| n63
+n127 -->|reads| n242
+n127 -->|reads| n192
+n65 -->|controls| n62
+n65 -->|depends_on| n151
+n126 -->|depends_on| n33
+n126 -->|depends_on| n243
+n126 -->|depends_on| n122
+n63 -->|depends_on| n65
+n63 -->|depends_on| n64
+n63 -->|depends_on| n122
+n63 -->|depends_on| n136
+n64 -->|controls| n58
+n64 -->|depends_on| n149
+n64 -->|depends_on| n151
+n123 -->|depends_on| n166
+n122 -->|depends_on| n149
+n122 -->|reads| n193
+n122 -->|observes| n124
+n122 -->|reads| n166
+n122 -->|reads| n182
+n48 -->|observes| n124
+n42 -->|observes| n124
+n42 -->|reads| n166
+n62 -->|depends_on| n151
+n82 -->|observes| n124
+n82 -->|publishes| n151
+n127 -->|reads| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n62,n121,n63,n64,n122,n123,n124,n125,n126 internal;
-class n194,n33,n75,n248,n241,n191,n61,n150,n32,n242,n135,n57,n148,n165,n192,n181,n47,n41,n81,n245,n26 external;
+class n63,n122,n64,n65,n123,n124,n125,n126,n127 internal;
+class n195,n34,n76,n249,n242,n192,n62,n151,n33,n243,n136,n58,n149,n166,n193,n182,n48,n42,n82,n246,n27 external;

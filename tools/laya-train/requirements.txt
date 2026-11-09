@@ -1,0 +1,7 @@
+numpy==2.5.4
+onnx==1.23.2
+onnxruntime==1.31.1
+transformers==5.22.2
+datasets==5.1.0
+safetensors==0.8.0
+tqdm==4.70.1

@@ -3,11 +3,11 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `node tools/architecture/render-graphs.mjs`.
 
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Source:** `main.md`  
-**Systems:** 22  
-**Components:** 233  
-**Relations:** 489  
+**Systems:** 23  
+**Components:** 238  
+**Relations:** 493  
 **Externals:** 5
 
 ## Reading this catalog
@@ -40,6 +40,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
 | `sys.brains` | [Brains](#brains) | 4 | `packages/brains/src` | 4 |
+| `sys.toolchain` | [Bootstrap and Toolchain](#bootstrap-and-toolchain) | 5 | `tools` | 1 |
 
 ## Coordinator Runtime
 
@@ -5402,5 +5403,144 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `brains_laya_client_timeouts_total`
   - `brains_laya_client_latency_ms`
+
+---
+
+## Bootstrap and Toolchain
+
+- **ID:** `sys.toolchain`
+- **Owner package:** `tools`
+- **Milestone:** 1
+- **Source refs:** `main.md#19-self-contained-bootstrap`
+- **Allowed cross-system dependencies:** none
+- **Forbidden dependencies:** none
+
+**Purpose.** Provision every dependency and app into repo-local paths, verify pinned artifacts, and operate the local Minecraft test server.
+
+**System invariants.**
+- All dependencies and apps install into gitignored repo-local paths.
+- Bootstrap never performs global installs or invokes a system package manager.
+- Every download matches a pinned checksum from tools/bootstrap/manifest.json.
+- Runtime processes never depend on toolchain components.
+
+### Components
+
+| ID | Component | Responsibility | Owner path | Milestone |
+|---|---|---|---|---:|
+| `toolchain.bootstrap` | Bootstrap Orchestrator | Detect missing dependencies and apps, enforce disk guards, and provision repo-local install roots. | `tools/bootstrap/bootstrap.mjs` | 1 |
+| `toolchain.capability-check` | Capability Check | Report required and optional capabilities, installed artifacts, and free disk without modifying state. | `tools/bootstrap/check-env.mjs` | 1 |
+| `toolchain.python-env` | Python Environment | Create a repo-local virtualenv and install pinned training requirements for the selected PyTorch variant. | `tools/bootstrap/python-env.mjs` | 1 |
+| `toolchain.minecraft-server` | Minecraft Server Controller | Start, stop, and inspect the repo-provisioned local Minecraft 1.20.1 test server with explicit EULA consent. | `tools/bootstrap/minecraft-server.mjs` | 1 |
+| `toolchain.svg-renderer` | Firefox SVG Renderer | Render Mermaid source to SVG using the installed Firefox browser without downloading Chromium. | `tools/architecture/render-svg.mjs` | 1 |
+
+### `toolchain.bootstrap` — Bootstrap Orchestrator
+
+- **Responsibility:** Detect missing dependencies and apps, enforce disk guards, and provision repo-local install roots.
+- **Owner path:** `tools/bootstrap/bootstrap.mjs`
+- **Provides:** `toolchain.bootstrap.interface`
+- **Requires:** `toolchain.capability-check`, `toolchain.python-env`, `toolchain.minecraft-server`, `toolchain.svg-renderer`
+- **Owns state:** none
+- **Source refs:** `main.md#19-self-contained-bootstrap`
+- **Milestone:** 1
+- **Invariants:**
+  - Runs only against repo-local dependencies and caches.
+  - Fails closed with actionable diagnostics instead of mutating the host.
+- **Failure modes:**
+  - Missing or mismatched pinned artifact.
+  - Insufficient disk space or unavailable runtime prerequisite.
+- **Tests:**
+  - Bootstrap is idempotent on a clean checkout.
+  - Bootstrap fails fast when a required prerequisite is missing.
+- **Metrics:**
+  - `bootstrap_phase_total`
+  - `bootstrap_bytes_downloaded`
+
+### `toolchain.capability-check` — Capability Check
+
+- **Responsibility:** Report required and optional capabilities, installed artifacts, and free disk without modifying state.
+- **Owner path:** `tools/bootstrap/check-env.mjs`
+- **Provides:** `toolchain.capability-check.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#19-self-contained-bootstrap`
+- **Milestone:** 1
+- **Invariants:**
+  - Runs only against repo-local dependencies and caches.
+  - Fails closed with actionable diagnostics instead of mutating the host.
+- **Failure modes:**
+  - Missing or mismatched pinned artifact.
+  - Insufficient disk space or unavailable runtime prerequisite.
+- **Tests:**
+  - Bootstrap is idempotent on a clean checkout.
+  - Bootstrap fails fast when a required prerequisite is missing.
+- **Metrics:**
+  - `capability_missing_total`
+  - `capability_check_latency_ms`
+
+### `toolchain.python-env` — Python Environment
+
+- **Responsibility:** Create a repo-local virtualenv and install pinned training requirements for the selected PyTorch variant.
+- **Owner path:** `tools/bootstrap/python-env.mjs`
+- **Provides:** `toolchain.python-env.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#19-self-contained-bootstrap`
+- **Milestone:** 1
+- **Invariants:**
+  - Runs only against repo-local dependencies and caches.
+  - Fails closed with actionable diagnostics instead of mutating the host.
+- **Failure modes:**
+  - Missing or mismatched pinned artifact.
+  - Insufficient disk space or unavailable runtime prerequisite.
+- **Tests:**
+  - Bootstrap is idempotent on a clean checkout.
+  - Bootstrap fails fast when a required prerequisite is missing.
+- **Metrics:**
+  - `python_env_install_seconds`
+  - `python_variant_info`
+
+### `toolchain.minecraft-server` — Minecraft Server Controller
+
+- **Responsibility:** Start, stop, and inspect the repo-provisioned local Minecraft 1.20.1 test server with explicit EULA consent.
+- **Owner path:** `tools/bootstrap/minecraft-server.mjs`
+- **Provides:** `toolchain.minecraft-server.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#19-self-contained-bootstrap`
+- **Milestone:** 1
+- **Invariants:**
+  - Runs only against repo-local dependencies and caches.
+  - Fails closed with actionable diagnostics instead of mutating the host.
+- **Failure modes:**
+  - Missing or mismatched pinned artifact.
+  - Insufficient disk space or unavailable runtime prerequisite.
+- **Tests:**
+  - Bootstrap is idempotent on a clean checkout.
+  - Bootstrap fails fast when a required prerequisite is missing.
+- **Metrics:**
+  - `minecraft_server_status`
+  - `minecraft_server_restarts_total`
+
+### `toolchain.svg-renderer` — Firefox SVG Renderer
+
+- **Responsibility:** Render Mermaid source to SVG using the installed Firefox browser without downloading Chromium.
+- **Owner path:** `tools/architecture/render-svg.mjs`
+- **Provides:** `toolchain.svg-renderer.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#19-self-contained-bootstrap`
+- **Milestone:** 1
+- **Invariants:**
+  - Runs only against repo-local dependencies and caches.
+  - Fails closed with actionable diagnostics instead of mutating the host.
+- **Failure modes:**
+  - Missing or mismatched pinned artifact.
+  - Insufficient disk space or unavailable runtime prerequisite.
+- **Tests:**
+  - Bootstrap is idempotent on a clean checkout.
+  - Bootstrap fails fast when a required prerequisite is missing.
+- **Metrics:**
+  - `svg_render_seconds`
+  - `svg_render_failures_total`
 
 ---

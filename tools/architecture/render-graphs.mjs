@@ -337,7 +337,7 @@ fs.writeFileSync(path.join(outDir, 'relations.md'), relationsDoc.join('\n'));
 
 const diagramsDoc = [];
 diagramsDoc.push(header('TiCrafter Architecture Graphs'));
-diagramsDoc.push('Mermaid source lives in `docs/architecture/graphs/`. GitHub renders these fenced blocks directly. For local SVG rendering, use a Mermaid CLI such as `npx @mermaid-js/mermaid-cli`.\n');
+diagramsDoc.push('Mermaid source lives in `docs/architecture/graphs/`. GitHub renders these fenced blocks directly. For local SVG rendering, run `npm run render:svg -- <input.mmd> <output.svg>`; it uses the installed Firefox browser and never downloads Chromium.\n');
 const graphEntries = [
   ['fleet-overview.mmd', 'Fleet overview', 'Systems and externals with aggregated relation counts.'],
   ['cross-system.mmd', 'Cross-system dependencies', 'System-to-system view with relation types.'],

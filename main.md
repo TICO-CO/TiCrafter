@@ -16,6 +16,7 @@
 - **Active builds are private by default.** A non-owner may edit only through an explicit scoped grant that confirms compatibility with the owner's current plan.
 - Bots persist identity, role, behavior profile, current task, claims, and skill checkpoints; restart resumes last state.
 - Dev-only Python allowed for Laya fine-tuning; **runtime stays Node-only**.
+- **Self-contained bootstrap:** missing deps and apps install into repo-local, gitignored paths. No global installs or system package manager.
 - Infrastructure recognition: paths, houses, farms, walls, bridges, storage, workstations.
 
 ## Capacity profiles
@@ -347,14 +348,20 @@ packages/brains/         reflex, affordances, deterministic policy, Laya client
 packages/planning/       planner client, prompt builders, validators, task DAG
 packages/memory/         repositories, migrations, changelog
 packages/eval/           scenario runner, metrics, replay, contention tests
+tools/bootstrap/         dependency and app provisioning, local server control
+tools/architecture/      graph validator, renderers, SVG renderer
 tools/laya-train/        dev-only Python: labeling, fine-tune, ONNX export
 config/                  default.yaml, .env.example,
                          profiles/home-min.yaml, profiles/home-full.yaml
+package.json             workspace root, pinned deps, bootstrap scripts
+package-lock.json        committed lockfile
 ```
+
+Repo-local, gitignored install roots: `node_modules/`, `.venv/`, `.cache/`, `.toolchain/`, `data/`, `models/`.
 
 Profile selection env: `HARDWARE_PROFILE`, `BOT_COUNT`, `BOT_NAMES` (ordered array, default `["TiBot1" … "TiBot8"]`), `LAYA_EP` (`auto`|`cpu`|`webgpu`), `LAYA_THREADS`, `LAN_HOST=localhost`, `LAN_PORT=25565`, `DATA_DIR=./data`. Secrets: `PLANNER_BASE_URL`/`PLANNER_API_KEY` come from process env or gitignored `config/.env`; `config/.env.example` ships with empty values. Laya pins `onnxruntime-node ^1.22.0`; WebGPU on Linux x64 may require an override to a newer `onnxruntime-node` once validated.
 
-Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `mineflayer-crafting`, `prismarine-block/chunk/world`, `prismarine-schematic`, `@receptron/laya`, `zod`, `better-sqlite3`, `pino`, `vitest`, `tsx`.
+Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `mineflayer-crafting-util`, `prismarine-block/chunk/world`, `prismarine-schematic`, `@receptron/laya`, `zod`, `better-sqlite3`, `pino`, `vitest`, `tsx`, dev-only `@mermaid-js/mermaid-cli`.
 
 ## 14. Laya training and calibration (dev-time Python, runtime Node)
 
@@ -369,7 +376,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 ## 15. Testing and evaluation
 
 - Unit: detector fixtures, SIP validation, claim transactions, edit grants, blueprint diff, guardian invariants, resume logic.
-- Integration: Docker `itzg/minecraft-server` 1.20.1, offline, superflat; bots join via LAN.
+- Integration: repo-provisioned 1.20.1 server (`npm run server:start`), offline, superflat; bots join via LAN. Docker remains an optional alternative only.
 - Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
 - Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95.
 - Multi-bot scenarios:
@@ -431,3 +438,18 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 6. **Laya latency:** warm-model p95 <250ms per decision request. See §7 and §15.
 7. **WebGPU:** default on `home-full` only if faster than CPU p95 and stable for 2h with no crash or driver reset; otherwise CPU. See §15 and §17.
 8. **Remaining validation:** `home-full` latency, RAM, and WebGPU stability measurements are milestone 2 exit criteria, not open design questions. See §16.
+
+## 19. Self-contained bootstrap
+
+`node tools/bootstrap/bootstrap.mjs` is the only supported entry point for provisioning. It installs everything into repo-local, gitignored paths and reuses it on later runs.
+
+- **Full by default:** npm deps, Python training env, local Java 17, and the Minecraft 1.20.1 server jar. Opt out with `--no-python`, `--no-server`, `--no-npm`, or `--no-browser`.
+- **Repo-local only:** `node_modules/`, `.venv/`, `.cache/`, `.toolchain/`, `data/`, `models/`. No `npm -g`, `sudo`, or `apt`.
+- **Pinned and verified:** `tools/bootstrap/manifest.json` holds download URLs and checksums. Python requirements are pinned; PyTorch follows `PYTORCH_VARIANT` or `HARDWARE_PROFILE` (`cpu` for `home-min`, `rocm` for `home-full`).
+- **Install scripts denied:** npm 11 blocks dependency lifecycle scripts. Verified prebuilt binaries cover `better-sqlite3`, `onnxruntime-node`, and `esbuild`. Chromium is never downloaded.
+- **Diagram rendering:** Mermaid CLI uses the installed Firefox through `.cache/mermaid/puppeteer.json`. Override with `FIREFOX=/path/to/firefox`. Fenced Mermaid stays the default when Firefox is absent.
+- **Minecraft EULA:** accepting it is explicit. `npm run server:start` writes `data/minecraft/eula.txt` only with `--accept-eula`.
+- **Disk guard:** bootstrap estimates pending install size, prints free space, and aborts before downloading when the full profile cannot fit. `--check` reports without installing; `--clean` forces `npm ci`.
+- **Low-priority I/O:** npm runs under `nice`/`ionice` when available, with `--maxsockets=2` and `--prefer-offline`.
+
+Verification: `npm run bootstrap:check`, `npm run validate:graph`, `npm run render:graphs`, `npm run render:svg`, `npm test`.

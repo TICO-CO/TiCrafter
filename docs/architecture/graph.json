@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "TiCrafter Architecture Graph",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "generatedFrom": "main.md",
     "updated": "2026-11-09",
     "description": "Canonical decomposition of TiCrafter systems, owned components, state ownership, typed relations, templates, tunables, and process boundaries.",
@@ -359,6 +359,20 @@
         "tests": [
           "Dataset, export, and artifact-checksum tests."
         ]
+      },
+      "tpl.toolchain": {
+        "invariants": [
+          "Runs only against repo-local dependencies and caches.",
+          "Fails closed with actionable diagnostics instead of mutating the host."
+        ],
+        "failureModes": [
+          "Missing or mismatched pinned artifact.",
+          "Insufficient disk space or unavailable runtime prerequisite."
+        ],
+        "tests": [
+          "Bootstrap is idempotent on a clean checkout.",
+          "Bootstrap fails fast when a required prerequisite is missing."
+        ]
       }
     },
     "tunables": {
@@ -447,6 +461,9 @@
       ],
       "sys.training": [
         "dev"
+      ],
+      "sys.toolchain": [
+        "dev"
       ]
     },
     "destructiveExecutors": [
@@ -467,6 +484,33 @@
       "episodes": "SQLite table episodes; outcome traces for replay and training export.",
       "sip.*": "The single logical sip table is stored as sip.zones, sip.structures, sip.roads, sip.farms, sip.containers, sip.pathGraph, sip.rules, and sip.revisions.",
       "world.containerMemory": "Observed container memory, distinct from SIP sip.containers."
+    },
+    "dependencyPolicy": {
+      "bootstrapCommand": "node tools/bootstrap/bootstrap.mjs",
+      "manifest": "tools/bootstrap/manifest.json",
+      "installRoots": [
+        "node_modules",
+        ".venv",
+        ".cache",
+        ".toolchain",
+        "data",
+        "models"
+      ],
+      "globalInstalls": false,
+      "systemPackageManager": false,
+      "networkAtInstall": true,
+      "eulaConsentRequired": true,
+      "browserProvider": "firefox",
+      "runtimeForbiddenSystems": [
+        "sys.toolchain"
+      ],
+      "bootstrapComponents": [
+        "toolchain.bootstrap",
+        "toolchain.capability-check",
+        "toolchain.python-env",
+        "toolchain.minecraft-server",
+        "toolchain.svg-renderer"
+      ]
     }
   },
   "externals": [
@@ -6578,6 +6622,131 @@
             "brains_laya_client_timeouts_total",
             "brains_laya_client_latency_ms"
           ]
+        }
+      ]
+    },
+    {
+      "id": "sys.toolchain",
+      "name": "Bootstrap and Toolchain",
+      "purpose": "Provision every dependency and app into repo-local paths, verify pinned artifacts, and operate the local Minecraft test server.",
+      "ownerPackage": "tools",
+      "milestone": 1,
+      "sourceRefs": [
+        "main.md#19-self-contained-bootstrap"
+      ],
+      "invariants": [
+        "All dependencies and apps install into gitignored repo-local paths.",
+        "Bootstrap never performs global installs or invokes a system package manager.",
+        "Every download matches a pinned checksum from tools/bootstrap/manifest.json.",
+        "Runtime processes never depend on toolchain components."
+      ],
+      "allowedDependencies": [],
+      "forbiddenDependencies": [],
+      "components": [
+        {
+          "id": "toolchain.bootstrap",
+          "name": "Bootstrap Orchestrator",
+          "responsibility": "Detect missing dependencies and apps, enforce disk guards, and provision repo-local install roots.",
+          "plannedPath": "tools/bootstrap/bootstrap.mjs",
+          "provides": [
+            "toolchain.bootstrap.interface"
+          ],
+          "requires": [
+            "toolchain.capability-check",
+            "toolchain.python-env",
+            "toolchain.minecraft-server",
+            "toolchain.svg-renderer"
+          ],
+          "ownsState": [],
+          "template": "tpl.toolchain",
+          "metrics": [
+            "bootstrap_phase_total",
+            "bootstrap_bytes_downloaded"
+          ],
+          "sourceRefs": [
+            "main.md#19-self-contained-bootstrap"
+          ],
+          "milestone": 1
+        },
+        {
+          "id": "toolchain.capability-check",
+          "name": "Capability Check",
+          "responsibility": "Report required and optional capabilities, installed artifacts, and free disk without modifying state.",
+          "plannedPath": "tools/bootstrap/check-env.mjs",
+          "provides": [
+            "toolchain.capability-check.interface"
+          ],
+          "requires": [],
+          "ownsState": [],
+          "template": "tpl.toolchain",
+          "metrics": [
+            "capability_missing_total",
+            "capability_check_latency_ms"
+          ],
+          "sourceRefs": [
+            "main.md#19-self-contained-bootstrap"
+          ],
+          "milestone": 1
+        },
+        {
+          "id": "toolchain.python-env",
+          "name": "Python Environment",
+          "responsibility": "Create a repo-local virtualenv and install pinned training requirements for the selected PyTorch variant.",
+          "plannedPath": "tools/bootstrap/python-env.mjs",
+          "provides": [
+            "toolchain.python-env.interface"
+          ],
+          "requires": [],
+          "ownsState": [],
+          "template": "tpl.toolchain",
+          "metrics": [
+            "python_env_install_seconds",
+            "python_variant_info"
+          ],
+          "sourceRefs": [
+            "main.md#19-self-contained-bootstrap"
+          ],
+          "milestone": 1
+        },
+        {
+          "id": "toolchain.minecraft-server",
+          "name": "Minecraft Server Controller",
+          "responsibility": "Start, stop, and inspect the repo-provisioned local Minecraft 1.20.1 test server with explicit EULA consent.",
+          "plannedPath": "tools/bootstrap/minecraft-server.mjs",
+          "provides": [
+            "toolchain.minecraft-server.interface"
+          ],
+          "requires": [],
+          "ownsState": [],
+          "template": "tpl.toolchain",
+          "metrics": [
+            "minecraft_server_status",
+            "minecraft_server_restarts_total"
+          ],
+          "sourceRefs": [
+            "main.md#19-self-contained-bootstrap"
+          ],
+          "milestone": 1
+        },
+        {
+          "id": "toolchain.svg-renderer",
+          "name": "Firefox SVG Renderer",
+          "responsibility": "Render Mermaid source to SVG using the installed Firefox browser without downloading Chromium.",
+          "plannedPath": "tools/architecture/render-svg.mjs",
+          "provides": [
+            "toolchain.svg-renderer.interface"
+          ],
+          "requires": [],
+          "ownsState": [],
+          "template": "tpl.toolchain",
+          "metrics": [
+            "svg_render_seconds",
+            "svg_render_failures_total"
+          ],
+          "sourceRefs": [
+            "main.md#19-self-contained-bootstrap"
+          ],
+          "milestone": 1
         }
       ]
     }
@@ -13178,6 +13347,54 @@
       "criticality": "hard",
       "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
       "notes": "Episode Store writes Episode Store."
+    },
+    {
+      "id": "rel.0490",
+      "from": "toolchain.bootstrap",
+      "to": "toolchain.capability-check",
+      "type": "depends_on",
+      "protocol": "in-process",
+      "payload": "capability report",
+      "sync": true,
+      "criticality": "hard",
+      "failureBehavior": "Fail closed and surface a typed diagnostic; do not mutate the repo or host.",
+      "notes": "Bootstrap orchestrator invokes toolchain.capability-check."
+    },
+    {
+      "id": "rel.0491",
+      "from": "toolchain.bootstrap",
+      "to": "toolchain.python-env",
+      "type": "depends_on",
+      "protocol": "in-process",
+      "payload": "python environment provision",
+      "sync": true,
+      "criticality": "hard",
+      "failureBehavior": "Fail closed and surface a typed diagnostic; do not mutate the repo or host.",
+      "notes": "Bootstrap orchestrator invokes toolchain.python-env."
+    },
+    {
+      "id": "rel.0492",
+      "from": "toolchain.bootstrap",
+      "to": "toolchain.minecraft-server",
+      "type": "depends_on",
+      "protocol": "in-process",
+      "payload": "minecraft server control",
+      "sync": true,
+      "criticality": "hard",
+      "failureBehavior": "Fail closed and surface a typed diagnostic; do not mutate the repo or host.",
+      "notes": "Bootstrap orchestrator invokes toolchain.minecraft-server."
+    },
+    {
+      "id": "rel.0493",
+      "from": "toolchain.bootstrap",
+      "to": "toolchain.svg-renderer",
+      "type": "depends_on",
+      "protocol": "in-process",
+      "payload": "svg render request",
+      "sync": true,
+      "criticality": "hard",
+      "failureBehavior": "Fail closed and surface a typed diagnostic; do not mutate the repo or host.",
+      "notes": "Bootstrap orchestrator invokes toolchain.svg-renderer."
     }
   ]
 }

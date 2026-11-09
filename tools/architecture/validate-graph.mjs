@@ -28,7 +28,50 @@ const assertArray = (value, label, min = 0) => {
 };
 
 required(graph, ['meta', 'externals', 'systems', 'stateOwnership', 'relations'], 'graph');
-required(graph.meta, ['title', 'version', 'generatedFrom', 'updated', 'relationTypes', 'allowedCycles', 'forbiddenEdges'], 'meta');
+required(graph.meta, ['title', 'version', 'generatedFrom', 'updated', 'relationTypes', 'allowedCycles', 'forbiddenEdges', 'dependencyPolicy'], 'meta');
+
+const policy = graph.meta.dependencyPolicy ?? {};
+required(
+  policy,
+  [
+    'bootstrapCommand',
+    'manifest',
+    'installRoots',
+    'globalInstalls',
+    'systemPackageManager',
+    'networkAtInstall',
+    'eulaConsentRequired',
+    'browserProvider',
+    'runtimeForbiddenSystems',
+    'bootstrapComponents',
+  ],
+  'meta.dependencyPolicy',
+);
+if (policy.globalInstalls !== false) errors.push('meta.dependencyPolicy: globalInstalls must be false');
+if (policy.systemPackageManager !== false) errors.push('meta.dependencyPolicy: systemPackageManager must be false');
+assertArray(policy.installRoots, 'meta.dependencyPolicy.installRoots', 1);
+assertArray(policy.runtimeForbiddenSystems, 'meta.dependencyPolicy.runtimeForbiddenSystems', 1);
+assertArray(policy.bootstrapComponents, 'meta.dependencyPolicy.bootstrapComponents', 1);
+
+const packageJsonPath = path.join(root, 'package.json');
+const lockfilePath = path.join(root, 'package-lock.json');
+if (!fs.existsSync(packageJsonPath)) {
+  errors.push('package.json: missing repo root manifest');
+} else {
+  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  required(pkg, ['engines', 'scripts'], 'package.json');
+  required(pkg.engines ?? {}, ['node'], 'package.json.engines');
+  required(pkg.scripts ?? {}, ['bootstrap', 'validate:graph'], 'package.json.scripts');
+  if (pkg.private !== true) errors.push('package.json: private must be true');
+  for (const section of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+    for (const [name, spec] of Object.entries(pkg[section] ?? {})) {
+      if (spec === '*' || spec === 'latest' || spec === '') {
+        errors.push(`package.json: ${section}.${name} must be pinned, got ${JSON.stringify(spec)}`);
+      }
+    }
+  }
+}
+if (!fs.existsSync(lockfilePath)) errors.push('package-lock.json: missing committed lockfile');
 
 const systemIds = new Set();
 const componentIds = new Set();
@@ -96,6 +139,11 @@ for (const sys of graph.systems ?? []) {
   }
 }
 
+for (const id of policy.bootstrapComponents ?? []) {
+  if (!componentIds.has(id)) errors.push(`meta.dependencyPolicy: unknown bootstrap component ${id}`);
+}
+if (!systemIds.has('sys.toolchain')) errors.push('meta.dependencyPolicy: sys.toolchain system is required');
+
 const relationIds = new Set();
 const relationKeys = new Set();
 const relationSources = new Map();
@@ -139,6 +187,19 @@ for (const rel of graph.relations ?? []) {
   const shared = fromProcesses.some((process) => toProcesses.includes(process));
   if (!shared && rel.protocol === 'in-process') {
     errors.push(`relation ${rel.id}: cross-process edge ${rel.from} -> ${rel.to} cannot use in-process`);
+  }
+}
+
+for (const forbiddenSystem of policy.runtimeForbiddenSystems ?? []) {
+  for (const rel of graph.relations ?? []) {
+    if (!['depends_on', 'controls', 'writes'].includes(rel.type)) continue;
+    const toSystem = componentToSystem.get(rel.to) ?? (systemIds.has(rel.to) ? rel.to : null);
+    if (toSystem !== forbiddenSystem) continue;
+    const fromSystem = componentToSystem.get(rel.from) ?? (systemIds.has(rel.from) ? rel.from : null);
+    if (!fromSystem || fromSystem === forbiddenSystem) continue;
+    const fromProcesses = processMap[fromSystem] ?? [];
+    if (fromProcesses.includes('dev')) continue;
+    errors.push(`relation ${rel.id}: runtime system ${fromSystem} cannot depend on ${forbiddenSystem}`);
   }
 }
 

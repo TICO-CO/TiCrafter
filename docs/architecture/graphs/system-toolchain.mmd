@@ -1,0 +1,13 @@
+flowchart LR
+n261["Bootstrap Orchestrator"]
+n262["Capability Check"]
+n263["Python Environment"]
+n264["Minecraft Server Controller"]
+n265["Firefox SVG Renderer"]
+n261 -->|depends_on| n262
+n261 -->|depends_on| n263
+n261 -->|depends_on| n264
+n261 -->|depends_on| n265
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n261,n262,n263,n264,n265 internal;

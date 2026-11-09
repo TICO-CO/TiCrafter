@@ -1,44 +1,44 @@
 flowchart LR
-n213["Ring Sampler"]
-n214["Chunk Snapshot Encoder"]
-n215["Block Update Listener"]
-n216["Path and Road Detector"]
-n217["House Detector"]
-n218["Farm Detector"]
-n219["Storage and Workstation Detector"]
-n220["Linear Structure Detector"]
-n221["Detector Pipeline"]
-n155["Landmark Candidate Emitter"]
-n222["Perception Rate Limiter"]
-n53["Mineflayer Event Bridge (Bot Runtime and Mineflayer Adapter)"]
-n109["Perception Host (Bot Runtime and Mineflayer Adapter)"]
-n54["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n223["Detector Fixtures (Testing and Evaluation)"]
-n150["Event Stream (Transport and Protocol)"]
-n146["Profile Resolver (Config and Profiles)"]
-n53 -->|delegates_to| n215
-n109 -->|depends_on| n221
-n109 -->|depends_on| n213
-n54 -->|depends_on| n53
-n54 -->|delegates_to| n213
-n223 -->|depends_on| n221
-n214 -->|depends_on| n213
-n221 -->|depends_on| n214
-n221 -->|depends_on| n218
-n221 -->|depends_on| n217
-n221 -->|depends_on| n220
-n221 -->|depends_on| n216
-n221 -->|depends_on| n219
-n218 -->|depends_on| n214
-n217 -->|depends_on| n214
-n155 -->|depends_on| n221
-n155 -->|publishes| n150
-n220 -->|depends_on| n214
-n216 -->|depends_on| n214
-n222 -->|depends_on| n146
-n213 -->|depends_on| n222
-n219 -->|depends_on| n214
+n214["Ring Sampler"]
+n215["Chunk Snapshot Encoder"]
+n216["Block Update Listener"]
+n217["Path and Road Detector"]
+n218["House Detector"]
+n219["Farm Detector"]
+n220["Storage and Workstation Detector"]
+n221["Linear Structure Detector"]
+n222["Detector Pipeline"]
+n156["Landmark Candidate Emitter"]
+n223["Perception Rate Limiter"]
+n54["Mineflayer Event Bridge (Bot Runtime and Mineflayer Adapter)"]
+n110["Perception Host (Bot Runtime and Mineflayer Adapter)"]
+n55["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
+n224["Detector Fixtures (Testing and Evaluation)"]
+n151["Event Stream (Transport and Protocol)"]
+n147["Profile Resolver (Config and Profiles)"]
+n54 -->|delegates_to| n216
+n110 -->|depends_on| n222
+n110 -->|depends_on| n214
+n55 -->|depends_on| n54
+n55 -->|delegates_to| n214
+n224 -->|depends_on| n222
+n215 -->|depends_on| n214
+n222 -->|depends_on| n215
+n222 -->|depends_on| n219
+n222 -->|depends_on| n218
+n222 -->|depends_on| n221
+n222 -->|depends_on| n217
+n222 -->|depends_on| n220
+n219 -->|depends_on| n215
+n218 -->|depends_on| n215
+n156 -->|depends_on| n222
+n156 -->|publishes| n151
+n221 -->|depends_on| n215
+n217 -->|depends_on| n215
+n223 -->|depends_on| n147
+n214 -->|depends_on| n223
+n220 -->|depends_on| n215
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n213,n214,n215,n216,n217,n218,n219,n220,n221,n155,n222 internal;
-class n53,n109,n54,n223,n150,n146 external;
+class n214,n215,n216,n217,n218,n219,n220,n221,n222,n156,n223 internal;
+class n54,n110,n55,n224,n151,n147 external;

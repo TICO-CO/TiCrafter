@@ -21,7 +21,8 @@
         "processes",
         "protocols",
         "destructiveExecutors",
-        "stateMapping"
+        "stateMapping",
+        "dependencyPolicy"
       ],
       "additionalProperties": true,
       "properties": {
@@ -62,6 +63,49 @@
         "stateMapping": {
           "type": "object",
           "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "dependencyPolicy": {
+          "type": "object",
+          "required": [
+            "bootstrapCommand",
+            "manifest",
+            "installRoots",
+            "globalInstalls",
+            "systemPackageManager",
+            "networkAtInstall",
+            "eulaConsentRequired",
+            "browserProvider",
+            "runtimeForbiddenSystems",
+            "bootstrapComponents"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bootstrapCommand": { "type": "string", "minLength": 1 },
+            "manifest": { "type": "string", "minLength": 1 },
+            "installRoots": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "globalInstalls": { "const": false },
+            "systemPackageManager": { "const": false },
+            "networkAtInstall": { "type": "boolean" },
+            "eulaConsentRequired": { "type": "boolean" },
+            "browserProvider": { "type": "string", "minLength": 1 },
+            "runtimeForbiddenSystems": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "bootstrapComponents": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
         },
         "componentTemplates": {
           "type": "object",

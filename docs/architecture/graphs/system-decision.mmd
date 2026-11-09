@@ -1,62 +1,62 @@
 flowchart LR
-n32["Model Loader"]
-n33["Execution Provider Selector"]
-n71["Decision Queue"]
-n72["Decision Rate Limiter"]
-n73["Digest Cache"]
-n74["Digest Assembler"]
-n34["Batch Runner"]
-n35["Single In-flight Guard"]
-n36["Output Parser"]
-n37["Confidence Calibrator"]
-n38["Timeout and Fallback Handler"]
-n75["Latency Metrics"]
-n66["Deterministic Policy (Brains)"]
-n140["Config Schema Validator (Config and Profiles)"]
-n135["Message Schema Registry (Transport and Protocol)"]
-n224["Hardware Probe (Config and Profiles)"]
-n124["Structured Logger (Ops and Observability)"]
-n123["Metrics Registry (Ops and Observability)"]
-n225["Laya Runtime Resolver (Config and Profiles)"]
-n24(["ONNX Runtime / WebGPU Driver"])
-n150["Event Stream (Transport and Protocol)"]
-n146["Profile Resolver (Config and Profiles)"]
-n226["Laya Benchmark Harness (Testing and Evaluation)"]
-n125["Health and Readiness (Ops and Observability)"]
-n227["Calibration Fitter (Laya Training)"]
-n66 -->|subscribes| n150
-n224 -->|depends_on| n146
-n225 -->|depends_on| n224
-n225 -->|depends_on| n146
-n146 -->|depends_on| n140
-n34 -->|depends_on| n73
-n34 -->|depends_on| n32
-n34 -->|depends_on| n71
-n37 -->|proposes_to| n66
-n37 -->|depends_on| n140
-n37 -->|depends_on| n36
-n74 -->|depends_on| n135
-n73 -->|depends_on| n71
-n33 -->|depends_on| n224
-n33 -->|controls| n32
-n33 -->|observes| n124
-n75 -->|observes| n123
-n75 -->|writes| n123
-n32 -->|depends_on| n225
-n32 -->|depends_on| n24
-n36 -->|depends_on| n34
-n36 -->|publishes| n150
-n71 -->|subscribes| n150
-n72 -->|depends_on| n146
-n72 -->|depends_on| n71
-n35 -->|controls| n34
-n38 -->|controls| n36
-n38 -->|depends_on| n71
-n226 -->|depends_on| n75
-n226 -->|depends_on| n32
-n125 -->|depends_on| n32
-n227 -->|reads| n37
+n33["Model Loader"]
+n34["Execution Provider Selector"]
+n72["Decision Queue"]
+n73["Decision Rate Limiter"]
+n74["Digest Cache"]
+n75["Digest Assembler"]
+n35["Batch Runner"]
+n36["Single In-flight Guard"]
+n37["Output Parser"]
+n38["Confidence Calibrator"]
+n39["Timeout and Fallback Handler"]
+n76["Latency Metrics"]
+n67["Deterministic Policy (Brains)"]
+n141["Config Schema Validator (Config and Profiles)"]
+n136["Message Schema Registry (Transport and Protocol)"]
+n225["Hardware Probe (Config and Profiles)"]
+n125["Structured Logger (Ops and Observability)"]
+n124["Metrics Registry (Ops and Observability)"]
+n226["Laya Runtime Resolver (Config and Profiles)"]
+n25(["ONNX Runtime / WebGPU Driver"])
+n151["Event Stream (Transport and Protocol)"]
+n147["Profile Resolver (Config and Profiles)"]
+n227["Laya Benchmark Harness (Testing and Evaluation)"]
+n126["Health and Readiness (Ops and Observability)"]
+n228["Calibration Fitter (Laya Training)"]
+n67 -->|subscribes| n151
+n225 -->|depends_on| n147
+n226 -->|depends_on| n225
+n226 -->|depends_on| n147
+n147 -->|depends_on| n141
+n35 -->|depends_on| n74
+n35 -->|depends_on| n33
+n35 -->|depends_on| n72
+n38 -->|proposes_to| n67
+n38 -->|depends_on| n141
+n38 -->|depends_on| n37
+n75 -->|depends_on| n136
+n74 -->|depends_on| n72
+n34 -->|depends_on| n225
+n34 -->|controls| n33
+n34 -->|observes| n125
+n76 -->|observes| n124
+n76 -->|writes| n124
+n33 -->|depends_on| n226
+n33 -->|depends_on| n25
+n37 -->|depends_on| n35
+n37 -->|publishes| n151
+n72 -->|subscribes| n151
+n73 -->|depends_on| n147
+n73 -->|depends_on| n72
+n36 -->|controls| n35
+n39 -->|controls| n37
+n39 -->|depends_on| n72
+n227 -->|depends_on| n76
+n227 -->|depends_on| n33
+n126 -->|depends_on| n33
+n228 -->|reads| n38
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n32,n33,n71,n72,n73,n74,n34,n35,n36,n37,n38,n75 internal;
-class n66,n140,n135,n224,n124,n123,n225,n150,n146,n226,n125,n227,n24 external;
+class n33,n34,n72,n73,n74,n75,n35,n36,n37,n38,n39,n76 internal;
+class n67,n141,n136,n225,n125,n124,n226,n151,n147,n227,n126,n228,n25 external;

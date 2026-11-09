@@ -1,0 +1,49 @@
+{
+  "name": "ticrafter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fleet of autonomous Minecraft 1.20.1 agents.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "bootstrap": "node tools/bootstrap/bootstrap.mjs",
+    "bootstrap:check": "node tools/bootstrap/bootstrap.mjs --check",
+    "bootstrap:clean": "node tools/bootstrap/bootstrap.mjs --clean",
+    "bootstrap:python": "node tools/bootstrap/bootstrap.mjs --with-python",
+    "bootstrap:server": "node tools/bootstrap/bootstrap.mjs --with-server",
+    "validate:graph": "node tools/architecture/validate-graph.mjs",
+    "render:graphs": "node tools/architecture/render-graphs.mjs",
+    "render:svg": "node tools/architecture/render-svg.mjs",
+    "server:start": "node tools/bootstrap/minecraft-server.mjs start",
+    "server:stop": "node tools/bootstrap/minecraft-server.mjs stop",
+    "server:status": "node tools/bootstrap/minecraft-server.mjs status",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@receptron/laya": "0.2.0",
+    "better-sqlite3": "13.0.3",
+    "mineflayer": "4.39.0",
+    "mineflayer-collectblock": "1.6.0",
+    "mineflayer-crafting-util": "0.5.0",
+    "mineflayer-pathfinder": "2.4.5",
+    "pino": "10.4.0",
+    "prismarine-block": "1.23.0",
+    "prismarine-chunk": "1.41.0",
+    "prismarine-schematic": "1.3.0",
+    "prismarine-world": "3.7.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "12.2.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.1.0"
+  }
+}

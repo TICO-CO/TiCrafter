@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `node tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 489  
+**Relations:** 493  
 **State owners:** 21  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 18 |
-| `depends_on` | 322 |
+| `depends_on` | 326 |
 | `observes` | 8 |
 | `proposes_to` | 6 |
 | `publishes` | 11 |
@@ -801,3 +801,12 @@ None.
 | `rel.0477` | `brains.laya-client` | `depends_on` | `brains.affordance-enumerator` | `in-process` | sync | hard | affordances | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Affordance Enumerator. |
 | `rel.0478` | `brains.laya-client` | `depends_on` | `transport.ws-codec` | `ws` | sync | hard | decision request frames | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Laya Client depends on WebSocket Codec. |
 | `rel.0479` | `brains.laya-client` | `depends_on` | `brains.deterministic-policy` | `in-process` | sync | hard | timeout fallback | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Deterministic Policy. |
+
+## Bootstrap and Toolchain relations
+
+| ID | From | Type | To | Protocol | Sync | Criticality | Payload | Failure behavior | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| `rel.0490` | `toolchain.bootstrap` | `depends_on` | `toolchain.capability-check` | `in-process` | sync | hard | capability report | Fail closed and surface a typed diagnostic; do not mutate the repo or host. | Bootstrap orchestrator invokes toolchain.capability-check. |
+| `rel.0491` | `toolchain.bootstrap` | `depends_on` | `toolchain.python-env` | `in-process` | sync | hard | python environment provision | Fail closed and surface a typed diagnostic; do not mutate the repo or host. | Bootstrap orchestrator invokes toolchain.python-env. |
+| `rel.0492` | `toolchain.bootstrap` | `depends_on` | `toolchain.minecraft-server` | `in-process` | sync | hard | minecraft server control | Fail closed and surface a typed diagnostic; do not mutate the repo or host. | Bootstrap orchestrator invokes toolchain.minecraft-server. |
+| `rel.0493` | `toolchain.bootstrap` | `depends_on` | `toolchain.svg-renderer` | `in-process` | sync | hard | svg render request | Fail closed and surface a typed diagnostic; do not mutate the repo or host. | Bootstrap orchestrator invokes toolchain.svg-renderer. |

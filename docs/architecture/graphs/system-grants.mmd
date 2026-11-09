@@ -1,67 +1,67 @@
 flowchart LR
-n196["Grant Repository"]
-n173["Collaboration Policy Evaluator"]
-n171["Compatibility Checker"]
-n172["Design Revision Guard"]
-n132["Grant Issuer"]
-n195["Grant Revoker"]
-n197["Owner Offline Policy"]
-n145["Grant Expiry"]
-n154["Arbitration Adapter"]
-n169["Delta Sync Planner (Bot Registry and Profiles)"]
-n27["Command Router (Coordinator Runtime)"]
-n30["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n150["Event Stream (Transport and Protocol)"]
-n192["Claim Repository (Claims and Leases)"]
-n164["Rules Store (Shared Infrastructure Plan)"]
-n159["Structure Store (Shared Infrastructure Plan)"]
-n165["SIP Revision Manager (Shared Infrastructure Plan)"]
-n136["Transaction Manager (Memory and Persistence)"]
-n129["Fencing Token Authority (Claims and Leases)"]
-n148["Presence Tracker (Bot Registry and Profiles)"]
-n190["Bot Profile Store (Bot Registry and Profiles)"]
-n48["Planner Arbitration Handler (Cloud Planner)"]
-n169 -->|depends_on| n190
-n169 -->|reads| n196
-n169 -->|reads| n165
-n148 -->|depends_on| n190
-n190 -->|depends_on| n136
-n192 -->|depends_on| n136
-n129 -->|depends_on| n136
-n27 -->|controls| n132
-n30 -->|delegates_to| n145
-n30 -->|depends_on| n136
-n154 -->|depends_on| n171
-n154 -->|publishes| n150
-n171 -->|reads| n192
-n171 -->|depends_on| n196
-n171 -->|depends_on| n164
-n171 -->|depends_on| n159
-n172 -->|depends_on| n196
-n172 -->|controls| n195
-n172 -->|reads| n165
-n145 -->|writes| n196
-n132 -->|depends_on| n171
-n132 -->|depends_on| n172
-n132 -->|writes| n196
-n132 -->|depends_on| n173
-n196 -->|depends_on| n136
-n195 -->|depends_on| n129
-n195 -->|writes| n196
-n197 -->|reads| n148
-n197 -->|reads| n190
-n197 -->|depends_on| n171
-n173 -->|depends_on| n196
-n173 -->|depends_on| n159
-n48 -->|reads| n171
-n48 -->|proposes_to| n132
-n48 -->|subscribes| n150
-n165 -->|publishes| n172
-n165 -->|depends_on| n136
-n165 -->|depends_on| n164
-n164 -->|depends_on| n136
-n159 -->|depends_on| n136
+n197["Grant Repository"]
+n174["Collaboration Policy Evaluator"]
+n172["Compatibility Checker"]
+n173["Design Revision Guard"]
+n133["Grant Issuer"]
+n196["Grant Revoker"]
+n198["Owner Offline Policy"]
+n146["Grant Expiry"]
+n155["Arbitration Adapter"]
+n170["Delta Sync Planner (Bot Registry and Profiles)"]
+n28["Command Router (Coordinator Runtime)"]
+n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
+n151["Event Stream (Transport and Protocol)"]
+n193["Claim Repository (Claims and Leases)"]
+n165["Rules Store (Shared Infrastructure Plan)"]
+n160["Structure Store (Shared Infrastructure Plan)"]
+n166["SIP Revision Manager (Shared Infrastructure Plan)"]
+n137["Transaction Manager (Memory and Persistence)"]
+n130["Fencing Token Authority (Claims and Leases)"]
+n149["Presence Tracker (Bot Registry and Profiles)"]
+n191["Bot Profile Store (Bot Registry and Profiles)"]
+n49["Planner Arbitration Handler (Cloud Planner)"]
+n170 -->|depends_on| n191
+n170 -->|reads| n197
+n170 -->|reads| n166
+n149 -->|depends_on| n191
+n191 -->|depends_on| n137
+n193 -->|depends_on| n137
+n130 -->|depends_on| n137
+n28 -->|controls| n133
+n31 -->|delegates_to| n146
+n31 -->|depends_on| n137
+n155 -->|depends_on| n172
+n155 -->|publishes| n151
+n172 -->|reads| n193
+n172 -->|depends_on| n197
+n172 -->|depends_on| n165
+n172 -->|depends_on| n160
+n173 -->|depends_on| n197
+n173 -->|controls| n196
+n173 -->|reads| n166
+n146 -->|writes| n197
+n133 -->|depends_on| n172
+n133 -->|depends_on| n173
+n133 -->|writes| n197
+n133 -->|depends_on| n174
+n197 -->|depends_on| n137
+n196 -->|depends_on| n130
+n196 -->|writes| n197
+n198 -->|reads| n149
+n198 -->|reads| n191
+n198 -->|depends_on| n172
+n174 -->|depends_on| n197
+n174 -->|depends_on| n160
+n49 -->|reads| n172
+n49 -->|proposes_to| n133
+n49 -->|subscribes| n151
+n166 -->|publishes| n173
+n166 -->|depends_on| n137
+n166 -->|depends_on| n165
+n165 -->|depends_on| n137
+n160 -->|depends_on| n137
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n196,n173,n171,n172,n132,n195,n197,n145,n154 internal;
-class n169,n27,n30,n150,n192,n164,n159,n165,n136,n129,n148,n190,n48 external;
+class n197,n174,n172,n173,n133,n196,n198,n146,n155 internal;
+class n170,n28,n31,n151,n193,n165,n160,n166,n137,n130,n149,n191,n49 external;

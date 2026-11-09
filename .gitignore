@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+.cache/
+.toolchain/
+data/
+models/
+config/.env
+*.log

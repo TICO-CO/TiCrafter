@@ -8,7 +8,7 @@ n14["Bot Runtime and Mineflayer Adapter"]
 n15["Autonomy and Safety"]
 n17["Ops and Observability"]
 n21["Brains"]
-n26(["Fleet Operator"])
+n27(["Fleet Operator"])
 n14 -->|delegates_to| n21
 n14 -->|delegates_to| n11
 n0 -->|delegates_to| n10
@@ -23,73 +23,73 @@ n21 -->|controls| n15
 n15 -->|proposes_to| n0
 n15 -->|proposes_to| n10
 n0 -->|controls| n14
-n27["Command Router"]
-n28["Coordinator Epoch Authority"]
-n29["Global Scheduler"]
-n30["Restart Recovery Orchestrator"]
-n31["Bot Process Supervisor"]
-n32["Model Loader"]
-n33["Execution Provider Selector"]
-n34["Batch Runner"]
-n35["Single In-flight Guard"]
-n36["Output Parser"]
-n37["Confidence Calibrator"]
-n38["Timeout and Fallback Handler"]
-n39["OpenAI-Compatible Client"]
-n40["Planner Context Builder"]
-n41["Planner Trigger Evaluator"]
-n42["Planner Schema Validator"]
-n43["Planner Semantic Validator"]
-n44["Planner Repair Loop"]
-n45["SIP Mutation Translator"]
-n46["Task DAG Translator"]
-n47["Planner Budget Limiter"]
-n48["Planner Arbitration Handler"]
-n49["Keep Last Good Fallback"]
-n50["Skill Context Builder"]
-n51["Block Executor"]
-n52["Connection Lifecycle"]
-n53["Mineflayer Event Bridge"]
-n54["World Cache Adapter"]
-n55["Action Executor"]
-n56["Guardian Hook"]
-n57["Skill Host"]
-n58["Reconnect Supervisor"]
-n59["Action Veto Gate"]
-n60["Recovery Ladder"]
-n61["Emergency Stop Controller"]
-n62["Ops API"]
-n63["Pause and Resume Controller"]
-n64["Fleet Emergency Stop"]
-n65["Reflex Guardian Loop"]
-n66["Deterministic Policy"]
-n56 -->|delegates_to| n65
-n54 -->|delegates_to| n50
-n29 -->|delegates_to| n41
-n37 -->|proposes_to| n66
-n33 -->|controls| n32
-n35 -->|controls| n34
-n38 -->|controls| n36
-n64 -->|controls| n61
-n63 -->|controls| n57
-n47 -->|controls| n39
-n39 -->|delegates_to| n48
-n44 -->|controls| n49
-n42 -->|controls| n44
-n43 -->|controls| n44
-n41 -->|delegates_to| n40
-n59 -->|validates| n55
-n59 -->|validates| n51
-n61 -->|controls| n55
-n61 -->|controls| n27
-n65 -->|controls| n59
-n60 -->|proposes_to| n27
-n60 -->|proposes_to| n41
-n60 -->|controls| n61
-n31 -->|controls| n52
+n28["Command Router"]
+n29["Coordinator Epoch Authority"]
+n30["Global Scheduler"]
+n31["Restart Recovery Orchestrator"]
+n32["Bot Process Supervisor"]
+n33["Model Loader"]
+n34["Execution Provider Selector"]
+n35["Batch Runner"]
+n36["Single In-flight Guard"]
+n37["Output Parser"]
+n38["Confidence Calibrator"]
+n39["Timeout and Fallback Handler"]
+n40["OpenAI-Compatible Client"]
+n41["Planner Context Builder"]
+n42["Planner Trigger Evaluator"]
+n43["Planner Schema Validator"]
+n44["Planner Semantic Validator"]
+n45["Planner Repair Loop"]
+n46["SIP Mutation Translator"]
+n47["Task DAG Translator"]
+n48["Planner Budget Limiter"]
+n49["Planner Arbitration Handler"]
+n50["Keep Last Good Fallback"]
+n51["Skill Context Builder"]
+n52["Block Executor"]
+n53["Connection Lifecycle"]
+n54["Mineflayer Event Bridge"]
+n55["World Cache Adapter"]
+n56["Action Executor"]
+n57["Guardian Hook"]
+n58["Skill Host"]
+n59["Reconnect Supervisor"]
+n60["Action Veto Gate"]
+n61["Recovery Ladder"]
+n62["Emergency Stop Controller"]
+n63["Ops API"]
+n64["Pause and Resume Controller"]
+n65["Fleet Emergency Stop"]
+n66["Reflex Guardian Loop"]
+n67["Deterministic Policy"]
+n57 -->|delegates_to| n66
+n55 -->|delegates_to| n51
+n30 -->|delegates_to| n42
+n38 -->|proposes_to| n67
+n34 -->|controls| n33
+n36 -->|controls| n35
+n39 -->|controls| n37
+n65 -->|controls| n62
+n64 -->|controls| n58
+n48 -->|controls| n40
+n40 -->|delegates_to| n49
+n45 -->|controls| n50
+n43 -->|controls| n45
+n44 -->|controls| n45
+n42 -->|delegates_to| n41
+n60 -->|validates| n56
+n60 -->|validates| n52
+n62 -->|controls| n56
+n62 -->|controls| n28
+n66 -->|controls| n60
+n61 -->|proposes_to| n28
+n61 -->|proposes_to| n42
+n61 -->|controls| n62
+n32 -->|controls| n53
 classDef system fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef component fill:#f8fafc,stroke:#64748b,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n0,n9,n10,n11,n13,n14,n15,n17,n21 system;
-class n27,n28,n29,n30,n31,n32,n33,n34,n35,n36,n37,n38,n39,n40,n41,n42,n43,n44,n45,n46,n47,n48,n49,n50,n51,n52,n53,n54,n55,n56,n57,n58,n59,n60,n61,n62,n63,n64,n65,n66 component;
-class n26 external;
+class n28,n29,n30,n31,n32,n33,n34,n35,n36,n37,n38,n39,n40,n41,n42,n43,n44,n45,n46,n47,n48,n49,n50,n51,n52,n53,n54,n55,n56,n57,n58,n59,n60,n61,n62,n63,n64,n65,n66,n67 component;
+class n27 external;
