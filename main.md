@@ -6,6 +6,7 @@
 - **Two hardware profiles, one repo:** `home-min` (i5-7400, 15GB, GT 710) and `home-full` (R7 5700X, 32GB, RX 7600).
 - `home-min`: **4 bots default** (8 only as an overload test). `home-full`: **8 bots**.
 - **Laya execution provider:** CPU on `home-min`; `["webgpu","cpu"]` on `home-full`, automatic CPU fallback.
+- **LAN defaults:** `localhost:25565`, name pool `["TiBot1" … "TiBot8"]`; bot index `i` gets `names[i]`.
 - Bots all share **one common infrastructure plan** (SIP) so they do not override each other.
 - **Cloud planner:** Muse Spark 1.3 Contributor via an OpenAI-compatible endpoint ("opencode").
 - **Short-term decision model:** Laya (`@receptron/laya`, Node/ONNX). Typed `choice`/`score`/`noul` only, no text.
@@ -221,6 +222,7 @@ Semantics:
 - "Pick up last state" means restore **intent and obligations**, then reconcile with the world — not blindly replay stale block positions.
 - Offline bots keep their structures and policies; their claims expire after a grace period.
 - Roles are persisted and influence planner assignment and Laya state priors. Default: fixed roles, with planner allowed to reassign temporarily.
+- Usernames come from an ordered pool (`BOT_NAMES`); bot index `i` gets `names[i]`. Pool length must be ≥ `BOT_COUNT`; assignment is stable across restarts.
 
 ## 6. Perception → shared world model
 
@@ -248,6 +250,7 @@ Load configuration is profile-driven:
 - `sessionOptions.intraOpNumThreads`: 3 on `home-min`; 8 on `home-full` CPU path.
 - **No ROCm EP** exists in `onnxruntime-node` for the RX 7600. WebGPU on Linux x64 is experimental, so benchmark it and keep CPU fallback.
 - Decision-rate targets: ~4/sec fleet-wide on `home-min`; measure `home-full` and raise the cap only if p95 latency stays within budget.
+- Latency gate: warm-model p95 <250ms per decision request. Exceed it and reduce the tactical rate before dropping the confidence gate.
 
 Per decision request from a bot:
 
@@ -267,6 +270,7 @@ Choice cardinality: keep ≤16. Laya options cap is 192 tokens total and recomme
 ## 8. Long-term planner (Muse Spark 1.3 Contributor)
 
 - OpenAI-compatible client. Config: `PLANNER_BASE_URL`, `PLANNER_API_KEY`, `PLANNER_MODEL="Muse Spark 1.3 Contributor"`.
+- Load `PLANNER_BASE_URL`/`PLANNER_API_KEY` from process env, then gitignored `config/.env`. **No default URL**; the coordinator fails fast if either variable is missing. Commit `config/.env.example` with empty values.
 - Fleet-level, not per-bot: plans the village/farm/road system and assigns work.
 - Triggers: interval, SIP conflict, task failure burst, death cluster, new landmark, chat request.
 - Output: strict JSON validated with zod — goal stack, SIP mutations, task DAG, blueprint specs, recovery policy, notes.
@@ -323,6 +327,9 @@ Executor:
 
 SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `bot_events`, `skill_checkpoints`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
 
+- **Data directory:** `DATA_DIR`, default `./data`; holds the SQLite DB, event log, and block changelog. Gitignored.
+- **Retention:** prune event logs and block changelogs after 30 days. Keep SQLite state until manual pruning.
+
 Event log is append-only. Bot processes keep only short-lived local queues; coordinator is source of truth.
 
 ## 13. Repo layout
@@ -345,7 +352,7 @@ config/                  default.yaml, .env.example,
                          profiles/home-min.yaml, profiles/home-full.yaml
 ```
 
-Profile selection env: `HARDWARE_PROFILE`, `BOT_COUNT`, `LAYA_EP` (`auto`|`cpu`|`webgpu`), `LAYA_THREADS`. Laya pins `onnxruntime-node ^1.22.0`; WebGPU on Linux x64 may require an override to a newer `onnxruntime-node` once validated.
+Profile selection env: `HARDWARE_PROFILE`, `BOT_COUNT`, `BOT_NAMES` (ordered array, default `["TiBot1" … "TiBot8"]`), `LAYA_EP` (`auto`|`cpu`|`webgpu`), `LAYA_THREADS`, `LAN_HOST=localhost`, `LAN_PORT=25565`, `DATA_DIR=./data`. Secrets: `PLANNER_BASE_URL`/`PLANNER_API_KEY` come from process env or gitignored `config/.env`; `config/.env.example` ships with empty values. Laya pins `onnxruntime-node ^1.22.0`; WebGPU on Linux x64 may require an override to a newer `onnxruntime-node` once validated.
 
 Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `mineflayer-crafting`, `prismarine-block/chunk/world`, `prismarine-schematic`, `@receptron/laya`, `zod`, `better-sqlite3`, `pino`, `vitest`, `tsx`.
 
@@ -364,7 +371,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - Unit: detector fixtures, SIP validation, claim transactions, edit grants, blueprint diff, guardian invariants, resume logic.
 - Integration: Docker `itzg/minecraft-server` 1.20.1, offline, superflat; bots join via LAN.
 - Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
-- Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`; reject the GPU path if it is unstable or slower at p95.
+- Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95.
 - Multi-bot scenarios:
   - 3 bots build one house without duplicate/conflicting blocks.
   - 2 bots race to claim a farm plot; only one proceeds.
@@ -401,7 +408,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 
 - **Laya weak zero-shot** → deterministic fallback + fine-tune + confidence gate.
 - **Laya throughput** → one instance, profile-specific tactical cadence, queue/rate limit, digest cache, single in-flight forward pass, ONNX threads 3 (`home-min`) / 8 (`home-full`).
-- **WebGPU on RX 7600** → experimental on Linux x64; validate Mesa/Vulkan drivers, auto-fallback to CPU, reject if unstable or slower at p95.
+- **WebGPU on RX 7600** → experimental on Linux x64; validate Mesa/Vulkan drivers, auto-fallback to CPU, adopt only if faster than CPU p95 and stable for 2h with no crash or driver reset.
 - **VRAM contention** → WebGPU shares 8GB with the desktop; cap session memory, monitor, fall back to CPU.
 - **home-min CPU bottleneck** → 4 bots default; 8 bots only as an overload test; stagger heartbeats.
 - **home-min RAM headroom** → host already has ~9GB used; check free memory before starting the fleet.
@@ -414,12 +421,13 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - **Cloud cost/latency** → fleet-level event-driven planning, caps, caching, local fallback.
 - **Server anti-cheat/rate limits** → configurable action rate, no impossible reach.
 
-## 18. Open items
+## 18. Resolved defaults
 
-1. LAN host/port and bot usernames.
-2. Exact `PLANNER_BASE_URL` and key source for Muse Spark.
-3. Owner-offline edits default to **deny** unless `autoAcceptCompatibleHelpers` is set; confirm if a different default is wanted.
-4. Roles fixed with temporary planner reassignment (default); confirm if roles should be learned/promoted instead.
-5. Persistence directory and log/changelog retention window.
-6. `home-full` unmeasured: benchmark Laya CPU/WebGPU latency, full-fleet RAM, and 2h WebGPU stability.
-7. WebGPU acceptance threshold: must beat CPU p95 and run 2h without crash or driver reset.
+1. **LAN:** `localhost:25565`. Ordered `BOT_NAMES` pool (`TiBot1`–`TiBot8`); bot index `i` gets `names[i]`, stable across restarts. See §5 and §13.
+2. **Planner:** `PLANNER_BASE_URL`/`PLANNER_API_KEY` from process env or gitignored `config/.env`; no default URL; fail fast if missing. See §8.
+3. **Owner-offline edits:** deny by default; compatibility check only when `autoAcceptCompatibleHelpers=true`. See §3 and §11.
+4. **Roles:** fixed and persisted; planner may reassign temporarily, then restore the fixed role. See §5.
+5. **Persistence:** `DATA_DIR=./data`; prune event logs and block changelogs after 30 days; keep SQLite state until manual pruning. See §12.
+6. **Laya latency:** warm-model p95 <250ms per decision request. See §7 and §15.
+7. **WebGPU:** default on `home-full` only if faster than CPU p95 and stable for 2h with no crash or driver reset; otherwise CPU. See §15 and §17.
+8. **Remaining validation:** `home-full` latency, RAM, and WebGPU stability measurements are milestone 2 exit criteria, not open design questions. See §16.
