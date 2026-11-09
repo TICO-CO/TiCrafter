@@ -351,8 +351,8 @@ packages/eval/           scenario runner, metrics, replay, contention tests
 tools/bootstrap/         dependency and app provisioning, local server control
 tools/architecture/      graph validator, renderers, SVG renderer
 tools/laya-train/        dev-only Python: labeling, fine-tune, ONNX export
-config/                  default.yaml, .env.example,
-                         profiles/home-min.yaml, profiles/home-full.yaml
+config/                  default.json, .env.example,
+                         profiles/home-min.json, profiles/home-full.json
 package.json             workspace root, pinned deps, bootstrap scripts
 package-lock.json        committed lockfile
 ```

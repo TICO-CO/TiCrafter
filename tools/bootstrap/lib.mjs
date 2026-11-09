@@ -133,12 +133,28 @@ export function verifyHash(file, expected, algorithm, label) {
   }
 }
 
+function flattenSingleDirectory(directory) {
+  const entries = fs.readdirSync(directory);
+  if (entries.length !== 1) return;
+  const only = path.join(directory, entries[0]);
+  if (!fs.statSync(only).isDirectory()) return;
+  for (const child of fs.readdirSync(only)) {
+    fs.renameSync(path.join(only, child), path.join(directory, child));
+  }
+  fs.rmdirSync(only);
+}
+
 export function extractArchive(archive, destination, stripComponents = 0) {
   ensureDir(destination);
   if (archive.endsWith('.tar.gz') || archive.endsWith('.tgz')) {
     const args = ['-xzf', archive, '-C', destination];
     if (stripComponents > 0) args.push(`--strip-components=${stripComponents}`);
     run('tar', args);
+    return;
+  }
+  if (archive.endsWith('.zip')) {
+    run('unzip', ['-q', '-o', archive, '-d', destination]);
+    for (let index = 0; index < stripComponents; index += 1) flattenSingleDirectory(destination);
     return;
   }
   fail(`unsupported archive: ${archive}`);

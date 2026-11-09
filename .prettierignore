@@ -1,0 +1,13 @@
+node_modules/
+.venv/
+.cache/
+.toolchain/
+data/
+models/
+package-lock.json
+bun.lock
+bun.lockb
+docs/architecture/decomposition.md
+docs/architecture/relations.md
+docs/architecture/diagrams.md
+docs/architecture/graphs/

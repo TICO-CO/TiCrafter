@@ -35,7 +35,21 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "enum": ["depends_on", "controls", "reads", "writes", "proposes_to", "validates", "publishes", "subscribes", "persists_to", "observes", "delegates_to"] }
+          "items": {
+            "enum": [
+              "depends_on",
+              "controls",
+              "reads",
+              "writes",
+              "proposes_to",
+              "validates",
+              "publishes",
+              "subscribes",
+              "persists_to",
+              "observes",
+              "delegates_to"
+            ]
+          }
         },
         "protocols": {
           "type": "array",
@@ -115,7 +129,11 @@
             "additionalProperties": false,
             "properties": {
               "invariants": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-              "failureModes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "failureModes": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 }
+              },
               "tests": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
             }
           }
@@ -163,7 +181,18 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "name", "purpose", "ownerPackage", "milestone", "sourceRefs", "invariants", "allowedDependencies", "forbiddenDependencies", "components"],
+        "required": [
+          "id",
+          "name",
+          "purpose",
+          "ownerPackage",
+          "milestone",
+          "sourceRefs",
+          "invariants",
+          "allowedDependencies",
+          "forbiddenDependencies",
+          "components"
+        ],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^sys\\." },
@@ -207,12 +236,20 @@
   "$defs": {
     "component": {
       "type": "object",
-      "required": ["id", "name", "responsibility", "plannedPath", "provides", "requires", "ownsState", "metrics", "sourceRefs", "milestone"],
-      "additionalProperties": false,
-      "anyOf": [
-        { "required": ["template"] },
-        { "required": ["invariants", "failureModes", "tests"] }
+      "required": [
+        "id",
+        "name",
+        "responsibility",
+        "plannedPath",
+        "provides",
+        "requires",
+        "ownsState",
+        "metrics",
+        "sourceRefs",
+        "milestone"
       ],
+      "additionalProperties": false,
+      "anyOf": [{ "required": ["template"] }, { "required": ["invariants", "failureModes", "tests"] }],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$" },
         "name": { "type": "string", "minLength": 1 },
@@ -235,13 +272,38 @@
     },
     "relation": {
       "type": "object",
-      "required": ["id", "from", "to", "type", "protocol", "payload", "sync", "criticality", "failureBehavior", "notes"],
+      "required": [
+        "id",
+        "from",
+        "to",
+        "type",
+        "protocol",
+        "payload",
+        "sync",
+        "criticality",
+        "failureBehavior",
+        "notes"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "pattern": "^rel\\.[0-9]{4}$" },
         "from": { "type": "string", "minLength": 1 },
         "to": { "type": "string", "minLength": 1 },
-        "type": { "enum": ["depends_on", "controls", "reads", "writes", "proposes_to", "validates", "publishes", "subscribes", "persists_to", "observes", "delegates_to"] },
+        "type": {
+          "enum": [
+            "depends_on",
+            "controls",
+            "reads",
+            "writes",
+            "proposes_to",
+            "validates",
+            "publishes",
+            "subscribes",
+            "persists_to",
+            "observes",
+            "delegates_to"
+          ]
+        },
         "protocol": { "enum": ["in-process", "ws", "ipc", "https", "http", "tcp", "native"] },
         "payload": { "type": "string", "minLength": 1 },
         "sync": { "type": "boolean" },

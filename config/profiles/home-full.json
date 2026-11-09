@@ -1,0 +1,8 @@
+{
+  "hardwareProfile": "home-full",
+  "botCount": 8,
+  "laya": {
+    "executionProviders": ["webgpu", "cpu"],
+    "threads": 8
+  }
+}

@@ -28,7 +28,20 @@ const assertArray = (value, label, min = 0) => {
 };
 
 required(graph, ['meta', 'externals', 'systems', 'stateOwnership', 'relations'], 'graph');
-required(graph.meta, ['title', 'version', 'generatedFrom', 'updated', 'relationTypes', 'allowedCycles', 'forbiddenEdges', 'dependencyPolicy'], 'meta');
+required(
+  graph.meta,
+  [
+    'title',
+    'version',
+    'generatedFrom',
+    'updated',
+    'relationTypes',
+    'allowedCycles',
+    'forbiddenEdges',
+    'dependencyPolicy',
+  ],
+  'meta',
+);
 
 const policy = graph.meta.dependencyPolicy ?? {};
 required(
@@ -48,7 +61,8 @@ required(
   'meta.dependencyPolicy',
 );
 if (policy.globalInstalls !== false) errors.push('meta.dependencyPolicy: globalInstalls must be false');
-if (policy.systemPackageManager !== false) errors.push('meta.dependencyPolicy: systemPackageManager must be false');
+if (policy.systemPackageManager !== false)
+  errors.push('meta.dependencyPolicy: systemPackageManager must be false');
 assertArray(policy.installRoots, 'meta.dependencyPolicy.installRoots', 1);
 assertArray(policy.runtimeForbiddenSystems, 'meta.dependencyPolicy.runtimeForbiddenSystems', 1);
 assertArray(policy.bootstrapComponents, 'meta.dependencyPolicy.bootstrapComponents', 1);
@@ -83,14 +97,33 @@ const relationTypes = new Set(graph.meta.relationTypes);
 const protocols = new Set(graph.meta.protocols ?? []);
 
 for (const ext of graph.externals ?? []) {
-  required(ext, ['id', 'name', 'kind', 'boundary', 'contracts', 'failureModes'], `external ${ext.id ?? '<unknown>'}`);
+  required(
+    ext,
+    ['id', 'name', 'kind', 'boundary', 'contracts', 'failureModes'],
+    `external ${ext.id ?? '<unknown>'}`,
+  );
   if (!/^ext\.[a-z0-9-]+$/.test(ext.id ?? '')) errors.push(`external ${ext.id}: invalid id`);
   if (externalIds.has(ext.id)) errors.push(`duplicate external id ${ext.id}`);
   externalIds.add(ext.id);
 }
 
 for (const sys of graph.systems ?? []) {
-  required(sys, ['id', 'name', 'purpose', 'ownerPackage', 'milestone', 'sourceRefs', 'invariants', 'allowedDependencies', 'forbiddenDependencies', 'components'], `system ${sys.id ?? '<unknown>'}`);
+  required(
+    sys,
+    [
+      'id',
+      'name',
+      'purpose',
+      'ownerPackage',
+      'milestone',
+      'sourceRefs',
+      'invariants',
+      'allowedDependencies',
+      'forbiddenDependencies',
+      'components',
+    ],
+    `system ${sys.id ?? '<unknown>'}`,
+  );
   if (!/^sys\.[a-z0-9-]+$/.test(sys.id ?? '')) errors.push(`system ${sys.id}: invalid id`);
   if (systemIds.has(sys.id)) errors.push(`duplicate system id ${sys.id}`);
   systemIds.add(sys.id);
@@ -102,7 +135,25 @@ for (const sys of graph.systems ?? []) {
   const componentNames = new Set();
   for (const comp of sys.components ?? []) {
     const label = `component ${comp.id ?? '<unknown>'}`;
-    required(comp, ['id', 'name', 'responsibility', 'plannedPath', 'provides', 'requires', 'ownsState', 'invariants', 'failureModes', 'tests', 'metrics', 'sourceRefs', 'milestone'], label);
+    required(
+      comp,
+      [
+        'id',
+        'name',
+        'responsibility',
+        'plannedPath',
+        'provides',
+        'requires',
+        'ownsState',
+        'invariants',
+        'failureModes',
+        'tests',
+        'metrics',
+        'sourceRefs',
+        'milestone',
+      ],
+      label,
+    );
     if (!/^[a-z0-9-]+\.[a-z0-9-]+$/.test(comp.id ?? '')) errors.push(`${label}: invalid id`);
     if (componentIds.has(comp.id)) errors.push(`duplicate component id ${comp.id}`);
     if (componentNames.has(comp.name)) errors.push(`${sys.id}: duplicate component name ${comp.name}`);
@@ -123,7 +174,8 @@ for (const sys of graph.systems ?? []) {
     assertArray(comp.metrics, `${label}.metrics`, 1);
     assertArray(comp.sourceRefs, `${label}.sourceRefs`, 1);
     const placeholder = 'Single responsibility; no side effects outside the declared interface.';
-    if ((comp.invariants ?? []).includes(placeholder)) errors.push(`${label}: placeholder invariant is not allowed`);
+    if ((comp.invariants ?? []).includes(placeholder))
+      errors.push(`${label}: placeholder invariant is not allowed`);
     if (!Number.isInteger(comp.milestone) || comp.milestone < 1) errors.push(`${label}: invalid milestone`);
     if (!comp.plannedPath.startsWith(`${sys.ownerPackage}/`)) {
       warnings.push(`${label}: plannedPath does not start with system ownerPackage ${sys.ownerPackage}`);
@@ -134,7 +186,8 @@ for (const sys of graph.systems ?? []) {
 for (const sys of graph.systems ?? []) {
   for (const comp of sys.components ?? []) {
     for (const req of comp.requires ?? []) {
-      if (!componentIds.has(req) && !externalIds.has(req)) errors.push(`component ${comp.id}: unknown requirement ${req}`);
+      if (!componentIds.has(req) && !externalIds.has(req))
+        errors.push(`component ${comp.id}: unknown requirement ${req}`);
     }
   }
 }
@@ -152,7 +205,11 @@ const validEndpoints = (id) => systemIds.has(id) || componentIds.has(id) || exte
 
 for (const rel of graph.relations ?? []) {
   const label = `relation ${rel.id ?? '<unknown>'}`;
-  required(rel, ['id', 'from', 'to', 'type', 'protocol', 'payload', 'sync', 'criticality', 'failureBehavior', 'notes'], label);
+  required(
+    rel,
+    ['id', 'from', 'to', 'type', 'protocol', 'payload', 'sync', 'criticality', 'failureBehavior', 'notes'],
+    label,
+  );
   if (!/^rel\.[0-9]{4}$/.test(rel.id ?? '')) errors.push(`${label}: invalid id`);
   if (relationIds.has(rel.id)) errors.push(`duplicate relation id ${rel.id}`);
   relationIds.add(rel.id);
@@ -160,14 +217,19 @@ for (const rel of graph.relations ?? []) {
   if (relationKeys.has(key)) errors.push(`${label}: duplicate relation ${key}`);
   relationKeys.add(key);
   if (!relationTypes.has(rel.type)) errors.push(`${label}: unknown type ${rel.type}`);
-  if (protocols.size && !protocols.has(rel.protocol)) errors.push(`${label}: unknown protocol ${rel.protocol}`);
-  if (rel.criticality === 'soft' && !/fallback|degrad|last good|deterministic|skip|drop/i.test(rel.failureBehavior ?? '')) {
+  if (protocols.size && !protocols.has(rel.protocol))
+    errors.push(`${label}: unknown protocol ${rel.protocol}`);
+  if (
+    rel.criticality === 'soft' &&
+    !/fallback|degrad|last good|deterministic|skip|drop/i.test(rel.failureBehavior ?? '')
+  ) {
     errors.push(`${label}: soft relation must document a fallback in failureBehavior`);
   }
   if (!validEndpoints(rel.from)) errors.push(`${label}: unknown from endpoint ${rel.from}`);
   if (!validEndpoints(rel.to)) errors.push(`${label}: unknown to endpoint ${rel.to}`);
   if (typeof rel.sync !== 'boolean') errors.push(`${label}: sync must be boolean`);
-  if (!['hard', 'soft'].includes(rel.criticality)) errors.push(`${label}: invalid criticality ${rel.criticality}`);
+  if (!['hard', 'soft'].includes(rel.criticality))
+    errors.push(`${label}: invalid criticality ${rel.criticality}`);
   if (!rel.failureBehavior) errors.push(`${label}: empty failureBehavior`);
   if (!relationSources.has(rel.from)) relationSources.set(rel.from, []);
   relationSources.get(rel.from).push(rel);
@@ -203,7 +265,13 @@ for (const forbiddenSystem of policy.runtimeForbiddenSystems ?? []) {
   }
 }
 
-const globToRegExp = (pattern) => new RegExp(`^${pattern.split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`);
+const globToRegExp = (pattern) =>
+  new RegExp(
+    `^${pattern
+      .split('*')
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')}$`,
+  );
 
 for (const rule of graph.meta.forbiddenEdges ?? []) {
   const fromRe = globToRegExp(rule.fromPattern);
@@ -222,7 +290,8 @@ const owners = new Map();
 for (const state of graph.stateOwnership ?? []) {
   required(state, ['state', 'owner', 'writers', 'readers'], `state ${state.state ?? '<unknown>'}`);
   if (!componentIds.has(state.owner)) errors.push(`state ${state.state}: unknown owner ${state.owner}`);
-  if (owners.has(state.owner)) warnings.push(`state owner ${state.owner} owns multiple states; keep state ownership explicit`);
+  if (owners.has(state.owner))
+    warnings.push(`state owner ${state.owner} owns multiple states; keep state ownership explicit`);
   owners.set(state.owner, state);
   for (const writer of state.writers ?? []) {
     if (!componentIds.has(writer)) errors.push(`state ${state.state}: unknown writer ${writer}`);
@@ -252,7 +321,9 @@ for (const sys of graph.systems ?? []) {
   }
 }
 
-const writeEdges = new Set((graph.relations ?? []).filter((r) => r.type === 'writes').map((r) => `${r.from}|${r.to}`));
+const writeEdges = new Set(
+  (graph.relations ?? []).filter((r) => r.type === 'writes').map((r) => `${r.from}|${r.to}`),
+);
 for (const state of graph.stateOwnership ?? []) {
   for (const writer of state.writers ?? []) {
     if (!writeEdges.has(`${writer}|${state.owner}`)) {
@@ -263,7 +334,9 @@ for (const state of graph.stateOwnership ?? []) {
 
 const mustValidate = graph.meta.destructiveExecutors ?? [];
 for (const target of mustValidate) {
-  const approved = (relationTargets.get(target) ?? []).some((rel) => rel.type === 'validates' && rel.from === 'safety.action-veto-gate');
+  const approved = (relationTargets.get(target) ?? []).some(
+    (rel) => rel.type === 'validates' && rel.from === 'safety.action-veto-gate',
+  );
   if (!approved) errors.push(`missing safety validation edge safety.action-veto-gate -> ${target}`);
 }
 
@@ -368,9 +441,12 @@ for (const rel of (graph.relations ?? []).filter((r) => r.type === 'depends_on')
 }
 
 const declared = new Set();
-for (const sys of graph.systems ?? []) for (const dep of sys.allowedDependencies ?? []) declared.add(`${sys.id}->${dep}`);
-for (const dep of crossSystem) if (!declared.has(dep)) warnings.push(`system dependency not listed in allowedDependencies: ${dep}`);
-for (const dep of declared) if (!crossSystem.has(dep)) warnings.push(`allowedDependencies lists unused dependency: ${dep}`);
+for (const sys of graph.systems ?? [])
+  for (const dep of sys.allowedDependencies ?? []) declared.add(`${sys.id}->${dep}`);
+for (const dep of crossSystem)
+  if (!declared.has(dep)) warnings.push(`system dependency not listed in allowedDependencies: ${dep}`);
+for (const dep of declared)
+  if (!crossSystem.has(dep)) warnings.push(`allowedDependencies lists unused dependency: ${dep}`);
 
 const componentCount = [...componentIds].length;
 const cycleCount = sccs.filter((c) => c.length > 1).length;
@@ -378,5 +454,7 @@ const cycleCount = sccs.filter((c) => c.length > 1).length;
 for (const warning of warnings) console.warn(`warn: ${warning}`);
 for (const error of errors) console.error(`error: ${error}`);
 
-console.log(`graph: systems=${systemIds.size} components=${componentCount} relations=${relationIds.size} externals=${externalIds.size} cycles=${cycleCount} errors=${errors.length} warnings=${warnings.length}`);
+console.log(
+  `graph: systems=${systemIds.size} components=${componentCount} relations=${relationIds.size} externals=${externalIds.size} cycles=${cycleCount} errors=${errors.length} warnings=${warnings.length}`,
+);
 if (errors.length > 0) process.exit(1);

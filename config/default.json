@@ -1,0 +1,34 @@
+{
+  "hardwareProfile": "home-min",
+  "botCount": 4,
+  "botNames": ["TiBot1", "TiBot2", "TiBot3", "TiBot4", "TiBot5", "TiBot6", "TiBot7", "TiBot8"],
+  "autoSpawnBots": false,
+  "lan": {
+    "host": "localhost",
+    "port": 25565
+  },
+  "transport": {
+    "host": "127.0.0.1",
+    "port": 8788
+  },
+  "ops": {
+    "host": "127.0.0.1",
+    "port": 8787
+  },
+  "dataDir": "./data",
+  "laya": {
+    "executionProviders": ["cpu"],
+    "threads": 3
+  },
+  "planner": {
+    "enabled": false,
+    "baseUrl": "",
+    "apiKey": ""
+  },
+  "logging": {
+    "level": "info"
+  },
+  "safety": {
+    "guardianHz": 20
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "hardwareProfile": "home-min",
+  "botCount": 4,
+  "laya": {
+    "executionProviders": ["cpu"],
+    "threads": 3
+  }
+}

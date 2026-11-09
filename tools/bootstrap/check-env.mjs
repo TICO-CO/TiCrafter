@@ -1,6 +1,18 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { diskInfo, exists, formatBytes, hashFile, hashText, readJson, readManifest, readMarker, root, runCapture, warn } from './lib.mjs';
+import {
+  diskInfo,
+  exists,
+  formatBytes,
+  hashFile,
+  hashText,
+  readJson,
+  readManifest,
+  readMarker,
+  root,
+  runCapture,
+  warn,
+} from './lib.mjs';
 
 const required = [];
 const optional = [];
@@ -57,7 +69,11 @@ for (const [name, entry] of Object.entries(manifest.downloads)) {
 
 const eula = path.join(root, 'data/minecraft/eula.txt');
 const eulaAccepted = exists(eula) && /^\s*eula\s*=\s*true\s*$/im.test(fs.readFileSync(eula, 'utf8'));
-optional.push({ name: 'minecraft eula', ok: eulaAccepted, detail: eulaAccepted ? 'accepted' : 'not accepted' });
+optional.push({
+  name: 'minecraft eula',
+  ok: eulaAccepted,
+  detail: eulaAccepted ? 'accepted' : 'not accepted',
+});
 
 const print = (item) => console.log(`${item.ok ? 'ok  ' : 'miss'} ${item.name}: ${item.detail}`);
 

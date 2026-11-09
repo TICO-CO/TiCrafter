@@ -4,8 +4,9 @@
   "private": true,
   "description": "Fleet of autonomous Minecraft 1.20.1 agents.",
   "type": "module",
+  "packageManager": "bun@1.4.2",
   "engines": {
-    "node": ">=24 <25"
+    "bun": ">=1.4.2"
   },
   "workspaces": [
     "apps/*",
@@ -13,22 +14,27 @@
     "tools/*"
   ],
   "scripts": {
-    "bootstrap": "node tools/bootstrap/bootstrap.mjs",
-    "bootstrap:check": "node tools/bootstrap/bootstrap.mjs --check",
-    "bootstrap:clean": "node tools/bootstrap/bootstrap.mjs --clean",
-    "bootstrap:python": "node tools/bootstrap/bootstrap.mjs --with-python",
-    "bootstrap:server": "node tools/bootstrap/bootstrap.mjs --with-server",
-    "validate:graph": "node tools/architecture/validate-graph.mjs",
-    "render:graphs": "node tools/architecture/render-graphs.mjs",
-    "render:svg": "node tools/architecture/render-svg.mjs",
-    "server:start": "node tools/bootstrap/minecraft-server.mjs start",
-    "server:stop": "node tools/bootstrap/minecraft-server.mjs stop",
-    "server:status": "node tools/bootstrap/minecraft-server.mjs status",
-    "test": "vitest run --passWithNoTests"
+    "bootstrap": "bun tools/bootstrap/bootstrap.mjs",
+    "bootstrap:check": "bun tools/bootstrap/bootstrap.mjs --check",
+    "bootstrap:clean": "bun tools/bootstrap/bootstrap.mjs --clean",
+    "bootstrap:python": "bun tools/bootstrap/bootstrap.mjs --with-python",
+    "bootstrap:server": "bun tools/bootstrap/bootstrap.mjs --with-server",
+    "validate:graph": "bun tools/architecture/validate-graph.mjs",
+    "render:graphs": "bun tools/architecture/render-graphs.mjs",
+    "render:svg": "bun tools/architecture/render-svg.mjs",
+    "server:start": "bun tools/bootstrap/minecraft-server.mjs start",
+    "server:stop": "bun tools/bootstrap/minecraft-server.mjs stop",
+    "server:status": "bun tools/bootstrap/minecraft-server.mjs status",
+    "dev:coordinator": "bun apps/coordinator/src/main.ts",
+    "dev:bot": "bun apps/bot/src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "bun test"
   },
   "dependencies": {
     "@receptron/laya": "0.2.0",
-    "better-sqlite3": "13.0.3",
     "mineflayer": "4.39.0",
     "mineflayer-collectblock": "1.6.0",
     "mineflayer-crafting-util": "0.5.0",
@@ -38,12 +44,21 @@
     "prismarine-chunk": "1.41.0",
     "prismarine-schematic": "1.3.0",
     "prismarine-world": "3.7.0",
+    "ws": "8.22.2",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "12.2.0",
-    "tsx": "4.23.15",
+    "@types/bun": "1.4.4",
+    "@types/node": "24.19.2",
+    "@types/ws": "8.18.2",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-simple-import-sort": "14.0.0",
+    "prettier": "3.9.10",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.72.2",
     "vitest": "5.1.0"
   }
 }

@@ -18,9 +18,7 @@ import fs from 'node:fs';
 const pythonCommand = () => process.env.PYTHON || 'python3';
 
 const pipPath = (venvDir) =>
-  process.platform === 'win32'
-    ? path.join(venvDir, 'Scripts', 'pip.exe')
-    : path.join(venvDir, 'bin', 'pip');
+  process.platform === 'win32' ? path.join(venvDir, 'Scripts', 'pip.exe') : path.join(venvDir, 'bin', 'pip');
 
 const venvPythonPath = (venvDir) =>
   process.platform === 'win32'
@@ -37,7 +35,9 @@ export function pythonRequirements(manifest = readManifest()) {
   const config = manifest.python;
   const relative = config.requirements[variant];
   if (!relative) {
-    throw new Error(`unknown PyTorch variant ${variant}; expected one of ${Object.keys(config.requirements).join(', ')}`);
+    throw new Error(
+      `unknown PyTorch variant ${variant}; expected one of ${Object.keys(config.requirements).join(', ')}`,
+    );
   }
   return { variant, relative, absolute: path.join(root, relative) };
 }
@@ -166,7 +166,11 @@ export function provisionPython({ check = false, manifest = readManifest() } = {
   }
 
   ensureDir(path.join(root, config.cache));
-  const env = { ...process.env, PIP_CACHE_DIR: path.join(root, config.cache), PIP_DISABLE_PIP_VERSION_CHECK: '1' };
+  const env = {
+    ...process.env,
+    PIP_CACHE_DIR: path.join(root, config.cache),
+    PIP_DISABLE_PIP_VERSION_CHECK: '1',
+  };
 
   if (!exists(venvPythonPath(venvDir))) {
     log(`python env: creating ${config.venv}`);

@@ -75,33 +75,33 @@ When adding a relation, use one of the declared types and provide protocol, payl
 
 ## Protocols
 
-| Protocol | Boundary |
-|---|---|
-| `in-process` | Same OS process. |
-| `ws` | Coordinator to bot child process data plane. |
-| `ipc` | Coordinator to bot child process supervision. |
-| `https` | Cloud planner endpoint. |
-| `http` | Operator to ops API. |
-| `tcp` | Bot runtime to Minecraft server. |
-| `native` | ONNX Runtime / WebGPU driver. |
+| Protocol     | Boundary                                      |
+| ------------ | --------------------------------------------- |
+| `in-process` | Same OS process.                              |
+| `ws`         | Coordinator to bot child process data plane.  |
+| `ipc`        | Coordinator to bot child process supervision. |
+| `https`      | Cloud planner endpoint.                       |
+| `http`       | Operator to ops API.                          |
+| `tcp`        | Bot runtime to Minecraft server.              |
+| `native`     | ONNX Runtime / WebGPU driver.                 |
 
 `meta.processes` declares which systems run in the coordinator, in bot processes, or only in dev. The validator rejects `in-process` on edges whose process sets do not overlap.
 
 ## Relation types
 
-| Type | Meaning |
-|---|---|
-| `depends_on` | Source needs target to function; failure propagates unless a fallback exists. |
-| `controls` | Source commands, vetoes, stops, or constrains target. |
-| `reads` | Source reads state owned by target through the target interface. |
-| `writes` | Source writes target-owned state and must be a declared writer. |
-| `proposes_to` | Source emits an untrusted proposal; target validates and commits or rejects. |
-| `validates` | Source validates or vetoes target before target acts. |
-| `publishes` | Source publishes an event. |
-| `subscribes` | Source consumes an event. |
-| `persists_to` | Source persists through target storage boundary. |
-| `observes` | Source emits telemetry or reads observability data. |
-| `delegates_to` | Source hands a job to target but remains accountable. |
+| Type           | Meaning                                                                       |
+| -------------- | ----------------------------------------------------------------------------- |
+| `depends_on`   | Source needs target to function; failure propagates unless a fallback exists. |
+| `controls`     | Source commands, vetoes, stops, or constrains target.                         |
+| `reads`        | Source reads state owned by target through the target interface.              |
+| `writes`       | Source writes target-owned state and must be a declared writer.               |
+| `proposes_to`  | Source emits an untrusted proposal; target validates and commits or rejects.  |
+| `validates`    | Source validates or vetoes target before target acts.                         |
+| `publishes`    | Source publishes an event.                                                    |
+| `subscribes`   | Source consumes an event.                                                     |
+| `persists_to`  | Source persists through target storage boundary.                              |
+| `observes`     | Source emits telemetry or reads observability data.                           |
+| `delegates_to` | Source hands a job to target but remains accountable.                         |
 
 ## Architecture guardrails
 
