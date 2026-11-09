@@ -3,7 +3,10 @@
 ## Locked decisions
 
 - Minecraft **1.20.1**, LAN server, offline auth, no public server.
-- **8 bots**, all sharing **one common infrastructure plan** (SIP) so they do not override each other.
+- **Two hardware profiles, one repo:** `home-min` (i5-7400, 15GB, GT 710) and `home-full` (R7 5700X, 32GB, RX 7600).
+- `home-min`: **4 bots default** (8 only as an overload test). `home-full`: **8 bots**.
+- **Laya execution provider:** CPU on `home-min`; `["webgpu","cpu"]` on `home-full`, automatic CPU fallback.
+- Bots all share **one common infrastructure plan** (SIP) so they do not override each other.
 - **Cloud planner:** Muse Spark 1.3 Contributor via an OpenAI-compatible endpoint ("opencode").
 - **Short-term decision model:** Laya (`@receptron/laya`, Node/ONNX). Typed `choice`/`score`/`noul` only, no text.
 - **Execution:** mineflayer.
@@ -14,16 +17,34 @@
 - Dev-only Python allowed for Laya fine-tuning; **runtime stays Node-only**.
 - Infrastructure recognition: paths, houses, farms, walls, bridges, storage, workstations.
 
-## Capacity constraints (measured)
+## Capacity profiles
 
-- 4 CPU cores, 15GB RAM, GT 710 (1GB) — GPU unusable.
+Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
+
+**`home-min` — measured**
+
+- 4 CPU cores (4C/4T), 15GB RAM, GT 710 (1GB) — GPU unusable.
 - Laya fp32 ONNX ≈1.7GB download, ≈2GB RAM, **one forward pass at a time**.
 - Tactical budget: one shared Laya instance, ~4 decisions/sec fleet-wide.
-- 8 bots ≈1.2–1.6GB total for mineflayer processes; coordinator + SQLite <1GB. Total ~4–5GB, fits.
+- 4 bots ≈0.6–0.8GB for mineflayer processes; coordinator + SQLite <1GB; Laya ≈2GB. Total ≈3.5–4GB, fits — though the host currently has ~9GB already used by other applications.
 - Set Laya `intraOpNumThreads=3`; leave 1 core for pathfinding.
 - Stagger bot decision heartbeats; each bot mostly runs deterministic skills between decisions.
+- Target 4 bots; test at 4 and 8. 8 is an overload test, not the default.
+
+**`home-full` — target (measure before trusting)**
+
+- 8 CPU cores (8C/16T), 32GB DDR4, RX 7600 8GB (RDNA3, `gfx1102`).
+- 8 bots ≈1.2–1.6GB; coordinator + SQLite <1GB; Laya ≈2GB. Total ≈5GB of 32GB.
+- Laya on CPU: `intraOpNumThreads=8`, still leave headroom for pathfinding.
+- Laya on WebGPU: model weights ≈2–3GB VRAM including activations; shared with the desktop.
+- Target 8 bots. Raise decision rate only after measuring p50/p95 latency and stability.
+- No ROCm path: `onnxruntime-node` ships no ROCm EP. WebGPU on Linux x64 is experimental; CPU is the fallback.
+
+**Both profiles**
+
 - **Do not** run one Laya instance per bot. One model, central decision service.
-- Target 8 bots v1; test at 8.
+- Enforce a single in-flight forward pass per coordinator; batch questions from one decision request.
+- If WebGPU fails to initialize, crashes, or is slower than CPU at p95, fall back to CPU automatically and log the downgrade.
 
 ## Architecture
 
@@ -61,7 +82,7 @@ Priority: **guardian > Laya > planner**. No model ever calls mineflayer directly
 
 ## 1. Fleet Coordinator
 
-Single process for LAN simplicity; can later split into services.
+Single process for LAN simplicity; can later split into services. Fleet size, Laya execution provider, and thread counts are profile-driven, not constants.
 
 Responsibilities:
 
@@ -221,6 +242,13 @@ Each bot samples loaded chunks on a ring (16–64 blocks configurable) and strea
 
 One shared `@receptron/laya` instance inside the coordinator.
 
+Load configuration is profile-driven:
+
+- `executionProviders`: `["cpu"]` on `home-min`; `["webgpu","cpu"]` on `home-full`.
+- `sessionOptions.intraOpNumThreads`: 3 on `home-min`; 8 on `home-full` CPU path.
+- **No ROCm EP** exists in `onnxruntime-node` for the RX 7600. WebGPU on Linux x64 is experimental, so benchmark it and keep CPU fallback.
+- Decision-rate targets: ~4/sec fleet-wide on `home-min`; measure `home-full` and raise the cap only if p95 latency stays within budget.
+
 Per decision request from a bot:
 
 - State digest ≤512 tokens: health, food, time, biome, y-level, target, 5-line inventory, nearby hazards/mobs, current skill and progress, last result.
@@ -313,8 +341,11 @@ packages/planning/       planner client, prompt builders, validators, task DAG
 packages/memory/         repositories, migrations, changelog
 packages/eval/           scenario runner, metrics, replay, contention tests
 tools/laya-train/        dev-only Python: labeling, fine-tune, ONNX export
-config/                  default.yaml, .env.example
+config/                  default.yaml, .env.example,
+                         profiles/home-min.yaml, profiles/home-full.yaml
 ```
+
+Profile selection env: `HARDWARE_PROFILE`, `BOT_COUNT`, `LAYA_EP` (`auto`|`cpu`|`webgpu`), `LAYA_THREADS`. Laya pins `onnxruntime-node ^1.22.0`; WebGPU on Linux x64 may require an override to a newer `onnxruntime-node` once validated.
 
 Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `mineflayer-crafting`, `prismarine-block/chunk/world`, `prismarine-schematic`, `@receptron/laya`, `zod`, `better-sqlite3`, `pino`, `vitest`, `tsx`.
 
@@ -323,14 +354,17 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 1. Log `(state digest, affordances, action, outcome)` from deterministic policy and fleet runs.
 2. Label with cloud teacher + outcome rewards: progress, damage, time, materials, task completion.
 3. Fine-tune Laya; export ONNX bundle into `models/`; load via `modelDir`.
-4. Fit per-question-type temperature on held-out traces.
-5. Tune confidence gate to target precision (e.g. 0.90) against the deterministic baseline.
-6. Promote only if it beats the deterministic policy end-to-end.
+4. Dev-time Python may use ROCm PyTorch on `home-full`, but the runtime remains Node-only and loads only the exported ONNX bundle.
+5. Fit per-question-type temperature on held-out traces.
+6. Tune confidence gate to target precision (e.g. 0.90) against the deterministic baseline.
+7. Promote only if it beats the deterministic policy end-to-end.
 
 ## 15. Testing and evaluation
 
 - Unit: detector fixtures, SIP validation, claim transactions, edit grants, blueprint diff, guardian invariants, resume logic.
 - Integration: Docker `itzg/minecraft-server` 1.20.1, offline, superflat; bots join via LAN.
+- Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
+- Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`; reject the GPU path if it is unstable or slower at p95.
 - Multi-bot scenarios:
   - 3 bots build one house without duplicate/conflicting blocks.
   - 2 bots race to claim a farm plot; only one proceeds.
@@ -345,27 +379,33 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
   - kill coordinator during multi-bot build → restart → bots reconnect, leases recovered, SIP consistent.
   - 8-bot contention test: claim throughput, decision queue latency, no deadlock.
 - Metrics: task success, time, deaths, blocks/min, claim contention, duplicate work, idle time, Laya accuracy/ECE, planner calls/tokens/cost.
-- Soak test: 8 bots run 2+ hours, no memory growth, no deadlocks, claims stable.
+- Soak test: 2+ hours on both profiles — 4 bots on `home-min`, 8 bots on `home-full`; no memory growth, no deadlocks, claims stable.
 
 ## 16. Milestones
 
 1. **Scaffold**: workspace, config, coordinator, one bot joins LAN server, logging, persistence schema.
-2. **Perception + shared world model** for 2 bots; landmark persistence.
-3. **Reflex + core skills**: survive, navigate, mine, gather, craft, deposit.
-4. **SIP + claims + task board + collaboration grants + bot profiles/roles**.
-5. **Building**: templates, schematic executor, work partitioning, rollback.
-6. **Infrastructure recognition**: paths, houses, farms, walls, bridges, storage.
-7. **Laya decision service**: central instance, affordances, digest, confidence gate, fallback.
-8. **Cloud planner**: Muse Spark, schema, SIP revisions, budget guards; plan-revision arbitration for ambiguous edits.
-9. **Calibration + 8-bot eval**: tune, measure, promote.
-10. **Hardening**: restart/resume, soak tests, error taxonomy, ops controls, docs.
+2. **Hardware profiles + Laya EP benchmark**: `home-min` CPU profile, `home-full` WebGPU/CPU selection, latency and fallback measurement.
+3. **Perception + shared world model** for 2 bots; landmark persistence.
+4. **Reflex + core skills**: survive, navigate, mine, gather, craft, deposit.
+5. **SIP + claims + task board + collaboration grants + bot profiles/roles**.
+6. **Building**: templates, schematic executor, work partitioning, rollback.
+7. **Infrastructure recognition**: paths, houses, farms, walls, bridges, storage.
+8. **Laya decision service**: central instance, affordances, digest, confidence gate, fallback.
+9. **Cloud planner**: Muse Spark, schema, SIP revisions, budget guards; plan-revision arbitration for ambiguous edits.
+10. **Calibration + fleet eval**: tune, measure, promote; 4 bots on `home-min`, 8 on `home-full`.
+11. **Hardening**: restart/resume, soak tests, error taxonomy, ops controls, docs.
 
-**v1 done when:** 8 bots run unattended on LAN for 2 hours, maintain one consistent SIP, build/repair farms/houses/roads cooperatively, detect and reuse existing infrastructure, never overwrite active work without a valid grant, and resume their roles/tasks correctly after stop/restart.
+**v1 done when:** 8 bots run unattended on `home-full` for 2 hours (4 bots on `home-min` with the same guarantees), maintain one consistent SIP, build/repair farms/houses/roads cooperatively, detect and reuse existing infrastructure, never overwrite active work without a valid grant, and resume their roles/tasks correctly after stop/restart.
 
 ## 17. Risks and mitigations
 
 - **Laya weak zero-shot** → deterministic fallback + fine-tune + confidence gate.
-- **Laya throughput** → one instance, 1Hz tactical cadence, queue/rate limit, digest cache, 3 ONNX threads.
+- **Laya throughput** → one instance, profile-specific tactical cadence, queue/rate limit, digest cache, single in-flight forward pass, ONNX threads 3 (`home-min`) / 8 (`home-full`).
+- **WebGPU on RX 7600** → experimental on Linux x64; validate Mesa/Vulkan drivers, auto-fallback to CPU, reject if unstable or slower at p95.
+- **VRAM contention** → WebGPU shares 8GB with the desktop; cap session memory, monitor, fall back to CPU.
+- **home-min CPU bottleneck** → 4 bots default; 8 bots only as an overload test; stagger heartbeats.
+- **home-min RAM headroom** → host already has ~9GB used; check free memory before starting the fleet.
+- **onnxruntime-node/Laya version mismatch** → Laya pins `^1.22.0`; WebGPU may require a newer validated override.
 - **Multi-bot conflicts** → SIP revisions, atomic claims, leases + fencing tokens, idempotent placement, edit grants.
 - **Coordinator single point of failure** → restart + lease expiry + SQLite recovery + coordinator epoch; distributed mode deferred.
 - **Stale bot state after restart** → delta sync + reconcile with world before resuming.
@@ -381,3 +421,5 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 3. Owner-offline edits default to **deny** unless `autoAcceptCompatibleHelpers` is set; confirm if a different default is wanted.
 4. Roles fixed with temporary planner reassignment (default); confirm if roles should be learned/promoted instead.
 5. Persistence directory and log/changelog retention window.
+6. `home-full` unmeasured: benchmark Laya CPU/WebGPU latency, full-fleet RAM, and 2h WebGPU stability.
+7. WebGPU acceptance threshold: must beat CPU p95 and run 2h without crash or driver reset.
