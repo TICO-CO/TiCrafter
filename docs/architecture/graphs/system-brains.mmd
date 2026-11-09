@@ -1,0 +1,50 @@
+flowchart LR
+n65["Reflex Guardian Loop"]
+n127["Affordance Enumerator"]
+n66["Deterministic Policy"]
+n128["Laya Client"]
+n54["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
+n78["Skill Registry (Skill Runtime)"]
+n108["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
+n199["Behavior Profile Manager (Bot Registry and Profiles)"]
+n150["Event Stream (Transport and Protocol)"]
+n56["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
+n37["Confidence Calibrator (Laya Decision Service)"]
+n59["Action Veto Gate (Autonomy and Safety)"]
+n115["Claim Loss Evaluator (Autonomy and Safety)"]
+n110["Hazard Evaluator (Autonomy and Safety)"]
+n112["Hunger Evaluator (Autonomy and Safety)"]
+n114["Inventory Evaluator (Autonomy and Safety)"]
+n111["Mob Threat Evaluator (Autonomy and Safety)"]
+n113["Stuck and Timeout Evaluator (Autonomy and Safety)"]
+n80["Skill Tick Scheduler (Skill Runtime)"]
+n143["WebSocket Codec (Transport and Protocol)"]
+n127 -->|depends_on| n54
+n127 -->|depends_on| n65
+n127 -->|depends_on| n78
+n66 -->|depends_on| n127
+n66 -->|depends_on| n108
+n66 -->|reads| n199
+n66 -->|subscribes| n150
+n56 -->|depends_on| n59
+n56 -->|delegates_to| n65
+n108 -->|depends_on| n54
+n108 -->|publishes| n150
+n37 -->|proposes_to| n66
+n59 -->|reads| n65
+n65 -->|controls| n59
+n65 -->|depends_on| n115
+n65 -->|depends_on| n110
+n65 -->|depends_on| n112
+n65 -->|depends_on| n114
+n65 -->|depends_on| n111
+n65 -->|depends_on| n113
+n80 -->|reads| n65
+n150 -->|depends_on| n143
+n128 -->|depends_on| n127
+n128 -->|depends_on| n143
+n128 -->|depends_on| n66
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n65,n127,n66,n128 internal;
+class n54,n78,n108,n199,n150,n56,n37,n59,n115,n110,n112,n114,n111,n113,n80,n143 external;

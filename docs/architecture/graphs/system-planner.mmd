@@ -1,85 +1,85 @@
 flowchart LR
-n37["OpenAI-Compatible Client"]
-n38["Planner Context Builder"]
-n39["Planner Trigger Evaluator"]
-n40["Planner Schema Validator"]
-n41["Planner Semantic Validator"]
-n42["Planner Repair Loop"]
-n43["SIP Mutation Translator"]
-n44["Task DAG Translator"]
-n45["Planner Budget Limiter"]
-n72["Plan Cache"]
-n46["Planner Arbitration Handler"]
-n47["Keep Last Good Fallback"]
-n28["Global Scheduler (Coordinator Runtime)"]
-n168["Compatibility Checker (Edit Grants and Collaboration)"]
-n129["Grant Issuer (Edit Grants and Collaboration)"]
-n147["Event Stream (Transport and Protocol)"]
-n122["Metrics Registry (Ops and Observability)"]
-n187["Bot Profile Store (Bot Registry and Profiles)"]
-n162["SIP Revision Manager (Shared Infrastructure Plan)"]
-n178["Task Repository (Task Board)"]
-n172["Spatial Query Engine (World Model and Landmarks)"]
-n137["Config Schema Validator (Config and Profiles)"]
-n153["Secrets Loader (Config and Profiles)"]
-n22(["Muse Spark Planner Endpoint"])
-n133["Transaction Manager (Memory and Persistence)"]
-n164["Dependency Validator (Shared Infrastructure Plan)"]
-n161["Rules Store (Shared Infrastructure Plan)"]
-n74["Skill Registry (Skill Runtime)"]
-n165["SIP Mutation Proposer (Shared Infrastructure Plan)"]
-n183["Dead Letter Manager (Task Board)"]
-n58["Recovery Ladder (Autonomy and Safety)"]
-n187 -->|depends_on| n133
-n28 -->|delegates_to| n39
-n168 -->|depends_on| n161
-n129 -->|depends_on| n168
-n46 -->|reads| n168
-n46 -->|proposes_to| n129
-n46 -->|subscribes| n147
-n45 -->|observes| n122
-n45 -->|controls| n37
-n38 -->|reads| n187
-n38 -->|reads| n162
-n38 -->|reads| n178
-n38 -->|reads| n172
-n47 -->|depends_on| n72
-n47 -->|reads| n162
-n37 -->|depends_on| n137
-n37 -->|depends_on| n153
-n37 -->|depends_on| n22
-n37 -->|delegates_to| n46
-n72 -->|depends_on| n133
-n42 -->|controls| n47
-n42 -->|depends_on| n37
-n42 -->|depends_on| n40
-n42 -->|depends_on| n41
-n40 -->|controls| n42
-n41 -->|controls| n42
-n41 -->|depends_on| n40
-n41 -->|depends_on| n164
-n41 -->|reads| n161
-n41 -->|reads| n74
-n41 -->|reads| n172
-n43 -->|depends_on| n42
-n43 -->|proposes_to| n165
+n39["OpenAI-Compatible Client"]
+n40["Planner Context Builder"]
+n41["Planner Trigger Evaluator"]
+n42["Planner Schema Validator"]
+n43["Planner Semantic Validator"]
+n44["Planner Repair Loop"]
+n45["SIP Mutation Translator"]
+n46["Task DAG Translator"]
+n47["Planner Budget Limiter"]
+n76["Plan Cache"]
+n48["Planner Arbitration Handler"]
+n49["Keep Last Good Fallback"]
+n29["Global Scheduler (Coordinator Runtime)"]
+n171["Compatibility Checker (Edit Grants and Collaboration)"]
+n132["Grant Issuer (Edit Grants and Collaboration)"]
+n150["Event Stream (Transport and Protocol)"]
+n123["Metrics Registry (Ops and Observability)"]
+n190["Bot Profile Store (Bot Registry and Profiles)"]
+n165["SIP Revision Manager (Shared Infrastructure Plan)"]
+n181["Task Repository (Task Board)"]
+n175["Spatial Query Engine (World Model and Landmarks)"]
+n140["Config Schema Validator (Config and Profiles)"]
+n156["Secrets Loader (Config and Profiles)"]
+n23(["Muse Spark Planner Endpoint"])
+n136["Transaction Manager (Memory and Persistence)"]
+n167["Dependency Validator (Shared Infrastructure Plan)"]
+n164["Rules Store (Shared Infrastructure Plan)"]
+n78["Skill Registry (Skill Runtime)"]
+n168["SIP Mutation Proposer (Shared Infrastructure Plan)"]
+n186["Dead Letter Manager (Task Board)"]
+n60["Recovery Ladder (Autonomy and Safety)"]
+n190 -->|depends_on| n136
+n29 -->|delegates_to| n41
+n171 -->|depends_on| n164
+n132 -->|depends_on| n171
+n48 -->|reads| n171
+n48 -->|proposes_to| n132
+n48 -->|subscribes| n150
+n47 -->|observes| n123
+n47 -->|controls| n39
+n40 -->|reads| n190
+n40 -->|reads| n165
+n40 -->|reads| n181
+n40 -->|reads| n175
+n49 -->|depends_on| n76
+n49 -->|reads| n165
+n39 -->|depends_on| n140
+n39 -->|depends_on| n156
+n39 -->|depends_on| n23
+n39 -->|delegates_to| n48
+n76 -->|depends_on| n136
+n44 -->|controls| n49
+n44 -->|depends_on| n39
 n44 -->|depends_on| n42
-n44 -->|proposes_to| n178
-n39 -->|observes| n122
-n39 -->|delegates_to| n38
-n39 -->|reads| n162
-n39 -->|reads| n183
-n58 -->|proposes_to| n39
-n58 -->|depends_on| n147
-n164 -->|reads| n172
+n44 -->|depends_on| n43
+n42 -->|controls| n44
+n43 -->|controls| n44
+n43 -->|depends_on| n42
+n43 -->|depends_on| n167
+n43 -->|reads| n164
+n43 -->|reads| n78
+n43 -->|reads| n175
+n45 -->|depends_on| n44
+n45 -->|proposes_to| n168
+n46 -->|depends_on| n44
+n46 -->|proposes_to| n181
+n41 -->|observes| n123
+n41 -->|delegates_to| n40
+n41 -->|reads| n165
+n41 -->|reads| n186
+n60 -->|proposes_to| n41
+n60 -->|depends_on| n150
+n167 -->|reads| n175
+n168 -->|depends_on| n167
+n168 -->|depends_on| n165
+n165 -->|depends_on| n136
 n165 -->|depends_on| n164
-n165 -->|depends_on| n162
-n162 -->|depends_on| n133
-n162 -->|depends_on| n161
-n161 -->|depends_on| n133
-n183 -->|writes| n178
-n178 -->|depends_on| n133
+n164 -->|depends_on| n136
+n186 -->|writes| n181
+n181 -->|depends_on| n136
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n37,n38,n39,n40,n41,n42,n43,n44,n45,n72,n46,n47 internal;
-class n28,n168,n129,n147,n122,n187,n162,n178,n172,n137,n153,n133,n164,n161,n74,n165,n183,n58,n22 external;
+class n39,n40,n41,n42,n43,n44,n45,n46,n47,n76,n48,n49 internal;
+class n29,n171,n132,n150,n123,n190,n165,n181,n175,n140,n156,n136,n167,n164,n78,n168,n186,n60,n23 external;

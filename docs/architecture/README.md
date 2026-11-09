@@ -25,12 +25,16 @@ node tools/architecture/render-graphs.mjs
 
 - duplicate or dangling IDs
 - missing component fields
-- unknown relation endpoints or types
+- duplicate provided interfaces
+- unknown relation endpoints, types, or protocols
 - forbidden edges
 - `writes` edges without a declared state owner or writer
-- missing safety validation on destructive executors
+- missing safety validation on every component listed in `meta.destructiveExecutors`
+- `soft` relations whose `failureBehavior` documents no fallback
+- cross-process relations labeled `in-process`
 - unlisted cross-system `depends_on` cycles
 - source refs that do not resolve to `main.md` headings
+- placeholder invariants
 
 `render-graphs.mjs` is deterministic. Re-running it with the same `graph.json` produces identical output.
 
@@ -47,14 +51,36 @@ When adding a component, define all of:
 - one owner path under the system `ownerPackage`
 - provided and required interfaces
 - owned state, if any
-- invariants
-- failure modes
-- tests
+- a `template`, or explicit invariants, failure modes, and tests
 - metrics
 - `main.md` source refs
 - milestone
 
+Use a template when components in the same category share invariants, failure modes, and tests. Override any field only where behavior differs; `extraInvariants`, `extraFailureModes`, and `extraTests` append to the template. The resolver in `resolve-graph.mjs` runs before validation and rendering.
+
 When adding a relation, use one of the declared types and provide protocol, payload, sync/async, criticality, failure behavior, and notes.
+
+## Component templates
+
+`meta.componentTemplates` holds the shared defaults. A component with `template` inherits any field it does not declare. This keeps 233 components readable without duplicating boilerplate.
+
+## Tunables
+
+`meta.tunables` holds the numeric contract from `main.md`: confidence gate `0.60`, warm p95 budget `250ms`, choice cardinality `16`, option tokens `192`, threads `3`/`8`, WebGPU stability `2h`, retention `30d`, LAN endpoint, and fleet size per profile.
+
+## Protocols
+
+| Protocol | Boundary |
+|---|---|
+| `in-process` | Same OS process. |
+| `ws` | Coordinator to bot child process data plane. |
+| `ipc` | Coordinator to bot child process supervision. |
+| `https` | Cloud planner endpoint. |
+| `http` | Operator to ops API. |
+| `tcp` | Bot runtime to Minecraft server. |
+| `native` | ONNX Runtime / WebGPU driver. |
+
+`meta.processes` declares which systems run in the coordinator, in bot processes, or only in dev. The validator rejects `in-process` on edges whose process sets do not overlap.
 
 ## Relation types
 
@@ -80,12 +106,16 @@ The validator enforces the rules that prevent the worst implementation failures:
 - planner never writes SIP state
 - bot processes never open SQLite directly
 - perception, skills, and Laya never write SIP state
-- destructive executors require `safety.action-veto-gate` validation
+- destructive executors listed in `meta.destructiveExecutors` require `safety.action-veto-gate` validation
 - training code is not a runtime dependency
 - cross-system `depends_on` cycles are rejected
 - every `writes` edge has a state owner and declared writer
+- every declared state writer has a matching `writes` edge
+- `soft` relations must document a fallback
+- cross-process edges cannot be labeled `in-process`
+- every provided interface is unique
 
-These rules are intentionally encoded as data, not prose. Add new forbidden edges to `meta.forbiddenEdges` and new allowed cycles to `meta.allowedCycles` only with a documented reason.
+These rules are intentionally encoded as data, not prose. Add new forbidden edges to `meta.forbiddenEdges`, new destructive executors to `meta.destructiveExecutors`, and new allowed cycles to `meta.allowedCycles` only with a documented reason.
 
 ## Rendering
 
@@ -99,10 +129,12 @@ npx @mermaid-js/mermaid-cli -i docs/architecture/graphs/fleet-overview.mmd -o /t
 
 Current graph:
 
-- 21 internal systems
-- 230 owned components
-- 473 typed relations
+- 22 internal systems
+- 233 owned components
+- 489 typed relations
 - 5 external actors and services
-- 20 state owners
+- 21 state owners
+- 22 component templates
+- 7 protocols
 
 The graph is intentionally at module/service granularity. A component is not a function. If a proposed component has no owned interface, state, test, or failure mode, it should remain part of its parent component.

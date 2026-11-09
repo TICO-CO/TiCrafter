@@ -1,69 +1,69 @@
 flowchart LR
-n73["Skill Contract"]
-n74["Skill Registry"]
-n75["Skill Lifecycle Executor"]
-n76["Skill Tick Scheduler"]
-n48["Skill Context Builder"]
-n77["Skill Progress Reporter"]
-n78["Skill Checkpoint Manager"]
-n79["Skill Restore Validator"]
-n80["Typed Effects Emitter"]
-n81["Skill Preemption Handler"]
-n106["Affordance Enumerator (Bot Runtime and Mineflayer Adapter)"]
-n54["Skill Host (Bot Runtime and Mineflayer Adapter)"]
-n51["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n141["Resume Orchestrator (Bot Registry and Profiles)"]
-n99["Material Preflight (Building)"]
-n41["Planner Semantic Validator (Cloud Planner)"]
-n133["Transaction Manager (Memory and Persistence)"]
-n162["SIP Revision Manager (Shared Infrastructure Plan)"]
-n172["Spatial Query Engine (World Model and Landmarks)"]
-n147["Event Stream (Transport and Protocol)"]
-n57["Action Veto Gate (Autonomy and Safety)"]
-n122["Metrics Registry (Ops and Observability)"]
-n56["Reflex Guardian Loop (Autonomy and Safety)"]
-n225["Craft (Skill Library)"]
-n226["Navigate (Skill Library)"]
-n227["Place Build (Skill Library)"]
-n208["Skill Shared Utilities (Skill Library)"]
-n106 -->|depends_on| n51
-n106 -->|depends_on| n56
-n106 -->|depends_on| n74
-n54 -->|depends_on| n75
-n54 -->|depends_on| n76
-n51 -->|delegates_to| n48
-n141 -->|reads| n78
-n99 -->|reads| n48
-n41 -->|reads| n74
-n41 -->|reads| n172
-n57 -->|depends_on| n56
-n56 -->|controls| n57
-n162 -->|depends_on| n133
-n78 -->|depends_on| n133
-n48 -->|reads| n51
-n48 -->|reads| n162
-n48 -->|depends_on| n78
-n48 -->|reads| n172
-n80 -->|publishes| n147
-n75 -->|depends_on| n48
-n75 -->|depends_on| n80
-n75 -->|depends_on| n73
-n75 -->|depends_on| n74
-n81 -->|reads| n57
-n81 -->|depends_on| n75
-n77 -->|observes| n122
-n77 -->|publishes| n147
+n77["Skill Contract"]
+n78["Skill Registry"]
+n79["Skill Lifecycle Executor"]
+n80["Skill Tick Scheduler"]
+n50["Skill Context Builder"]
+n81["Skill Progress Reporter"]
+n82["Skill Checkpoint Manager"]
+n83["Skill Restore Validator"]
+n84["Typed Effects Emitter"]
+n85["Skill Preemption Handler"]
+n127["Affordance Enumerator (Brains)"]
+n57["Skill Host (Bot Runtime and Mineflayer Adapter)"]
+n54["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
+n144["Resume Orchestrator (Bot Registry and Profiles)"]
+n103["Material Preflight (Building)"]
+n43["Planner Semantic Validator (Cloud Planner)"]
+n136["Transaction Manager (Memory and Persistence)"]
+n165["SIP Revision Manager (Shared Infrastructure Plan)"]
+n175["Spatial Query Engine (World Model and Landmarks)"]
+n150["Event Stream (Transport and Protocol)"]
+n59["Action Veto Gate (Autonomy and Safety)"]
+n123["Metrics Registry (Ops and Observability)"]
+n65["Reflex Guardian Loop (Brains)"]
+n228["Craft (Skill Library)"]
+n229["Navigate (Skill Library)"]
+n230["Place Build (Skill Library)"]
+n211["Skill Shared Utilities (Skill Library)"]
+n127 -->|depends_on| n54
+n127 -->|depends_on| n65
+n127 -->|depends_on| n78
+n57 -->|depends_on| n79
+n57 -->|depends_on| n80
+n54 -->|delegates_to| n50
+n144 -->|reads| n82
+n103 -->|reads| n50
+n43 -->|reads| n78
+n43 -->|reads| n175
+n59 -->|reads| n65
+n65 -->|controls| n59
+n165 -->|depends_on| n136
+n82 -->|depends_on| n136
+n50 -->|reads| n54
+n50 -->|reads| n165
+n50 -->|depends_on| n82
+n50 -->|reads| n175
+n84 -->|publishes| n150
+n79 -->|depends_on| n50
+n79 -->|depends_on| n84
+n79 -->|depends_on| n77
 n79 -->|depends_on| n78
-n79 -->|depends_on| n172
-n74 -->|depends_on| n73
-n76 -->|reads| n56
-n76 -->|depends_on| n75
-n225 -->|depends_on| n48
-n226 -->|depends_on| n73
-n227 -->|depends_on| n48
-n208 -->|depends_on| n48
-n208 -->|depends_on| n172
+n85 -->|reads| n59
+n85 -->|depends_on| n79
+n81 -->|observes| n123
+n81 -->|publishes| n150
+n83 -->|depends_on| n82
+n83 -->|depends_on| n175
+n78 -->|depends_on| n77
+n80 -->|reads| n65
+n80 -->|depends_on| n79
+n228 -->|depends_on| n50
+n229 -->|depends_on| n77
+n230 -->|depends_on| n50
+n211 -->|depends_on| n50
+n211 -->|depends_on| n175
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n73,n74,n75,n76,n48,n77,n78,n79,n80,n81 internal;
-class n106,n54,n51,n141,n99,n41,n133,n162,n172,n147,n57,n122,n56,n225,n226,n227,n208 external;
+class n77,n78,n79,n80,n50,n81,n82,n83,n84,n85 internal;
+class n127,n57,n54,n144,n103,n43,n136,n165,n175,n150,n59,n123,n65,n228,n229,n230,n211 external;

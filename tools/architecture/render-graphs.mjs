@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveGraph } from './resolve-graph.mjs';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const graphPath = path.join(root, 'docs/architecture/graph.json');
 const outDir = path.join(root, 'docs/architecture');
 const graphDir = path.join(outDir, 'graphs');
-const graph = JSON.parse(fs.readFileSync(graphPath, 'utf8'));
+const graph = resolveGraph(JSON.parse(fs.readFileSync(graphPath, 'utf8')));
 
 fs.mkdirSync(graphDir, { recursive: true });
 
@@ -103,7 +104,7 @@ function mermaidCrossSystem() {
 }
 
 function mermaidSafetyControl() {
-  const keepSystems = new Set(['sys.safety', 'sys.bot-runtime', 'sys.building', 'sys.ops', 'sys.core', 'sys.decision', 'sys.planner', 'sys.skill-runtime']);
+  const keepSystems = new Set(['sys.safety', 'sys.bot-runtime', 'sys.building', 'sys.ops', 'sys.core', 'sys.decision', 'sys.planner', 'sys.skill-runtime', 'sys.brains']);
   const keepTypes = new Set(['controls', 'validates', 'proposes_to', 'delegates_to']);
   const lines = ['flowchart TD'];
   for (const sys of systems.filter((s) => keepSystems.has(s.id))) lines.push(`${idFor(sys.id)}["${esc(sys.name)}"]`);
@@ -146,7 +147,7 @@ function mermaidSafetyControl() {
 }
 
 function mermaidDataFlow() {
-  const keepSystems = new Set(['sys.perception', 'sys.world', 'sys.sip', 'sys.decision', 'sys.skill-runtime', 'sys.skills', 'sys.building', 'sys.bot-runtime', 'sys.safety', 'sys.memory', 'sys.transport', 'sys.planner']);
+  const keepSystems = new Set(['sys.perception', 'sys.world', 'sys.sip', 'sys.decision', 'sys.skill-runtime', 'sys.skills', 'sys.building', 'sys.bot-runtime', 'sys.safety', 'sys.memory', 'sys.transport', 'sys.planner', 'sys.brains']);
   const keepTypes = new Set(['reads', 'writes', 'publishes', 'subscribes', 'proposes_to', 'persists_to']);
   const lines = ['flowchart LR'];
   for (const sys of systems.filter((s) => keepSystems.has(s.id))) lines.push(`${idFor(sys.id)}["${esc(sys.name)}"]`);

@@ -1,93 +1,93 @@
 flowchart LR
-n82["Blueprint IR"]
-n83["Blueprint Validator"]
-n84["Template Registry"]
-n85["House Template"]
-n86["Road Template"]
-n87["Farm Template"]
-n88["Wall Template"]
-n89["Bridge Template"]
-n90["Storage Room Template"]
-n91["Watchtower Template"]
-n92["Template Instantiator"]
-n93["Schematic Parser"]
-n94["Schematic Diff"]
-n95["Work Package Partitioner"]
-n96["Build Order Planner"]
-n97["Reachability and Scaffold Planner"]
-n98["Block Verifier"]
-n49["Block Executor"]
-n99["Material Preflight"]
-n100["Container Refill Adapter"]
-n101["Rollback Journal"]
-n52["Action Executor (Bot Runtime and Mineflayer Adapter)"]
-n57["Action Veto Gate (Autonomy and Safety)"]
-n172["Spatial Query Engine (World Model and Landmarks)"]
-n161["Rules Store (Shared Infrastructure Plan)"]
-n171["Container Memory (World Model and Landmarks)"]
-n48["Skill Context Builder (Skill Runtime)"]
-n51["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n238["Block Changelog Writer (Memory and Persistence)"]
-n156["Structure Store (Shared Infrastructure Plan)"]
-n147["Event Stream (Transport and Protocol)"]
-n234["Bridge (Skill Library)"]
-n235["Clear (Skill Library)"]
-n227["Place Build (Skill Library)"]
-n237["Repair (Skill Library)"]
-n236["Schematic Build (Skill Library)"]
-n52 -->|depends_on| n57
-n51 -->|delegates_to| n48
-n49 -->|depends_on| n52
-n49 -->|depends_on| n98
-n49 -->|depends_on| n101
-n49 -->|depends_on| n57
-n98 -->|depends_on| n82
-n98 -->|reads| n172
-n83 -->|depends_on| n82
-n83 -->|depends_on| n161
-n96 -->|depends_on| n82
-n96 -->|depends_on| n95
-n100 -->|depends_on| n52
-n100 -->|writes| n171
-n99 -->|depends_on| n82
-n99 -->|reads| n48
-n99 -->|reads| n171
-n97 -->|reads| n51
-n97 -->|depends_on| n96
-n97 -->|reads| n172
-n101 -->|writes| n238
-n101 -->|reads| n156
-n101 -->|subscribes| n147
-n94 -->|depends_on| n82
-n94 -->|reads| n172
-n93 -->|depends_on| n82
-n89 -->|depends_on| n82
-n87 -->|depends_on| n82
-n85 -->|depends_on| n82
-n92 -->|depends_on| n83
-n92 -->|depends_on| n84
-n84 -->|depends_on| n82
-n86 -->|depends_on| n82
-n90 -->|depends_on| n82
-n88 -->|depends_on| n82
-n91 -->|depends_on| n82
-n95 -->|depends_on| n82
-n95 -->|reads| n156
-n57 -->|validates| n52
-n57 -->|validates| n49
-n48 -->|reads| n51
-n48 -->|reads| n172
-n234 -->|depends_on| n49
-n235 -->|depends_on| n49
-n235 -->|depends_on| n57
-n227 -->|depends_on| n49
-n227 -->|depends_on| n48
-n237 -->|depends_on| n49
-n237 -->|depends_on| n94
-n236 -->|depends_on| n49
-n236 -->|depends_on| n96
-n236 -->|depends_on| n95
+n86["Blueprint IR"]
+n87["Blueprint Validator"]
+n88["Template Registry"]
+n89["House Template"]
+n90["Road Template"]
+n91["Farm Template"]
+n92["Wall Template"]
+n93["Bridge Template"]
+n94["Storage Room Template"]
+n95["Watchtower Template"]
+n96["Template Instantiator"]
+n97["Schematic Parser"]
+n98["Schematic Diff"]
+n99["Work Package Partitioner"]
+n100["Build Order Planner"]
+n101["Reachability and Scaffold Planner"]
+n102["Block Verifier"]
+n51["Block Executor"]
+n103["Material Preflight"]
+n104["Container Refill Adapter"]
+n105["Rollback Journal"]
+n55["Action Executor (Bot Runtime and Mineflayer Adapter)"]
+n59["Action Veto Gate (Autonomy and Safety)"]
+n175["Spatial Query Engine (World Model and Landmarks)"]
+n164["Rules Store (Shared Infrastructure Plan)"]
+n174["Container Memory (World Model and Landmarks)"]
+n50["Skill Context Builder (Skill Runtime)"]
+n54["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
+n241["Block Changelog Writer (Memory and Persistence)"]
+n159["Structure Store (Shared Infrastructure Plan)"]
+n150["Event Stream (Transport and Protocol)"]
+n237["Bridge (Skill Library)"]
+n238["Clear (Skill Library)"]
+n230["Place Build (Skill Library)"]
+n240["Repair (Skill Library)"]
+n239["Schematic Build (Skill Library)"]
+n55 -->|depends_on| n59
+n54 -->|delegates_to| n50
+n51 -->|depends_on| n55
+n51 -->|depends_on| n102
+n51 -->|depends_on| n105
+n51 -->|depends_on| n59
+n102 -->|depends_on| n86
+n102 -->|reads| n175
+n87 -->|depends_on| n86
+n87 -->|depends_on| n164
+n100 -->|depends_on| n86
+n100 -->|depends_on| n99
+n104 -->|depends_on| n55
+n104 -->|writes| n174
+n103 -->|depends_on| n86
+n103 -->|reads| n50
+n103 -->|reads| n174
+n101 -->|reads| n54
+n101 -->|depends_on| n100
+n101 -->|reads| n175
+n105 -->|writes| n241
+n105 -->|reads| n159
+n105 -->|subscribes| n150
+n98 -->|depends_on| n86
+n98 -->|reads| n175
+n97 -->|depends_on| n86
+n93 -->|depends_on| n86
+n91 -->|depends_on| n86
+n89 -->|depends_on| n86
+n96 -->|depends_on| n87
+n96 -->|depends_on| n88
+n88 -->|depends_on| n86
+n90 -->|depends_on| n86
+n94 -->|depends_on| n86
+n92 -->|depends_on| n86
+n95 -->|depends_on| n86
+n99 -->|depends_on| n86
+n99 -->|reads| n159
+n59 -->|validates| n55
+n59 -->|validates| n51
+n50 -->|reads| n54
+n50 -->|reads| n175
+n237 -->|depends_on| n51
+n238 -->|depends_on| n51
+n238 -->|depends_on| n59
+n230 -->|depends_on| n51
+n230 -->|depends_on| n50
+n240 -->|depends_on| n51
+n240 -->|depends_on| n98
+n239 -->|depends_on| n51
+n239 -->|depends_on| n100
+n239 -->|depends_on| n99
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n82,n83,n84,n85,n86,n87,n88,n89,n90,n91,n92,n93,n94,n95,n96,n97,n98,n49,n99,n100,n101 internal;
-class n52,n57,n172,n161,n171,n48,n51,n238,n156,n147,n234,n235,n227,n237,n236 external;
+class n86,n87,n88,n89,n90,n91,n92,n93,n94,n95,n96,n97,n98,n99,n100,n101,n102,n51,n103,n104,n105 internal;
+class n55,n59,n175,n164,n174,n50,n54,n241,n159,n150,n237,n238,n230,n240,n239 external;

@@ -3,11 +3,11 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `node tools/architecture/render-graphs.mjs`.
 
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Source:** `main.md`  
-**Systems:** 21  
-**Components:** 230  
-**Relations:** 473  
+**Systems:** 22  
+**Components:** 233  
+**Relations:** 489  
 **Externals:** 5
 
 ## Reading this catalog
@@ -18,7 +18,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 | ID | System | Components | Owner package | Milestone |
 |---|---|---:|---|---:|
-| `sys.core` | [Coordinator Runtime](#coordinator-runtime) | 8 | `apps/coordinator/src/core` | 1 |
+| `sys.core` | [Coordinator Runtime](#coordinator-runtime) | 9 | `apps/coordinator/src/core` | 1 |
 | `sys.transport` | [Transport and Protocol](#transport-and-protocol) | 8 | `packages/core/src/transport` | 1 |
 | `sys.sip` | [Shared Infrastructure Plan](#shared-infrastructure-plan) | 13 | `apps/coordinator/src/sip` | 5 |
 | `sys.tasks` | [Task Board](#task-board) | 8 | `apps/coordinator/src/tasks` | 5 |
@@ -32,13 +32,14 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src/runtime` | 4 |
 | `sys.skills` | [Skill Library](#skill-library) | 20 | `packages/skills/src/library` | 4 |
 | `sys.building` | [Building](#building) | 21 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 13 | `apps/bot/src` | 1 |
-| `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 15 | `packages/brains/src/safety` | 4 |
-| `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 8 | `packages/memory/src` | 1 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 11 | `apps/bot/src` | 1 |
+| `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/brains/src/safety` | 4 |
+| `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 9 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 9 | `apps/coordinator/src/ops` | 11 |
 | `sys.config` | [Config and Profiles](#config-and-profiles) | 8 | `packages/core/src/config` | 1 |
 | `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
+| `sys.brains` | [Brains](#brains) | 4 | `packages/brains/src` | 4 |
 
 ## Coordinator Runtime
 
@@ -68,6 +69,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `core.global-scheduler` | Global Scheduler | Coordinate periodic reconciliation, lease expiry, planner triggers, and retention jobs without overlapping runs. | `apps/coordinator/src/core/global-scheduler` | 1 |
 | `core.restart-recovery` | Restart Recovery Orchestrator | Recover leases, grants, bot profiles, tasks, and SIP consistency before normal work resumes. | `apps/coordinator/src/core/restart-recovery` | 1 |
 | `core.backpressure-controller` | Backpressure Controller | Apply fleet-wide queue and action backpressure when decision, transport, or claim latency exceeds budget. | `apps/coordinator/src/core/backpressure-controller` | 1 |
+| `core.bot-process-supervisor` | Bot Process Supervisor | Spawn, supervise, and terminate bot child processes and report crashes over IPC. | `apps/coordinator/src/core/bot-process-supervisor` | 1 |
 
 ### `core.process-bootstrap` — Process Bootstrap
 
@@ -79,11 +81,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All actions pass through the typed coordinator authority chain; no component bypasses it.
+  - Restart never accepts new work before claims, grants, sessions, and SIP revision are revalidated.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Process Bootstrap.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_process_bootstrap_errors_total`
   - `core_process_bootstrap_latency_ms`
@@ -98,11 +101,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All actions pass through the typed coordinator authority chain; no component bypasses it.
+  - Restart never accepts new work before claims, grants, sessions, and SIP revision are revalidated.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Service Composition.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_service_composition_errors_total`
   - `core_service_composition_latency_ms`
@@ -117,11 +121,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All actions pass through the typed coordinator authority chain; no component bypasses it.
+  - Restart never accepts new work before claims, grants, sessions, and SIP revision are revalidated.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Bot Session Manager.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_session_manager_errors_total`
   - `core_session_manager_latency_ms`
@@ -136,11 +141,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All actions pass through the typed coordinator authority chain; no component bypasses it.
+  - Restart never accepts new work before claims, grants, sessions, and SIP revision are revalidated.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Command Router.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_command_router_errors_total`
   - `core_command_router_latency_ms`
@@ -155,11 +161,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The coordinator epoch increments exactly once per start and is embedded in every fencing token.
+  - Tokens from a previous epoch are rejected after restart.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Coordinator Epoch Authority.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_coordinator_epoch_errors_total`
   - `core_coordinator_epoch_latency_ms`
@@ -174,11 +181,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All actions pass through the typed coordinator authority chain; no component bypasses it.
+  - Restart never accepts new work before claims, grants, sessions, and SIP revision are revalidated.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Global Scheduler.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_global_scheduler_errors_total`
   - `core_global_scheduler_latency_ms`
@@ -193,11 +201,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - No new work is accepted until leases, grants, bot sessions, tasks, and SIP revision are revalidated.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Restart Recovery Orchestrator.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_restart_recovery_errors_total`
   - `core_restart_recovery_latency_ms`
@@ -212,14 +220,34 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - When warm-model p95 exceeds 250ms fleet-wide, tactical rate drops before any confidence-gate change.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Authority dependency unavailable: fail closed, keep serving read-only status, and surface a typed error.
 - **Tests:**
-  - Contract test for Backpressure Controller.
+  - Authority-boundary contract test proving bypass attempts are rejected.
 - **Metrics:**
   - `core_backpressure_controller_errors_total`
   - `core_backpressure_controller_latency_ms`
+
+### `core.bot-process-supervisor` — Bot Process Supervisor
+
+- **Responsibility:** Spawn, supervise, and terminate bot child processes and report crashes over IPC.
+- **Owner path:** `apps/coordinator/src/core/bot-process-supervisor`
+- **Provides:** `core.bot-process-supervisor.interface`
+- **Requires:** `core.coordinator-epoch`
+- **Owns state:** none
+- **Source refs:** `main.md#1-fleet-coordinator`
+- **Milestone:** 1
+- **Invariants:**
+  - Each bot runs in its own child process and is supervised over IPC.
+  - A crashed bot is restarted or killed and its claims expire by lease; the fleet keeps running.
+- **Failure modes:**
+  - Spawn or supervision failure: mark the bot offline, release no state directly, and let leases expire.
+- **Tests:**
+  - Spawn, crash-detect, kill, and restart-isolation tests.
+- **Metrics:**
+  - `core_bot_process_supervisor_restarts_total`
+  - `core_bot_process_supervisor_crashes_total`
 
 ---
 
@@ -262,11 +290,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Message Schema Registry.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_message_schema_registry_errors_total`
   - `transport_message_schema_registry_latency_ms`
@@ -281,11 +310,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for WebSocket Codec.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_ws_codec_errors_total`
   - `transport_ws_codec_latency_ms`
@@ -300,11 +330,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Request Correlator.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_request_correlator_errors_total`
   - `transport_request_correlator_latency_ms`
@@ -319,11 +350,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Event Stream.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_event_stream_errors_total`
   - `transport_event_stream_latency_ms`
@@ -338,11 +370,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Delta sync is keyed by chunk version, SIP revision, task revision, and grant revision and is idempotent under retry.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Delta Sync Protocol.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_delta_sync_errors_total`
   - `transport_delta_sync_latency_ms`
@@ -357,11 +389,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Reconnect Supervisor.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_reconnect_errors_total`
   - `transport_reconnect_latency_ms`
@@ -376,11 +409,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Transport Authentication.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_auth_errors_total`
   - `transport_auth_latency_ms`
@@ -395,11 +429,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every message validates against a versioned zod schema before dispatch.
+  - Transport carries proposals and commands; it never owns domain state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Schema mismatch or framing error: reject the frame, close the connection, and record the protocol error.
 - **Tests:**
-  - Contract test for Flow Control.
+  - Round-trip encode/decode plus malformed-frame rejection.
 - **Metrics:**
   - `transport_flow_control_errors_total`
   - `transport_flow_control_latency_ms`
@@ -450,11 +485,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Zone Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_zone_store_errors_total`
   - `sip_zone_store_latency_ms`
@@ -469,11 +505,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Structure Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_structure_store_errors_total`
   - `sip_structure_store_latency_ms`
@@ -488,11 +525,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Road Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_road_store_errors_total`
   - `sip_road_store_latency_ms`
@@ -507,11 +545,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Farm Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_farm_store_errors_total`
   - `sip_farm_store_latency_ms`
@@ -526,11 +565,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Container Registry.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_container_registry_errors_total`
   - `sip_container_registry_latency_ms`
@@ -545,11 +585,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Path Graph Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_path_graph_store_errors_total`
   - `sip_path_graph_store_latency_ms`
@@ -564,11 +605,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Rules Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_rules_store_errors_total`
   - `sip_rules_store_latency_ms`
@@ -583,11 +625,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Revisions are monotonic; stale proposals are rejected and revision changes invalidate outstanding grants.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for SIP Revision Manager.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_revision_manager_errors_total`
   - `sip_revision_manager_latency_ms`
@@ -602,11 +644,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Spatial Overlap Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `sip_spatial_overlap_validator_errors_total`
   - `sip_spatial_overlap_validator_latency_ms`
@@ -621,11 +664,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Dependency Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `sip_dependency_validator_errors_total`
   - `sip_dependency_validator_latency_ms`
@@ -640,11 +684,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for SIP Mutation Proposer.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `sip_mutation_proposer_errors_total`
   - `sip_mutation_proposer_latency_ms`
@@ -659,11 +704,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every committed SIP change increments the revision exactly once inside one SQLite transaction.
+  - A proposal with a stale revision or fencing token is rejected without partial writes.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflict or stale token: abort, leave state unchanged, and return a retryable conflict error.
 - **Tests:**
-  - Contract test for SIP Transactional Committer.
+  - Atomic commit, rollback, and stale-token rejection tests.
 - **Metrics:**
   - `sip_transactional_committer_errors_total`
   - `sip_transactional_committer_latency_ms`
@@ -678,11 +724,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#2-shared-infrastructure-plan-sip`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Reconciliation compares observed world with intended SIP state and never mutates observed state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for SIP Reconciliation Engine.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `sip_reconciliation_engine_errors_total`
   - `sip_reconciliation_engine_latency_ms`
@@ -728,11 +774,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Task Repository.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `tasks_task_repository_errors_total`
   - `tasks_task_repository_latency_ms`
@@ -747,11 +794,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Task DAG Resolver.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `tasks_dag_resolver_errors_total`
   - `tasks_dag_resolver_latency_ms`
@@ -766,11 +814,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Precondition Evaluator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `tasks_precondition_evaluator_errors_total`
   - `tasks_precondition_evaluator_latency_ms`
@@ -785,11 +834,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Priority Scheduler.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `tasks_priority_scheduler_errors_total`
   - `tasks_priority_scheduler_latency_ms`
@@ -804,11 +854,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Claims and leases mutate only under the coordinator epoch and a valid fencing token.
+  - Expired leases are reclaimed without losing audit history.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Atomic Task Claimer.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `tasks_atomic_task_claimer_errors_total`
   - `tasks_atomic_task_claimer_latency_ms`
@@ -823,11 +874,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Retry Manager.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `tasks_retry_manager_errors_total`
   - `tasks_retry_manager_latency_ms`
@@ -842,11 +894,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Dead Letter Manager.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `tasks_dead_letter_manager_errors_total`
   - `tasks_dead_letter_manager_latency_ms`
@@ -861,11 +914,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Task State Machine.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `tasks_task_state_machine_errors_total`
   - `tasks_task_state_machine_latency_ms`
@@ -911,11 +965,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Claims and leases mutate only under the coordinator epoch and a valid fencing token.
+  - Expired leases are reclaimed without losing audit history.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Claim Repository.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_claim_repository_errors_total`
   - `claims_claim_repository_latency_ms`
@@ -930,11 +985,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Overlap Margin Checker.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `claims_overlap_margin_checker_errors_total`
   - `claims_overlap_margin_checker_latency_ms`
@@ -949,11 +1005,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Overlap checks and claim acquisition share one SQLite transaction with the configured safety margin.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Atomic Claim Acquirer.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_atomic_acquirer_errors_total`
   - `claims_atomic_acquirer_latency_ms`
@@ -968,11 +1024,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Claims and leases mutate only under the coordinator epoch and a valid fencing token.
+  - Expired leases are reclaimed without losing audit history.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Lease Heartbeat.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_lease_heartbeat_errors_total`
   - `claims_lease_heartbeat_latency_ms`
@@ -987,11 +1044,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Claims and leases mutate only under the coordinator epoch and a valid fencing token.
+  - Expired leases are reclaimed without losing audit history.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Lease Reaper.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_lease_reaper_errors_total`
   - `claims_lease_reaper_latency_ms`
@@ -1006,11 +1064,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Fencing tokens are monotonic and bound to coordinator epoch and claim identity.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Fencing Token Authority.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_fencing_token_authority_errors_total`
   - `claims_fencing_token_authority_latency_ms`
@@ -1025,11 +1083,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Claims and leases mutate only under the coordinator epoch and a valid fencing token.
+  - Expired leases are reclaimed without losing audit history.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Claim Releaser.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_claim_releaser_errors_total`
   - `claims_claim_releaser_latency_ms`
@@ -1044,11 +1103,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#4-claims-leases-task-board`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Claims and leases mutate only under the coordinator epoch and a valid fencing token.
+  - Expired leases are reclaimed without losing audit history.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
 - **Tests:**
-  - Contract test for Contention Metrics.
+  - Concurrent acquisition, expiry, and stale-commit race tests.
 - **Metrics:**
   - `claims_contention_metrics_errors_total`
   - `claims_contention_metrics_latency_ms`
@@ -1095,11 +1155,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Grant Repository.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_grant_repository_errors_total`
   - `grants_grant_repository_latency_ms`
@@ -1114,11 +1175,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Collaboration Policy Evaluator.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_policy_evaluator_errors_total`
   - `grants_policy_evaluator_latency_ms`
@@ -1133,11 +1195,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Compatibility requires matching design revision, no undone completed work, no claimed work-package collision, and preserved structural invariants.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Compatibility Checker.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `grants_compatibility_checker_errors_total`
   - `grants_compatibility_checker_latency_ms`
@@ -1152,11 +1214,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Any design revision change invalidates all outstanding grants for that structure.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Design Revision Guard.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `grants_design_revision_guard_errors_total`
   - `grants_design_revision_guard_latency_ms`
@@ -1171,11 +1233,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every grant is scoped to a bbox, an allowed operation set, and exactly one design revision.
+  - Issued grants carry a fencing token bound to the coordinator epoch.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Grant Issuer.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_grant_issuer_errors_total`
   - `grants_grant_issuer_latency_ms`
@@ -1190,11 +1253,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Grant Revoker.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_grant_revoker_errors_total`
   - `grants_grant_revoker_latency_ms`
@@ -1209,11 +1273,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Owner-offline edits default to deny; they are allowed only when autoAcceptCompatibleHelpers is true and compatibility passes.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Owner Offline Policy.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_owner_offline_policy_errors_total`
   - `grants_owner_offline_policy_latency_ms`
@@ -1228,11 +1292,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Grant Expiry.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_grant_expiry_errors_total`
   - `grants_grant_expiry_latency_ms`
@@ -1247,11 +1312,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#3-collaboration-on-active-builds`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Arbitration Adapter.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `grants_arbitration_adapter_errors_total`
   - `grants_arbitration_adapter_latency_ms`
@@ -1298,11 +1364,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Bot Identity Authenticator.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `bots_identity_authenticator_errors_total`
   - `bots_identity_authenticator_latency_ms`
@@ -1317,11 +1384,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Bot Profile Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_profile_store_errors_total`
   - `bots_profile_store_latency_ms`
@@ -1336,11 +1404,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Role Manager.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_role_manager_errors_total`
   - `bots_role_manager_latency_ms`
@@ -1355,11 +1424,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Behavior Profile Manager.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_behavior_profile_manager_errors_total`
   - `bots_behavior_profile_manager_latency_ms`
@@ -1374,11 +1444,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Relationship Store.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_relationship_store_errors_total`
   - `bots_relationship_store_latency_ms`
@@ -1393,11 +1464,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Presence Tracker.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_presence_tracker_errors_total`
   - `bots_presence_tracker_latency_ms`
@@ -1412,11 +1484,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Delta Sync Planner.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_delta_sync_planner_errors_total`
   - `bots_delta_sync_planner_latency_ms`
@@ -1431,11 +1504,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Writes are transactional and use the coordinator transaction manager.
+  - Reads never expose uncommitted state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
 - **Tests:**
-  - Contract test for Resume Orchestrator.
+  - Repository contract test with rollback, concurrency, and stale-read cases.
 - **Metrics:**
   - `bots_resume_orchestrator_errors_total`
   - `bots_resume_orchestrator_latency_ms`
@@ -1450,11 +1524,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
 - **Milestone:** 5
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Privilege decisions are deny-by-default and scoped to one design revision.
+  - Revocation takes effect immediately through a fencing-token bump.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Name Pool Allocator.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `bots_name_pool_allocator_errors_total`
   - `bots_name_pool_allocator_latency_ms`
@@ -1503,11 +1578,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Observation Ingestor.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_observation_ingestor_errors_total`
   - `world_observation_ingestor_latency_ms`
@@ -1522,11 +1598,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Chunk Version Store.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_chunk_version_store_errors_total`
   - `world_chunk_version_store_latency_ms`
@@ -1541,11 +1618,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Sparse Occupancy Grid.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_occupancy_grid_errors_total`
   - `world_occupancy_grid_latency_ms`
@@ -1560,11 +1638,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Merge Conflict Resolver.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_merge_conflict_resolver_errors_total`
   - `world_merge_conflict_resolver_latency_ms`
@@ -1579,11 +1658,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Confidence Decay.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_confidence_decay_errors_total`
   - `world_confidence_decay_latency_ms`
@@ -1598,11 +1678,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Landmark Registry.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_landmark_registry_errors_total`
   - `world_landmark_registry_latency_ms`
@@ -1617,11 +1698,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Detector Result Integrator.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `world_detector_result_integrator_errors_total`
   - `world_detector_result_integrator_latency_ms`
@@ -1636,11 +1718,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Blocks belonging to an active planId are tagged in-progress and are never classified as natural infrastructure.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Plan Tagging.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_plan_tagging_errors_total`
   - `world_plan_tagging_latency_ms`
@@ -1651,15 +1733,15 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner path:** `packages/worldmodel/src/spatial-query-engine`
 - **Provides:** `world.spatial-query-engine.interface`
 - **Requires:** `world.occupancy-grid`, `world.landmark-registry`, `sip.path-graph-store`
-- **Owns state:** `world.model`
+- **Owns state:** none
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Spatial queries expose nearest, insideBase, route, isProtected, containerAt, and whoOwns without mutating state.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Spatial Query Engine.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_spatial_query_engine_errors_total`
   - `world_spatial_query_engine_latency_ms`
@@ -1670,15 +1752,16 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner path:** `packages/worldmodel/src/container-memory`
 - **Provides:** `world.container-memory.interface`
 - **Requires:** `world.landmark-registry`
-- **Owns state:** `containers`
+- **Owns state:** `world.containerMemory`
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for Container Memory.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_container_memory_errors_total`
   - `world_container_memory_latency_ms`
@@ -1693,11 +1776,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Observed state and intended SIP state stay separate; merges never overwrite active plan tags.
+  - Landmark confidence decays and conflicting evidence is flagged for re-verification.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Conflicting observations: keep the newest with evidence and flag the landmark for verification.
 - **Tests:**
-  - Contract test for World Reconciler.
+  - Merge, decay, conflict-resolution, and spatial-query fixtures.
 - **Metrics:**
   - `world_world_reconciler_errors_total`
   - `world_world_reconciler_latency_ms`
@@ -1746,11 +1830,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Ring Sampler.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_ring_sampler_errors_total`
   - `perception_ring_sampler_latency_ms`
@@ -1765,11 +1850,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Chunk Snapshot Encoder.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_chunk_snapshot_encoder_errors_total`
   - `perception_chunk_snapshot_encoder_latency_ms`
@@ -1784,11 +1870,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Block Update Listener.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_block_update_listener_errors_total`
   - `perception_block_update_listener_latency_ms`
@@ -1803,11 +1890,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Path and Road Detector.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_path_detector_errors_total`
   - `perception_path_detector_latency_ms`
@@ -1822,11 +1910,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for House Detector.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_house_detector_errors_total`
   - `perception_house_detector_latency_ms`
@@ -1841,11 +1930,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Farm Detector.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_farm_detector_errors_total`
   - `perception_farm_detector_latency_ms`
@@ -1860,11 +1950,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Storage and Workstation Detector.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_storage_workstation_detector_errors_total`
   - `perception_storage_workstation_detector_latency_ms`
@@ -1879,11 +1970,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Linear Structure Detector.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_linear_structure_detector_errors_total`
   - `perception_linear_structure_detector_latency_ms`
@@ -1898,11 +1990,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Detector Pipeline.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_detector_pipeline_errors_total`
   - `perception_detector_pipeline_latency_ms`
@@ -1917,11 +2010,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Landmark Candidate Emitter.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_landmark_candidate_emitter_errors_total`
   - `perception_landmark_candidate_emitter_latency_ms`
@@ -1936,11 +2030,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#6-perception-shared-world-model`
 - **Milestone:** 3
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Perception Rate Limiter.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `perception_perception_rate_limiter_errors_total`
   - `perception_perception_rate_limiter_latency_ms`
@@ -1990,11 +2085,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - One shared Laya ONNX model is loaded per coordinator; providers are cpu on home-min and webgpu,cpu on home-full.
+  - CPU fallback is always registered and intraOp threads are 3 on home-min and 8 on home-full.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Model Loader.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_model_loader_errors_total`
   - `decision_model_loader_latency_ms`
@@ -2009,11 +2105,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - WebGPU is adopted only if it beats CPU p95 and runs 2h without crash or driver reset; otherwise CPU is used.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - WebGPU init, crash, or slower p95: downgrade to CPU automatically and log the downgrade.
 - **Tests:**
-  - Contract test for Execution Provider Selector.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_execution_provider_selector_errors_total`
   - `decision_execution_provider_selector_latency_ms`
@@ -2028,11 +2124,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - One Laya model instance exists fleet-wide and at most one forward pass is in flight.
+  - Model output is advisory; typed parsing rejects free text.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Decision Queue.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_queue_errors_total`
   - `decision_queue_latency_ms`
@@ -2047,11 +2144,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - One Laya model instance exists fleet-wide and at most one forward pass is in flight.
+  - Model output is advisory; typed parsing rejects free text.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Decision Rate Limiter.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_rate_limiter_errors_total`
   - `decision_rate_limiter_latency_ms`
@@ -2066,11 +2164,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - One Laya model instance exists fleet-wide and at most one forward pass is in flight.
+  - Model output is advisory; typed parsing rejects free text.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Digest Cache.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_digest_cache_errors_total`
   - `decision_digest_cache_latency_ms`
@@ -2085,11 +2184,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The state digest is at most 512 tokens and carries 8-16 affordances, each at most 12 words.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Digest Assembler.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_digest_assembler_errors_total`
   - `decision_digest_assembler_latency_ms`
@@ -2104,11 +2203,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - One Laya model instance exists fleet-wide and at most one forward pass is in flight.
+  - Model output is advisory; typed parsing rejects free text.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Batch Runner.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_batch_runner_errors_total`
   - `decision_batch_runner_latency_ms`
@@ -2123,11 +2223,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - At most one Laya forward pass is in flight per coordinator at any time.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Single In-flight Guard.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `decision_single_inflight_guard_errors_total`
   - `decision_single_inflight_guard_latency_ms`
@@ -2142,11 +2242,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Only typed choice, score, and noul outputs are accepted; free text is rejected.
+  - Choice cardinality stays at or below 16 and total option tokens at or below 192.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Output Parser.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_output_parser_errors_total`
   - `decision_output_parser_latency_ms`
@@ -2161,11 +2262,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Per-question temperature is fitted on held-out traces.
+  - A calibrated confidence below 0.60 routes the bot to its deterministic utility policy.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Confidence Calibrator.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_confidence_calibrator_errors_total`
   - `decision_confidence_calibrator_latency_ms`
@@ -2180,11 +2282,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - A decision request that would break the 250ms warm p95 budget is timed out and falls back to deterministic policy.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Timeout and Fallback Handler.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_timeout_fallback_errors_total`
   - `decision_timeout_fallback_latency_ms`
@@ -2199,11 +2301,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - One Laya model instance exists fleet-wide and at most one forward pass is in flight.
+  - Model output is advisory; typed parsing rejects free text.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
-  - Contract test for Latency Metrics.
+  - Typed output parsing, timeout fallback, and single-inflight tests.
 - **Metrics:**
   - `decision_latency_metrics_errors_total`
   - `decision_latency_metrics_latency_ms`
@@ -2253,11 +2356,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for OpenAI-Compatible Client.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_openai_client_errors_total`
   - `planner_openai_client_latency_ms`
@@ -2272,11 +2376,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for Planner Context Builder.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_context_builder_errors_total`
   - `planner_context_builder_latency_ms`
@@ -2291,11 +2396,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for Planner Trigger Evaluator.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_trigger_evaluator_errors_total`
   - `planner_trigger_evaluator_latency_ms`
@@ -2310,11 +2416,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Planner Schema Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `planner_schema_validator_errors_total`
   - `planner_schema_validator_latency_ms`
@@ -2329,11 +2436,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Planner Semantic Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `planner_semantic_validator_errors_total`
   - `planner_semantic_validator_latency_ms`
@@ -2348,11 +2456,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Invalid planner output gets at most two repair attempts before the last good plan is kept.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Planner Repair Loop.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `planner_repair_loop_errors_total`
   - `planner_repair_loop_latency_ms`
@@ -2367,11 +2475,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for SIP Mutation Translator.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_sip_mutation_translator_errors_total`
   - `planner_sip_mutation_translator_latency_ms`
@@ -2386,11 +2495,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for Task DAG Translator.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_task_dag_translator_errors_total`
   - `planner_task_dag_translator_latency_ms`
@@ -2405,11 +2515,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner calls obey calls-per-minute, token, timeout, cancellation, and cache budgets.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
 - **Tests:**
-  - Contract test for Planner Budget Limiter.
+  - Grant/deny matrix including owner-offline and revision-bump cases.
 - **Metrics:**
   - `planner_budget_limiter_errors_total`
   - `planner_budget_limiter_latency_ms`
@@ -2424,11 +2534,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for Plan Cache.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_plan_cache_errors_total`
   - `planner_plan_cache_latency_ms`
@@ -2443,11 +2554,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Planner output is untrusted JSON, schema-validated before any SIP or task proposal.
+  - Planner never writes blocks and never mutates SIP directly.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for Planner Arbitration Handler.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_arbitration_handler_errors_total`
   - `planner_arbitration_handler_latency_ms`
@@ -2462,11 +2574,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
 - **Milestone:** 9
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - A failed planner cycle never replaces the last validated plan.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Invalid plan: repair at most twice, then keep the last good plan.
 - **Tests:**
-  - Contract test for Keep Last Good Fallback.
+  - Schema rejection, repair-loop, and budget-cap tests.
 - **Metrics:**
   - `planner_keep_last_good_fallback_errors_total`
   - `planner_keep_last_good_fallback_latency_ms`
@@ -2514,11 +2626,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Contract.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_skill_contract_errors_total`
   - `skill_runtime_skill_contract_latency_ms`
@@ -2533,11 +2646,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Registry.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_skill_registry_errors_total`
   - `skill_runtime_skill_registry_latency_ms`
@@ -2552,11 +2666,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Lifecycle Executor.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_lifecycle_executor_errors_total`
   - `skill_runtime_lifecycle_executor_latency_ms`
@@ -2566,16 +2681,17 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Responsibility:** Step active skills at 200-500ms while preserving guardian priority.
 - **Owner path:** `packages/skills/src/runtime/tick-scheduler`
 - **Provides:** `skill-runtime.tick-scheduler.interface`
-- **Requires:** `skill-runtime.lifecycle-executor`, `safety.guardian-loop`
+- **Requires:** `skill-runtime.lifecycle-executor`, `brains.reflex-guardian-loop`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Tick Scheduler.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_tick_scheduler_errors_total`
   - `skill_runtime_tick_scheduler_latency_ms`
@@ -2590,11 +2706,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Context Builder.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_context_builder_errors_total`
   - `skill_runtime_context_builder_latency_ms`
@@ -2609,11 +2726,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Progress Reporter.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_progress_reporter_errors_total`
   - `skill_runtime_progress_reporter_latency_ms`
@@ -2628,11 +2746,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Checkpoint Manager.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_checkpoint_manager_errors_total`
   - `skill_runtime_checkpoint_manager_latency_ms`
@@ -2647,11 +2766,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Skill Restore Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `skill_runtime_restore_validator_errors_total`
   - `skill_runtime_restore_validator_latency_ms`
@@ -2666,11 +2786,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Typed Effects Emitter.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_effects_emitter_errors_total`
   - `skill_runtime_effects_emitter_latency_ms`
@@ -2685,11 +2806,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Skills execute through the lifecycle executor with veto checks before every effect.
+  - Checkpoints capture resumable state and restore is validated against the observed world.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Skill failure: classify, checkpoint when resumable, and report to Laya or the planner.
 - **Tests:**
-  - Contract test for Skill Preemption Handler.
+  - Lifecycle, preemption, checkpoint/restore, and failure-class tests.
 - **Metrics:**
   - `skill_runtime_preemption_handler_errors_total`
   - `skill_runtime_preemption_handler_latency_ms`
@@ -2747,11 +2869,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Navigate.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_navigate_errors_total`
   - `skills_navigate_latency_ms`
@@ -2766,11 +2889,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Follow Path.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_follow_path_errors_total`
   - `skills_follow_path_latency_ms`
@@ -2785,11 +2909,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Mine.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_mine_errors_total`
   - `skills_mine_latency_ms`
@@ -2804,11 +2929,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Collect.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_collect_errors_total`
   - `skills_collect_latency_ms`
@@ -2823,11 +2949,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Craft.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_craft_errors_total`
   - `skills_craft_latency_ms`
@@ -2842,11 +2969,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Smelt.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_smelt_errors_total`
   - `skills_smelt_latency_ms`
@@ -2861,11 +2989,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Eat.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_eat_errors_total`
   - `skills_eat_latency_ms`
@@ -2880,11 +3009,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Deposit.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_deposit_errors_total`
   - `skills_deposit_latency_ms`
@@ -2899,11 +3029,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Withdraw.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_withdraw_errors_total`
   - `skills_withdraw_latency_ms`
@@ -2918,11 +3049,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Sleep.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_sleep_errors_total`
   - `skills_sleep_latency_ms`
@@ -2937,11 +3069,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Flee or Defend.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_flee_defend_errors_total`
   - `skills_flee_defend_latency_ms`
@@ -2956,11 +3089,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Explore.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_explore_errors_total`
   - `skills_explore_latency_ms`
@@ -2975,11 +3109,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Bridge.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_bridge_errors_total`
   - `skills_bridge_latency_ms`
@@ -2994,11 +3129,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Clear.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_clear_errors_total`
   - `skills_clear_latency_ms`
@@ -3013,11 +3149,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Place Build.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_place_build_errors_total`
   - `skills_place_build_latency_ms`
@@ -3032,11 +3169,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Schematic Build.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_schematic_build_errors_total`
   - `skills_schematic_build_latency_ms`
@@ -3051,11 +3189,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Repair.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_repair_errors_total`
   - `skills_repair_latency_ms`
@@ -3070,11 +3209,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Harvest Farm.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_harvest_farm_errors_total`
   - `skills_harvest_farm_latency_ms`
@@ -3089,11 +3229,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Plant Farm.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_plant_farm_errors_total`
   - `skills_plant_farm_latency_ms`
@@ -3108,11 +3249,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#9-skills`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
 - **Tests:**
-  - Contract test for Skill Shared Utilities.
+  - Happy path, blocked path, and checkpoint-resume fixtures.
 - **Metrics:**
   - `skills_shared_utilities_errors_total`
   - `skills_shared_utilities_latency_ms`
@@ -3171,11 +3313,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Blueprint IR.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_blueprint_ir_errors_total`
   - `building_blueprint_ir_latency_ms`
@@ -3190,11 +3333,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Blueprint Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `building_blueprint_validator_errors_total`
   - `building_blueprint_validator_latency_ms`
@@ -3209,11 +3353,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Template Registry.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_registry_errors_total`
   - `building_template_registry_latency_ms`
@@ -3228,11 +3373,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for House Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_house_errors_total`
   - `building_template_house_latency_ms`
@@ -3247,11 +3393,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Road Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_road_errors_total`
   - `building_template_road_latency_ms`
@@ -3266,11 +3413,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Farm Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_farm_errors_total`
   - `building_template_farm_latency_ms`
@@ -3285,11 +3433,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Wall Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_wall_errors_total`
   - `building_template_wall_latency_ms`
@@ -3304,11 +3453,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Bridge Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_bridge_errors_total`
   - `building_template_bridge_latency_ms`
@@ -3323,11 +3473,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Storage Room Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_storage_errors_total`
   - `building_template_storage_latency_ms`
@@ -3342,11 +3493,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Watchtower Template.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_watchtower_errors_total`
   - `building_template_watchtower_latency_ms`
@@ -3361,11 +3513,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Template Instantiator.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_template_instantiator_errors_total`
   - `building_template_instantiator_latency_ms`
@@ -3380,11 +3533,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Schematic Parser.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_schematic_parser_errors_total`
   - `building_schematic_parser_latency_ms`
@@ -3399,11 +3553,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Schematic Diff.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_schematic_diff_errors_total`
   - `building_schematic_diff_latency_ms`
@@ -3418,11 +3573,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Multi-bot builds split into claimable packages by layers, perimeter slices, or quadrants.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Work Package Partitioner.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_work_package_partitioner_errors_total`
   - `building_work_package_partitioner_latency_ms`
@@ -3437,11 +3592,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Build Order Planner.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_build_order_planner_errors_total`
   - `building_build_order_planner_latency_ms`
@@ -3456,11 +3612,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Reachability and Scaffold Planner.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_reachability_scaffold_planner_errors_total`
   - `building_reachability_scaffold_planner_latency_ms`
@@ -3475,11 +3632,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Block Verifier.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `building_block_verifier_errors_total`
   - `building_block_verifier_latency_ms`
@@ -3494,11 +3652,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Block placement is support-first, bottom-up, reachability-planned, and idempotent.
+  - Placement respects protected bboxes, active bot support, and material bans.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Block Executor.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_block_executor_errors_total`
   - `building_block_executor_latency_ms`
@@ -3513,11 +3672,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Material Preflight.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `building_material_preflight_errors_total`
   - `building_material_preflight_latency_ms`
@@ -3532,11 +3692,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Container Refill Adapter.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_container_refill_adapter_errors_total`
   - `building_container_refill_adapter_latency_ms`
@@ -3551,11 +3712,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Every destructive change records block before/after, actor, grantId, planId, and timestamp and is rollback-capable.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unreachable target or missing material: pause the package and request refill or replan.
 - **Tests:**
-  - Contract test for Rollback Journal.
+  - Blueprint diff, ordering, idempotency, and rollback tests.
 - **Metrics:**
   - `building_rollback_journal_errors_total`
   - `building_rollback_journal_latency_ms`
@@ -3589,8 +3750,6 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.reach-rate-guard` | Reach and Rate Guard | Reject impossible reach and enforce configurable action rates. | `apps/bot/src/reach-rate-guard` | 1 |
 | `bot-runtime.action-executor` | Action Executor | Execute only safety-approved place, break, use, attack, and movement actions. | `apps/bot/src/action-executor` | 1 |
 | `bot-runtime.state-digest-collector` | State Digest Collector | Collect health, food, time, biome, y-level, target, inventory, hazards, and skill progress. | `apps/bot/src/state-digest-collector` | 1 |
-| `bot-runtime.affordance-enumerator` | Affordance Enumerator | Enumerate 8-16 legal actions with short labels for the decision service. | `apps/bot/src/affordance-enumerator` | 1 |
-| `bot-runtime.deterministic-policy` | Deterministic Policy | Choose a legal action from utility scores when Laya is unavailable, late, or low-confidence. | `apps/bot/src/deterministic-policy` | 1 |
 | `bot-runtime.guardian-hook` | Guardian Hook | Connect the local reflex guardian to the action veto gate on every tick. | `apps/bot/src/guardian-hook` | 1 |
 | `bot-runtime.skill-host` | Skill Host | Host the skill runtime inside the bot process and step active skills. | `apps/bot/src/skill-host` | 1 |
 | `bot-runtime.perception-host` | Perception Host | Host the perception sampler and detector pipeline inside the bot process. | `apps/bot/src/perception-host` | 1 |
@@ -3606,11 +3765,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Connection Lifecycle.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_connection_lifecycle_errors_total`
   - `bot_runtime_connection_lifecycle_latency_ms`
@@ -3625,11 +3785,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Join and Auth.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_join_auth_errors_total`
   - `bot_runtime_join_auth_latency_ms`
@@ -3644,11 +3805,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Mineflayer Event Bridge.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_event_bridge_errors_total`
   - `bot_runtime_event_bridge_latency_ms`
@@ -3663,11 +3825,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for World Cache Adapter.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_world_cache_adapter_errors_total`
   - `bot_runtime_world_cache_adapter_latency_ms`
@@ -3682,11 +3845,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Reach and Rate Guard.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `bot_runtime_reach_rate_guard_errors_total`
   - `bot_runtime_reach_rate_guard_latency_ms`
@@ -3701,11 +3865,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The action executor is the only path to mineflayer and enforces reach and action-rate limits.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Action Executor.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_action_executor_errors_total`
   - `bot_runtime_action_executor_latency_ms`
@@ -3720,68 +3884,32 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for State Digest Collector.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_state_digest_collector_errors_total`
   - `bot_runtime_state_digest_collector_latency_ms`
-
-### `bot-runtime.affordance-enumerator` — Affordance Enumerator
-
-- **Responsibility:** Enumerate 8-16 legal actions with short labels for the decision service.
-- **Owner path:** `apps/bot/src/affordance-enumerator`
-- **Provides:** `bot-runtime.affordance-enumerator.interface`
-- **Requires:** `bot-runtime.world-cache-adapter`, `skill-runtime.skill-registry`, `safety.guardian-loop`
-- **Owns state:** none
-- **Source refs:** `main.md#1-fleet-coordinator`
-- **Milestone:** 1
-- **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
-- **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
-- **Tests:**
-  - Contract test for Affordance Enumerator.
-- **Metrics:**
-  - `bot_runtime_affordance_enumerator_errors_total`
-  - `bot_runtime_affordance_enumerator_latency_ms`
-
-### `bot-runtime.deterministic-policy` — Deterministic Policy
-
-- **Responsibility:** Choose a legal action from utility scores when Laya is unavailable, late, or low-confidence.
-- **Owner path:** `apps/bot/src/deterministic-policy`
-- **Provides:** `bot-runtime.deterministic-policy.interface`
-- **Requires:** `bot-runtime.affordance-enumerator`, `bot-runtime.state-digest-collector`, `bots.behavior-profile-manager`
-- **Owns state:** none
-- **Source refs:** `main.md#1-fleet-coordinator`
-- **Milestone:** 1
-- **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
-- **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
-- **Tests:**
-  - Contract test for Deterministic Policy.
-- **Metrics:**
-  - `bot_runtime_deterministic_policy_errors_total`
-  - `bot_runtime_deterministic_policy_latency_ms`
 
 ### `bot-runtime.guardian-hook` — Guardian Hook
 
 - **Responsibility:** Connect the local reflex guardian to the action veto gate on every tick.
 - **Owner path:** `apps/bot/src/guardian-hook`
 - **Provides:** `bot-runtime.guardian-hook.interface`
-- **Requires:** `safety.guardian-loop`, `safety.action-veto-gate`
+- **Requires:** `brains.reflex-guardian-loop`, `safety.action-veto-gate`
 - **Owns state:** none
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Guardian Hook.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `bot_runtime_guardian_hook_errors_total`
   - `bot_runtime_guardian_hook_latency_ms`
@@ -3796,11 +3924,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Skill Host.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_skill_host_errors_total`
   - `bot_runtime_skill_host_latency_ms`
@@ -3815,11 +3944,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Perception Host.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_perception_host_errors_total`
   - `bot_runtime_perception_host_latency_ms`
@@ -3834,11 +3964,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
 - **Tests:**
-  - Contract test for Reconnect Supervisor.
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
 - **Metrics:**
   - `bot_runtime_reconnect_supervisor_errors_total`
   - `bot_runtime_reconnect_supervisor_latency_ms`
@@ -3865,7 +3996,6 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 | ID | Component | Responsibility | Owner path | Milestone |
 |---|---|---|---|---:|
-| `safety.guardian-loop` | Reflex Guardian Loop | Run deterministic safety checks at 20Hz and issue veto or recovery signals. | `packages/brains/src/safety/guardian-loop` | 4 |
 | `safety.hazard-evaluator` | Hazard Evaluator | Detect lava, void, fall, and drowning risk from the current world snapshot. | `packages/brains/src/safety/hazard-evaluator` | 4 |
 | `safety.mob-threat-evaluator` | Mob Threat Evaluator | Detect hostile mobs, threat distance, and escape options. | `packages/brains/src/safety/mob-threat-evaluator` | 4 |
 | `safety.hunger-evaluator` | Hunger Evaluator | Detect critical hunger and food availability from the bot snapshot. | `packages/brains/src/safety/hunger-evaluator` | 4 |
@@ -3881,25 +4011,6 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `safety.emergency-stop-controller` | Emergency Stop Controller | Stop a bot or the fleet safely and require explicit resume. | `packages/brains/src/safety/emergency-stop-controller` | 4 |
 | `safety.incident-journal` | Incident Journal | Record safety incidents, vetoes, and recovery escalation with actor context. | `packages/brains/src/safety/incident-journal` | 4 |
 
-### `safety.guardian-loop` — Reflex Guardian Loop
-
-- **Responsibility:** Run deterministic safety checks at 20Hz and issue veto or recovery signals.
-- **Owner path:** `packages/brains/src/safety/guardian-loop`
-- **Provides:** `safety.guardian-loop.interface`
-- **Requires:** `safety.hazard-evaluator`, `safety.mob-threat-evaluator`, `safety.hunger-evaluator`, `safety.stuck-timeout-evaluator`, `safety.inventory-evaluator`, `safety.claim-loss-evaluator`
-- **Owns state:** none
-- **Source refs:** `main.md#11-autonomy-loop-and-safety`
-- **Milestone:** 4
-- **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
-- **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
-- **Tests:**
-  - Contract test for Reflex Guardian Loop.
-- **Metrics:**
-  - `safety_guardian_loop_errors_total`
-  - `safety_guardian_loop_latency_ms`
-
 ### `safety.hazard-evaluator` — Hazard Evaluator
 
 - **Responsibility:** Detect lava, void, fall, and drowning risk from the current world snapshot.
@@ -3910,11 +4021,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Hazard Evaluator.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_hazard_evaluator_errors_total`
   - `safety_hazard_evaluator_latency_ms`
@@ -3929,11 +4041,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Mob Threat Evaluator.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_mob_threat_evaluator_errors_total`
   - `safety_mob_threat_evaluator_latency_ms`
@@ -3948,11 +4061,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Hunger Evaluator.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_hunger_evaluator_errors_total`
   - `safety_hunger_evaluator_latency_ms`
@@ -3967,11 +4081,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Stuck and Timeout Evaluator.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_stuck_timeout_evaluator_errors_total`
   - `safety_stuck_timeout_evaluator_latency_ms`
@@ -3986,11 +4101,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Inventory Evaluator.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_inventory_evaluator_errors_total`
   - `safety_inventory_evaluator_latency_ms`
@@ -4005,11 +4121,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Losing a claim or edit grant immediately stops work that depends on it.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Claim Loss Evaluator.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_claim_loss_evaluator_errors_total`
   - `safety_claim_loss_evaluator_latency_ms`
@@ -4024,11 +4140,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Protected BBox Rule.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `safety_protected_bbox_rule_errors_total`
   - `safety_protected_bbox_rule_latency_ms`
@@ -4043,11 +4160,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Blocks supporting an online bot are never broken.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Active Bot Support Rule.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `safety_active_bot_support_rule_errors_total`
   - `safety_active_bot_support_rule_latency_ms`
@@ -4062,11 +4179,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Fire, lava, and TNT are forbidden unless explicitly enabled in configuration.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Material Ban Rule.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `safety_material_ban_rule_errors_total`
   - `safety_material_ban_rule_latency_ms`
@@ -4081,11 +4198,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Safety Policy Engine.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_safety_policy_engine_errors_total`
   - `safety_safety_policy_engine_latency_ms`
@@ -4095,16 +4213,17 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Responsibility:** Reject any action that fails guardian, safety policy, claim, or grant validation.
 - **Owner path:** `packages/brains/src/safety/action-veto-gate`
 - **Provides:** `safety.action-veto-gate.interface`
-- **Requires:** `safety.safety-policy-engine`, `safety.guardian-loop`
+- **Requires:** `safety.safety-policy-engine`, `brains.reflex-guardian-loop`
 - **Owns state:** none
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian has final veto over Laya and planner actions.
+  - No destructive or mineflayer-bound action executes without passing the gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Action Veto Gate.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_action_veto_gate_errors_total`
   - `safety_action_veto_gate_latency_ms`
@@ -4119,11 +4238,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Recovery Ladder.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_recovery_ladder_errors_total`
   - `safety_recovery_ladder_latency_ms`
@@ -4138,11 +4258,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Emergency Stop Controller.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_emergency_stop_controller_errors_total`
   - `safety_emergency_stop_controller_latency_ms`
@@ -4157,11 +4278,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Milestone:** 4
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Guardian evaluation runs at 20Hz and outranks Laya and the planner.
+  - No destructive action executes without passing the veto gate.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Hazard detected: veto the action, record the incident, and enter the recovery ladder.
 - **Tests:**
-  - Contract test for Incident Journal.
+  - Guardian invariant tests per hazard class and veto precedence.
 - **Metrics:**
   - `safety_incident_journal_errors_total`
   - `safety_incident_journal_latency_ms`
@@ -4196,6 +4318,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `memory.retention-pruner` | Retention Pruner | Prune event logs and block changelogs after 30 days without touching current state. | `packages/memory/src/retention-pruner` | 1 |
 | `memory.snapshot-export` | Snapshot Export | Export consistent snapshots for backup, replay, and evaluation. | `packages/memory/src/snapshot-export` | 1 |
 | `memory.schema-version-registry` | Schema Version Registry | Track and validate the applied database schema version. | `packages/memory/src/schema-version-registry` | 1 |
+| `memory.episode-store` | Episode Store | Persist task episodes and outcome traces for replay, evaluation, and training export. | `packages/memory/src/episode-store` | 1 |
 
 ### `memory.sqlite-runtime` — SQLite Runtime
 
@@ -4207,11 +4330,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All domain writes go through repositories and coordinator-owned transactions.
+  - Event logs and block changelogs are append-only.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for SQLite Runtime.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_sqlite_runtime_errors_total`
   - `memory_sqlite_runtime_latency_ms`
@@ -4226,11 +4350,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All domain writes go through repositories and coordinator-owned transactions.
+  - Event logs and block changelogs are append-only.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Migration Runner.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_migration_runner_errors_total`
   - `memory_migration_runner_latency_ms`
@@ -4245,11 +4370,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All domain writes go through repositories and coordinator-owned transactions.
+  - Event logs and block changelogs are append-only.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Transaction Manager.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_transaction_manager_errors_total`
   - `memory_transaction_manager_latency_ms`
@@ -4260,15 +4386,15 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner path:** `packages/memory/src/event-log-writer`
 - **Provides:** `memory.event-log-writer.interface`
 - **Requires:** `memory.transaction-manager`
-- **Owns state:** `event_log`
+- **Owns state:** `bot_events`
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - bot_events is append-only and records decisions, task transitions, grants, and failures with actor and timestamp.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Event Log Writer.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_event_log_writer_errors_total`
   - `memory_event_log_writer_latency_ms`
@@ -4283,11 +4409,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All domain writes go through repositories and coordinator-owned transactions.
+  - Event logs and block changelogs are append-only.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Block Changelog Writer.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_block_changelog_writer_errors_total`
   - `memory_block_changelog_writer_latency_ms`
@@ -4302,11 +4429,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Event logs and block changelogs are pruned after 30 days; current SQLite state is never pruned automatically.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Retention Pruner.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_retention_pruner_errors_total`
   - `memory_retention_pruner_latency_ms`
@@ -4321,11 +4448,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All domain writes go through repositories and coordinator-owned transactions.
+  - Event logs and block changelogs are append-only.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Snapshot Export.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_snapshot_export_errors_total`
   - `memory_snapshot_export_latency_ms`
@@ -4340,14 +4468,35 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#12-memory-and-persistence`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - All domain writes go through repositories and coordinator-owned transactions.
+  - Event logs and block changelogs are append-only.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
 - **Tests:**
-  - Contract test for Schema Version Registry.
+  - Migration, WAL mode, retention, and append-only tests.
 - **Metrics:**
   - `memory_schema_version_registry_errors_total`
   - `memory_schema_version_registry_latency_ms`
+
+### `memory.episode-store` — Episode Store
+
+- **Responsibility:** Persist task episodes and outcome traces for replay, evaluation, and training export.
+- **Owner path:** `packages/memory/src/episode-store`
+- **Provides:** `memory.episode-store.interface`
+- **Requires:** `memory.transaction-manager`
+- **Owns state:** `episodes`
+- **Source refs:** `main.md#12-memory-and-persistence`
+- **Milestone:** 1
+- **Invariants:**
+  - Episodes are append-only outcome traces tied to bot, task, and episode id.
+  - Episode retention follows the same 30-day log policy.
+- **Failure modes:**
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
+- **Tests:**
+  - Migration, WAL mode, retention, and append-only tests.
+- **Metrics:**
+  - `memory_episode_store_writes_total`
+  - `memory_episode_store_latency_ms`
 
 ---
 
@@ -4391,11 +4540,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Ops API.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_ops_api_errors_total`
   - `ops_ops_api_latency_ms`
@@ -4410,11 +4560,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Status Aggregator.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_status_aggregator_errors_total`
   - `ops_status_aggregator_latency_ms`
@@ -4429,11 +4580,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Pause and Resume Controller.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_pause_resume_controller_errors_total`
   - `ops_pause_resume_controller_latency_ms`
@@ -4448,11 +4600,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Fleet emergency stop halts all bots, revokes active action authority, and is itself audited.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Fleet Emergency Stop.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_fleet_emergency_stop_errors_total`
   - `ops_fleet_emergency_stop_latency_ms`
@@ -4467,11 +4619,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for SIP Dump.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_sip_dump_errors_total`
   - `ops_sip_dump_latency_ms`
@@ -4486,11 +4639,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Metrics Registry.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_metrics_registry_errors_total`
   - `ops_metrics_registry_latency_ms`
@@ -4505,11 +4659,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Structured Logger.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_structured_logger_errors_total`
   - `ops_structured_logger_latency_ms`
@@ -4524,11 +4679,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Health and Readiness.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_health_readiness_errors_total`
   - `ops_health_readiness_latency_ms`
@@ -4543,11 +4699,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Ops endpoints never mutate domain state except through explicit control components.
+  - Metrics and logs are non-blocking; loss is bounded and recorded.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
 - **Tests:**
-  - Contract test for Audit Viewer.
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
 - **Metrics:**
   - `ops_audit_viewer_errors_total`
   - `ops_audit_viewer_latency_ms`
@@ -4593,11 +4750,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Configuration is validated once at startup; missing secrets fail fast.
+  - No component reads process.env outside the config loader.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Missing or invalid configuration: exit non-zero with an actionable error.
 - **Tests:**
-  - Contract test for Environment Parser.
+  - Profile matrix, missing-secret, and schema-validation tests.
 - **Metrics:**
   - `config_env_parser_errors_total`
   - `config_env_parser_latency_ms`
@@ -4612,11 +4770,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Config Schema Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `config_config_schema_validator_errors_total`
   - `config_config_schema_validator_latency_ms`
@@ -4631,11 +4790,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Configuration is validated once at startup; missing secrets fail fast.
+  - No component reads process.env outside the config loader.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Missing or invalid configuration: exit non-zero with an actionable error.
 - **Tests:**
-  - Contract test for Profile Resolver.
+  - Profile matrix, missing-secret, and schema-validation tests.
 - **Metrics:**
   - `config_profile_resolver_errors_total`
   - `config_profile_resolver_latency_ms`
@@ -4650,11 +4810,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Hardware profile is detected or read from HARDWARE_PROFILE and drives Laya providers and thread counts.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Missing or invalid configuration: exit non-zero with an actionable error.
 - **Tests:**
-  - Contract test for Hardware Probe.
+  - Profile matrix, missing-secret, and schema-validation tests.
 - **Metrics:**
   - `config_hardware_probe_errors_total`
   - `config_hardware_probe_latency_ms`
@@ -4669,11 +4829,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - PLANNER_BASE_URL and PLANNER_API_KEY have no defaults and are loaded from process env or gitignored config/.env.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Missing planner secret: fail fast with an actionable error before any planner call.
 - **Tests:**
-  - Contract test for Secrets Loader.
+  - Profile matrix, missing-secret, and schema-validation tests.
 - **Metrics:**
   - `config_secrets_loader_errors_total`
   - `config_secrets_loader_latency_ms`
@@ -4688,11 +4848,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Name Pool Validator.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `config_name_pool_validator_errors_total`
   - `config_name_pool_validator_latency_ms`
@@ -4707,11 +4868,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - LAYA_EP auto resolves to webgpu,cpu on home-full and cpu on home-min; explicit values are honored.
+  - Thread counts come from the active hardware profile, not constants.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Missing or invalid configuration: exit non-zero with an actionable error.
 - **Tests:**
-  - Contract test for Laya Runtime Resolver.
+  - Profile matrix, missing-secret, and schema-validation tests.
 - **Metrics:**
   - `config_laya_runtime_resolver_errors_total`
   - `config_laya_runtime_resolver_latency_ms`
@@ -4726,11 +4888,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#13-repo-layout`
 - **Milestone:** 1
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Configuration is validated once at startup; missing secrets fail fast.
+  - No component reads process.env outside the config loader.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Missing or invalid configuration: exit non-zero with an actionable error.
 - **Tests:**
-  - Contract test for Fail Fast Handler.
+  - Profile matrix, missing-secret, and schema-validation tests.
 - **Metrics:**
   - `config_fail_fast_handler_errors_total`
   - `config_fail_fast_handler_latency_ms`
@@ -4778,11 +4941,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Unit Fixtures.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_unit_fixtures_errors_total`
   - `eval_unit_fixtures_latency_ms`
@@ -4797,11 +4961,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Detectors are pure over a chunk snapshot and emit evidence with confidence.
+  - Detection never mutates world state; it only emits landmark candidates.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
 - **Tests:**
-  - Contract test for Detector Fixtures.
+  - Fixture-based detector precision and recall checks.
 - **Metrics:**
   - `eval_detector_fixtures_errors_total`
   - `eval_detector_fixtures_latency_ms`
@@ -4816,11 +4981,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Docker Server Harness.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_docker_server_harness_errors_total`
   - `eval_docker_server_harness_latency_ms`
@@ -4835,11 +5001,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Scenario Runner.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_scenario_runner_errors_total`
   - `eval_scenario_runner_latency_ms`
@@ -4854,11 +5021,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Replay Engine.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_replay_engine_errors_total`
   - `eval_replay_engine_latency_ms`
@@ -4873,11 +5041,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Contention Harness.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_contention_harness_errors_total`
   - `eval_contention_harness_latency_ms`
@@ -4892,11 +5061,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Metrics Reporter.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_metrics_reporter_errors_total`
   - `eval_metrics_reporter_latency_ms`
@@ -4911,11 +5081,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Soak runs 4 bots on home-min and 8 on home-full for at least 2 hours with no memory growth or deadlock.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Soak Runner.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_soak_runner_errors_total`
   - `eval_soak_runner_latency_ms`
@@ -4930,11 +5100,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Unknown rule or malformed input: reject closed with an actionable reason.
 - **Tests:**
-  - Contract test for Architecture Guard Tests.
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
 - **Metrics:**
   - `eval_architecture_guard_tests_errors_total`
   - `eval_architecture_guard_tests_latency_ms`
@@ -4949,11 +5120,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#15-testing-and-evaluation`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Hard gates are warm-model p95 below 250ms and 2h with no crash or driver reset.
+  - WebGPU is adopted only if it also beats CPU p95.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Environment unavailable: skip with an explicit reason; never pass silently.
 - **Tests:**
-  - Contract test for Laya Benchmark Harness.
+  - Self-tests for fixture setup and metric reporting.
 - **Metrics:**
   - `eval_laya_benchmark_harness_errors_total`
   - `eval_laya_benchmark_harness_latency_ms`
@@ -4998,11 +5170,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Trace export reads runtime data but never becomes a runtime dependency.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for Trace Exporter.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_trace_exporter_errors_total`
   - `training_trace_exporter_latency_ms`
@@ -5017,11 +5189,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Training is dev-only and is never imported by runtime.
+  - Exported ONNX bundles are immutable artifacts with recorded provenance.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for Labeling Pipeline.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_labeling_pipeline_errors_total`
   - `training_labeling_pipeline_latency_ms`
@@ -5036,11 +5209,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Training is dev-only and is never imported by runtime.
+  - Exported ONNX bundles are immutable artifacts with recorded provenance.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for Reward Computer.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_reward_computer_errors_total`
   - `training_reward_computer_latency_ms`
@@ -5055,11 +5229,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Training is dev-only and is never imported by runtime.
+  - Exported ONNX bundles are immutable artifacts with recorded provenance.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for Fine-tune Runner.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_fine_tune_runner_errors_total`
   - `training_fine_tune_runner_latency_ms`
@@ -5074,11 +5249,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Training is dev-only and is never imported by runtime.
+  - Exported ONNX bundles are immutable artifacts with recorded provenance.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for ONNX Exporter.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_onnx_exporter_errors_total`
   - `training_onnx_exporter_latency_ms`
@@ -5093,11 +5269,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Training is dev-only and is never imported by runtime.
+  - Exported ONNX bundles are immutable artifacts with recorded provenance.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for Calibration Fitter.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_calibration_fitter_errors_total`
   - `training_calibration_fitter_latency_ms`
@@ -5112,13 +5289,118 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
 - **Milestone:** 10
 - **Invariants:**
-  - Single responsibility; no side effects outside the declared interface.
+  - Training is dev-only and is never imported by runtime.
+  - Exported ONNX bundles are immutable artifacts with recorded provenance.
 - **Failure modes:**
-  - Unavailable dependency or invalid payload; caller fails closed or uses a documented fallback.
+  - Training or export failure: leave the last bundle intact and report the failure.
 - **Tests:**
-  - Contract test for Promotion Gate.
+  - Dataset, export, and artifact-checksum tests.
 - **Metrics:**
   - `training_promotion_gate_errors_total`
   - `training_promotion_gate_latency_ms`
+
+---
+
+## Brains
+
+- **ID:** `sys.brains`
+- **Owner package:** `packages/brains/src`
+- **Milestone:** 4
+- **Source refs:** `main.md#7-short-term-decision-service-laya`, `main.md#11-autonomy-loop-and-safety`, `main.md#13-repo-layout`
+- **Allowed cross-system dependencies:** `sys.bot-runtime`, `sys.safety`, `sys.skill-runtime`, `sys.transport`
+- **Forbidden dependencies:** none
+
+**Purpose.** Own reflex, affordances, deterministic fallback policy, and the bot-side Laya client.
+
+**System invariants.**
+- Brain components emit proposals and never call mineflayer directly.
+- Deterministic policy is always available when Laya is unavailable, late, or low-confidence.
+- Reflex guardian outranks Laya and the planner.
+
+### Components
+
+| ID | Component | Responsibility | Owner path | Milestone |
+|---|---|---|---|---:|
+| `brains.reflex-guardian-loop` | Reflex Guardian Loop | Run deterministic safety checks at 20Hz and issue veto or recovery signals. | `packages/brains/src/reflex-guardian-loop` | 4 |
+| `brains.affordance-enumerator` | Affordance Enumerator | Enumerate 8-16 legal actions with short labels for the decision service. | `packages/brains/src/affordance-enumerator` | 4 |
+| `brains.deterministic-policy` | Deterministic Policy | Choose a legal action from utility scores when Laya is unavailable, late, or low-confidence. | `packages/brains/src/deterministic-policy` | 4 |
+| `brains.laya-client` | Laya Client | Submit decision requests to the coordinator Laya service and apply typed responses with timeout fallback. | `packages/brains/src/laya-client` | 8 |
+
+### `brains.reflex-guardian-loop` — Reflex Guardian Loop
+
+- **Responsibility:** Run deterministic safety checks at 20Hz and issue veto or recovery signals.
+- **Owner path:** `packages/brains/src/reflex-guardian-loop`
+- **Provides:** `safety.guardian-loop.interface`
+- **Requires:** `safety.hazard-evaluator`, `safety.mob-threat-evaluator`, `safety.hunger-evaluator`, `safety.stuck-timeout-evaluator`, `safety.inventory-evaluator`, `safety.claim-loss-evaluator`
+- **Owns state:** none
+- **Source refs:** `main.md#11-autonomy-loop-and-safety`
+- **Milestone:** 4
+- **Invariants:**
+  - The reflex guardian runs at 20Hz per bot and can veto any skill or Laya action.
+  - Guardian failure is fail-safe: stop actions rather than continue unguarded.
+- **Failure modes:**
+  - Unknown rule or malformed input: reject closed with an actionable reason.
+- **Tests:**
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
+- **Metrics:**
+  - `safety_guardian_loop_errors_total`
+  - `safety_guardian_loop_latency_ms`
+
+### `brains.affordance-enumerator` — Affordance Enumerator
+
+- **Responsibility:** Enumerate 8-16 legal actions with short labels for the decision service.
+- **Owner path:** `packages/brains/src/affordance-enumerator`
+- **Provides:** `bot-runtime.affordance-enumerator.interface`
+- **Requires:** `bot-runtime.world-cache-adapter`, `skill-runtime.skill-registry`, `brains.reflex-guardian-loop`
+- **Owns state:** none
+- **Source refs:** `main.md#1-fleet-coordinator`
+- **Milestone:** 4
+- **Invariants:**
+  - Affordances are legal, typed, and limited to 8-16 options of at most 12 words each.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `bot_runtime_affordance_enumerator_errors_total`
+  - `bot_runtime_affordance_enumerator_latency_ms`
+
+### `brains.deterministic-policy` — Deterministic Policy
+
+- **Responsibility:** Choose a legal action from utility scores when Laya is unavailable, late, or low-confidence.
+- **Owner path:** `packages/brains/src/deterministic-policy`
+- **Provides:** `bot-runtime.deterministic-policy.interface`
+- **Requires:** `brains.affordance-enumerator`, `bot-runtime.state-digest-collector`, `bots.behavior-profile-manager`
+- **Owns state:** none
+- **Source refs:** `main.md#1-fleet-coordinator`
+- **Milestone:** 4
+- **Invariants:**
+  - Deterministic utility policy is always available and is used when Laya is unavailable, late, or below 0.60 confidence.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `bot_runtime_deterministic_policy_errors_total`
+  - `bot_runtime_deterministic_policy_latency_ms`
+
+### `brains.laya-client` — Laya Client
+
+- **Responsibility:** Submit decision requests to the coordinator Laya service and apply typed responses with timeout fallback.
+- **Owner path:** `packages/brains/src/laya-client`
+- **Provides:** `brains.laya-client.interface`
+- **Requires:** `brains.affordance-enumerator`, `transport.ws-codec`, `brains.deterministic-policy`
+- **Owns state:** none
+- **Source refs:** `main.md#7-short-term-decision-service-laya`
+- **Milestone:** 8
+- **Invariants:**
+  - The bot-side Laya client never blocks the 20Hz guardian and falls back to deterministic policy on timeout.
+- **Failure modes:**
+  - Coordinator unreachable or decision timeout: use deterministic policy and reconnect.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `brains_laya_client_timeouts_total`
+  - `brains_laya_client_latency_ms`
 
 ---

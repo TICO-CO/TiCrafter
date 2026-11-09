@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveGraph } from './resolve-graph.mjs';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const graphPath = path.join(root, 'docs/architecture/graph.json');
@@ -7,7 +8,7 @@ const mainPath = path.join(root, 'main.md');
 
 const errors = [];
 const warnings = [];
-const graph = JSON.parse(fs.readFileSync(graphPath, 'utf8'));
+const graph = resolveGraph(JSON.parse(fs.readFileSync(graphPath, 'utf8')));
 
 const required = (obj, fields, label) => {
   for (const field of fields) {
@@ -34,7 +35,9 @@ const componentIds = new Set();
 const externalIds = new Set();
 const componentToSystem = new Map();
 const systems = new Map();
+const providers = new Map();
 const relationTypes = new Set(graph.meta.relationTypes);
+const protocols = new Set(graph.meta.protocols ?? []);
 
 for (const ext of graph.externals ?? []) {
   required(ext, ['id', 'name', 'kind', 'boundary', 'contracts', 'failureModes'], `external ${ext.id ?? '<unknown>'}`);
@@ -64,12 +67,20 @@ for (const sys of graph.systems ?? []) {
     componentIds.add(comp.id);
     componentToSystem.set(comp.id, sys.id);
     assertArray(comp.provides, `${label}.provides`, 1);
+    for (const provided of comp.provides ?? []) {
+      if (providers.has(provided)) {
+        errors.push(`${label}: duplicate provided interface ${provided} (also ${providers.get(provided)})`);
+      }
+      providers.set(provided, comp.id);
+    }
     assertArray(comp.requires, `${label}.requires`, 0);
     assertArray(comp.invariants, `${label}.invariants`, 1);
     assertArray(comp.failureModes, `${label}.failureModes`, 1);
     assertArray(comp.tests, `${label}.tests`, 1);
     assertArray(comp.metrics, `${label}.metrics`, 1);
     assertArray(comp.sourceRefs, `${label}.sourceRefs`, 1);
+    const placeholder = 'Single responsibility; no side effects outside the declared interface.';
+    if ((comp.invariants ?? []).includes(placeholder)) errors.push(`${label}: placeholder invariant is not allowed`);
     if (!Number.isInteger(comp.milestone) || comp.milestone < 1) errors.push(`${label}: invalid milestone`);
     if (!comp.plannedPath.startsWith(`${sys.ownerPackage}/`)) {
       warnings.push(`${label}: plannedPath does not start with system ownerPackage ${sys.ownerPackage}`);
@@ -101,6 +112,10 @@ for (const rel of graph.relations ?? []) {
   if (relationKeys.has(key)) errors.push(`${label}: duplicate relation ${key}`);
   relationKeys.add(key);
   if (!relationTypes.has(rel.type)) errors.push(`${label}: unknown type ${rel.type}`);
+  if (protocols.size && !protocols.has(rel.protocol)) errors.push(`${label}: unknown protocol ${rel.protocol}`);
+  if (rel.criticality === 'soft' && !/fallback|degrad|last good|deterministic|skip|drop/i.test(rel.failureBehavior ?? '')) {
+    errors.push(`${label}: soft relation must document a fallback in failureBehavior`);
+  }
   if (!validEndpoints(rel.from)) errors.push(`${label}: unknown from endpoint ${rel.from}`);
   if (!validEndpoints(rel.to)) errors.push(`${label}: unknown to endpoint ${rel.to}`);
   if (typeof rel.sync !== 'boolean') errors.push(`${label}: sync must be boolean`);
@@ -110,6 +125,21 @@ for (const rel of graph.relations ?? []) {
   relationSources.get(rel.from).push(rel);
   if (!relationTargets.has(rel.to)) relationTargets.set(rel.to, []);
   relationTargets.get(rel.to).push(rel);
+}
+
+const processMap = graph.meta.processes ?? {};
+for (const rel of graph.relations ?? []) {
+  const fromSystem = componentToSystem.get(rel.from);
+  const toSystem = componentToSystem.get(rel.to);
+  if (!fromSystem || !toSystem) continue;
+  const fromProcesses = processMap[fromSystem] ?? [];
+  const toProcesses = processMap[toSystem] ?? [];
+  if (!fromProcesses.length || !toProcesses.length) continue;
+  if (fromProcesses.includes('dev') || toProcesses.includes('dev')) continue;
+  const shared = fromProcesses.some((process) => toProcesses.includes(process));
+  if (!shared && rel.protocol === 'in-process') {
+    errors.push(`relation ${rel.id}: cross-process edge ${rel.from} -> ${rel.to} cannot use in-process`);
+  }
 }
 
 const globToRegExp = (pattern) => new RegExp(`^${pattern.split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`);
@@ -152,7 +182,25 @@ for (const rel of (graph.relations ?? []).filter((r) => r.type === 'writes')) {
   }
 }
 
-const mustValidate = ['bot-runtime.action-executor', 'building.block-executor'];
+const declaredStates = new Set((graph.stateOwnership ?? []).map((state) => state.state));
+for (const sys of graph.systems ?? []) {
+  for (const comp of sys.components ?? []) {
+    for (const owned of comp.ownsState ?? []) {
+      if (!declaredStates.has(owned)) errors.push(`component ${comp.id}: owns undeclared state ${owned}`);
+    }
+  }
+}
+
+const writeEdges = new Set((graph.relations ?? []).filter((r) => r.type === 'writes').map((r) => `${r.from}|${r.to}`));
+for (const state of graph.stateOwnership ?? []) {
+  for (const writer of state.writers ?? []) {
+    if (!writeEdges.has(`${writer}|${state.owner}`)) {
+      warnings.push(`state ${state.state}: declared writer ${writer} has no writes edge to ${state.owner}`);
+    }
+  }
+}
+
+const mustValidate = graph.meta.destructiveExecutors ?? [];
 for (const target of mustValidate) {
   const approved = (relationTargets.get(target) ?? []).some((rel) => rel.type === 'validates' && rel.from === 'safety.action-veto-gate');
   if (!approved) errors.push(`missing safety validation edge safety.action-veto-gate -> ${target}`);
@@ -224,6 +272,18 @@ for (const sys of graph.systems ?? []) {
     }
     const anchor = ref.slice('main.md#'.length);
     if (!anchors.has(anchor)) errors.push(`${sys.id}: sourceRef anchor not found: ${ref}`);
+  }
+}
+for (const sys of graph.systems ?? []) {
+  for (const comp of sys.components ?? []) {
+    for (const ref of comp.sourceRefs ?? []) {
+      if (!ref.startsWith('main.md#')) {
+        errors.push(`${comp.id}: sourceRef ${ref} must target main.md#anchor`);
+        continue;
+      }
+      const anchor = ref.slice('main.md#'.length);
+      if (!anchors.has(anchor)) errors.push(`${comp.id}: sourceRef anchor not found: ${ref}`);
+    }
   }
 }
 
