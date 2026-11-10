@@ -37,14 +37,15 @@ export class MergeConflictArms {
         if (decayed === null) {
             return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
         }
+        const conflicting = !LandmarkComparison.sameGeometry(existing, incoming);
         return [
             {
-                landmark: {
+                landmark: MergeConflictArms.withExistingPlanTag(existing, {
                     ...decayed.landmark,
                     evidence: LandmarkComparison.mergeEvidence(existing, incoming),
-                },
-                outcome: 'replaced',
-                needsVerification: decayed.needsVerification,
+                }),
+                outcome: conflicting ? 'flagged' : 'replaced',
+                needsVerification: conflicting || decayed.needsVerification,
             },
             null,
         ];
@@ -92,14 +93,21 @@ export class MergeConflictArms {
         }
         return [
             {
-                landmark: {
+                landmark: MergeConflictArms.withExistingPlanTag(existing, {
                     ...decayed.landmark,
                     evidence: LandmarkComparison.mergeEvidence(existing, incoming),
-                },
+                }),
                 outcome: 'flagged',
                 needsVerification: true,
             },
             null,
         ];
+    }
+
+    private static withExistingPlanTag(existing: Landmark, incoming: Landmark): Landmark {
+        return {
+            ...incoming,
+            planId: existing.planId ?? incoming.planId,
+        };
     }
 }

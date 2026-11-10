@@ -17,6 +17,7 @@ const landmark: Landmark = {
     },
     anchors: [{ name: 'deck', position: { x: 0, y: 64, z: 0 } }],
     confidence: 0.7,
+    confidenceUpdatedAt: '2026-11-10T12:00:00.000Z',
     lastSeen: '2026-11-10T12:00:00.000Z',
     evidence: [
         {

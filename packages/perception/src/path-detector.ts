@@ -22,10 +22,16 @@ export class PathDetector implements DetectorPort {
         const runs = [...PathGeometry.rows(blocks, axis).values()].flatMap((row) =>
             PathGeometry.runs(row, this.minimumLength),
         );
-        return PathGeometry.clusters(runs).map((cluster) => PathDetector.candidate(cluster, axis));
+        return PathGeometry.clusters(runs).map((cluster) =>
+            PathDetector.candidate(cluster, axis, blocks),
+        );
     }
 
-    private static candidate(cluster: PathRunCluster, axis: 'x' | 'z'): DetectionCandidate {
+    private static candidate(
+        cluster: PathRunCluster,
+        axis: 'x' | 'z',
+        blocks: readonly VoxelBlock[],
+    ): DetectionCandidate {
         const start =
             axis === 'x'
                 ? { x: cluster.start, y: cluster.y, z: cluster.perpendicularStart }
@@ -42,6 +48,7 @@ export class PathDetector implements DetectorPort {
             axis === 'x'
                 ? { x: cluster.end, y: cluster.y + 1, z: cluster.perpendicularEnd }
                 : { x: cluster.perpendicularEnd, y: cluster.y + 1, z: cluster.end };
+        const materials = PathDetector.materials(blocks, { min, max });
         return {
             detectorId: 'path',
             type: 'path',
@@ -51,7 +58,26 @@ export class PathDetector implements DetectorPort {
                 { name: 'end', position: end },
             ],
             confidence: Math.min(0.95, 0.5 + cluster.length / 64),
-            evidence: `standable corridor length ${cluster.length} width ${cluster.width}`,
+            evidence: `standable corridor length ${cluster.length} width ${cluster.width} materials ${materials.join(',')}`,
         };
+    }
+
+    private static materials(
+        blocks: readonly VoxelBlock[],
+        bbox: { min: VoxelBlock['position']; max: VoxelBlock['position'] },
+    ): readonly string[] {
+        const materials = new Set<string>();
+        blocks.forEach((block) => {
+            const { x, y, z } = block.position;
+            const inside =
+                x >= bbox.min.x &&
+                x <= bbox.max.x &&
+                y >= bbox.min.y &&
+                y <= bbox.max.y &&
+                z >= bbox.min.z &&
+                z <= bbox.max.z;
+            if (inside) materials.add(block.blockId);
+        });
+        return [...materials].sort();
     }
 }

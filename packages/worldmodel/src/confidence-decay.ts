@@ -24,16 +24,23 @@ export class ConfidenceDecay {
         if (nowMilliseconds === null) {
             return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
         }
-        const lastSeenMilliseconds = ConfidenceDecay.parseTimestamp(landmark.lastSeen);
-        if (lastSeenMilliseconds === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: landmark.lastSeen }];
+        const confidenceTimestamp = landmark.confidenceUpdatedAt ?? landmark.lastSeen;
+        const confidenceUpdatedAtMilliseconds = ConfidenceDecay.parseTimestamp(confidenceTimestamp);
+        if (confidenceUpdatedAtMilliseconds === null) {
+            return [null, { type: 'INVALID_TIMESTAMP', value: confidenceTimestamp }];
         }
 
-        const elapsedMilliseconds = Math.max(0, nowMilliseconds - lastSeenMilliseconds);
+        const elapsedMilliseconds = Math.max(0, nowMilliseconds - confidenceUpdatedAtMilliseconds);
         const confidence = ConfidenceDecay.clamp(
             landmark.confidence * 2 ** (-elapsedMilliseconds / this.options.halfLifeMilliseconds),
         );
-        const decayed: Landmark = { ...landmark, confidence };
+        const nextConfidenceTimestamp =
+            nowMilliseconds >= confidenceUpdatedAtMilliseconds ? observedAt : confidenceTimestamp;
+        const decayed: Landmark = {
+            ...landmark,
+            confidence,
+            confidenceUpdatedAt: nextConfidenceTimestamp,
+        };
         return [
             {
                 landmark: decayed,

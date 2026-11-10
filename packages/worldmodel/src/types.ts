@@ -73,6 +73,7 @@ export interface Landmark {
     bbox: BoundingBox;
     anchors: readonly LandmarkAnchor[];
     confidence: number;
+    confidenceUpdatedAt: string;
     lastSeen: string;
     evidence: readonly LandmarkEvidence[];
     planId: string | null;

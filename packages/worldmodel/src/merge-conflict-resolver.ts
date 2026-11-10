@@ -62,6 +62,7 @@ export class MergeConflictResolver {
             bbox: candidate.bbox,
             anchors: candidate.anchors,
             confidence: candidate.confidence,
+            confidenceUpdatedAt: candidate.observedAt,
             lastSeen: candidate.observedAt,
             evidence: [candidate.evidence],
             planId: candidate.planId,

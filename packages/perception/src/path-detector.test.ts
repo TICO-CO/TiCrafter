@@ -69,7 +69,20 @@ describe('PathDetector', () => {
             min: { x: 0, y: 63, z: 0 },
             max: { x: 9, y: 65, z: 2 },
         });
-        expect(candidates[0]?.evidence).toBe('standable corridor length 10 width 3');
+        expect(candidates[0]?.evidence).toBe(
+            'standable corridor length 10 width 3 materials stone',
+        );
+    });
+
+    it('includes sorted material hints in evidence', () => {
+        const blocks = corridor('x', 10).map((block, index) =>
+            index === 0 ? { ...block, blockId: 'oak_planks' } : block,
+        );
+        const [candidate] = new PathDetector().detect({ ...snapshot, blocks });
+
+        expect(candidate?.evidence).toBe(
+            'standable corridor length 10 width 1 materials oak_planks,stone',
+        );
     });
 
     it('ignores corridors wider than three rows', () => {

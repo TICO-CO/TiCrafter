@@ -21,6 +21,7 @@ export interface LandmarkRecord {
     bboxJson: string;
     anchorsJson: string;
     evidenceJson: string;
+    confidenceUpdatedAt: string | null;
     lastSeen: string;
     planId: string | null;
     updatedAt: string;
@@ -87,6 +88,7 @@ export class WorldStore {
                                 bbox_json AS bboxJson,
                                 anchors_json AS anchorsJson,
                                 evidence_json AS evidenceJson,
+                                confidence_updated_at AS confidenceUpdatedAt,
                                 last_seen AS lastSeen,
                                 plan_id AS planId,
                                 updated_at AS updatedAt
@@ -109,6 +111,7 @@ export class WorldStore {
                                 bbox_json AS bboxJson,
                                 anchors_json AS anchorsJson,
                                 evidence_json AS evidenceJson,
+                                confidence_updated_at AS confidenceUpdatedAt,
                                 last_seen AS lastSeen,
                                 plan_id AS planId,
                                 updated_at AS updatedAt
@@ -128,8 +131,8 @@ export class WorldStore {
                 .prepare(
                     `INSERT INTO landmarks
                          (id, type, x, y, z, confidence, bbox_json, anchors_json,
-                          evidence_json, last_seen, plan_id, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          evidence_json, confidence_updated_at, last_seen, plan_id, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                      ON CONFLICT(id) DO UPDATE SET
                          type = excluded.type,
                          x = excluded.x,
@@ -139,6 +142,7 @@ export class WorldStore {
                          bbox_json = excluded.bbox_json,
                          anchors_json = excluded.anchors_json,
                          evidence_json = excluded.evidence_json,
+                         confidence_updated_at = excluded.confidence_updated_at,
                          last_seen = excluded.last_seen,
                          plan_id = excluded.plan_id,
                          updated_at = excluded.updated_at`,
@@ -153,6 +157,7 @@ export class WorldStore {
                     record.bboxJson,
                     record.anchorsJson,
                     record.evidenceJson,
+                    record.confidenceUpdatedAt,
                     record.lastSeen,
                     record.planId,
                     record.updatedAt,

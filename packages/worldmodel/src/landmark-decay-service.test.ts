@@ -14,6 +14,7 @@ const landmark: Landmark = {
     },
     anchors: [],
     confidence: 0.8,
+    confidenceUpdatedAt: '2026-11-10T12:00:00.000Z',
     lastSeen: '2026-11-10T12:00:00.000Z',
     evidence: [],
     planId: null,
@@ -40,6 +41,23 @@ describe('LandmarkDecayService', () => {
         const [stored, storeError] = store.get(landmark.id);
         expect(storeError).toBeNull();
         expect(stored?.confidence.toFixed(3)).toBe('0.400');
+    });
+
+    it('does not decay persisted confidence twice at the same timestamp', () => {
+        const store = new InMemoryLandmarkStore();
+        store.save(landmark);
+        const service = new LandmarkDecayService(
+            store,
+            new ConfidenceDecay({
+                halfLifeMilliseconds: 60_000,
+                verificationThreshold: 0.5,
+            }),
+        );
+        service.apply('2026-11-10T12:01:00.000Z');
+        const [decayed, error] = service.apply('2026-11-10T12:01:00.000Z');
+
+        expect(error).toBeNull();
+        expect(decayed?.[0]?.landmark.confidence.toFixed(3)).toBe('0.400');
     });
 
     it('rejects an invalid decay timestamp', () => {

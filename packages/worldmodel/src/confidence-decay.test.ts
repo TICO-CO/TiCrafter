@@ -12,6 +12,7 @@ const landmark: Landmark = {
     },
     anchors: [{ name: 'start', position: { x: 0, y: 64, z: 0 } }],
     confidence: 0.8,
+    confidenceUpdatedAt: '2026-11-10T12:00:00.000Z',
     lastSeen: '2026-11-10T12:00:00.000Z',
     evidence: [
         {
@@ -50,6 +51,21 @@ describe('ConfidenceDecay', () => {
         if (decayed === null) return;
         expect(decayed.landmark.confidence.toFixed(3)).toBe('0.566');
         expect(decayed.needsVerification).toBe(false);
+    });
+
+    it('does not decay the same landmark twice at the same timestamp', () => {
+        const decay = new ConfidenceDecay({
+            halfLifeMilliseconds: 60_000,
+            verificationThreshold: 0.5,
+        });
+        const [first, firstError] = decay.apply(landmark, '2026-11-10T12:01:00.000Z');
+        expect(firstError).toBeNull();
+        if (first === null) return;
+        const [second, secondError] = decay.apply(first.landmark, '2026-11-10T12:01:00.000Z');
+
+        expect(secondError).toBeNull();
+        expect(second?.landmark.confidence.toFixed(3)).toBe('0.400');
+        expect(second?.landmark.confidenceUpdatedAt).toBe('2026-11-10T12:01:00.000Z');
     });
 
     it('rejects an invalid observation timestamp', () => {

@@ -13,6 +13,7 @@ const existingLandmark: Landmark = {
     },
     anchors: [{ name: 'door', position: { x: 13, y: 64, z: 10 } }],
     confidence: 0.8,
+    confidenceUpdatedAt: '2026-11-10T12:00:00.000Z',
     lastSeen: '2026-11-10T12:00:00.000Z',
     evidence: [
         {
@@ -76,6 +77,40 @@ describe('MergeConflictResolver', () => {
         expect(result.outcome).toBe('replaced');
         expect(result.landmark.lastSeen).toBe(candidate.observedAt);
         expect(result.landmark.evidence).toHaveLength(2);
+    });
+
+    it('flags a newer observation with conflicting geometry', () => {
+        const conflictingCandidate: LandmarkCandidate = {
+            ...candidate,
+            bbox: {
+                min: { x: 30, y: 64, z: 30 },
+                max: { x: 36, y: 70, z: 36 },
+            },
+        };
+        const [result, error] = resolver.resolve(
+            existingLandmark,
+            conflictingCandidate,
+            conflictingCandidate.observedAt,
+        );
+
+        expect(error).toBeNull();
+        if (result === null) return;
+        expect(result.outcome).toBe('flagged');
+        expect(result.landmark.lastSeen).toBe(conflictingCandidate.observedAt);
+        expect(result.needsVerification).toBe(true);
+    });
+
+    it('preserves an active plan tag when replacing a landmark', () => {
+        const [result, error] = resolver.resolve(
+            { ...existingLandmark, planId: 'plan.base.1' },
+            { ...candidate, planId: null },
+            candidate.observedAt,
+        );
+
+        expect(error).toBeNull();
+        if (result === null) return;
+        expect(result.outcome).toBe('replaced');
+        expect(result.landmark.planId).toBe('plan.base.1');
     });
 
     it('keeps the newest observation and flags conflicting geometry', () => {

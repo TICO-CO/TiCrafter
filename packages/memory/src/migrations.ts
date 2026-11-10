@@ -23,4 +23,11 @@ export const migrations: Migration[] = [
       ALTER TABLE landmarks ADD COLUMN plan_id TEXT;
     `,
     },
+    {
+        version: 3,
+        name: 'landmark-confidence-timestamp',
+        sql: `
+      ALTER TABLE landmarks ADD COLUMN confidence_updated_at TEXT;
+    `,
+    },
 ];

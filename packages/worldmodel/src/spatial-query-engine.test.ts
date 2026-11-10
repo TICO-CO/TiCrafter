@@ -13,6 +13,7 @@ const house: Landmark = {
     },
     anchors: [],
     confidence: 0.8,
+    confidenceUpdatedAt: '2026-11-10T12:00:00.000Z',
     lastSeen: '2026-11-10T12:00:00.000Z',
     evidence: [],
     planId: null,
