@@ -1,6 +1,10 @@
+import { DiagonalLineGeometry, type DiagonalSpan } from './diagonal-line-geometry.js';
+import { DiagonalStructureClassifier } from './diagonal-structure-classifier.js';
 import { LinearGeometry, type LinearSlab, type LinearSpan } from './linear-geometry.js';
+import { pathLikeMaterials } from './surface-materials.js';
 import type {
     ChunkSnapshot,
+    DetectionBoundingBox,
     DetectionCandidate,
     DetectorPort,
     VoxelBlock,
@@ -30,11 +34,24 @@ export class LinearStructureDetector implements DetectorPort {
         const spans = LinearGeometry.spans(
             LinearGeometry.slabs(snapshot.blocks, this.minimumLength),
         );
-        return spans.flatMap((span) =>
+        const axisCandidates = spans.flatMap((span) =>
             this.candidates(span, solid, snapshot.blocks).map((candidate) =>
                 LinearStructureDetector.candidate(candidate),
             ),
         );
+        const diagonalCandidates = DiagonalLineGeometry.spans(
+            snapshot.blocks,
+            this.minimumLength,
+        ).flatMap((span) => this.diagonalCandidates(span, solid, snapshot.blocks));
+        return [...axisCandidates, ...diagonalCandidates];
+    }
+
+    private diagonalCandidates(
+        span: DiagonalSpan,
+        solid: ReadonlySet<string>,
+        blocks: readonly VoxelBlock[],
+    ): readonly DetectionCandidate[] {
+        return DiagonalStructureClassifier.classify(span, solid, blocks);
     }
 
     private candidates(
@@ -59,11 +76,14 @@ export class LinearStructureDetector implements DetectorPort {
         const maximumY = layers.at(-1)?.y;
         if (minimumY === undefined || maximumY === undefined) return [];
         const height = maximumY - minimumY + 1;
+        const bbox = LinearGeometry.bounds(span, minimumY, maximumY);
         const deckRatio = LinearGeometry.deckOverAirRatio(span, solid, minimumY);
         const openAbove = LinearGeometry.openAboveRatio(span, solid, minimumY);
-        const isBridge = deckRatio >= 0.7 && openAbove >= 0.5;
+        const isBridge =
+            !LinearStructureDetector.isPathDeck(bbox, minimumY, blocks) &&
+            deckRatio >= 0.7 &&
+            openAbove >= 0.5;
         if (!isBridge && (height < 2 || height <= span.width)) return [];
-        const bbox = LinearGeometry.bounds(span, minimumY, maximumY);
         const materials = VoxelGeometry.materials(blocks, bbox);
         const type = isBridge ? 'bridge' : 'wall';
         return [
@@ -135,6 +155,19 @@ export class LinearStructureDetector implements DetectorPort {
             detectorId: 'linear-structure',
             ...candidate,
         };
+    }
+
+    private static isPathDeck(
+        bounds: DetectionBoundingBox,
+        y: number,
+        blocks: readonly VoxelBlock[],
+    ): boolean {
+        const bottom = blocks.filter(
+            (block) => block.position.y === y && VoxelGeometry.inside(block.position, bounds),
+        );
+        if (bottom.length === 0) return false;
+        const pathBlocks = bottom.filter((block) => pathLikeMaterials.has(block.blockId));
+        return pathBlocks.length / bottom.length > 0.5;
     }
 
     private static confidence(length: number, height: number, isBridge: boolean): number {

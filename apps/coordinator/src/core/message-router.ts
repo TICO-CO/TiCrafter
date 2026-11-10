@@ -1,4 +1,13 @@
-import type { Envelope, LoggerPort } from '@ticrafter/core';
+import {
+    CHUNK_SNAPSHOT_EVENT,
+    type ChunkSnapshotMessage,
+    chunkSnapshotSchema,
+    type Envelope,
+    LANDMARK_CANDIDATE_EVENT,
+    type LandmarkCandidateMessage,
+    landmarkCandidateSchema,
+    type LoggerPort,
+} from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
 
 import type { ClientConnection } from '../transport/index.js';
@@ -12,6 +21,8 @@ export interface MessageRouterOptions {
     handshake: SessionHandshake;
     events: EventLogWriter;
     logger: LoggerPort;
+    onChunkSnapshot?: (payload: ChunkSnapshotMessage) => void;
+    onLandmarkCandidate?: (payload: LandmarkCandidateMessage) => void;
 }
 
 export class MessageRouter {
@@ -38,6 +49,26 @@ export class MessageRouter {
                 { botId: connection.botId, event: envelope.payload },
                 'bot event',
             );
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === CHUNK_SNAPSHOT_EVENT) {
+            const parsed = chunkSnapshotSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid chunk snapshot');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onChunkSnapshot?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === LANDMARK_CANDIDATE_EVENT) {
+            const parsed = landmarkCandidateSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid landmark candidate');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onLandmarkCandidate?.(parsed.data);
             return;
         }
         if (envelope.kind === 'request') {

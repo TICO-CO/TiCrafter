@@ -72,6 +72,43 @@ describe('LinearStructureDetector', () => {
         expect(candidates[0]?.evidence.includes('open-gap 1.00')).toBe(true);
     });
 
+    it('detects a diagonal wall using line fitting', () => {
+        const ground: VoxelBlock[] = [];
+        for (let x = 0; x <= 9; x += 1) {
+            for (let z = 0; z <= 9; z += 1) {
+                ground.push(solid(x, 63, z));
+            }
+        }
+        const wall = Array.from({ length: 10 }, (_, index) =>
+            [64, 65, 66].map((y) => solid(index, y, index)),
+        ).flat();
+        const candidates = new LinearStructureDetector().detect(snapshot([...ground, ...wall]));
+
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0]?.type).toBe('wall');
+        expect(candidates[0]?.evidence.includes('axis diagonal')).toBe(true);
+    });
+
+    it('detects a diagonal bridge over air', () => {
+        const blocks = Array.from({ length: 10 }, (_, index) => solid(index, 64, index));
+        const candidates = new LinearStructureDetector().detect(snapshot(blocks));
+
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0]?.type).toBe('bridge');
+        expect(candidates[0]?.evidence.includes('axis diagonal')).toBe(true);
+    });
+
+    it('does not classify an unsupported surface path as a bridge', () => {
+        const blocks = Array.from({ length: 10 }, (_, index) => ({
+            position: { x: index, y: 64, z: 0 },
+            blockId: 'dirt_path',
+            solid: true,
+        }));
+        const candidates = new LinearStructureDetector().detect(snapshot(blocks));
+
+        expect(candidates).toHaveLength(0);
+    });
+
     it('ignores linear structures shorter than the minimum length', () => {
         const blocks = [...layer(6, 1, 63), ...layer(6, 0, 64), ...layer(6, 0, 65)];
         const candidates = new LinearStructureDetector().detect(snapshot(blocks));

@@ -1,14 +1,18 @@
 import {
     attempt,
+    EventStream,
     type LoggerPort,
     type MessageSchemaRegistry,
     type Result,
     type TicrafterConfig,
 } from '@ticrafter/core';
+import { PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
 import { type Bot, createBot } from 'mineflayer';
 
 import type { ActionExecutor } from './action-executor.js';
 import { BotEventBridge } from './event-bridge.js';
+import { PerceptionHost } from './perception-host.js';
+import { MineflayerPerceptionSource } from './perception-source.js';
 import { StateDigest } from './state-digest.js';
 import { BotTransportClient } from './transport/index.js';
 import { WorldCacheAdapter } from './world-cache.js';
@@ -27,6 +31,7 @@ export class BotConnection {
     private bot: Bot | null = null;
     private transport: BotTransportClient | null = null;
     private world: WorldCacheAdapter | null = null;
+    private perception: PerceptionHost | null = null;
 
     constructor(private readonly options: BotConnectionOptions) {}
 
@@ -76,6 +81,7 @@ export class BotConnection {
             this.options.logger,
         );
         bridge.attach();
+        this.startPerception(bot, transport);
 
         let spawned = false;
         bot.once('spawn', () => {
@@ -96,6 +102,8 @@ export class BotConnection {
         await this.waitForEnd();
 
         clearInterval(heartbeat);
+        this.perception?.stop();
+        this.perception = null;
         bridge.detachAll();
         this.closeTransport();
         this.bot = null;
@@ -104,6 +112,8 @@ export class BotConnection {
     }
 
     close(): void {
+        this.perception?.stop();
+        this.perception = null;
         const [, quitError] = attempt(() => this.bot?.quit());
         if (quitError) {
             this.options.logger.warn({ error: this.describe(quitError) }, 'mineflayer quit failed');
@@ -111,6 +121,47 @@ export class BotConnection {
         this.closeTransport();
         this.bot = null;
         this.world = null;
+    }
+
+    private startPerception(bot: Bot, transport: BotTransportClient): void {
+        const config = this.options.config.perception;
+        const [limiter, limiterError] = PerceptionRateLimiter.create(
+            {
+                tokensPerSecond: config.chunksPerSecond,
+                burst: config.burst,
+            },
+            () => Date.now(),
+        );
+        if (limiterError || limiter === null) {
+            this.options.logger.error(
+                { error: limiterError },
+                'perception rate limiter creation failed',
+            );
+            return;
+        }
+        const [sampler, samplerError] = RingSampler.create(
+            { ringRadius: config.ringRadius },
+            limiter,
+        );
+        if (samplerError || sampler === null) {
+            this.options.logger.error(
+                { error: samplerError },
+                'perception ring sampler creation failed',
+            );
+            return;
+        }
+        const events = new EventStream();
+        this.perception = new PerceptionHost({
+            botId: this.options.botId,
+            source: new MineflayerPerceptionSource(bot),
+            sampler,
+            events,
+            sink: (envelope) => transport.send(envelope),
+            logger: this.options.logger,
+            ringRadius: config.ringRadius,
+            intervalMilliseconds: Math.max(100, Math.round(1000 / config.chunksPerSecond)),
+        });
+        this.perception.start();
     }
 
     private sendHeartbeat(): void {

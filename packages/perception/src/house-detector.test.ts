@@ -58,6 +58,41 @@ describe('HouseDetector', () => {
         expect(candidates).toHaveLength(0);
     });
 
+    it('ignores an enclosed cavity without house features', () => {
+        const blocks = new Map<string, VoxelBlock>();
+        for (let x = 0; x <= 3; x += 1) {
+            for (let y = 0; y <= 3; y += 1) {
+                for (let z = 0; z <= 3; z += 1) {
+                    const boundary = x === 0 || x === 3 || y === 0 || y === 3 || z === 0 || z === 3;
+                    if (boundary) blocks.set(`${x},${y},${z}`, solid({ x, y, z }));
+                }
+            }
+        }
+        const candidates = new HouseDetector().detect({
+            ...snapshot,
+            blocks: [...blocks.values()],
+        });
+
+        expect(candidates).toHaveLength(0);
+    });
+
+    it('keeps non-solid doors as part of the shell', () => {
+        const blocks = houseBlocks()
+            .filter(
+                (block) =>
+                    block.position.x !== 2 || block.position.y !== 64 || block.position.z !== 0,
+            )
+            .concat({
+                position: { x: 2, y: 64, z: 0 },
+                blockId: 'oak_door',
+                solid: false,
+            });
+        const [candidate] = new HouseDetector().detect({ ...snapshot, blocks });
+
+        expect(candidate?.type).toBe('house');
+        expect(candidate?.anchors.map((anchor) => anchor.name)).toEqual(['center', 'door']);
+    });
+
     it('ignores solid blocks without an enclosed interior', () => {
         const blocks = [solid({ x: 0, y: 64, z: 0 }), solid({ x: 1, y: 64, z: 0 })];
         const candidates = new HouseDetector().detect({ ...snapshot, blocks });

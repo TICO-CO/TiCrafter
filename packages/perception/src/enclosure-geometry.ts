@@ -24,12 +24,13 @@ export class EnclosureGeometry {
     static enclosedRegions(
         blocks: readonly VoxelBlock[],
         minimumVolume: number,
+        isBarrier: (block: VoxelBlock) => boolean = (block) => block.solid,
     ): readonly EnclosedRegion[] {
         const bounds = BlockClusterer.bounds(blocks);
         if (bounds === null) return [];
-        const solid = new Set(
+        const barriers = new Set(
             blocks
-                .filter((block) => block.solid)
+                .filter((block) => isBarrier(block))
                 .map((block) => EnclosureGeometry.key(block.position)),
         );
         const visited = new Set<string>();
@@ -41,7 +42,7 @@ export class EnclosureGeometry {
                     EnclosureGeometry.visit(
                         position,
                         bounds,
-                        solid,
+                        barriers,
                         visited,
                         minimumVolume,
                         regions,
@@ -55,14 +56,14 @@ export class EnclosureGeometry {
     private static visit(
         position: VoxelPosition,
         bounds: DetectionBoundingBox,
-        solid: ReadonlySet<string>,
+        barriers: ReadonlySet<string>,
         visited: Set<string>,
         minimumVolume: number,
         regions: EnclosedRegion[],
     ): void {
         const key = EnclosureGeometry.key(position);
-        if (solid.has(key) || visited.has(key)) return;
-        const result = EnclosureGeometry.flood(position, bounds, solid, visited);
+        if (barriers.has(key) || visited.has(key)) return;
+        const result = EnclosureGeometry.flood(position, bounds, barriers, visited);
         if (result.touchesBoundary || result.positions.length < minimumVolume) return;
         const regionBounds = BlockClusterer.boundsOfPositions(result.positions);
         if (regionBounds === null) return;
@@ -72,7 +73,7 @@ export class EnclosureGeometry {
     private static flood(
         seed: VoxelPosition,
         bounds: DetectionBoundingBox,
-        solid: ReadonlySet<string>,
+        barriers: ReadonlySet<string>,
         visited: Set<string>,
     ): FloodResult {
         const stack: VoxelPosition[] = [seed];
@@ -92,7 +93,7 @@ export class EnclosureGeometry {
                 };
                 if (!EnclosureGeometry.inside(neighbor, bounds)) return;
                 const key = EnclosureGeometry.key(neighbor);
-                if (solid.has(key) || visited.has(key)) return;
+                if (barriers.has(key) || visited.has(key)) return;
                 visited.add(key);
                 stack.push(neighbor);
             });

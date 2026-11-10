@@ -14,6 +14,7 @@ describe('config', () => {
         if (config === null) return;
         expect(config.hardwareProfile).toBe('home-min');
         expect(config.botCount).toBe(4);
+        expect(config.perception.ringRadius).toBe(32);
         expect(config.laya.executionProviders).toEqual(['cpu']);
     });
 

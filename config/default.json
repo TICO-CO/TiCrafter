@@ -16,6 +16,11 @@
         "port": 8787
     },
     "dataDir": "./data",
+    "perception": {
+        "ringRadius": 32,
+        "chunksPerSecond": 1,
+        "burst": 2
+    },
     "laya": {
         "executionProviders": ["cpu"],
         "threads": 3

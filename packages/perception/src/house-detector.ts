@@ -15,7 +15,11 @@ export class HouseDetector implements DetectorPort {
     constructor(private readonly minimumVolume = 4) {}
 
     detect(snapshot: ChunkSnapshot): readonly DetectionCandidate[] {
-        return EnclosureGeometry.enclosedRegions(snapshot.blocks, this.minimumVolume)
+        return EnclosureGeometry.enclosedRegions(
+            snapshot.blocks,
+            this.minimumVolume,
+            HouseDetector.isBarrier,
+        )
             .map((region) => HouseDetector.candidate(region, snapshot.blocks))
             .filter((candidate): candidate is DetectionCandidate => candidate !== null);
     }
@@ -29,11 +33,12 @@ export class HouseDetector implements DetectorPort {
         const bbox = HouseDetector.expand(region.bounds, 1);
         const nearby = blocks.filter((block) => VoxelGeometry.inside(block.position, bbox));
         const features = HouseDetector.features(region, nearby);
+        if (!HouseDetector.hasStrongEvidence(features)) return null;
         const materials = VoxelGeometry.materials(nearby, bbox);
         const anchors: DetectionAnchor[] = [
             { name: 'center', position: VoxelGeometry.center(region.bounds) },
         ];
-        const door = nearby.find((block) => block.blockId.includes('door'));
+        const door = nearby.find((block) => HouseDetector.isDoor(block.blockId));
         if (door !== undefined) anchors.push({ name: 'door', position: door.position });
         return {
             detectorId: 'house',
@@ -45,13 +50,28 @@ export class HouseDetector implements DetectorPort {
         };
     }
 
+    private static isBarrier(block: VoxelBlock): boolean {
+        return (
+            block.solid ||
+            HouseDetector.isDoor(block.blockId) ||
+            block.blockId.includes('trapdoor') ||
+            HouseDetector.isWindow(block.blockId)
+        );
+    }
+
+    private static hasStrongEvidence(features: readonly string[]): boolean {
+        return features.some(
+            (feature) => feature === 'door' || feature === 'bed' || feature === 'window',
+        );
+    }
+
     private static features(
         region: EnclosedRegion,
         nearby: readonly VoxelBlock[],
     ): readonly string[] {
         const features = new Set<string>();
         nearby.forEach((block) => {
-            if (block.blockId.includes('door')) features.add('door');
+            if (HouseDetector.isDoor(block.blockId)) features.add('door');
             if (block.blockId.includes('bed')) features.add('bed');
             if (HouseDetector.isWindow(block.blockId)) features.add('window');
         });
@@ -79,6 +99,10 @@ export class HouseDetector implements DetectorPort {
 
     private static confidence(volume: number, featureCount: number): number {
         return Math.min(0.95, 0.5 + Math.min(volume, 40) / 80 + featureCount * 0.05);
+    }
+
+    private static isDoor(blockId: string): boolean {
+        return blockId.endsWith('_door');
     }
 
     private static isWindow(blockId: string): boolean {

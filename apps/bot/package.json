@@ -6,6 +6,7 @@
     "main": "src/main.ts",
     "dependencies": {
         "@ticrafter/core": "0.1.0",
+        "@ticrafter/perception": "0.1.0",
         "mineflayer": "4.39.0",
         "pino": "10.4.0",
         "ws": "8.22.2"

@@ -76,8 +76,56 @@ export const botEventSchema = zod.object({
     data: zod.unknown().optional(),
 });
 
+const voxelPositionSchema = zod.object({
+    x: zod.number().int(),
+    y: zod.number().int(),
+    z: zod.number().int(),
+});
+
+const voxelBlockSchema = zod.object({
+    position: voxelPositionSchema,
+    blockId: zod.string().min(1),
+    solid: zod.boolean(),
+    properties: zod.record(zod.string(), zod.string()).optional(),
+});
+
+export const chunkSnapshotSchema = zod.object({
+    botId: zod.string().min(1),
+    chunk: zod.object({ x: zod.number().int(), z: zod.number().int() }),
+    version: zod.number().int().nonnegative(),
+    observedAt: zod.string().min(1),
+    blocks: zod.array(voxelBlockSchema),
+});
+
+export const landmarkCandidateSchema = zod.object({
+    botId: zod.string().min(1),
+    chunk: zod.object({ x: zod.number().int(), z: zod.number().int() }),
+    observedAt: zod.string().min(1),
+    candidate: zod.object({
+        detectorId: zod.enum(['path', 'house', 'farm', 'storage-workstation', 'linear-structure']),
+        type: zod.enum([
+            'path',
+            'house',
+            'farm',
+            'storage',
+            'workstation',
+            'wall',
+            'bridge',
+            'mineshaft',
+        ]),
+        bbox: zod.object({ min: voxelPositionSchema, max: voxelPositionSchema }),
+        anchors: zod.array(
+            zod.object({ name: zod.string().min(1), position: voxelPositionSchema }),
+        ),
+        confidence: zod.number().min(0).max(1),
+        evidence: zod.string(),
+    }),
+});
+
 export type SessionHello = zod.infer<typeof sessionHelloSchema>;
 export type SessionHelloResponse = zod.infer<typeof sessionHelloResponseSchema>;
 export type CoordinatorStatusResponse = zod.infer<typeof coordinatorStatusResponseSchema>;
 export type BotHeartbeat = zod.infer<typeof botHeartbeatSchema>;
 export type BotEvent = zod.infer<typeof botEventSchema>;
+export type ChunkSnapshotMessage = zod.infer<typeof chunkSnapshotSchema>;
+export type LandmarkCandidateMessage = zod.infer<typeof landmarkCandidateSchema>;

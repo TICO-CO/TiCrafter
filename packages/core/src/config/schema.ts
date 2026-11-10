@@ -26,6 +26,11 @@ export const configSchema = zod
             port: zod.number().int().min(1).max(65535),
         }),
         dataDir: zod.string().min(1),
+        perception: zod.object({
+            ringRadius: zod.number().int().min(16).max(64),
+            chunksPerSecond: zod.number().positive(),
+            burst: zod.number().int().positive(),
+        }),
         laya: zod.object({
             executionProviders: zod.array(executionProvider).min(1),
             threads: zod.number().int().min(1),

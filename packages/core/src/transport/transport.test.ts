@@ -3,6 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import { SessionAuthenticator } from './auth.js';
 import { WsCodec } from './codec.js';
 import { DeltaSync } from './delta-sync.js';
+import { CHUNK_SNAPSHOT_EVENT, LANDMARK_CANDIDATE_EVENT } from './event-types.js';
 import { FlowController } from './flow-control.js';
 import { MessageSchemaRegistry, ProtocolEnvelope } from './messages.js';
 import { RequestCorrelator } from './request-correlator.js';
@@ -34,6 +35,50 @@ describe('transport', () => {
         const [encoded, encodeError] = codec.encode(envelope);
         expect(encoded).toBeNull();
         expect(encodeError).toMatchObject({ type: 'INVALID_PAYLOAD' });
+    });
+
+    it('round-trips perception events', () => {
+        const position = { x: 0, y: 64, z: 0 };
+        const chunk = {
+            botId: 'bot.alpha',
+            chunk: { x: 0, z: 0 },
+            version: 1,
+            observedAt: '2026-11-10T12:00:00.000Z',
+            blocks: [{ position, blockId: 'stone', solid: true, properties: { axis: 'x' } }],
+        };
+        const landmark = {
+            botId: 'bot.alpha',
+            chunk: { x: 0, z: 0 },
+            observedAt: '2026-11-10T12:00:00.000Z',
+            candidate: {
+                detectorId: 'path',
+                type: 'path',
+                bbox: { min: position, max: { x: 9, y: 65, z: 0 } },
+                anchors: [{ name: 'start', position }],
+                confidence: 0.7,
+                evidence: 'standable corridor',
+            },
+        };
+
+        const chunkEnvelope = ProtocolEnvelope.create('event', CHUNK_SNAPSHOT_EVENT, chunk);
+        const landmarkEnvelope = ProtocolEnvelope.create(
+            'event',
+            LANDMARK_CANDIDATE_EVENT,
+            landmark,
+        );
+        const [encodedChunk, chunkError] = codec.encode(chunkEnvelope);
+        const [encodedLandmark, landmarkError] = codec.encode(landmarkEnvelope);
+
+        expect(chunkError).toBeNull();
+        expect(landmarkError).toBeNull();
+        if (encodedChunk === null || encodedLandmark === null) return;
+        const [decodedChunk, chunkDecodeError] = codec.decode(encodedChunk);
+        const [decodedLandmark, landmarkDecodeError] = codec.decode(encodedLandmark);
+
+        expect(chunkDecodeError).toBeNull();
+        expect(landmarkDecodeError).toBeNull();
+        expect(decodedChunk?.type).toBe(CHUNK_SNAPSHOT_EVENT);
+        expect(decodedLandmark?.type).toBe(LANDMARK_CANDIDATE_EVENT);
     });
 
     it('authenticates known bot names', () => {

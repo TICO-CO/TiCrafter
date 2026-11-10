@@ -11,6 +11,7 @@ const defaultConfig: Record<string, unknown> = {
     transport: { host: '127.0.0.1', port: 8788 },
     ops: { host: '127.0.0.1', port: 8787 },
     dataDir: './data',
+    perception: { ringRadius: 32, chunksPerSecond: 1, burst: 2 },
     laya: { executionProviders: ['cpu'], threads: 3 },
     planner: { enabled: false, baseUrl: '', apiKey: '' },
     logging: { level: 'info' },

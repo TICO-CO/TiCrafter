@@ -52,6 +52,28 @@ describe('LandmarkCandidateEmitter', () => {
         expect(payloadOf(received[0])?.candidate.type).toBe('path');
     });
 
+    it('deduplicates repeated candidates inside the window', () => {
+        const events = new EventStream();
+        const received: Envelope[] = [];
+        events.subscribe(LANDMARK_CANDIDATE_EVENT, (envelope) => received.push(envelope));
+        let now = 0;
+        const emitter = new LandmarkCandidateEmitter(
+            new DetectorPipeline([new PathDetector()]),
+            events,
+            { dedupeWindowMilliseconds: 1000, clock: () => now },
+        );
+
+        const [first] = emitter.emit(snapshot);
+        const [duplicate] = emitter.emit(snapshot);
+        now = 1000;
+        const [refreshed] = emitter.emit(snapshot);
+
+        expect(first).toHaveLength(1);
+        expect(duplicate).toHaveLength(0);
+        expect(refreshed).toHaveLength(1);
+        expect(received).toHaveLength(2);
+    });
+
     it('publishes nothing when no landmarks are detected', () => {
         const events = new EventStream();
         const received: Envelope[] = [];

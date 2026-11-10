@@ -14,6 +14,7 @@ import {
     SessionManager,
 } from './core/index.js';
 import { TransportServer } from './transport/index.js';
+import { CoordinatorWorldModel } from './world-model.js';
 
 export interface CoordinatorCompositionOptions {
     config: TicrafterConfig;
@@ -29,6 +30,7 @@ export class CoordinatorComposition {
         const sessions = new SessionManager();
         const registry = MessageSchemaRegistry.withDefaults();
         const events = new EventLogWriter(options.database);
+        const worldModel = new CoordinatorWorldModel(options.database, options.logger);
         let messageRouter: MessageRouter | null = null;
         const transport = new TransportServer({
             host: options.config.transport.host,
@@ -58,6 +60,24 @@ export class CoordinatorComposition {
             handshake,
             events,
             logger: options.logger,
+            onChunkSnapshot: (payload) => {
+                const [, ingestError] = worldModel.ingestChunk(payload);
+                if (ingestError) {
+                    options.logger.warn(
+                        { error: ingestError, chunk: payload.chunk },
+                        'chunk snapshot ingestion failed',
+                    );
+                }
+            },
+            onLandmarkCandidate: (payload) => {
+                const [, ingestError] = worldModel.ingestLandmark(payload);
+                if (ingestError) {
+                    options.logger.warn(
+                        { error: ingestError, type: payload.candidate.type },
+                        'landmark candidate ingestion failed',
+                    );
+                }
+            },
         });
         const ops = new OpsServer({
             host: options.config.ops.host,
