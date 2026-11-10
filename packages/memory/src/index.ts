@@ -9,3 +9,4 @@ export * from './schema-version-registry.js';
 export * from './snapshot-export.js';
 export * from './sqlite-runtime.js';
 export * from './transaction-manager.js';
+export * from './world-store.js';
