@@ -48,15 +48,16 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
 - Enforce a single in-flight forward pass per coordinator; batch questions from one decision request.
 - If WebGPU fails to initialize, crashes, or is slower than CPU at p95, fall back to CPU automatically and log the downgrade.
 
-**Benchmark — measured 2026-11-10 on `home-full`**
+**Benchmark — measured 2026-11-10**
 
 - fp16 ONNX bundle: 808MB vs 1.6GB fp32. Keep float32 model I/O; convert internal weights only.
 - fp16 WebGPU, 577-token compact request with all three questions: p50 137–180ms, p95 140–188ms over 200 requests.
-- fp32 WebGPU, same request: p95 ≈613ms. fp16 CPU: p95 ≈1.0s.
+- fp32 WebGPU, same request: p95 ≈613ms. fp16 CPU on `home-full`: p95 ≈1.0s.
+- fp16 CPU on `home-min`, 3 threads, same compact request: p50 1828ms, p95 1906ms over 200 requests.
 - 908-token prompt: p95 ≈835ms even with fp16. Total input tokens must stay ≤600 for the three-question request.
 - WebGPU VRAM delta ≈1GB; process RSS peak <1.2GB.
-- WebGPU-to-CPU fallback must be tested by forcing WebGPU load failure.
-- Actual `home-min` CPU measurement and 2h WebGPU stability remain milestone 2 exit criteria.
+- WebGPU-to-CPU fallback verified by forcing WebGPU load failure: report keeps `requestedProvider=webgpu`, records `provider=cpu` and the fallback reason.
+- 2h WebGPU stability remains a milestone 2 exit criterion.
 
 ## Architecture
 
@@ -262,7 +263,7 @@ Load configuration is profile-driven:
 - **No ROCm EP** exists in `onnxruntime-node` for the RX 7600. WebGPU on Linux x64 is experimental, so benchmark it and keep CPU fallback.
 - WebGPU uses the fp16 ONNX bundle with float32 I/O; fp32 remains the reference bundle.
 - Decision-rate targets: ~4/sec fleet-wide on `home-min`; measure `home-full` and raise the cap only if p95 latency stays within budget.
-- Latency gate: WebGPU warm-model p95 <250ms per decision request. The measured CPU path is ≈1.0s p95, so CPU profiles need a revised latency target or a smaller model before claiming v1.
+- Latency gate: WebGPU warm-model p95 <250ms per decision request. The measured CPU path is ≈1.0s p95 on `home-full` and ≈1.9s on `home-min`, so CPU profiles need a revised latency target or a smaller model before claiming v1.
 - Total request tokens: keep ≤600 for the three-question request. A 908-token prompt measured ≈835ms p95 even with fp16.
 
 Per decision request from a bot:
@@ -390,7 +391,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - Unit: detector fixtures, SIP validation, claim transactions, edit grants, blueprint diff, guardian invariants, resume logic.
 - Integration: repo-provisioned 1.20.1 server (`bun run server:start`), offline, superflat; bots join via LAN. Docker remains an optional alternative only.
 - Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
-- Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95. Measured 2026-11-10: fp16 WebGPU compact p95 140–188ms; fp16 CPU p95 ≈1.0s; 908-token prompts p95 ≈835ms.
+- Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95. Measured 2026-11-10: fp16 WebGPU compact p95 140–188ms; fp16 CPU p95 ≈1.0s on `home-full` and ≈1.9s on `home-min`; 908-token prompts p95 ≈835ms.
 - Multi-bot scenarios:
     - 3 bots build one house without duplicate/conflicting blocks.
     - 2 bots race to claim a farm plot; only one proceeds.
@@ -447,9 +448,9 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 3. **Owner-offline edits:** deny by default; compatibility check only when `autoAcceptCompatibleHelpers=true`. See §3 and §11.
 4. **Roles:** fixed and persisted; planner may reassign temporarily, then restore the fixed role. See §5.
 5. **Persistence:** `DATA_DIR=./data`; prune event logs and block changelogs after 30 days; keep SQLite state until manual pruning. See §12.
-6. **Laya latency:** WebGPU warm-model p95 <250ms per decision request with ≤600 input tokens. The CPU path currently misses this target at ≈1s p95. See §7 and §15.
+6. **Laya latency:** WebGPU warm-model p95 <250ms per decision request with ≤600 input tokens. The CPU path currently misses this target at ≈1s p95 on `home-full` and ≈1.9s on `home-min`. See §7 and §15.
 7. **WebGPU:** default on `home-full` only if faster than CPU p95 and stable for 2h with no crash or driver reset; otherwise CPU. See §15 and §17.
-8. **Remaining validation:** actual `home-min` CPU latency and 2h WebGPU stability are milestone 2 exit criteria, not open design questions. `home-full` latency and RAM are measured. See §16.
+8. **Remaining validation:** 2h WebGPU stability is a milestone 2 exit criterion, not an open design question. `home-min` and `home-full` latency, RAM, and fallback are measured. See §16.
 
 ## 19. Self-contained bootstrap
 

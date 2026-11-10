@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util';
 
 import {
     LayaBenchmarkRunner,
+    LayaModelAdapter,
     LayaModelLoader,
     ProcessMemoryProbe,
     ProviderGate,
@@ -32,6 +33,7 @@ Options:
   --webgpu-preferred-layout <l> NCHW or NHWC
   --ort-log-severity <0-4>      ONNX Runtime session log severity
   --strict-provider             Disable WebGPU to CPU fallback
+  --simulate-webgpu-load-failure  Force WebGPU load failure to test CPU fallback
   --max-input-tokens <count>    Gate total input tokens (default: 600)
   --out-dir <path>              Report directory (default: data/benchmarks)
   --json                        Print the full report JSON
@@ -103,6 +105,18 @@ function choiceOption(value, allowed, optionName) {
     return value;
 }
 
+function createModelLoader(simulateWebGpuLoadFailure) {
+    if (!simulateWebGpuLoadFailure) return new LayaModelLoader();
+    return new LayaModelLoader({
+        load: (options, fallbackReason) => {
+            if (options.provider === 'webgpu') {
+                return Promise.resolve([null, 'simulated WebGPU load failure']);
+            }
+            return LayaModelAdapter.load(options, fallbackReason);
+        },
+    });
+}
+
 function createProgressReporter() {
     const lastBucketByFile = new Map();
     return (progress) => {
@@ -171,6 +185,7 @@ async function main() {
             'ort-log-severity': { type: 'string' },
             'fallback-to-cpu': { type: 'boolean', default: true },
             'strict-provider': { type: 'boolean', default: false },
+            'simulate-webgpu-load-failure': { type: 'boolean', default: false },
             'max-input-tokens': { type: 'string', default: '600' },
             'out-dir': { type: 'string', default: 'data/benchmarks' },
             json: { type: 'boolean', default: false },
@@ -228,7 +243,10 @@ async function main() {
     const maxInputTokens = numberOption(values['max-input-tokens'], 600, '--max-input-tokens');
     const onDownloadProgress = createProgressReporter();
 
-    const runner = new LayaBenchmarkRunner(new LayaModelLoader(), new ProcessMemoryProbe());
+    const runner = new LayaBenchmarkRunner(
+        createModelLoader(values['simulate-webgpu-load-failure']),
+        new ProcessMemoryProbe(),
+    );
     const reports = [];
     const failures = [];
     for (const provider of providers) {
