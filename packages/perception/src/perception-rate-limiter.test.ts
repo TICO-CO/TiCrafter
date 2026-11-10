@@ -17,9 +17,12 @@ class MutableClock {
 describe('PerceptionRateLimiter', () => {
     it('enforces the burst budget', () => {
         const clock = new MutableClock();
-        const limiter = new PerceptionRateLimiter({ tokensPerSecond: 1, burst: 2 }, () =>
-            clock.read(),
+        const [limiter, createError] = PerceptionRateLimiter.create(
+            { tokensPerSecond: 1, burst: 2 },
+            () => clock.read(),
         );
+        expect(createError).toBeNull();
+        if (limiter === null) return;
 
         expect(limiter.tryAcquire('bot.tibot1')).toBe(true);
         expect(limiter.tryAcquire('bot.tibot1')).toBe(true);
@@ -28,9 +31,12 @@ describe('PerceptionRateLimiter', () => {
 
     it('refills tokens over time', () => {
         const clock = new MutableClock();
-        const limiter = new PerceptionRateLimiter({ tokensPerSecond: 1, burst: 2 }, () =>
-            clock.read(),
+        const [limiter, createError] = PerceptionRateLimiter.create(
+            { tokensPerSecond: 1, burst: 2 },
+            () => clock.read(),
         );
+        expect(createError).toBeNull();
+        if (limiter === null) return;
 
         expect(limiter.tryAcquire('bot.tibot1')).toBe(true);
         expect(limiter.tryAcquire('bot.tibot1')).toBe(true);
@@ -41,15 +47,47 @@ describe('PerceptionRateLimiter', () => {
 
     it('tracks bots independently and caps the bucket', () => {
         const clock = new MutableClock();
-        const limiter = new PerceptionRateLimiter({ tokensPerSecond: 1, burst: 2 }, () =>
-            clock.read(),
+        const [limiter, createError] = PerceptionRateLimiter.create(
+            { tokensPerSecond: 1, burst: 2 },
+            () => clock.read(),
         );
+        expect(createError).toBeNull();
+        if (limiter === null) return;
 
         expect(limiter.tryAcquire('bot.tibot1')).toBe(true);
         expect(limiter.remaining('bot.tibot1')).toBe(1);
         expect(limiter.remaining('bot.tibot2')).toBe(2);
 
         clock.advance(10_000);
+        expect(limiter.remaining('bot.tibot1')).toBe(2);
+    });
+
+    it('rejects invalid rate limit options', () => {
+        const clock = new MutableClock();
+        const [limiter, createError] = PerceptionRateLimiter.create(
+            { tokensPerSecond: -1, burst: 0 },
+            () => clock.read(),
+        );
+
+        expect(limiter).toBeNull();
+        expect(createError).toEqual({
+            type: 'INVALID_RATE_LIMIT_OPTIONS',
+            tokensPerSecond: -1,
+            burst: 0,
+        });
+    });
+
+    it('rejects non-positive resource costs without changing the bucket', () => {
+        const clock = new MutableClock();
+        const [limiter, createError] = PerceptionRateLimiter.create(
+            { tokensPerSecond: 1, burst: 2 },
+            () => clock.read(),
+        );
+        expect(createError).toBeNull();
+        if (limiter === null) return;
+
+        expect(limiter.tryAcquire('bot.tibot1', 0)).toBe(false);
+        expect(limiter.tryAcquire('bot.tibot1', -5)).toBe(false);
         expect(limiter.remaining('bot.tibot1')).toBe(2);
     });
 });

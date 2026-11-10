@@ -63,4 +63,5 @@ export interface DetectorPort {
 export type PerceptionFailure =
     | { type: 'INVALID_VERSION'; value: number }
     | { type: 'INVALID_BLOCK_POSITION'; position: VoxelPosition }
-    | { type: 'BLOCK_OUTSIDE_CHUNK'; position: VoxelPosition; chunk: ChunkCoordinate };
+    | { type: 'BLOCK_OUTSIDE_CHUNK'; position: VoxelPosition; chunk: ChunkCoordinate }
+    | { type: 'INVALID_RATE_LIMIT_OPTIONS'; tokensPerSecond: number; burst: number };

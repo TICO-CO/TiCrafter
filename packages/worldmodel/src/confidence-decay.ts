@@ -16,6 +16,10 @@ export class ConfidenceDecay {
     constructor(private readonly options: ConfidenceDecayOptions) {}
 
     apply(landmark: Landmark, observedAt: string): Result<DecayedLandmark, WorldFailure> {
+        const optionsError = this.validateOptions();
+        if (optionsError) {
+            return [null, optionsError];
+        }
         const nowMilliseconds = ConfidenceDecay.parseTimestamp(observedAt);
         if (nowMilliseconds === null) {
             return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
@@ -37,6 +41,23 @@ export class ConfidenceDecay {
             },
             null,
         ];
+    }
+
+    private validateOptions(): WorldFailure | null {
+        const { halfLifeMilliseconds, verificationThreshold } = this.options;
+        const validHalfLife = Number.isFinite(halfLifeMilliseconds) && halfLifeMilliseconds > 0;
+        const validThreshold =
+            Number.isFinite(verificationThreshold) &&
+            verificationThreshold >= 0 &&
+            verificationThreshold <= 1;
+        if (validHalfLife && validThreshold) {
+            return null;
+        }
+        return {
+            type: 'INVALID_DECAY_OPTIONS',
+            halfLifeMilliseconds,
+            verificationThreshold,
+        };
     }
 
     private static parseTimestamp(value: string): number | null {

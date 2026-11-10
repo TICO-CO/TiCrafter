@@ -18,6 +18,7 @@ const landmark: Landmark = {
             sourceBotId: 'bot.tibot1',
             observedAt: '2026-11-10T12:00:00.000Z',
             confidence: 0.8,
+            reliability: 1,
             details: 'standable corridor',
         },
     ],
@@ -60,5 +61,35 @@ describe('ConfidenceDecay', () => {
 
         expect(decayed).toBeNull();
         expect(error).toEqual({ type: 'INVALID_TIMESTAMP', value: 'not-a-timestamp' });
+    });
+
+    it('rejects non-positive half-life options', () => {
+        const decay = new ConfidenceDecay({
+            halfLifeMilliseconds: 0,
+            verificationThreshold: 0.5,
+        });
+        const [decayed, error] = decay.apply(landmark, '2026-11-10T12:01:00.000Z');
+
+        expect(decayed).toBeNull();
+        expect(error).toEqual({
+            type: 'INVALID_DECAY_OPTIONS',
+            halfLifeMilliseconds: 0,
+            verificationThreshold: 0.5,
+        });
+    });
+
+    it('rejects out-of-range verification thresholds', () => {
+        const decay = new ConfidenceDecay({
+            halfLifeMilliseconds: 60_000,
+            verificationThreshold: 2,
+        });
+        const [decayed, error] = decay.apply(landmark, '2026-11-10T12:01:00.000Z');
+
+        expect(decayed).toBeNull();
+        expect(error).toEqual({
+            type: 'INVALID_DECAY_OPTIONS',
+            halfLifeMilliseconds: 60_000,
+            verificationThreshold: 2,
+        });
     });
 });

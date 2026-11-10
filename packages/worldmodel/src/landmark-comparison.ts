@@ -27,6 +27,11 @@ export class LandmarkComparison {
         return merged;
     }
 
+    static latestReliability(landmark: Landmark): number {
+        const latest = landmark.evidence.at(-1);
+        return latest?.reliability ?? 0;
+    }
+
     static compareTimestamps(left: string, right: string): number | null {
         const leftMilliseconds = Date.parse(left);
         const rightMilliseconds = Date.parse(right);

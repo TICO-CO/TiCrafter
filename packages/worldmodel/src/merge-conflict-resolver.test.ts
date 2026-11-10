@@ -19,6 +19,7 @@ const existingLandmark: Landmark = {
             sourceBotId: 'bot.tibot1',
             observedAt: '2026-11-10T12:00:00.000Z',
             confidence: 0.8,
+            reliability: 1,
             details: 'enclosed interior',
         },
     ],
@@ -39,6 +40,7 @@ const candidate: LandmarkCandidate = {
         sourceBotId: 'bot.tibot2',
         observedAt: '2026-11-10T12:00:10.000Z',
         confidence: 0.9,
+        reliability: 1,
         details: 'enclosed interior',
     },
     planId: null,
@@ -126,6 +128,48 @@ describe('MergeConflictResolver', () => {
         expect(result.outcome).toBe('flagged');
         expect(result.landmark.confidence).toBe(0.9);
         expect(result.needsVerification).toBe(true);
+    });
+
+    it('prefers higher source reliability over raw confidence in a tie', () => {
+        const unreliableCandidate: LandmarkCandidate = {
+            ...candidate,
+            confidence: 0.95,
+            observedAt: existingLandmark.lastSeen,
+            bbox: {
+                min: { x: 30, y: 64, z: 30 },
+                max: { x: 36, y: 70, z: 36 },
+            },
+            evidence: {
+                ...candidate.evidence,
+                observedAt: existingLandmark.lastSeen,
+                confidence: 0.95,
+                reliability: 0.1,
+            },
+        };
+        const [result, error] = resolver.resolve(
+            existingLandmark,
+            unreliableCandidate,
+            existingLandmark.lastSeen,
+        );
+
+        expect(error).toBeNull();
+        if (result === null) return;
+        expect(result.outcome).toBe('flagged');
+        expect(result.landmark.confidence).toBe(existingLandmark.confidence);
+    });
+
+    it('rejects a candidate with an invalid reliability', () => {
+        const [result, error] = resolver.resolve(
+            existingLandmark,
+            {
+                ...candidate,
+                evidence: { ...candidate.evidence, reliability: 1.5 },
+            },
+            candidate.observedAt,
+        );
+
+        expect(result).toBeNull();
+        expect(error).toEqual({ type: 'INVALID_RELIABILITY', value: 1.5 });
     });
 
     it('rejects a candidate with an invalid confidence', () => {

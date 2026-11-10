@@ -63,6 +63,7 @@ export interface LandmarkEvidence {
     sourceBotId: string;
     observedAt: string;
     confidence: number;
+    reliability: number;
     details: string | null;
 }
 
@@ -91,6 +92,12 @@ export interface LandmarkCandidate {
 export type WorldFailure =
     | { type: 'INVALID_TIMESTAMP'; value: string }
     | { type: 'INVALID_CONFIDENCE'; value: number }
+    | { type: 'INVALID_RELIABILITY'; value: number }
+    | {
+          type: 'INVALID_DECAY_OPTIONS';
+          halfLifeMilliseconds: number;
+          verificationThreshold: number;
+      }
     | { type: 'STORAGE_FAILED'; message: string };
 
 export type MergeOutcome = 'created' | 'replaced' | 'kept' | 'flagged';

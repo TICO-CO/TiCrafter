@@ -23,6 +23,7 @@ const landmark: Landmark = {
             sourceBotId: 'bot.tibot1',
             observedAt: '2026-11-10T12:00:00.000Z',
             confidence: 0.7,
+            reliability: 1,
             details: 'deck over air',
         },
     ],

@@ -3,9 +3,12 @@ import { describe, expect, it } from 'bun:test';
 import { PathDetector } from './path-detector.js';
 import type { ChunkSnapshot, VoxelBlock } from './types.js';
 
-function corridor(axis: 'x' | 'z', length: number): readonly VoxelBlock[] {
+function corridor(axis: 'x' | 'z', length: number, perpendicular = 0): readonly VoxelBlock[] {
     return Array.from({ length }, (_, index) => ({
-        position: axis === 'x' ? { x: index, y: 64, z: 0 } : { x: 0, y: 64, z: index },
+        position:
+            axis === 'x'
+                ? { x: index, y: 64, z: perpendicular }
+                : { x: perpendicular, y: 64, z: index },
         blockId: 'stone',
         solid: true,
     }));
@@ -55,5 +58,24 @@ describe('PathDetector', () => {
             min: { x: 0, y: 63, z: 0 },
             max: { x: 0, y: 65, z: 9 },
         });
+    });
+
+    it('merges adjacent rows into a width-three corridor', () => {
+        const blocks = [0, 1, 2].flatMap((perpendicular) => corridor('x', 10, perpendicular));
+        const candidates = new PathDetector().detect({ ...snapshot, blocks });
+
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0]?.bbox).toEqual({
+            min: { x: 0, y: 63, z: 0 },
+            max: { x: 9, y: 65, z: 2 },
+        });
+        expect(candidates[0]?.evidence).toBe('standable corridor length 10 width 3');
+    });
+
+    it('ignores corridors wider than three rows', () => {
+        const blocks = [0, 1, 2, 3].flatMap((perpendicular) => corridor('x', 10, perpendicular));
+        const candidates = new PathDetector().detect({ ...snapshot, blocks });
+
+        expect(candidates).toHaveLength(0);
     });
 });

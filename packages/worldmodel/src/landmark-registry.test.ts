@@ -23,6 +23,7 @@ const candidate: LandmarkCandidate = {
         sourceBotId: 'bot.tibot1',
         observedAt: '2026-11-10T12:00:00.000Z',
         confidence: 0.8,
+        reliability: 1,
         details: 'moist farmland',
     },
     planId: null,

@@ -1,3 +1,7 @@
+import type { Result } from '@ticrafter/core';
+
+import type { PerceptionFailure } from './types.js';
+
 export interface PerceptionRateLimitOptions {
     tokensPerSecond: number;
     burst: number;
@@ -11,12 +15,35 @@ interface TokenBucket {
 export class PerceptionRateLimiter {
     private readonly buckets = new Map<string, TokenBucket>();
 
-    constructor(
+    static create(
+        options: PerceptionRateLimitOptions,
+        clock: () => number,
+    ): Result<PerceptionRateLimiter, PerceptionFailure> {
+        const valid =
+            Number.isFinite(options.tokensPerSecond) &&
+            options.tokensPerSecond >= 0 &&
+            Number.isFinite(options.burst) &&
+            options.burst > 0;
+        if (!valid) {
+            return [
+                null,
+                {
+                    type: 'INVALID_RATE_LIMIT_OPTIONS',
+                    tokensPerSecond: options.tokensPerSecond,
+                    burst: options.burst,
+                },
+            ];
+        }
+        return [new PerceptionRateLimiter(options, clock), null];
+    }
+
+    private constructor(
         private readonly options: PerceptionRateLimitOptions,
         private readonly clock: () => number,
     ) {}
 
     tryAcquire(botId: string, cost = 1): boolean {
+        if (!Number.isFinite(cost) || cost <= 0) return false;
         const bucket = this.refill(botId, this.clock());
         if (bucket.tokens < cost) return false;
         bucket.tokens -= cost;
