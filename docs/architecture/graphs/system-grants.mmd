@@ -1,67 +1,67 @@
 flowchart LR
-n197["Grant Repository"]
-n174["Collaboration Policy Evaluator"]
-n172["Compatibility Checker"]
-n173["Design Revision Guard"]
+n198["Grant Repository"]
+n175["Collaboration Policy Evaluator"]
+n173["Compatibility Checker"]
+n174["Design Revision Guard"]
 n133["Grant Issuer"]
-n196["Grant Revoker"]
-n198["Owner Offline Policy"]
+n197["Grant Revoker"]
+n199["Owner Offline Policy"]
 n146["Grant Expiry"]
 n155["Arbitration Adapter"]
-n170["Delta Sync Planner (Bot Registry and Profiles)"]
+n171["Delta Sync Planner (Bot Registry and Profiles)"]
 n28["Command Router (Coordinator Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n151["Event Stream (Transport and Protocol)"]
-n193["Claim Repository (Claims and Leases)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
-n160["Structure Store (Shared Infrastructure Plan)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
+n194["Claim Repository (Claims and Leases)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
+n161["Structure Store (Shared Infrastructure Plan)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
 n137["Transaction Manager (Memory and Persistence)"]
 n130["Fencing Token Authority (Claims and Leases)"]
 n149["Presence Tracker (Bot Registry and Profiles)"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
 n49["Planner Arbitration Handler (Cloud Planner)"]
-n170 -->|depends_on| n191
-n170 -->|reads| n197
-n170 -->|reads| n166
-n149 -->|depends_on| n191
-n191 -->|depends_on| n137
-n193 -->|depends_on| n137
+n171 -->|depends_on| n192
+n171 -->|reads| n198
+n171 -->|reads| n167
+n149 -->|depends_on| n192
+n192 -->|depends_on| n137
+n194 -->|depends_on| n137
 n130 -->|depends_on| n137
 n28 -->|controls| n133
 n31 -->|delegates_to| n146
 n31 -->|depends_on| n137
-n155 -->|depends_on| n172
+n155 -->|depends_on| n173
 n155 -->|publishes| n151
-n172 -->|reads| n193
-n172 -->|depends_on| n197
-n172 -->|depends_on| n165
-n172 -->|depends_on| n160
-n173 -->|depends_on| n197
-n173 -->|controls| n196
-n173 -->|reads| n166
-n146 -->|writes| n197
-n133 -->|depends_on| n172
+n173 -->|reads| n194
+n173 -->|depends_on| n198
+n173 -->|depends_on| n166
+n173 -->|depends_on| n161
+n174 -->|depends_on| n198
+n174 -->|controls| n197
+n174 -->|reads| n167
+n146 -->|writes| n198
 n133 -->|depends_on| n173
-n133 -->|writes| n197
 n133 -->|depends_on| n174
-n197 -->|depends_on| n137
-n196 -->|depends_on| n130
-n196 -->|writes| n197
-n198 -->|reads| n149
-n198 -->|reads| n191
-n198 -->|depends_on| n172
-n174 -->|depends_on| n197
-n174 -->|depends_on| n160
-n49 -->|reads| n172
+n133 -->|writes| n198
+n133 -->|depends_on| n175
+n198 -->|depends_on| n137
+n197 -->|depends_on| n130
+n197 -->|writes| n198
+n199 -->|reads| n149
+n199 -->|reads| n192
+n199 -->|depends_on| n173
+n175 -->|depends_on| n198
+n175 -->|depends_on| n161
+n49 -->|reads| n173
 n49 -->|proposes_to| n133
 n49 -->|subscribes| n151
-n166 -->|publishes| n173
+n167 -->|publishes| n174
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
 n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n165 -->|depends_on| n137
-n160 -->|depends_on| n137
+n161 -->|depends_on| n137
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n197,n174,n172,n173,n133,n196,n198,n146,n155 internal;
-class n170,n28,n31,n151,n193,n165,n160,n166,n137,n130,n149,n191,n49 external;
+class n198,n175,n173,n174,n133,n197,n199,n146,n155 internal;
+class n171,n28,n31,n151,n194,n166,n161,n167,n137,n130,n149,n192,n49 external;

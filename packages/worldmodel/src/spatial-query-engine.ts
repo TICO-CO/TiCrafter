@@ -1,15 +1,62 @@
 import type { Result } from '@ticrafter/core';
 
 import type { LandmarkStorePort } from './landmark-registry.js';
-import type { BlockPosition, BoundingBox, Landmark, LandmarkType, WorldFailure } from './types.js';
+import type {
+    BlockPosition,
+    BoundingBox,
+    ChunkBlockObservation,
+    ContainerObservation,
+    Landmark,
+    LandmarkType,
+    WorldFailure,
+} from './types.js';
 
 export interface NearestLandmark {
     landmark: Landmark;
     distance: number;
 }
 
+export interface OccupancyQueryPort {
+    blockAt(position: BlockPosition): Result<ChunkBlockObservation | null, WorldFailure>;
+}
+
+export interface ContainerQueryPort {
+    at(position: BlockPosition): Result<ContainerObservation | null, WorldFailure>;
+}
+
+export interface PathGraphQueryPort {
+    route(
+        from: BlockPosition,
+        to: BlockPosition,
+    ): Result<readonly BlockPosition[] | null, WorldFailure>;
+}
+
+export interface BaseZoneQueryPort {
+    insideBase(position: BlockPosition): Result<boolean, WorldFailure>;
+}
+
+export interface ProtectionQueryPort {
+    isProtected(position: BlockPosition): Result<boolean, WorldFailure>;
+}
+
+export interface OwnershipQueryPort {
+    whoOwns(bbox: BoundingBox): Result<readonly string[], WorldFailure>;
+}
+
+export interface SpatialQueryPorts {
+    occupancy?: OccupancyQueryPort;
+    containers?: ContainerQueryPort;
+    pathGraph?: PathGraphQueryPort;
+    baseZones?: BaseZoneQueryPort;
+    protection?: ProtectionQueryPort;
+    ownership?: OwnershipQueryPort;
+}
+
 export class SpatialQueryEngine {
-    constructor(private readonly store: Pick<LandmarkStorePort, 'list'>) {}
+    constructor(
+        private readonly store: Pick<LandmarkStorePort, 'list'>,
+        private readonly ports: SpatialQueryPorts = {},
+    ) {}
 
     nearest(
         position: BlockPosition,
@@ -54,6 +101,72 @@ export class SpatialQueryEngine {
         ];
     }
 
+    blockAt(position: BlockPosition): Result<ChunkBlockObservation | null, WorldFailure> {
+        if (this.ports.occupancy === undefined) {
+            return [null, { type: 'QUERY_UNAVAILABLE', query: 'blockAt' }];
+        }
+        return this.ports.occupancy.blockAt(position);
+    }
+
+    containerAt(position: BlockPosition): Result<ContainerObservation | null, WorldFailure> {
+        if (this.ports.containers !== undefined) {
+            return this.ports.containers.at(position);
+        }
+        const [landmarks, listError] = this.store.list();
+        if (listError) return [null, listError];
+        if (landmarks === null) {
+            return [null, { type: 'STORAGE_FAILED', message: 'landmark list returned null' }];
+        }
+        const landmark = landmarks.find(
+            (candidate) =>
+                candidate.type === 'container' &&
+                SpatialQueryEngine.contains(candidate.bbox, position),
+        );
+        if (landmark === undefined) return [null, null];
+        return [
+            {
+                id: landmark.id,
+                position,
+                role: 'storage',
+                contents: null,
+                observedAt: landmark.lastSeen,
+                confidence: landmark.confidence,
+            },
+            null,
+        ];
+    }
+
+    insideBase(position: BlockPosition): Result<boolean, WorldFailure> {
+        if (this.ports.baseZones === undefined) {
+            return [null, { type: 'QUERY_UNAVAILABLE', query: 'insideBase' }];
+        }
+        return this.ports.baseZones.insideBase(position);
+    }
+
+    route(
+        from: BlockPosition,
+        to: BlockPosition,
+    ): Result<readonly BlockPosition[] | null, WorldFailure> {
+        if (this.ports.pathGraph === undefined) {
+            return [null, { type: 'QUERY_UNAVAILABLE', query: 'route' }];
+        }
+        return this.ports.pathGraph.route(from, to);
+    }
+
+    isProtected(position: BlockPosition): Result<boolean, WorldFailure> {
+        if (this.ports.protection === undefined) {
+            return [null, { type: 'QUERY_UNAVAILABLE', query: 'isProtected' }];
+        }
+        return this.ports.protection.isProtected(position);
+    }
+
+    whoOwns(bbox: BoundingBox): Result<readonly string[], WorldFailure> {
+        if (this.ports.ownership === undefined) {
+            return [null, { type: 'QUERY_UNAVAILABLE', query: 'whoOwns' }];
+        }
+        return this.ports.ownership.whoOwns(bbox);
+    }
+
     private static intersects(left: BoundingBox, right: BoundingBox): boolean {
         return (
             left.min.x <= right.max.x &&
@@ -62,6 +175,17 @@ export class SpatialQueryEngine {
             left.max.y >= right.min.y &&
             left.min.z <= right.max.z &&
             left.max.z >= right.min.z
+        );
+    }
+
+    private static contains(bounds: BoundingBox, position: BlockPosition): boolean {
+        return (
+            position.x >= bounds.min.x &&
+            position.x <= bounds.max.x &&
+            position.y >= bounds.min.y &&
+            position.y <= bounds.max.y &&
+            position.z >= bounds.min.z &&
+            position.z <= bounds.max.z
         );
     }
 

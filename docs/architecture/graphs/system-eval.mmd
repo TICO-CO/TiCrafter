@@ -4,27 +4,27 @@ n224["Detector Fixtures"]
 n252["Docker Server Harness"]
 n253["Scenario Runner"]
 n247["Replay Engine"]
-n190["Contention Harness"]
+n191["Contention Harness"]
 n249["Metrics Reporter"]
 n254["Soak Runner"]
 n255["Architecture Guard Tests"]
 n227["Laya Benchmark Harness"]
-n193["Claim Repository (Claims and Leases)"]
-n182["Task Repository (Task Board)"]
+n194["Claim Repository (Claims and Leases)"]
+n183["Task Repository (Task Board)"]
 n222["Detector Pipeline (Perception)"]
 n23(["Minecraft 1.20.1 LAN Server"])
 n76["Latency Metrics (Laya Decision Service)"]
 n33["Model Loader (Laya Decision Service)"]
 n124["Metrics Registry (Ops and Observability)"]
-n192["Event Log Writer (Memory and Persistence)"]
+n193["Event Log Writer (Memory and Persistence)"]
 n256["Promotion Gate (Laya Training)"]
 n246["Episode Store (Memory and Persistence)"]
 n76 -->|observes| n124
 n76 -->|writes| n124
 n255 -->|depends_on| n251
-n190 -->|depends_on| n193
-n190 -->|delegates_to| n253
-n190 -->|depends_on| n182
+n191 -->|depends_on| n194
+n191 -->|delegates_to| n253
+n191 -->|depends_on| n183
 n224 -->|depends_on| n251
 n224 -->|depends_on| n222
 n252 -->|depends_on| n251
@@ -34,7 +34,7 @@ n227 -->|depends_on| n33
 n227 -->|delegates_to| n253
 n249 -->|observes| n124
 n247 -->|depends_on| n253
-n247 -->|depends_on| n192
+n247 -->|depends_on| n193
 n253 -->|controls| n252
 n253 -->|publishes| n249
 n254 -->|depends_on| n249
@@ -43,5 +43,5 @@ n256 -->|depends_on| n227
 n247 -->|reads| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n251,n224,n252,n253,n247,n190,n249,n254,n255,n227 internal;
-class n193,n182,n222,n76,n33,n124,n192,n256,n246,n23 external;
+class n251,n224,n252,n253,n247,n191,n249,n254,n255,n227 internal;
+class n194,n183,n222,n76,n33,n124,n193,n256,n246,n23 external;

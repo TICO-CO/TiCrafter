@@ -30,6 +30,7 @@ export interface PerceptionHostOptions {
     logger: LoggerPort;
     ringRadius: number;
     intervalMilliseconds: number;
+    maxChunksPerTick?: number;
     pipeline?: DetectorPipeline;
 }
 
@@ -73,15 +74,19 @@ export class PerceptionHost {
         if (position === null) return [[], null];
 
         const [loaded, sourceError] = attempt(() =>
-            this.options.source.nextLoadedChunk(position, this.options.ringRadius),
+            this.options.source.nextLoadedChunks(
+                position,
+                this.options.ringRadius,
+                this.options.maxChunksPerTick ?? 1,
+            ),
         );
         if (sourceError) return [null, this.describe(sourceError)];
-        if (loaded === null) return [[], null];
+        if (loaded === null || loaded.length === 0) return [[], null];
 
         const [sampled, sampleError] = this.options.sampler.sample({
             botId: this.options.botId,
             position,
-            loadedChunks: [loaded],
+            loadedChunks: loaded,
         });
         if (sampleError) return [null, `ring sampler: ${sampleError.type}`];
         const candidates: DetectionCandidate[] = [];

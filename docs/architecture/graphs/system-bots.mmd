@@ -1,79 +1,79 @@
 flowchart LR
 n148["Bot Identity Authenticator"]
-n191["Bot Profile Store"]
-n199["Role Manager"]
-n200["Behavior Profile Manager"]
-n201["Relationship Store"]
+n192["Bot Profile Store"]
+n200["Role Manager"]
+n201["Behavior Profile Manager"]
+n202["Relationship Store"]
 n149["Presence Tracker"]
-n170["Delta Sync Planner"]
+n171["Delta Sync Planner"]
 n145["Resume Orchestrator"]
-n202["Name Pool Allocator"]
+n203["Name Pool Allocator"]
 n67["Deterministic Policy (Brains)"]
 n59["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
-n197["Grant Repository (Edit Grants and Collaboration)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n182["Task Repository (Task Board)"]
+n198["Grant Repository (Edit Grants and Collaboration)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n183["Task Repository (Task Board)"]
 n157["Secrets Loader (Config and Profiles)"]
-n203["Name Pool Validator (Config and Profiles)"]
+n204["Name Pool Validator (Config and Profiles)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n189["Claim Releaser (Claims and Leases)"]
+n190["Claim Releaser (Claims and Leases)"]
 n140["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
 n83["Skill Checkpoint Manager (Skill Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n70["Bot Session Manager (Coordinator Runtime)"]
-n198["Owner Offline Policy (Edit Grants and Collaboration)"]
+n199["Owner Offline Policy (Edit Grants and Collaboration)"]
 n64["Pause and Resume Controller (Ops and Observability)"]
 n122["Status Aggregator (Ops and Observability)"]
 n41["Planner Context Builder (Cloud Planner)"]
-n185["Priority Scheduler (Task Board)"]
+n186["Priority Scheduler (Task Board)"]
 n154["Transport Authentication (Transport and Protocol)"]
-n67 -->|reads| n200
-n59 -->|delegates_to| n170
-n200 -->|depends_on| n191
-n170 -->|depends_on| n191
-n170 -->|reads| n197
-n170 -->|reads| n166
-n170 -->|reads| n182
-n148 -->|depends_on| n191
+n67 -->|reads| n201
+n59 -->|delegates_to| n171
+n201 -->|depends_on| n192
+n171 -->|depends_on| n192
+n171 -->|reads| n198
+n171 -->|reads| n167
+n171 -->|reads| n183
+n148 -->|depends_on| n192
 n148 -->|depends_on| n157
-n202 -->|depends_on| n191
-n202 -->|depends_on| n203
-n149 -->|depends_on| n191
-n191 -->|depends_on| n137
-n201 -->|depends_on| n191
-n145 -->|depends_on| n170
-n145 -->|depends_on| n191
-n145 -->|delegates_to| n189
+n203 -->|depends_on| n192
+n203 -->|depends_on| n204
+n149 -->|depends_on| n192
+n192 -->|depends_on| n137
+n202 -->|depends_on| n192
+n145 -->|depends_on| n171
+n145 -->|depends_on| n192
+n145 -->|delegates_to| n190
 n145 -->|delegates_to| n140
 n145 -->|reads| n83
-n199 -->|depends_on| n191
+n200 -->|depends_on| n192
 n31 -->|depends_on| n145
 n31 -->|depends_on| n137
 n31 -->|depends_on| n140
 n70 -->|depends_on| n148
 n70 -->|publishes| n149
-n197 -->|depends_on| n137
-n198 -->|reads| n149
-n198 -->|reads| n191
+n198 -->|depends_on| n137
+n199 -->|reads| n149
+n199 -->|reads| n192
 n64 -->|depends_on| n149
 n122 -->|depends_on| n149
-n122 -->|reads| n166
-n122 -->|reads| n182
-n41 -->|reads| n191
-n41 -->|reads| n166
-n41 -->|reads| n182
-n166 -->|depends_on| n137
+n122 -->|reads| n167
+n122 -->|reads| n183
+n41 -->|reads| n192
+n41 -->|reads| n167
+n41 -->|reads| n183
+n167 -->|depends_on| n137
 n83 -->|depends_on| n137
-n185 -->|reads| n191
-n182 -->|depends_on| n137
+n186 -->|reads| n192
+n183 -->|depends_on| n137
 n154 -->|depends_on| n148
 n154 -->|depends_on| n157
-n148 -->|writes| n191
-n199 -->|writes| n191
-n200 -->|writes| n191
-n201 -->|writes| n191
-n202 -->|writes| n191
+n148 -->|writes| n192
+n200 -->|writes| n192
+n201 -->|writes| n192
+n202 -->|writes| n192
+n203 -->|writes| n192
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n148,n191,n199,n200,n201,n149,n170,n145,n202 internal;
-class n67,n59,n197,n166,n182,n157,n203,n137,n189,n140,n83,n31,n70,n198,n64,n122,n41,n185,n154 external;
+class n148,n192,n200,n201,n202,n149,n171,n145,n203 internal;
+class n67,n59,n198,n167,n183,n157,n204,n137,n190,n140,n83,n31,n70,n199,n64,n122,n41,n186,n154 external;

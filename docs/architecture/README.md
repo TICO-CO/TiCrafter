@@ -138,7 +138,7 @@ Current graph:
 
 - 23 internal systems
 - 238 owned components
-- 493 typed relations
+- 494 typed relations
 - 5 external actors and services
 - 21 state owners
 - 23 component templates

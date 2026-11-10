@@ -25,17 +25,19 @@ class FakeSource implements PerceptionSource {
         return { x: 8, y: 64, z: 8 };
     }
 
-    nextLoadedChunk(): LoadedChunkSnapshot {
-        return {
-            chunk: { x: 0, z: 0 },
-            version: 1,
-            observedAt: '2026-11-10T12:00:00.000Z',
-            blocks: Array.from({ length: 10 }, (_, index) => ({
-                position: { x: index, y: 64, z: 0 },
-                blockId: 'stone',
-                solid: true,
-            })),
-        };
+    nextLoadedChunks(): readonly LoadedChunkSnapshot[] {
+        return [
+            {
+                chunk: { x: 0, z: 0 },
+                version: 1,
+                observedAt: '2026-11-10T12:00:00.000Z',
+                blocks: Array.from({ length: 10 }, (_, index) => ({
+                    position: { x: index, y: 64, z: 0 },
+                    blockId: 'stone',
+                    solid: true,
+                })),
+            },
+        ];
     }
 }
 

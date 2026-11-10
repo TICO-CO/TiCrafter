@@ -30,4 +30,19 @@ export const migrations: Migration[] = [
       ALTER TABLE landmarks ADD COLUMN confidence_updated_at TEXT;
     `,
     },
+    {
+        version: 4,
+        name: 'world-container-observations',
+        sql: `
+      CREATE TABLE IF NOT EXISTS world_container_observations (
+        id TEXT PRIMARY KEY,
+        position_json TEXT NOT NULL DEFAULT '{}',
+        role TEXT NOT NULL,
+        contents_json TEXT,
+        observed_at TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+    },
 ];

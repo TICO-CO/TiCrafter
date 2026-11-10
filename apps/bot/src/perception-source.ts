@@ -25,7 +25,11 @@ interface WorldWithColumns {
 
 export interface PerceptionSource {
     position: () => VoxelPosition | null;
-    nextLoadedChunk: (position: VoxelPosition, ringRadius: number) => LoadedChunkSnapshot | null;
+    nextLoadedChunks: (
+        position: VoxelPosition,
+        ringRadius: number,
+        limit: number,
+    ) => readonly LoadedChunkSnapshot[];
 }
 
 const airBlockIds = new Set(['air', 'cave_air', 'void_air']);
@@ -46,15 +50,24 @@ export class MineflayerPerceptionSource implements PerceptionSource {
         };
     }
 
-    nextLoadedChunk(position: VoxelPosition, ringRadius: number): LoadedChunkSnapshot | null {
+    nextLoadedChunks(
+        position: VoxelPosition,
+        ringRadius: number,
+        limit: number,
+    ): readonly LoadedChunkSnapshot[] {
         const candidates = this.columns()
             .map((loaded) => ({ loaded, distance: this.distance(loaded, position) }))
             .filter((candidate) => candidate.distance <= ringRadius)
             .sort((left, right) => left.distance - right.distance);
-        if (candidates.length === 0) return null;
-        const selected = candidates[this.cursor % candidates.length];
-        this.cursor = (this.cursor + 1) % candidates.length;
-        return selected === undefined ? null : this.snapshot(selected.loaded);
+        if (candidates.length === 0) return [];
+        const count = Math.min(candidates.length, Math.max(1, limit));
+        const selected: LoadedChunkSnapshot[] = [];
+        for (let offset = 0; offset < count; offset += 1) {
+            const candidate = candidates[(this.cursor + offset) % candidates.length];
+            if (candidate !== undefined) selected.push(this.snapshot(candidate.loaded));
+        }
+        this.cursor = (this.cursor + count) % candidates.length;
+        return selected;
     }
 
     private columns(): readonly LoadedColumn[] {

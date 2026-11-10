@@ -1,12 +1,13 @@
 import {
     attempt,
+    BLOCK_UPDATE_EVENT,
     EventStream,
     type LoggerPort,
     type MessageSchemaRegistry,
     type Result,
     type TicrafterConfig,
 } from '@ticrafter/core';
-import { PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
+import { BlockUpdateListener, PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
 import { type Bot, createBot } from 'mineflayer';
 
 import type { ActionExecutor } from './action-executor.js';
@@ -25,6 +26,13 @@ export interface BotConnectionOptions {
     registry: MessageSchemaRegistry;
     executor: ActionExecutor;
     logger: LoggerPort;
+}
+
+interface BlockLike {
+    name?: string;
+    boundingBox?: string;
+    position?: { x: number; y: number; z: number };
+    getProperties?: () => Record<string, string | number | boolean>;
 }
 
 export class BotConnection {
@@ -75,10 +83,12 @@ export class BotConnection {
         this.bot = bot;
         this.world = new WorldCacheAdapter(bot);
 
+        const blockUpdates = new BlockUpdateListener();
         const bridge = new BotEventBridge(
             bot,
             (event) => transport.sendEvent('bot.event', { botId: this.options.botId, ...event }),
             this.options.logger,
+            (block) => this.forwardBlockUpdate(block, blockUpdates, transport),
         );
         bridge.attach();
         this.startPerception(bot, transport);
@@ -123,6 +133,59 @@ export class BotConnection {
         this.world = null;
     }
 
+    private forwardBlockUpdate(
+        block: unknown,
+        listener: BlockUpdateListener,
+        transport: BotTransportClient,
+    ): void {
+        const candidate = block as BlockLike | null;
+        if (
+            candidate === null ||
+            candidate.name === undefined ||
+            candidate.position === undefined
+        ) {
+            return;
+        }
+        const properties = candidate.getProperties?.();
+        const [observation, observeError] = listener.observe(
+            this.options.botId,
+            {
+                position: {
+                    x: Math.floor(candidate.position.x),
+                    y: Math.floor(candidate.position.y),
+                    z: Math.floor(candidate.position.z),
+                },
+                blockId: candidate.name,
+                solid: candidate.boundingBox === 'block',
+                ...(properties === undefined
+                    ? {}
+                    : {
+                          properties: Object.fromEntries(
+                              Object.entries(properties).map(([key, value]) => [
+                                  key,
+                                  String(value),
+                              ]),
+                          ) as Record<string, string>,
+                      }),
+            },
+            new Date().toISOString(),
+        );
+        if (observeError) {
+            this.options.logger.warn({ error: observeError }, 'block update rejected');
+            return;
+        }
+        if (observation === null) return;
+        const [, sendError] = transport.sendEvent(BLOCK_UPDATE_EVENT, {
+            botId: observation.botId,
+            chunk: observation.chunk,
+            observedAt: observation.observedAt,
+            block: observation.block,
+        });
+        if (sendError) {
+            this.options.logger.warn({ error: sendError }, 'block update send failed');
+        }
+    }
+
     private startPerception(bot: Bot, transport: BotTransportClient): void {
         const config = this.options.config.perception;
         const [limiter, limiterError] = PerceptionRateLimiter.create(
@@ -159,7 +222,8 @@ export class BotConnection {
             sink: (envelope) => transport.send(envelope),
             logger: this.options.logger,
             ringRadius: config.ringRadius,
-            intervalMilliseconds: Math.max(100, Math.round(1000 / config.chunksPerSecond)),
+            intervalMilliseconds: 1000,
+            maxChunksPerTick: Math.max(1, Math.ceil(config.chunksPerSecond)),
         });
         this.perception.start();
     }

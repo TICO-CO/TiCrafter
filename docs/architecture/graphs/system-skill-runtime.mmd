@@ -16,8 +16,8 @@ n145["Resume Orchestrator (Bot Registry and Profiles)"]
 n104["Material Preflight (Building)"]
 n44["Planner Semantic Validator (Cloud Planner)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n151["Event Stream (Transport and Protocol)"]
 n60["Action Veto Gate (Autonomy and Safety)"]
 n124["Metrics Registry (Ops and Observability)"]
@@ -25,7 +25,7 @@ n66["Reflex Guardian Loop (Brains)"]
 n229["Craft (Skill Library)"]
 n230["Navigate (Skill Library)"]
 n231["Place Build (Skill Library)"]
-n212["Skill Shared Utilities (Skill Library)"]
+n213["Skill Shared Utilities (Skill Library)"]
 n128 -->|depends_on| n55
 n128 -->|depends_on| n66
 n128 -->|depends_on| n79
@@ -35,15 +35,15 @@ n55 -->|delegates_to| n51
 n145 -->|reads| n83
 n104 -->|reads| n51
 n44 -->|reads| n79
-n44 -->|reads| n176
+n44 -->|reads| n177
 n60 -->|reads| n66
 n66 -->|controls| n60
-n166 -->|depends_on| n137
+n167 -->|depends_on| n137
 n83 -->|depends_on| n137
 n51 -->|reads| n55
-n51 -->|reads| n166
+n51 -->|reads| n167
 n51 -->|depends_on| n83
-n51 -->|reads| n176
+n51 -->|reads| n177
 n85 -->|publishes| n151
 n80 -->|depends_on| n51
 n80 -->|depends_on| n85
@@ -54,16 +54,16 @@ n86 -->|depends_on| n80
 n82 -->|observes| n124
 n82 -->|publishes| n151
 n84 -->|depends_on| n83
-n84 -->|depends_on| n176
+n84 -->|depends_on| n177
 n79 -->|depends_on| n78
 n81 -->|reads| n66
 n81 -->|depends_on| n80
 n229 -->|depends_on| n51
 n230 -->|depends_on| n78
 n231 -->|depends_on| n51
-n212 -->|depends_on| n51
-n212 -->|depends_on| n176
+n213 -->|depends_on| n51
+n213 -->|depends_on| n177
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n78,n79,n80,n81,n51,n82,n83,n84,n85,n86 internal;
-class n128,n58,n55,n145,n104,n44,n137,n166,n176,n151,n60,n124,n66,n229,n230,n231,n212 external;
+class n128,n58,n55,n145,n104,n44,n137,n167,n177,n151,n60,n124,n66,n229,n230,n231,n213 external;

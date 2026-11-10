@@ -18,12 +18,12 @@ n57["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
 n52["Block Executor (Building)"]
 n65["Fleet Emergency Stop (Ops and Observability)"]
 n66["Reflex Guardian Loop (Brains)"]
-n193["Claim Repository (Claims and Leases)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n194["Claim Repository (Claims and Leases)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n28["Command Router (Coordinator Runtime)"]
 n151["Event Stream (Transport and Protocol)"]
-n192["Event Log Writer (Memory and Persistence)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
+n193["Event Log Writer (Memory and Persistence)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
 n42["Planner Trigger Evaluator (Cloud Planner)"]
 n86["Skill Preemption Handler (Skill Runtime)"]
 n239["Clear (Skill Library)"]
@@ -39,9 +39,9 @@ n60 -->|validates| n56
 n60 -->|validates| n52
 n60 -->|reads| n66
 n60 -->|depends_on| n120
-n118 -->|reads| n193
-n118 -->|reads| n176
-n116 -->|reads| n193
+n118 -->|reads| n194
+n118 -->|reads| n177
+n116 -->|reads| n194
 n62 -->|controls| n56
 n62 -->|controls| n28
 n62 -->|depends_on| n151
@@ -52,19 +52,19 @@ n66 -->|depends_on| n113
 n66 -->|depends_on| n115
 n66 -->|depends_on| n112
 n66 -->|depends_on| n114
-n121 -->|writes| n192
-n117 -->|reads| n193
-n117 -->|reads| n165
+n121 -->|writes| n193
+n117 -->|reads| n194
+n117 -->|reads| n166
 n61 -->|proposes_to| n28
 n61 -->|proposes_to| n42
 n61 -->|controls| n62
 n61 -->|depends_on| n151
-n120 -->|reads| n193
+n120 -->|reads| n194
 n120 -->|depends_on| n118
 n120 -->|depends_on| n119
 n120 -->|depends_on| n117
-n120 -->|reads| n165
-n120 -->|reads| n176
+n120 -->|reads| n166
+n120 -->|reads| n177
 n86 -->|reads| n60
 n239 -->|depends_on| n52
 n239 -->|depends_on| n60
@@ -73,4 +73,4 @@ n237 -->|depends_on| n112
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n111,n112,n113,n114,n115,n116,n117,n118,n119,n120,n60,n61,n62,n121 internal;
-class n56,n57,n52,n65,n66,n193,n176,n28,n151,n192,n165,n42,n86,n239,n237 external;
+class n56,n57,n52,n65,n66,n194,n177,n28,n151,n193,n166,n42,n86,n239,n237 external;

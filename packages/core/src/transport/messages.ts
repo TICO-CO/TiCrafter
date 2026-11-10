@@ -1,9 +1,14 @@
 import type { z as zod } from 'zod';
 
 import { attempt, type Result } from '../kernel/index.js';
-import { CHUNK_SNAPSHOT_EVENT, LANDMARK_CANDIDATE_EVENT } from './event-types.js';
+import {
+    BLOCK_UPDATE_EVENT,
+    CHUNK_SNAPSHOT_EVENT,
+    LANDMARK_CANDIDATE_EVENT,
+} from './event-types.js';
 import type { TransportFailure } from './failures.js';
 import {
+    blockUpdateSchema,
     botEventSchema,
     botHeartbeatSchema,
     chunkSnapshotSchema,
@@ -73,7 +78,8 @@ export class MessageSchemaRegistry {
             .register('bot.heartbeat', botHeartbeatSchema)
             .register('bot.event', botEventSchema)
             .register(CHUNK_SNAPSHOT_EVENT, chunkSnapshotSchema)
-            .register(LANDMARK_CANDIDATE_EVENT, landmarkCandidateSchema);
+            .register(LANDMARK_CANDIDATE_EVENT, landmarkCandidateSchema)
+            .register(BLOCK_UPDATE_EVENT, blockUpdateSchema);
     }
 
     private static describe(error: unknown): string {

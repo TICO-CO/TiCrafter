@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 493  
+**Relations:** 494  
 **State owners:** 21  
 **Allowed cycles:** 0
 
@@ -32,7 +32,7 @@
 | `depends_on` | 326 |
 | `observes` | 8 |
 | `proposes_to` | 6 |
-| `publishes` | 11 |
+| `publishes` | 12 |
 | `reads` | 59 |
 | `subscribes` | 5 |
 | `validates` | 2 |
@@ -110,7 +110,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `World Model and Landmarks` | `Shared Infrastructure Plan` | 2 | reads×2 |
 | `World Model and Landmarks` | `Transport and Protocol` | 2 | subscribes×1, reads×1 |
 | `Perception` | `Config and Profiles` | 1 | depends_on×1 |
-| `Perception` | `Transport and Protocol` | 1 | publishes×1 |
+| `Perception` | `Transport and Protocol` | 2 | publishes×2 |
 | `Laya Decision Service` | `Brains` | 1 | proposes_to×1 |
 | `Laya Decision Service` | `Config and Profiles` | 4 | depends_on×4 |
 | `Laya Decision Service` | `Ops and Observability` | 3 | observes×2, writes×1 |
@@ -439,6 +439,7 @@ None.
 | `rel.0247` | `perception.perception-rate-limiter` | `depends_on` | `config.profile-resolver` | `in-process` | sync | hard | depends on payload for Profile Resolver | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Perception Rate Limiter depends on Profile Resolver. |
 | `rel.0248` | `perception.ring-sampler` | `depends_on` | `perception.perception-rate-limiter` | `in-process` | sync | hard | depends on payload for Perception Rate Limiter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Ring Sampler depends on Perception Rate Limiter. |
 | `rel.0249` | `perception.storage-workstation-detector` | `depends_on` | `perception.chunk-snapshot-encoder` | `in-process` | sync | hard | depends on payload for Chunk Snapshot Encoder | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Storage and Workstation Detector depends on Chunk Snapshot Encoder. |
+| `rel.0494` | `perception.block-update-listener` | `publishes` | `transport.event-stream` | `ws` | async | hard | block update | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Block updates incrementally refresh the shared world model. |
 
 ## Laya Decision Service relations
 

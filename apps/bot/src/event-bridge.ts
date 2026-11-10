@@ -8,6 +8,7 @@ export interface BridgeEvent {
 }
 
 export type BridgeEmitter = (event: BridgeEvent) => Result<void, TransportFailure>;
+export type BlockUpdateHandler = (block: unknown) => void;
 
 export class BotEventBridge {
     private readonly detach: Array<() => void> = [];
@@ -16,6 +17,7 @@ export class BotEventBridge {
         private readonly bot: Bot,
         private readonly emit: BridgeEmitter,
         private readonly logger: LoggerPort,
+        private readonly blockUpdate?: BlockUpdateHandler,
     ) {}
 
     attach(): void {
@@ -27,6 +29,7 @@ export class BotEventBridge {
             message: error instanceof Error ? error.message : String(error),
         }));
         this.bind('end', (reason) => ({ reason }));
+        this.bindBlockUpdates();
     }
 
     detachAll(): void {
@@ -38,6 +41,21 @@ export class BotEventBridge {
         const handler = (...argumentsList: unknown[]) => this.handle(event, data, argumentsList);
         this.bot.on(event as never, handler as never);
         this.detach.push(() => this.bot.removeListener(event as never, handler as never));
+    }
+
+    private bindBlockUpdates(): void {
+        if (this.blockUpdate === undefined) return;
+        const handler = (_oldBlock: unknown, newBlock: unknown) => {
+            const [, handlerError] = attempt(() => this.blockUpdate?.(newBlock));
+            if (handlerError) {
+                this.logger.warn(
+                    { event: 'blockUpdate', error: this.describe(handlerError) },
+                    'block update bridge failed',
+                );
+            }
+        };
+        this.bot.world.on('blockUpdate', handler as never);
+        this.detach.push(() => this.bot.world.removeListener('blockUpdate', handler as never));
     }
 
     private handle(

@@ -78,6 +78,15 @@ export class CoordinatorComposition {
                     );
                 }
             },
+            onBlockUpdate: (payload) => {
+                const [, ingestError] = worldModel.ingestBlockUpdate(payload);
+                if (ingestError) {
+                    options.logger.warn(
+                        { error: ingestError, chunk: payload.chunk },
+                        'block update ingestion failed',
+                    );
+                }
+            },
         });
         const ops = new OpsServer({
             host: options.config.ops.host,
@@ -91,6 +100,7 @@ export class CoordinatorComposition {
                 schemaVersion: options.schemaVersion,
             }),
         });
+        let lastDecayAt = Date.now();
         const scheduler = new Scheduler({
             intervalMs: 5000,
             logger: options.logger,
@@ -98,6 +108,14 @@ export class CoordinatorComposition {
                 const staleSessions = sessions.pruneStale(15_000);
                 if (staleSessions.length) {
                     options.logger.warn({ staleSessions }, 'pruned stale sessions');
+                }
+                const now = Date.now();
+                if (now - lastDecayAt >= 30_000) {
+                    lastDecayAt = now;
+                    const [, decayError] = worldModel.applyDecay(new Date(now).toISOString());
+                    if (decayError) {
+                        options.logger.warn({ error: decayError }, 'landmark decay failed');
+                    }
                 }
             },
         });

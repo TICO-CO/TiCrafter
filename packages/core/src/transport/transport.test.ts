@@ -3,7 +3,11 @@ import { describe, expect, it } from 'bun:test';
 import { SessionAuthenticator } from './auth.js';
 import { WsCodec } from './codec.js';
 import { DeltaSync } from './delta-sync.js';
-import { CHUNK_SNAPSHOT_EVENT, LANDMARK_CANDIDATE_EVENT } from './event-types.js';
+import {
+    BLOCK_UPDATE_EVENT,
+    CHUNK_SNAPSHOT_EVENT,
+    LANDMARK_CANDIDATE_EVENT,
+} from './event-types.js';
 import { FlowController } from './flow-control.js';
 import { MessageSchemaRegistry, ProtocolEnvelope } from './messages.js';
 import { RequestCorrelator } from './request-correlator.js';
@@ -66,19 +70,32 @@ describe('transport', () => {
             LANDMARK_CANDIDATE_EVENT,
             landmark,
         );
+        const blockUpdateEnvelope = ProtocolEnvelope.create('event', BLOCK_UPDATE_EVENT, {
+            botId: 'bot.alpha',
+            chunk: { x: 0, z: 0 },
+            observedAt: '2026-11-10T12:00:00.000Z',
+            block: { position, blockId: 'dirt', solid: true },
+        });
         const [encodedChunk, chunkError] = codec.encode(chunkEnvelope);
         const [encodedLandmark, landmarkError] = codec.encode(landmarkEnvelope);
+        const [encodedBlockUpdate, blockUpdateError] = codec.encode(blockUpdateEnvelope);
 
         expect(chunkError).toBeNull();
         expect(landmarkError).toBeNull();
-        if (encodedChunk === null || encodedLandmark === null) return;
+        expect(blockUpdateError).toBeNull();
+        if (encodedChunk === null || encodedLandmark === null || encodedBlockUpdate === null) {
+            return;
+        }
         const [decodedChunk, chunkDecodeError] = codec.decode(encodedChunk);
         const [decodedLandmark, landmarkDecodeError] = codec.decode(encodedLandmark);
+        const [decodedBlockUpdate, blockUpdateDecodeError] = codec.decode(encodedBlockUpdate);
 
         expect(chunkDecodeError).toBeNull();
         expect(landmarkDecodeError).toBeNull();
+        expect(blockUpdateDecodeError).toBeNull();
         expect(decodedChunk?.type).toBe(CHUNK_SNAPSHOT_EVENT);
         expect(decodedLandmark?.type).toBe(LANDMARK_CANDIDATE_EVENT);
+        expect(decodedBlockUpdate?.type).toBe(BLOCK_UPDATE_EVENT);
     });
 
     it('authenticates known bot names', () => {

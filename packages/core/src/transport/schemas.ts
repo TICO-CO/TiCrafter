@@ -97,6 +97,13 @@ export const chunkSnapshotSchema = zod.object({
     blocks: zod.array(voxelBlockSchema),
 });
 
+export const blockUpdateSchema = zod.object({
+    botId: zod.string().min(1),
+    chunk: zod.object({ x: zod.number().int(), z: zod.number().int() }),
+    observedAt: zod.string().min(1),
+    block: voxelBlockSchema,
+});
+
 export const landmarkCandidateSchema = zod.object({
     botId: zod.string().min(1),
     chunk: zod.object({ x: zod.number().int(), z: zod.number().int() }),
@@ -129,3 +136,4 @@ export type BotHeartbeat = zod.infer<typeof botHeartbeatSchema>;
 export type BotEvent = zod.infer<typeof botEventSchema>;
 export type ChunkSnapshotMessage = zod.infer<typeof chunkSnapshotSchema>;
 export type LandmarkCandidateMessage = zod.infer<typeof landmarkCandidateSchema>;
+export type BlockUpdateMessage = zod.infer<typeof blockUpdateSchema>;

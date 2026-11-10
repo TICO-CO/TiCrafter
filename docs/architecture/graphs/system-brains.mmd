@@ -6,7 +6,7 @@ n129["Laya Client"]
 n55["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
 n79["Skill Registry (Skill Runtime)"]
 n109["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
-n200["Behavior Profile Manager (Bot Registry and Profiles)"]
+n201["Behavior Profile Manager (Bot Registry and Profiles)"]
 n151["Event Stream (Transport and Protocol)"]
 n57["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
 n38["Confidence Calibrator (Laya Decision Service)"]
@@ -24,7 +24,7 @@ n128 -->|depends_on| n66
 n128 -->|depends_on| n79
 n67 -->|depends_on| n128
 n67 -->|depends_on| n109
-n67 -->|reads| n200
+n67 -->|reads| n201
 n67 -->|subscribes| n151
 n57 -->|depends_on| n60
 n57 -->|delegates_to| n66
@@ -47,4 +47,4 @@ n129 -->|depends_on| n67
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n66,n128,n67,n129 internal;
-class n55,n79,n109,n200,n151,n57,n38,n60,n116,n111,n113,n115,n112,n114,n81,n144 external;
+class n55,n79,n109,n201,n151,n57,n38,n60,n116,n111,n113,n115,n112,n114,n81,n144 external;

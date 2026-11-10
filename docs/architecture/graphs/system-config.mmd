@@ -4,14 +4,14 @@ n141["Config Schema Validator"]
 n147["Profile Resolver"]
 n225["Hardware Probe"]
 n157["Secrets Loader"]
-n203["Name Pool Validator"]
+n204["Name Pool Validator"]
 n226["Laya Runtime Resolver"]
 n250["Fail Fast Handler"]
 n53["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
 n107["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
 n108["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
 n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n202["Name Pool Allocator (Bot Registry and Profiles)"]
+n203["Name Pool Allocator (Bot Registry and Profiles)"]
 n26(["Host Hardware"])
 n68["Process Bootstrap (Coordinator Runtime)"]
 n69["Service Composition (Coordinator Runtime)"]
@@ -27,14 +27,14 @@ n107 -->|depends_on| n53
 n107 -->|depends_on| n147
 n108 -->|depends_on| n141
 n148 -->|depends_on| n157
-n202 -->|depends_on| n203
+n203 -->|depends_on| n204
 n141 -->|depends_on| n142
 n250 -->|depends_on| n141
 n225 -->|depends_on| n147
 n225 -->|depends_on| n26
 n226 -->|depends_on| n225
 n226 -->|depends_on| n147
-n203 -->|depends_on| n141
+n204 -->|depends_on| n141
 n147 -->|depends_on| n141
 n157 -->|depends_on| n142
 n68 -->|depends_on| n141
@@ -53,5 +53,5 @@ n154 -->|depends_on| n148
 n154 -->|depends_on| n157
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n142,n141,n147,n225,n157,n203,n226,n250 internal;
-class n53,n107,n108,n148,n202,n68,n69,n38,n34,n33,n73,n223,n40,n154,n26 external;
+class n142,n141,n147,n225,n157,n204,n226,n250 internal;
+class n53,n107,n108,n148,n203,n68,n69,n38,n34,n33,n73,n223,n40,n154,n26 external;

@@ -2,6 +2,7 @@ import { attempt, type Result } from '@ticrafter/core';
 import type { Database } from 'bun:sqlite';
 
 import { type StorageFailure, StorageFailures } from './failures.js';
+import { TransactionManager } from './transaction-manager.js';
 
 export interface ChunkRecord {
     x: number;
@@ -27,8 +28,21 @@ export interface LandmarkRecord {
     updatedAt: string;
 }
 
+export interface ContainerObservationRecord {
+    id: string;
+    positionJson: string;
+    role: string;
+    contentsJson: string | null;
+    observedAt: string;
+    confidence: number;
+    updatedAt: string;
+}
+
 export class WorldStore {
-    constructor(private readonly database: Database) {}
+    constructor(
+        private readonly database: Database,
+        private readonly transactions = new TransactionManager(database),
+    ) {}
 
     getChunk(x: number, z: number): Result<ChunkRecord | null, StorageFailure> {
         const [record, error] = attempt(
@@ -61,7 +75,7 @@ export class WorldStore {
     }
 
     saveChunk(record: ChunkRecord): Result<void, StorageFailure> {
-        const [, error] = attempt(() => {
+        const [, error] = this.transactions.run(() => {
             this.database
                 .prepare(
                     `INSERT INTO chunks (x, z, version, payload_json, updated_at)
@@ -73,9 +87,7 @@ export class WorldStore {
                 )
                 .run(record.x, record.z, record.version, record.payloadJson, record.updatedAt);
         });
-        if (error) {
-            return [null, StorageFailures.from('WRITE_FAILED', error)];
-        }
+        if (error) return [null, error];
         return [undefined, null];
     }
 
@@ -126,7 +138,7 @@ export class WorldStore {
     }
 
     saveLandmark(record: LandmarkRecord): Result<void, StorageFailure> {
-        const [, error] = attempt(() => {
+        const [, error] = this.transactions.run(() => {
             this.database
                 .prepare(
                     `INSERT INTO landmarks
@@ -163,9 +175,80 @@ export class WorldStore {
                     record.updatedAt,
                 );
         });
+        if (error) return [null, error];
+        return [undefined, null];
+    }
+
+    getContainerObservation(id: string): Result<ContainerObservationRecord | null, StorageFailure> {
+        const [record, error] = attempt(
+            () =>
+                this.database
+                    .prepare(
+                        `SELECT id,
+                                position_json AS positionJson,
+                                role,
+                                contents_json AS contentsJson,
+                                observed_at AS observedAt,
+                                confidence,
+                                updated_at AS updatedAt
+                         FROM world_container_observations WHERE id = ?`,
+                    )
+                    .get(id) as ContainerObservationRecord | undefined,
+        );
         if (error) {
-            return [null, StorageFailures.from('WRITE_FAILED', error)];
+            return [null, StorageFailures.from('READ_FAILED', error)];
         }
+        return [record ?? null, null];
+    }
+
+    listContainerObservations(): Result<readonly ContainerObservationRecord[], StorageFailure> {
+        const [records, error] = attempt(
+            () =>
+                this.database
+                    .prepare(
+                        `SELECT id,
+                                position_json AS positionJson,
+                                role,
+                                contents_json AS contentsJson,
+                                observed_at AS observedAt,
+                                confidence,
+                                updated_at AS updatedAt
+                         FROM world_container_observations ORDER BY id`,
+                    )
+                    .all() as ContainerObservationRecord[],
+        );
+        if (error) {
+            return [null, StorageFailures.from('READ_FAILED', error)];
+        }
+        return [records, null];
+    }
+
+    saveContainerObservation(record: ContainerObservationRecord): Result<void, StorageFailure> {
+        const [, error] = this.transactions.run(() => {
+            this.database
+                .prepare(
+                    `INSERT INTO world_container_observations
+                         (id, position_json, role, contents_json, observed_at, confidence, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT(id) DO UPDATE SET
+                         position_json = excluded.position_json,
+                         role = excluded.role,
+                         contents_json = excluded.contents_json,
+                         observed_at = excluded.observed_at,
+                         confidence = excluded.confidence,
+                         updated_at = excluded.updated_at`,
+                )
+                .run(
+                    record.id,
+                    record.positionJson,
+                    record.role,
+                    record.contentsJson,
+                    record.observedAt,
+                    record.confidence,
+                    record.updatedAt,
+                );
+        });
+        if (error) return [null, error];
         return [undefined, null];
     }
 }

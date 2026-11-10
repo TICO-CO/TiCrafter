@@ -11519,6 +11519,18 @@
             "criticality": "hard",
             "failureBehavior": "Fail closed and surface a typed diagnostic; do not mutate the repo or host.",
             "notes": "Bootstrap orchestrator invokes toolchain.svg-renderer."
+        },
+        {
+            "id": "rel.0494",
+            "from": "perception.block-update-listener",
+            "to": "transport.event-stream",
+            "type": "publishes",
+            "protocol": "ws",
+            "payload": "block update",
+            "sync": false,
+            "criticality": "hard",
+            "failureBehavior": "Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected.",
+            "notes": "Block updates incrementally refresh the shared world model."
         }
     ]
 }

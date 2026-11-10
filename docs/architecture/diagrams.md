@@ -107,7 +107,7 @@ n17 -->|depends_on×2| n6
 n17 -->|depends_on×1, reads×1| n2
 n17 -->|reads×1| n4
 n17 -->|reads×1| n3
-n8 -->|publishes×1| n1
+n8 -->|publishes×2| n1
 n8 -->|depends_on×1| n18
 n10 -->|reads×1, proposes_to×1| n5
 n10 -->|subscribes×1| n1
@@ -259,7 +259,7 @@ n17 -->|depends_on×2| n6
 n17 -->|depends_on×1, reads×1| n2
 n17 -->|reads×1| n4
 n17 -->|reads×1| n3
-n8 -->|publishes×1| n1
+n8 -->|publishes×2| n1
 n8 -->|depends_on×1| n18
 n10 -->|reads×1, proposes_to×1| n5
 n10 -->|subscribes×1| n1
@@ -610,6 +610,7 @@ n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
 n157["Secrets Loader (Config and Profiles)"]
 n158["Observation Ingestor (World Model and Landmarks)"]
 n129["Laya Client (Brains)"]
+n159["Block Update Listener (Perception)"]
 n67 -->|depends_on| n109
 n67 -->|subscribes| n151
 n59 -->|depends_on| n153
@@ -653,10 +654,11 @@ n158 -->|subscribes| n151
 n158 -->|reads| n136
 n129 -->|depends_on| n144
 n129 -->|depends_on| n67
+n159 -->|publishes| n151
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n136,n144,n150,n151,n152,n153,n154,n131 internal;
-class n67,n59,n109,n106,n71,n28,n68,n70,n75,n37,n72,n155,n65,n63,n64,n156,n49,n62,n61,n85,n82,n148,n157,n158,n129 external;
+class n67,n59,n109,n106,n71,n28,n68,n70,n75,n37,n72,n155,n65,n63,n64,n156,n49,n62,n61,n85,n82,n148,n157,n158,n129,n159 external;
 ```
 
 ### Shared Infrastructure Plan
@@ -665,31 +667,31 @@ Source: `docs/architecture/graphs/system-sip.mmd`
 
 ```mermaid
 flowchart LR
-n159["Zone Store"]
-n160["Structure Store"]
-n161["Road Store"]
-n162["Farm Store"]
-n163["Container Registry"]
-n164["Path Graph Store"]
-n165["Rules Store"]
-n166["SIP Revision Manager"]
-n167["Spatial Overlap Validator"]
-n168["Dependency Validator"]
-n169["SIP Mutation Proposer"]
+n160["Zone Store"]
+n161["Structure Store"]
+n162["Road Store"]
+n163["Farm Store"]
+n164["Container Registry"]
+n165["Path Graph Store"]
+n166["Rules Store"]
+n167["SIP Revision Manager"]
+n168["Spatial Overlap Validator"]
+n169["Dependency Validator"]
+n170["SIP Mutation Proposer"]
 n134["SIP Transactional Committer"]
 n140["SIP Reconciliation Engine"]
-n170["Delta Sync Planner (Bot Registry and Profiles)"]
+n171["Delta Sync Planner (Bot Registry and Profiles)"]
 n145["Resume Orchestrator (Bot Registry and Profiles)"]
 n88["Blueprint Validator (Building)"]
 n106["Rollback Journal (Building)"]
 n100["Work Package Partitioner (Building)"]
-n171["Overlap Margin Checker (Claims and Leases)"]
+n172["Overlap Margin Checker (Claims and Leases)"]
 n28["Command Router (Coordinator Runtime)"]
 n30["Global Scheduler (Coordinator Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n172["Compatibility Checker (Edit Grants and Collaboration)"]
-n173["Design Revision Guard (Edit Grants and Collaboration)"]
-n174["Collaboration Policy Evaluator (Edit Grants and Collaboration)"]
+n173["Compatibility Checker (Edit Grants and Collaboration)"]
+n174["Design Revision Guard (Edit Grants and Collaboration)"]
+n175["Collaboration Policy Evaluator (Edit Grants and Collaboration)"]
 n123["SIP Dump (Ops and Observability)"]
 n122["Status Aggregator (Ops and Observability)"]
 n41["Planner Context Builder (Cloud Planner)"]
@@ -700,96 +702,96 @@ n42["Planner Trigger Evaluator (Cloud Planner)"]
 n117["Protected BBox Rule (Autonomy and Safety)"]
 n120["Safety Policy Engine (Autonomy and Safety)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n175["Container Memory (World Model and Landmarks)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
-n177["World Reconciler (World Model and Landmarks)"]
-n178["Plan Tagging (World Model and Landmarks)"]
+n176["Container Memory (World Model and Landmarks)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
+n178["World Reconciler (World Model and Landmarks)"]
+n179["Plan Tagging (World Model and Landmarks)"]
 n51["Skill Context Builder (Skill Runtime)"]
-n179["Follow Path (Skill Library)"]
-n180["Harvest Farm (Skill Library)"]
-n181["Plant Farm (Skill Library)"]
-n170 -->|reads| n166
-n145 -->|depends_on| n170
+n180["Follow Path (Skill Library)"]
+n181["Harvest Farm (Skill Library)"]
+n182["Plant Farm (Skill Library)"]
+n171 -->|reads| n167
+n145 -->|depends_on| n171
 n145 -->|delegates_to| n140
-n88 -->|depends_on| n165
-n106 -->|reads| n160
-n100 -->|reads| n160
-n171 -->|depends_on| n167
+n88 -->|depends_on| n166
+n106 -->|reads| n161
+n100 -->|reads| n161
+n172 -->|depends_on| n168
 n28 -->|controls| n134
 n30 -->|delegates_to| n42
 n30 -->|delegates_to| n140
 n31 -->|depends_on| n145
 n31 -->|depends_on| n137
 n31 -->|depends_on| n140
-n172 -->|depends_on| n165
-n172 -->|depends_on| n160
-n173 -->|reads| n166
-n174 -->|depends_on| n160
-n123 -->|depends_on| n166
-n122 -->|reads| n166
-n41 -->|reads| n166
-n41 -->|reads| n176
-n50 -->|reads| n166
-n44 -->|depends_on| n168
-n44 -->|reads| n165
-n44 -->|reads| n176
-n46 -->|proposes_to| n169
+n173 -->|depends_on| n166
+n173 -->|depends_on| n161
+n174 -->|reads| n167
+n175 -->|depends_on| n161
+n123 -->|depends_on| n167
+n122 -->|reads| n167
+n41 -->|reads| n167
+n41 -->|reads| n177
+n50 -->|reads| n167
+n44 -->|depends_on| n169
+n44 -->|reads| n166
+n44 -->|reads| n177
+n46 -->|proposes_to| n170
 n42 -->|delegates_to| n41
-n42 -->|reads| n166
-n117 -->|reads| n165
+n42 -->|reads| n167
+n117 -->|reads| n166
 n120 -->|depends_on| n117
-n120 -->|reads| n165
-n120 -->|reads| n176
-n163 -->|depends_on| n137
-n163 -->|depends_on| n175
-n168 -->|depends_on| n163
-n168 -->|depends_on| n162
-n168 -->|depends_on| n164
-n168 -->|depends_on| n161
-n168 -->|depends_on| n160
-n168 -->|reads| n176
-n162 -->|depends_on| n137
-n169 -->|depends_on| n168
-n169 -->|depends_on| n166
-n169 -->|depends_on| n167
+n120 -->|reads| n166
+n120 -->|reads| n177
 n164 -->|depends_on| n137
+n164 -->|depends_on| n176
+n169 -->|depends_on| n164
+n169 -->|depends_on| n163
+n169 -->|depends_on| n165
+n169 -->|depends_on| n162
+n169 -->|depends_on| n161
+n169 -->|reads| n177
+n163 -->|depends_on| n137
+n170 -->|depends_on| n169
+n170 -->|depends_on| n167
+n170 -->|depends_on| n168
+n165 -->|depends_on| n137
+n140 -->|depends_on| n163
 n140 -->|depends_on| n162
 n140 -->|depends_on| n161
-n140 -->|depends_on| n160
 n140 -->|depends_on| n134
-n140 -->|depends_on| n177
-n166 -->|publishes| n173
+n140 -->|depends_on| n178
+n167 -->|publishes| n174
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
+n167 -->|publishes| n179
+n162 -->|depends_on| n137
 n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n166 -->|publishes| n178
+n168 -->|reads| n166
+n168 -->|depends_on| n161
+n168 -->|depends_on| n160
 n161 -->|depends_on| n137
-n165 -->|depends_on| n137
-n167 -->|reads| n165
-n167 -->|depends_on| n160
-n167 -->|depends_on| n159
-n160 -->|depends_on| n137
 n134 -->|depends_on| n137
-n134 -->|writes| n163
-n134 -->|writes| n162
 n134 -->|writes| n164
-n134 -->|depends_on| n166
-n134 -->|writes| n161
+n134 -->|writes| n163
 n134 -->|writes| n165
+n134 -->|depends_on| n167
+n134 -->|writes| n162
+n134 -->|writes| n166
+n134 -->|writes| n161
 n134 -->|writes| n160
-n134 -->|writes| n159
-n159 -->|depends_on| n137
-n51 -->|reads| n166
-n51 -->|reads| n176
-n179 -->|depends_on| n164
-n180 -->|depends_on| n162
-n181 -->|depends_on| n162
-n175 -->|reads| n163
+n160 -->|depends_on| n137
+n51 -->|reads| n167
+n51 -->|reads| n177
+n180 -->|depends_on| n165
+n181 -->|depends_on| n163
+n182 -->|depends_on| n163
 n176 -->|reads| n164
-n177 -->|depends_on| n176
+n177 -->|reads| n165
+n178 -->|depends_on| n177
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n159,n160,n161,n162,n163,n164,n165,n166,n167,n168,n169,n134,n140 internal;
-class n170,n145,n88,n106,n100,n171,n28,n30,n31,n172,n173,n174,n123,n122,n41,n50,n44,n46,n42,n117,n120,n137,n175,n176,n177,n178,n51,n179,n180,n181 external;
+class n160,n161,n162,n163,n164,n165,n166,n167,n168,n169,n170,n134,n140 internal;
+class n171,n145,n88,n106,n100,n172,n28,n30,n31,n173,n174,n175,n123,n122,n41,n50,n44,n46,n42,n117,n120,n137,n176,n177,n178,n179,n51,n180,n181,n182 external;
 ```
 
 ### Task Board
@@ -798,61 +800,61 @@ Source: `docs/architecture/graphs/system-tasks.mmd`
 
 ```mermaid
 flowchart LR
-n182["Task Repository"]
-n183["Task DAG Resolver"]
-n184["Precondition Evaluator"]
-n185["Priority Scheduler"]
+n183["Task Repository"]
+n184["Task DAG Resolver"]
+n185["Precondition Evaluator"]
+n186["Priority Scheduler"]
 n135["Atomic Task Claimer"]
-n186["Retry Manager"]
-n187["Dead Letter Manager"]
-n188["Task State Machine"]
-n170["Delta Sync Planner (Bot Registry and Profiles)"]
-n189["Claim Releaser (Claims and Leases)"]
+n187["Retry Manager"]
+n188["Dead Letter Manager"]
+n189["Task State Machine"]
+n171["Delta Sync Planner (Bot Registry and Profiles)"]
+n190["Claim Releaser (Claims and Leases)"]
 n138["Lease Reaper (Claims and Leases)"]
 n28["Command Router (Coordinator Runtime)"]
-n190["Contention Harness (Testing and Evaluation)"]
+n191["Contention Harness (Testing and Evaluation)"]
 n122["Status Aggregator (Ops and Observability)"]
 n41["Planner Context Builder (Cloud Planner)"]
 n47["Task DAG Translator (Cloud Planner)"]
 n42["Planner Trigger Evaluator (Cloud Planner)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
-n192["Event Log Writer (Memory and Persistence)"]
-n170 -->|depends_on| n191
-n170 -->|reads| n182
-n191 -->|depends_on| n137
-n189 -->|depends_on| n188
-n138 -->|depends_on| n188
-n28 -->|controls| n135
-n190 -->|depends_on| n182
+n177["Spatial Query Engine (World Model and Landmarks)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
+n193["Event Log Writer (Memory and Persistence)"]
+n171 -->|depends_on| n192
+n171 -->|reads| n183
 n192 -->|depends_on| n137
-n122 -->|reads| n182
-n41 -->|reads| n191
-n41 -->|reads| n182
-n41 -->|reads| n176
-n47 -->|proposes_to| n182
+n190 -->|depends_on| n189
+n138 -->|depends_on| n189
+n28 -->|controls| n135
+n191 -->|depends_on| n183
+n193 -->|depends_on| n137
+n122 -->|reads| n183
+n41 -->|reads| n192
+n41 -->|reads| n183
+n41 -->|reads| n177
+n47 -->|proposes_to| n183
 n42 -->|delegates_to| n41
-n42 -->|reads| n187
+n42 -->|reads| n188
 n135 -->|depends_on| n137
-n135 -->|depends_on| n185
-n135 -->|writes| n182
-n183 -->|depends_on| n182
-n187 -->|writes| n182
-n184 -->|depends_on| n182
-n184 -->|reads| n176
-n185 -->|reads| n191
+n135 -->|depends_on| n186
+n135 -->|writes| n183
+n184 -->|depends_on| n183
+n188 -->|writes| n183
 n185 -->|depends_on| n183
-n185 -->|depends_on| n184
-n186 -->|writes| n182
-n186 -->|depends_on| n188
-n182 -->|depends_on| n137
-n188 -->|depends_on| n192
-n188 -->|writes| n182
+n185 -->|reads| n177
+n186 -->|reads| n192
+n186 -->|depends_on| n184
+n186 -->|depends_on| n185
+n187 -->|writes| n183
+n187 -->|depends_on| n189
+n183 -->|depends_on| n137
+n189 -->|depends_on| n193
+n189 -->|writes| n183
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n182,n183,n184,n185,n135,n186,n187,n188 internal;
-class n170,n189,n138,n28,n190,n122,n41,n47,n42,n137,n176,n191,n192 external;
+class n183,n184,n185,n186,n135,n187,n188,n189 internal;
+class n171,n190,n138,n28,n191,n122,n41,n47,n42,n137,n177,n192,n193 external;
 ```
 
 ### Claims and Leases
@@ -861,47 +863,47 @@ Source: `docs/architecture/graphs/system-claims.mmd`
 
 ```mermaid
 flowchart LR
-n193["Claim Repository"]
-n171["Overlap Margin Checker"]
+n194["Claim Repository"]
+n172["Overlap Margin Checker"]
 n132["Atomic Claim Acquirer"]
-n194["Lease Heartbeat"]
+n195["Lease Heartbeat"]
 n138["Lease Reaper"]
 n130["Fencing Token Authority"]
-n189["Claim Releaser"]
-n195["Contention Metrics"]
+n190["Claim Releaser"]
+n196["Contention Metrics"]
 n145["Resume Orchestrator (Bot Registry and Profiles)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n188["Task State Machine (Task Board)"]
+n189["Task State Machine (Task Board)"]
 n124["Metrics Registry (Ops and Observability)"]
 n29["Coordinator Epoch Authority (Coordinator Runtime)"]
-n167["Spatial Overlap Validator (Shared Infrastructure Plan)"]
+n168["Spatial Overlap Validator (Shared Infrastructure Plan)"]
 n28["Command Router (Coordinator Runtime)"]
 n30["Global Scheduler (Coordinator Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n190["Contention Harness (Testing and Evaluation)"]
-n172["Compatibility Checker (Edit Grants and Collaboration)"]
-n196["Grant Revoker (Edit Grants and Collaboration)"]
+n191["Contention Harness (Testing and Evaluation)"]
+n173["Compatibility Checker (Edit Grants and Collaboration)"]
+n197["Grant Revoker (Edit Grants and Collaboration)"]
 n122["Status Aggregator (Ops and Observability)"]
 n118["Active Bot Support Rule (Autonomy and Safety)"]
 n116["Claim Loss Evaluator (Autonomy and Safety)"]
 n117["Protected BBox Rule (Autonomy and Safety)"]
 n120["Safety Policy Engine (Autonomy and Safety)"]
-n145 -->|delegates_to| n189
-n132 -->|writes| n193
-n132 -->|depends_on| n171
+n145 -->|delegates_to| n190
+n132 -->|writes| n194
+n132 -->|depends_on| n172
 n132 -->|depends_on| n137
-n189 -->|writes| n193
-n189 -->|depends_on| n188
-n193 -->|depends_on| n137
-n195 -->|depends_on| n193
-n195 -->|observes| n124
+n190 -->|writes| n194
+n190 -->|depends_on| n189
+n194 -->|depends_on| n137
+n196 -->|depends_on| n194
+n196 -->|observes| n124
 n130 -->|depends_on| n29
 n130 -->|depends_on| n137
-n194 -->|writes| n193
-n138 -->|writes| n193
-n138 -->|depends_on| n188
-n171 -->|depends_on| n193
-n171 -->|depends_on| n167
+n195 -->|writes| n194
+n138 -->|writes| n194
+n138 -->|depends_on| n189
+n172 -->|depends_on| n194
+n172 -->|depends_on| n168
 n28 -->|controls| n132
 n29 -->|controls| n130
 n29 -->|depends_on| n137
@@ -910,21 +912,21 @@ n30 -->|depends_on| n29
 n31 -->|depends_on| n145
 n31 -->|delegates_to| n138
 n31 -->|depends_on| n137
-n190 -->|depends_on| n193
-n172 -->|reads| n193
-n196 -->|depends_on| n130
-n122 -->|reads| n193
+n191 -->|depends_on| n194
+n173 -->|reads| n194
+n197 -->|depends_on| n130
+n122 -->|reads| n194
 n122 -->|observes| n124
-n118 -->|reads| n193
-n116 -->|reads| n193
-n117 -->|reads| n193
-n120 -->|reads| n193
+n118 -->|reads| n194
+n116 -->|reads| n194
+n117 -->|reads| n194
+n120 -->|reads| n194
 n120 -->|depends_on| n118
 n120 -->|depends_on| n117
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n193,n171,n132,n194,n138,n130,n189,n195 internal;
-class n145,n137,n188,n124,n29,n167,n28,n30,n31,n190,n172,n196,n122,n118,n116,n117,n120 external;
+class n194,n172,n132,n195,n138,n130,n190,n196 internal;
+class n145,n137,n189,n124,n29,n168,n28,n30,n31,n191,n173,n197,n122,n118,n116,n117,n120 external;
 ```
 
 ### Edit Grants and Collaboration
@@ -933,72 +935,72 @@ Source: `docs/architecture/graphs/system-grants.mmd`
 
 ```mermaid
 flowchart LR
-n197["Grant Repository"]
-n174["Collaboration Policy Evaluator"]
-n172["Compatibility Checker"]
-n173["Design Revision Guard"]
+n198["Grant Repository"]
+n175["Collaboration Policy Evaluator"]
+n173["Compatibility Checker"]
+n174["Design Revision Guard"]
 n133["Grant Issuer"]
-n196["Grant Revoker"]
-n198["Owner Offline Policy"]
+n197["Grant Revoker"]
+n199["Owner Offline Policy"]
 n146["Grant Expiry"]
 n155["Arbitration Adapter"]
-n170["Delta Sync Planner (Bot Registry and Profiles)"]
+n171["Delta Sync Planner (Bot Registry and Profiles)"]
 n28["Command Router (Coordinator Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n151["Event Stream (Transport and Protocol)"]
-n193["Claim Repository (Claims and Leases)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
-n160["Structure Store (Shared Infrastructure Plan)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
+n194["Claim Repository (Claims and Leases)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
+n161["Structure Store (Shared Infrastructure Plan)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
 n137["Transaction Manager (Memory and Persistence)"]
 n130["Fencing Token Authority (Claims and Leases)"]
 n149["Presence Tracker (Bot Registry and Profiles)"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
 n49["Planner Arbitration Handler (Cloud Planner)"]
-n170 -->|depends_on| n191
-n170 -->|reads| n197
-n170 -->|reads| n166
-n149 -->|depends_on| n191
-n191 -->|depends_on| n137
-n193 -->|depends_on| n137
+n171 -->|depends_on| n192
+n171 -->|reads| n198
+n171 -->|reads| n167
+n149 -->|depends_on| n192
+n192 -->|depends_on| n137
+n194 -->|depends_on| n137
 n130 -->|depends_on| n137
 n28 -->|controls| n133
 n31 -->|delegates_to| n146
 n31 -->|depends_on| n137
-n155 -->|depends_on| n172
+n155 -->|depends_on| n173
 n155 -->|publishes| n151
-n172 -->|reads| n193
-n172 -->|depends_on| n197
-n172 -->|depends_on| n165
-n172 -->|depends_on| n160
-n173 -->|depends_on| n197
-n173 -->|controls| n196
-n173 -->|reads| n166
-n146 -->|writes| n197
-n133 -->|depends_on| n172
+n173 -->|reads| n194
+n173 -->|depends_on| n198
+n173 -->|depends_on| n166
+n173 -->|depends_on| n161
+n174 -->|depends_on| n198
+n174 -->|controls| n197
+n174 -->|reads| n167
+n146 -->|writes| n198
 n133 -->|depends_on| n173
-n133 -->|writes| n197
 n133 -->|depends_on| n174
-n197 -->|depends_on| n137
-n196 -->|depends_on| n130
-n196 -->|writes| n197
-n198 -->|reads| n149
-n198 -->|reads| n191
-n198 -->|depends_on| n172
-n174 -->|depends_on| n197
-n174 -->|depends_on| n160
-n49 -->|reads| n172
+n133 -->|writes| n198
+n133 -->|depends_on| n175
+n198 -->|depends_on| n137
+n197 -->|depends_on| n130
+n197 -->|writes| n198
+n199 -->|reads| n149
+n199 -->|reads| n192
+n199 -->|depends_on| n173
+n175 -->|depends_on| n198
+n175 -->|depends_on| n161
+n49 -->|reads| n173
 n49 -->|proposes_to| n133
 n49 -->|subscribes| n151
-n166 -->|publishes| n173
+n167 -->|publishes| n174
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
 n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n165 -->|depends_on| n137
-n160 -->|depends_on| n137
+n161 -->|depends_on| n137
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n197,n174,n172,n173,n133,n196,n198,n146,n155 internal;
-class n170,n28,n31,n151,n193,n165,n160,n166,n137,n130,n149,n191,n49 external;
+class n198,n175,n173,n174,n133,n197,n199,n146,n155 internal;
+class n171,n28,n31,n151,n194,n166,n161,n167,n137,n130,n149,n192,n49 external;
 ```
 
 ### Bot Registry and Profiles
@@ -1008,83 +1010,83 @@ Source: `docs/architecture/graphs/system-bots.mmd`
 ```mermaid
 flowchart LR
 n148["Bot Identity Authenticator"]
-n191["Bot Profile Store"]
-n199["Role Manager"]
-n200["Behavior Profile Manager"]
-n201["Relationship Store"]
+n192["Bot Profile Store"]
+n200["Role Manager"]
+n201["Behavior Profile Manager"]
+n202["Relationship Store"]
 n149["Presence Tracker"]
-n170["Delta Sync Planner"]
+n171["Delta Sync Planner"]
 n145["Resume Orchestrator"]
-n202["Name Pool Allocator"]
+n203["Name Pool Allocator"]
 n67["Deterministic Policy (Brains)"]
 n59["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
-n197["Grant Repository (Edit Grants and Collaboration)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n182["Task Repository (Task Board)"]
+n198["Grant Repository (Edit Grants and Collaboration)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n183["Task Repository (Task Board)"]
 n157["Secrets Loader (Config and Profiles)"]
-n203["Name Pool Validator (Config and Profiles)"]
+n204["Name Pool Validator (Config and Profiles)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n189["Claim Releaser (Claims and Leases)"]
+n190["Claim Releaser (Claims and Leases)"]
 n140["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
 n83["Skill Checkpoint Manager (Skill Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n70["Bot Session Manager (Coordinator Runtime)"]
-n198["Owner Offline Policy (Edit Grants and Collaboration)"]
+n199["Owner Offline Policy (Edit Grants and Collaboration)"]
 n64["Pause and Resume Controller (Ops and Observability)"]
 n122["Status Aggregator (Ops and Observability)"]
 n41["Planner Context Builder (Cloud Planner)"]
-n185["Priority Scheduler (Task Board)"]
+n186["Priority Scheduler (Task Board)"]
 n154["Transport Authentication (Transport and Protocol)"]
-n67 -->|reads| n200
-n59 -->|delegates_to| n170
-n200 -->|depends_on| n191
-n170 -->|depends_on| n191
-n170 -->|reads| n197
-n170 -->|reads| n166
-n170 -->|reads| n182
-n148 -->|depends_on| n191
+n67 -->|reads| n201
+n59 -->|delegates_to| n171
+n201 -->|depends_on| n192
+n171 -->|depends_on| n192
+n171 -->|reads| n198
+n171 -->|reads| n167
+n171 -->|reads| n183
+n148 -->|depends_on| n192
 n148 -->|depends_on| n157
-n202 -->|depends_on| n191
-n202 -->|depends_on| n203
-n149 -->|depends_on| n191
-n191 -->|depends_on| n137
-n201 -->|depends_on| n191
-n145 -->|depends_on| n170
-n145 -->|depends_on| n191
-n145 -->|delegates_to| n189
+n203 -->|depends_on| n192
+n203 -->|depends_on| n204
+n149 -->|depends_on| n192
+n192 -->|depends_on| n137
+n202 -->|depends_on| n192
+n145 -->|depends_on| n171
+n145 -->|depends_on| n192
+n145 -->|delegates_to| n190
 n145 -->|delegates_to| n140
 n145 -->|reads| n83
-n199 -->|depends_on| n191
+n200 -->|depends_on| n192
 n31 -->|depends_on| n145
 n31 -->|depends_on| n137
 n31 -->|depends_on| n140
 n70 -->|depends_on| n148
 n70 -->|publishes| n149
-n197 -->|depends_on| n137
-n198 -->|reads| n149
-n198 -->|reads| n191
+n198 -->|depends_on| n137
+n199 -->|reads| n149
+n199 -->|reads| n192
 n64 -->|depends_on| n149
 n122 -->|depends_on| n149
-n122 -->|reads| n166
-n122 -->|reads| n182
-n41 -->|reads| n191
-n41 -->|reads| n166
-n41 -->|reads| n182
-n166 -->|depends_on| n137
+n122 -->|reads| n167
+n122 -->|reads| n183
+n41 -->|reads| n192
+n41 -->|reads| n167
+n41 -->|reads| n183
+n167 -->|depends_on| n137
 n83 -->|depends_on| n137
-n185 -->|reads| n191
-n182 -->|depends_on| n137
+n186 -->|reads| n192
+n183 -->|depends_on| n137
 n154 -->|depends_on| n148
 n154 -->|depends_on| n157
-n148 -->|writes| n191
-n199 -->|writes| n191
-n200 -->|writes| n191
-n201 -->|writes| n191
-n202 -->|writes| n191
+n148 -->|writes| n192
+n200 -->|writes| n192
+n201 -->|writes| n192
+n202 -->|writes| n192
+n203 -->|writes| n192
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n148,n191,n199,n200,n201,n149,n170,n145,n202 internal;
-class n67,n59,n197,n166,n182,n157,n203,n137,n189,n140,n83,n31,n70,n198,n64,n122,n41,n185,n154 external;
+class n148,n192,n200,n201,n202,n149,n171,n145,n203 internal;
+class n67,n59,n198,n167,n183,n157,n204,n137,n190,n140,n83,n31,n70,n199,n64,n122,n41,n186,n154 external;
 ```
 
 ### World Model and Landmarks
@@ -1094,16 +1096,16 @@ Source: `docs/architecture/graphs/system-world.mmd`
 ```mermaid
 flowchart LR
 n158["Observation Ingestor"]
-n204["Chunk Version Store"]
-n205["Sparse Occupancy Grid"]
-n206["Merge Conflict Resolver"]
-n207["Confidence Decay"]
-n208["Landmark Registry"]
-n209["Detector Result Integrator"]
-n178["Plan Tagging"]
-n176["Spatial Query Engine"]
-n175["Container Memory"]
-n177["World Reconciler"]
+n205["Chunk Version Store"]
+n206["Sparse Occupancy Grid"]
+n207["Merge Conflict Resolver"]
+n208["Confidence Decay"]
+n209["Landmark Registry"]
+n210["Detector Result Integrator"]
+n179["Plan Tagging"]
+n177["Spatial Query Engine"]
+n176["Container Memory"]
+n178["World Reconciler"]
 n103["Block Verifier (Building)"]
 n105["Container Refill Adapter (Building)"]
 n104["Material Preflight (Building)"]
@@ -1113,77 +1115,77 @@ n41["Planner Context Builder (Cloud Planner)"]
 n44["Planner Semantic Validator (Cloud Planner)"]
 n118["Active Bot Support Rule (Autonomy and Safety)"]
 n120["Safety Policy Engine (Autonomy and Safety)"]
-n163["Container Registry (Shared Infrastructure Plan)"]
-n168["Dependency Validator (Shared Infrastructure Plan)"]
+n164["Container Registry (Shared Infrastructure Plan)"]
+n169["Dependency Validator (Shared Infrastructure Plan)"]
 n140["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
 n51["Skill Context Builder (Skill Runtime)"]
 n84["Skill Restore Validator (Skill Runtime)"]
-n210["Deposit (Skill Library)"]
-n211["Explore (Skill Library)"]
-n212["Skill Shared Utilities (Skill Library)"]
-n213["Withdraw (Skill Library)"]
-n184["Precondition Evaluator (Task Board)"]
+n211["Deposit (Skill Library)"]
+n212["Explore (Skill Library)"]
+n213["Skill Shared Utilities (Skill Library)"]
+n214["Withdraw (Skill Library)"]
+n185["Precondition Evaluator (Task Board)"]
 n151["Event Stream (Transport and Protocol)"]
 n137["Transaction Manager (Memory and Persistence)"]
 n136["Message Schema Registry (Transport and Protocol)"]
-n164["Path Graph Store (Shared Infrastructure Plan)"]
-n103 -->|reads| n176
-n105 -->|writes| n175
+n165["Path Graph Store (Shared Infrastructure Plan)"]
+n103 -->|reads| n177
+n105 -->|writes| n176
 n104 -->|reads| n51
-n104 -->|reads| n175
-n102 -->|reads| n176
-n99 -->|reads| n176
-n41 -->|reads| n166
-n41 -->|reads| n176
-n44 -->|depends_on| n168
-n44 -->|reads| n176
-n118 -->|reads| n176
+n104 -->|reads| n176
+n102 -->|reads| n177
+n99 -->|reads| n177
+n41 -->|reads| n167
+n41 -->|reads| n177
+n44 -->|depends_on| n169
+n44 -->|reads| n177
+n118 -->|reads| n177
 n120 -->|depends_on| n118
-n120 -->|reads| n176
-n163 -->|depends_on| n137
-n163 -->|depends_on| n175
-n168 -->|depends_on| n163
-n168 -->|depends_on| n164
-n168 -->|reads| n176
+n120 -->|reads| n177
 n164 -->|depends_on| n137
-n140 -->|depends_on| n177
-n166 -->|depends_on| n137
-n166 -->|publishes| n178
-n51 -->|reads| n166
-n51 -->|reads| n176
-n84 -->|depends_on| n176
-n210 -->|depends_on| n175
+n164 -->|depends_on| n176
+n169 -->|depends_on| n164
+n169 -->|depends_on| n165
+n169 -->|reads| n177
+n165 -->|depends_on| n137
+n140 -->|depends_on| n178
+n167 -->|depends_on| n137
+n167 -->|publishes| n179
+n51 -->|reads| n167
+n51 -->|reads| n177
+n84 -->|depends_on| n177
 n211 -->|depends_on| n176
-n212 -->|depends_on| n51
-n212 -->|depends_on| n176
-n213 -->|depends_on| n175
-n184 -->|reads| n176
+n212 -->|depends_on| n177
+n213 -->|depends_on| n51
+n213 -->|depends_on| n177
+n214 -->|depends_on| n176
+n185 -->|reads| n177
 n151 -->|publishes| n158
-n204 -->|depends_on| n137
-n207 -->|depends_on| n204
-n207 -->|writes| n208
-n175 -->|reads| n163
-n175 -->|depends_on| n208
-n209 -->|writes| n208
-n209 -->|depends_on| n206
-n208 -->|depends_on| n137
-n206 -->|writes| n204
-n206 -->|depends_on| n207
+n205 -->|depends_on| n137
+n208 -->|depends_on| n205
+n208 -->|writes| n209
+n176 -->|reads| n164
+n176 -->|depends_on| n209
+n210 -->|writes| n209
+n210 -->|depends_on| n207
+n209 -->|depends_on| n137
+n207 -->|writes| n205
+n207 -->|depends_on| n208
 n158 -->|subscribes| n151
 n158 -->|reads| n136
-n158 -->|writes| n204
-n205 -->|depends_on| n204
-n178 -->|depends_on| n208
-n176 -->|reads| n164
-n176 -->|depends_on| n208
-n176 -->|depends_on| n205
-n177 -->|depends_on| n208
-n177 -->|depends_on| n176
+n158 -->|writes| n205
+n206 -->|depends_on| n205
+n179 -->|depends_on| n209
+n177 -->|reads| n165
+n177 -->|depends_on| n209
+n177 -->|depends_on| n206
+n178 -->|depends_on| n209
+n178 -->|depends_on| n177
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n158,n204,n205,n206,n207,n208,n209,n178,n176,n175,n177 internal;
-class n103,n105,n104,n102,n99,n41,n44,n118,n120,n163,n168,n140,n166,n51,n84,n210,n211,n212,n213,n184,n151,n137,n136,n164 external;
+class n158,n205,n206,n207,n208,n209,n210,n179,n177,n176,n178 internal;
+class n103,n105,n104,n102,n99,n41,n44,n118,n120,n164,n169,n140,n167,n51,n84,n211,n212,n213,n214,n185,n151,n137,n136,n165 external;
 ```
 
 ### Perception
@@ -1192,9 +1194,9 @@ Source: `docs/architecture/graphs/system-perception.mmd`
 
 ```mermaid
 flowchart LR
-n214["Ring Sampler"]
-n215["Chunk Snapshot Encoder"]
-n216["Block Update Listener"]
+n215["Ring Sampler"]
+n216["Chunk Snapshot Encoder"]
+n159["Block Update Listener"]
 n217["Path and Road Detector"]
 n218["House Detector"]
 n219["Farm Detector"]
@@ -1209,31 +1211,32 @@ n55["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
 n224["Detector Fixtures (Testing and Evaluation)"]
 n151["Event Stream (Transport and Protocol)"]
 n147["Profile Resolver (Config and Profiles)"]
-n54 -->|delegates_to| n216
+n54 -->|delegates_to| n159
 n110 -->|depends_on| n222
-n110 -->|depends_on| n214
+n110 -->|depends_on| n215
 n55 -->|depends_on| n54
-n55 -->|delegates_to| n214
+n55 -->|delegates_to| n215
 n224 -->|depends_on| n222
-n215 -->|depends_on| n214
-n222 -->|depends_on| n215
+n216 -->|depends_on| n215
+n222 -->|depends_on| n216
 n222 -->|depends_on| n219
 n222 -->|depends_on| n218
 n222 -->|depends_on| n221
 n222 -->|depends_on| n217
 n222 -->|depends_on| n220
-n219 -->|depends_on| n215
-n218 -->|depends_on| n215
+n219 -->|depends_on| n216
+n218 -->|depends_on| n216
 n156 -->|depends_on| n222
 n156 -->|publishes| n151
-n221 -->|depends_on| n215
-n217 -->|depends_on| n215
+n221 -->|depends_on| n216
+n217 -->|depends_on| n216
 n223 -->|depends_on| n147
-n214 -->|depends_on| n223
-n220 -->|depends_on| n215
+n215 -->|depends_on| n223
+n220 -->|depends_on| n216
+n159 -->|publishes| n151
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n214,n215,n216,n217,n218,n219,n220,n221,n222,n156,n223 internal;
+class n215,n216,n159,n217,n218,n219,n220,n221,n222,n156,n223 internal;
 class n54,n110,n55,n224,n151,n147 external;
 ```
 
@@ -1325,39 +1328,39 @@ n77["Plan Cache"]
 n49["Planner Arbitration Handler"]
 n50["Keep Last Good Fallback"]
 n30["Global Scheduler (Coordinator Runtime)"]
-n172["Compatibility Checker (Edit Grants and Collaboration)"]
+n173["Compatibility Checker (Edit Grants and Collaboration)"]
 n133["Grant Issuer (Edit Grants and Collaboration)"]
 n151["Event Stream (Transport and Protocol)"]
 n124["Metrics Registry (Ops and Observability)"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n182["Task Repository (Task Board)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n183["Task Repository (Task Board)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n141["Config Schema Validator (Config and Profiles)"]
 n157["Secrets Loader (Config and Profiles)"]
 n24(["Muse Spark Planner Endpoint"])
 n137["Transaction Manager (Memory and Persistence)"]
-n168["Dependency Validator (Shared Infrastructure Plan)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
+n169["Dependency Validator (Shared Infrastructure Plan)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
 n79["Skill Registry (Skill Runtime)"]
-n169["SIP Mutation Proposer (Shared Infrastructure Plan)"]
-n187["Dead Letter Manager (Task Board)"]
+n170["SIP Mutation Proposer (Shared Infrastructure Plan)"]
+n188["Dead Letter Manager (Task Board)"]
 n61["Recovery Ladder (Autonomy and Safety)"]
-n191 -->|depends_on| n137
+n192 -->|depends_on| n137
 n30 -->|delegates_to| n42
-n172 -->|depends_on| n165
-n133 -->|depends_on| n172
-n49 -->|reads| n172
+n173 -->|depends_on| n166
+n133 -->|depends_on| n173
+n49 -->|reads| n173
 n49 -->|proposes_to| n133
 n49 -->|subscribes| n151
 n48 -->|observes| n124
 n48 -->|controls| n40
-n41 -->|reads| n191
-n41 -->|reads| n166
-n41 -->|reads| n182
-n41 -->|reads| n176
+n41 -->|reads| n192
+n41 -->|reads| n167
+n41 -->|reads| n183
+n41 -->|reads| n177
 n50 -->|depends_on| n77
-n50 -->|reads| n166
+n50 -->|reads| n167
 n40 -->|depends_on| n141
 n40 -->|depends_on| n157
 n40 -->|depends_on| n24
@@ -1370,32 +1373,32 @@ n45 -->|depends_on| n44
 n43 -->|controls| n45
 n44 -->|controls| n45
 n44 -->|depends_on| n43
-n44 -->|depends_on| n168
-n44 -->|reads| n165
+n44 -->|depends_on| n169
+n44 -->|reads| n166
 n44 -->|reads| n79
-n44 -->|reads| n176
+n44 -->|reads| n177
 n46 -->|depends_on| n45
-n46 -->|proposes_to| n169
+n46 -->|proposes_to| n170
 n47 -->|depends_on| n45
-n47 -->|proposes_to| n182
+n47 -->|proposes_to| n183
 n42 -->|observes| n124
 n42 -->|delegates_to| n41
-n42 -->|reads| n166
-n42 -->|reads| n187
+n42 -->|reads| n167
+n42 -->|reads| n188
 n61 -->|proposes_to| n42
 n61 -->|depends_on| n151
-n168 -->|reads| n176
-n169 -->|depends_on| n168
-n169 -->|depends_on| n166
+n169 -->|reads| n177
+n170 -->|depends_on| n169
+n170 -->|depends_on| n167
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
 n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n165 -->|depends_on| n137
-n187 -->|writes| n182
-n182 -->|depends_on| n137
+n188 -->|writes| n183
+n183 -->|depends_on| n137
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n40,n41,n42,n43,n44,n45,n46,n47,n48,n77,n49,n50 internal;
-class n30,n172,n133,n151,n124,n191,n166,n182,n176,n141,n157,n137,n168,n165,n79,n169,n187,n61,n24 external;
+class n30,n173,n133,n151,n124,n192,n167,n183,n177,n141,n157,n137,n169,n166,n79,n170,n188,n61,n24 external;
 ```
 
 ### Skill Runtime
@@ -1421,8 +1424,8 @@ n145["Resume Orchestrator (Bot Registry and Profiles)"]
 n104["Material Preflight (Building)"]
 n44["Planner Semantic Validator (Cloud Planner)"]
 n137["Transaction Manager (Memory and Persistence)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n151["Event Stream (Transport and Protocol)"]
 n60["Action Veto Gate (Autonomy and Safety)"]
 n124["Metrics Registry (Ops and Observability)"]
@@ -1430,7 +1433,7 @@ n66["Reflex Guardian Loop (Brains)"]
 n229["Craft (Skill Library)"]
 n230["Navigate (Skill Library)"]
 n231["Place Build (Skill Library)"]
-n212["Skill Shared Utilities (Skill Library)"]
+n213["Skill Shared Utilities (Skill Library)"]
 n128 -->|depends_on| n55
 n128 -->|depends_on| n66
 n128 -->|depends_on| n79
@@ -1440,15 +1443,15 @@ n55 -->|delegates_to| n51
 n145 -->|reads| n83
 n104 -->|reads| n51
 n44 -->|reads| n79
-n44 -->|reads| n176
+n44 -->|reads| n177
 n60 -->|reads| n66
 n66 -->|controls| n60
-n166 -->|depends_on| n137
+n167 -->|depends_on| n137
 n83 -->|depends_on| n137
 n51 -->|reads| n55
-n51 -->|reads| n166
+n51 -->|reads| n167
 n51 -->|depends_on| n83
-n51 -->|reads| n176
+n51 -->|reads| n177
 n85 -->|publishes| n151
 n80 -->|depends_on| n51
 n80 -->|depends_on| n85
@@ -1459,19 +1462,19 @@ n86 -->|depends_on| n80
 n82 -->|observes| n124
 n82 -->|publishes| n151
 n84 -->|depends_on| n83
-n84 -->|depends_on| n176
+n84 -->|depends_on| n177
 n79 -->|depends_on| n78
 n81 -->|reads| n66
 n81 -->|depends_on| n80
 n229 -->|depends_on| n51
 n230 -->|depends_on| n78
 n231 -->|depends_on| n51
-n212 -->|depends_on| n51
-n212 -->|depends_on| n176
+n213 -->|depends_on| n51
+n213 -->|depends_on| n177
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n78,n79,n80,n81,n51,n82,n83,n84,n85,n86 internal;
-class n128,n58,n55,n145,n104,n44,n137,n166,n176,n151,n60,n124,n66,n229,n230,n231,n212 external;
+class n128,n58,n55,n145,n104,n44,n137,n167,n177,n151,n60,n124,n66,n229,n230,n231,n213 external;
 ```
 
 ### Skill Library
@@ -1481,34 +1484,34 @@ Source: `docs/architecture/graphs/system-skills.mmd`
 ```mermaid
 flowchart LR
 n230["Navigate"]
-n179["Follow Path"]
+n180["Follow Path"]
 n232["Mine"]
 n233["Collect"]
 n229["Craft"]
 n234["Smelt"]
 n235["Eat"]
-n210["Deposit"]
-n213["Withdraw"]
+n211["Deposit"]
+n214["Withdraw"]
 n236["Sleep"]
 n237["Flee or Defend"]
-n211["Explore"]
+n212["Explore"]
 n238["Bridge"]
 n239["Clear"]
 n231["Place Build"]
 n240["Schematic Build"]
 n241["Repair"]
-n180["Harvest Farm"]
-n181["Plant Farm"]
-n212["Skill Shared Utilities"]
+n181["Harvest Farm"]
+n182["Plant Farm"]
+n213["Skill Shared Utilities"]
 n52["Block Executor (Building)"]
 n60["Action Veto Gate (Autonomy and Safety)"]
 n56["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n51["Skill Context Builder (Skill Runtime)"]
-n175["Container Memory (World Model and Landmarks)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n176["Container Memory (World Model and Landmarks)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n112["Mob Threat Evaluator (Autonomy and Safety)"]
-n164["Path Graph Store (Shared Infrastructure Plan)"]
-n162["Farm Store (Shared Infrastructure Plan)"]
+n165["Path Graph Store (Shared Infrastructure Plan)"]
+n163["Farm Store (Shared Infrastructure Plan)"]
 n78["Skill Contract (Skill Runtime)"]
 n99["Schematic Diff (Building)"]
 n101["Build Order Planner (Building)"]
@@ -1517,10 +1520,10 @@ n56 -->|depends_on| n60
 n52 -->|depends_on| n56
 n52 -->|depends_on| n60
 n101 -->|depends_on| n100
-n99 -->|reads| n176
+n99 -->|reads| n177
 n60 -->|validates| n56
 n60 -->|validates| n52
-n51 -->|reads| n176
+n51 -->|reads| n177
 n238 -->|depends_on| n52
 n238 -->|depends_on| n230
 n239 -->|depends_on| n52
@@ -1530,46 +1533,46 @@ n233 -->|depends_on| n232
 n233 -->|depends_on| n230
 n229 -->|depends_on| n56
 n229 -->|depends_on| n51
-n210 -->|depends_on| n56
-n210 -->|depends_on| n175
-n235 -->|depends_on| n56
-n211 -->|depends_on| n230
+n211 -->|depends_on| n56
 n211 -->|depends_on| n176
+n235 -->|depends_on| n56
+n212 -->|depends_on| n230
+n212 -->|depends_on| n177
 n237 -->|depends_on| n56
 n237 -->|depends_on| n112
 n237 -->|depends_on| n230
-n179 -->|depends_on| n164
-n179 -->|depends_on| n230
-n180 -->|depends_on| n56
-n180 -->|depends_on| n162
+n180 -->|depends_on| n165
 n180 -->|depends_on| n230
+n181 -->|depends_on| n56
+n181 -->|depends_on| n163
+n181 -->|depends_on| n230
 n232 -->|depends_on| n56
 n232 -->|depends_on| n230
 n230 -->|depends_on| n56
 n230 -->|depends_on| n78
 n231 -->|depends_on| n52
 n231 -->|depends_on| n51
-n181 -->|depends_on| n56
-n181 -->|depends_on| n162
-n181 -->|depends_on| n230
+n182 -->|depends_on| n56
+n182 -->|depends_on| n163
+n182 -->|depends_on| n230
 n241 -->|depends_on| n52
 n241 -->|depends_on| n99
 n240 -->|depends_on| n52
 n240 -->|depends_on| n101
 n240 -->|depends_on| n100
-n212 -->|depends_on| n51
-n212 -->|depends_on| n176
+n213 -->|depends_on| n51
+n213 -->|depends_on| n177
 n236 -->|depends_on| n56
 n236 -->|depends_on| n230
 n234 -->|depends_on| n56
 n234 -->|depends_on| n230
-n213 -->|depends_on| n56
-n213 -->|depends_on| n175
-n176 -->|reads| n164
+n214 -->|depends_on| n56
+n214 -->|depends_on| n176
+n177 -->|reads| n165
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n230,n179,n232,n233,n229,n234,n235,n210,n213,n236,n237,n211,n238,n239,n231,n240,n241,n180,n181,n212 internal;
-class n52,n60,n56,n51,n175,n176,n112,n164,n162,n78,n99,n101,n100 external;
+class n230,n180,n232,n233,n229,n234,n235,n211,n214,n236,n237,n212,n238,n239,n231,n240,n241,n181,n182,n213 internal;
+class n52,n60,n56,n51,n176,n177,n112,n165,n163,n78,n99,n101,n100 external;
 ```
 
 ### Building
@@ -1601,13 +1604,13 @@ n105["Container Refill Adapter"]
 n106["Rollback Journal"]
 n56["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n60["Action Veto Gate (Autonomy and Safety)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
-n175["Container Memory (World Model and Landmarks)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
+n176["Container Memory (World Model and Landmarks)"]
 n51["Skill Context Builder (Skill Runtime)"]
 n55["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
 n242["Block Changelog Writer (Memory and Persistence)"]
-n160["Structure Store (Shared Infrastructure Plan)"]
+n161["Structure Store (Shared Infrastructure Plan)"]
 n151["Event Stream (Transport and Protocol)"]
 n238["Bridge (Skill Library)"]
 n239["Clear (Skill Library)"]
@@ -1621,24 +1624,24 @@ n52 -->|depends_on| n103
 n52 -->|depends_on| n106
 n52 -->|depends_on| n60
 n103 -->|depends_on| n87
-n103 -->|reads| n176
+n103 -->|reads| n177
 n88 -->|depends_on| n87
-n88 -->|depends_on| n165
+n88 -->|depends_on| n166
 n101 -->|depends_on| n87
 n101 -->|depends_on| n100
 n105 -->|depends_on| n56
-n105 -->|writes| n175
+n105 -->|writes| n176
 n104 -->|depends_on| n87
 n104 -->|reads| n51
-n104 -->|reads| n175
+n104 -->|reads| n176
 n102 -->|reads| n55
 n102 -->|depends_on| n101
-n102 -->|reads| n176
+n102 -->|reads| n177
 n106 -->|writes| n242
-n106 -->|reads| n160
+n106 -->|reads| n161
 n106 -->|subscribes| n151
 n99 -->|depends_on| n87
-n99 -->|reads| n176
+n99 -->|reads| n177
 n98 -->|depends_on| n87
 n94 -->|depends_on| n87
 n92 -->|depends_on| n87
@@ -1651,11 +1654,11 @@ n95 -->|depends_on| n87
 n93 -->|depends_on| n87
 n96 -->|depends_on| n87
 n100 -->|depends_on| n87
-n100 -->|reads| n160
+n100 -->|reads| n161
 n60 -->|validates| n56
 n60 -->|validates| n52
 n51 -->|reads| n55
-n51 -->|reads| n176
+n51 -->|reads| n177
 n238 -->|depends_on| n52
 n239 -->|depends_on| n52
 n239 -->|depends_on| n60
@@ -1669,7 +1672,7 @@ n240 -->|depends_on| n100
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n87,n88,n89,n90,n91,n92,n93,n94,n95,n96,n97,n98,n99,n100,n101,n102,n103,n52,n104,n105,n106 internal;
-class n56,n60,n176,n165,n175,n51,n55,n242,n160,n151,n238,n239,n231,n241,n240 external;
+class n56,n60,n177,n166,n176,n51,n55,n242,n161,n151,n238,n239,n231,n241,n240 external;
 ```
 
 ### Bot Runtime and Mineflayer Adapter
@@ -1694,12 +1697,12 @@ n128["Affordance Enumerator (Brains)"]
 n141["Config Schema Validator (Config and Profiles)"]
 n23(["Minecraft 1.20.1 LAN Server"])
 n67["Deterministic Policy (Brains)"]
-n216["Block Update Listener (Perception)"]
+n159["Block Update Listener (Perception)"]
 n66["Reflex Guardian Loop (Brains)"]
 n147["Profile Resolver (Config and Profiles)"]
 n222["Detector Pipeline (Perception)"]
-n214["Ring Sampler (Perception)"]
-n170["Delta Sync Planner (Bot Registry and Profiles)"]
+n215["Ring Sampler (Perception)"]
+n171["Delta Sync Planner (Bot Registry and Profiles)"]
 n153["Reconnect Supervisor (Transport and Protocol)"]
 n80["Skill Lifecycle Executor (Skill Runtime)"]
 n81["Skill Tick Scheduler (Skill Runtime)"]
@@ -1712,16 +1715,16 @@ n64["Pause and Resume Controller (Ops and Observability)"]
 n62["Emergency Stop Controller (Autonomy and Safety)"]
 n233["Collect (Skill Library)"]
 n229["Craft (Skill Library)"]
-n210["Deposit (Skill Library)"]
+n211["Deposit (Skill Library)"]
 n235["Eat (Skill Library)"]
 n237["Flee or Defend (Skill Library)"]
-n180["Harvest Farm (Skill Library)"]
+n181["Harvest Farm (Skill Library)"]
 n232["Mine (Skill Library)"]
 n230["Navigate (Skill Library)"]
-n181["Plant Farm (Skill Library)"]
+n182["Plant Farm (Skill Library)"]
 n236["Sleep (Skill Library)"]
 n234["Smelt (Skill Library)"]
-n213["Withdraw (Skill Library)"]
+n214["Withdraw (Skill Library)"]
 n32["Bot Process Supervisor (Coordinator Runtime)"]
 n56 -->|depends_on| n53
 n56 -->|depends_on| n108
@@ -1734,16 +1737,16 @@ n67 -->|depends_on| n128
 n67 -->|depends_on| n109
 n67 -->|subscribes| n151
 n54 -->|depends_on| n53
-n54 -->|delegates_to| n216
+n54 -->|delegates_to| n159
 n57 -->|depends_on| n60
 n57 -->|delegates_to| n66
 n107 -->|depends_on| n53
 n107 -->|depends_on| n147
 n110 -->|depends_on| n222
-n110 -->|depends_on| n214
+n110 -->|depends_on| n215
 n108 -->|depends_on| n141
 n59 -->|depends_on| n53
-n59 -->|delegates_to| n170
+n59 -->|delegates_to| n171
 n59 -->|depends_on| n153
 n58 -->|depends_on| n80
 n58 -->|depends_on| n81
@@ -1751,7 +1754,7 @@ n109 -->|depends_on| n53
 n109 -->|depends_on| n55
 n109 -->|publishes| n151
 n55 -->|depends_on| n54
-n55 -->|delegates_to| n214
+n55 -->|delegates_to| n215
 n55 -->|delegates_to| n51
 n52 -->|depends_on| n56
 n52 -->|depends_on| n60
@@ -1775,27 +1778,28 @@ n233 -->|depends_on| n232
 n233 -->|depends_on| n230
 n229 -->|depends_on| n56
 n229 -->|depends_on| n51
-n210 -->|depends_on| n56
+n211 -->|depends_on| n56
 n235 -->|depends_on| n56
 n237 -->|depends_on| n56
 n237 -->|depends_on| n230
-n180 -->|depends_on| n56
-n180 -->|depends_on| n230
+n181 -->|depends_on| n56
+n181 -->|depends_on| n230
 n232 -->|depends_on| n56
 n232 -->|depends_on| n230
 n230 -->|depends_on| n56
-n181 -->|depends_on| n56
-n181 -->|depends_on| n230
+n182 -->|depends_on| n56
+n182 -->|depends_on| n230
 n236 -->|depends_on| n56
 n236 -->|depends_on| n230
 n234 -->|depends_on| n56
 n234 -->|depends_on| n230
-n213 -->|depends_on| n56
+n214 -->|depends_on| n56
 n32 -->|controls| n53
+n159 -->|publishes| n151
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n53,n107,n54,n55,n108,n56,n109,n57,n58,n110,n59 internal;
-class n60,n128,n141,n67,n216,n66,n147,n222,n214,n170,n153,n80,n81,n151,n51,n52,n105,n102,n64,n62,n233,n229,n210,n235,n237,n180,n232,n230,n181,n236,n234,n213,n32,n23 external;
+class n60,n128,n141,n67,n159,n66,n147,n222,n215,n171,n153,n80,n81,n151,n51,n52,n105,n102,n64,n62,n233,n229,n211,n235,n237,n181,n232,n230,n182,n236,n234,n214,n32,n23 external;
 ```
 
 ### Autonomy and Safety
@@ -1823,12 +1827,12 @@ n57["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
 n52["Block Executor (Building)"]
 n65["Fleet Emergency Stop (Ops and Observability)"]
 n66["Reflex Guardian Loop (Brains)"]
-n193["Claim Repository (Claims and Leases)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n194["Claim Repository (Claims and Leases)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n28["Command Router (Coordinator Runtime)"]
 n151["Event Stream (Transport and Protocol)"]
-n192["Event Log Writer (Memory and Persistence)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
+n193["Event Log Writer (Memory and Persistence)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
 n42["Planner Trigger Evaluator (Cloud Planner)"]
 n86["Skill Preemption Handler (Skill Runtime)"]
 n239["Clear (Skill Library)"]
@@ -1844,9 +1848,9 @@ n60 -->|validates| n56
 n60 -->|validates| n52
 n60 -->|reads| n66
 n60 -->|depends_on| n120
-n118 -->|reads| n193
-n118 -->|reads| n176
-n116 -->|reads| n193
+n118 -->|reads| n194
+n118 -->|reads| n177
+n116 -->|reads| n194
 n62 -->|controls| n56
 n62 -->|controls| n28
 n62 -->|depends_on| n151
@@ -1857,19 +1861,19 @@ n66 -->|depends_on| n113
 n66 -->|depends_on| n115
 n66 -->|depends_on| n112
 n66 -->|depends_on| n114
-n121 -->|writes| n192
-n117 -->|reads| n193
-n117 -->|reads| n165
+n121 -->|writes| n193
+n117 -->|reads| n194
+n117 -->|reads| n166
 n61 -->|proposes_to| n28
 n61 -->|proposes_to| n42
 n61 -->|controls| n62
 n61 -->|depends_on| n151
-n120 -->|reads| n193
+n120 -->|reads| n194
 n120 -->|depends_on| n118
 n120 -->|depends_on| n119
 n120 -->|depends_on| n117
-n120 -->|reads| n165
-n120 -->|reads| n176
+n120 -->|reads| n166
+n120 -->|reads| n177
 n86 -->|reads| n60
 n239 -->|depends_on| n52
 n239 -->|depends_on| n60
@@ -1878,7 +1882,7 @@ n237 -->|depends_on| n112
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n111,n112,n113,n114,n115,n116,n117,n118,n119,n120,n60,n61,n62,n121 internal;
-class n56,n57,n52,n65,n66,n193,n176,n28,n151,n192,n165,n42,n86,n239,n237 external;
+class n56,n57,n52,n65,n66,n194,n177,n28,n151,n193,n166,n42,n86,n239,n237 external;
 ```
 
 ### Memory and Persistence
@@ -1890,49 +1894,49 @@ flowchart LR
 n243["SQLite Runtime"]
 n143["Migration Runner"]
 n137["Transaction Manager"]
-n192["Event Log Writer"]
+n193["Event Log Writer"]
 n242["Block Changelog Writer"]
 n139["Retention Pruner"]
 n244["Snapshot Export"]
 n245["Schema Version Registry"]
 n246["Episode Store"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
 n106["Rollback Journal (Building)"]
 n132["Atomic Claim Acquirer (Claims and Leases)"]
-n193["Claim Repository (Claims and Leases)"]
+n194["Claim Repository (Claims and Leases)"]
 n130["Fencing Token Authority (Claims and Leases)"]
 n29["Coordinator Epoch Authority (Coordinator Runtime)"]
 n30["Global Scheduler (Coordinator Runtime)"]
 n68["Process Bootstrap (Coordinator Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n247["Replay Engine (Testing and Evaluation)"]
-n197["Grant Repository (Edit Grants and Collaboration)"]
+n198["Grant Repository (Edit Grants and Collaboration)"]
 n127["Audit Viewer (Ops and Observability)"]
 n126["Health and Readiness (Ops and Observability)"]
 n77["Plan Cache (Cloud Planner)"]
 n121["Incident Journal (Autonomy and Safety)"]
-n163["Container Registry (Shared Infrastructure Plan)"]
-n162["Farm Store (Shared Infrastructure Plan)"]
-n164["Path Graph Store (Shared Infrastructure Plan)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n161["Road Store (Shared Infrastructure Plan)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
-n160["Structure Store (Shared Infrastructure Plan)"]
+n164["Container Registry (Shared Infrastructure Plan)"]
+n163["Farm Store (Shared Infrastructure Plan)"]
+n165["Path Graph Store (Shared Infrastructure Plan)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n162["Road Store (Shared Infrastructure Plan)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
+n161["Structure Store (Shared Infrastructure Plan)"]
 n134["SIP Transactional Committer (Shared Infrastructure Plan)"]
-n159["Zone Store (Shared Infrastructure Plan)"]
+n160["Zone Store (Shared Infrastructure Plan)"]
 n83["Skill Checkpoint Manager (Skill Runtime)"]
 n135["Atomic Task Claimer (Task Board)"]
-n182["Task Repository (Task Board)"]
-n188["Task State Machine (Task Board)"]
+n183["Task Repository (Task Board)"]
+n189["Task State Machine (Task Board)"]
 n248["Trace Exporter (Laya Training)"]
-n204["Chunk Version Store (World Model and Landmarks)"]
-n208["Landmark Registry (World Model and Landmarks)"]
-n191 -->|depends_on| n137
+n205["Chunk Version Store (World Model and Landmarks)"]
+n209["Landmark Registry (World Model and Landmarks)"]
+n192 -->|depends_on| n137
 n106 -->|writes| n242
-n106 -->|reads| n160
-n132 -->|writes| n193
+n106 -->|reads| n161
+n132 -->|writes| n194
 n132 -->|depends_on| n137
-n193 -->|depends_on| n137
+n194 -->|depends_on| n137
 n130 -->|depends_on| n29
 n130 -->|depends_on| n137
 n29 -->|controls| n130
@@ -1942,57 +1946,57 @@ n30 -->|delegates_to| n139
 n68 -->|depends_on| n31
 n68 -->|depends_on| n143
 n31 -->|depends_on| n137
-n247 -->|depends_on| n192
-n197 -->|depends_on| n137
+n247 -->|depends_on| n193
+n198 -->|depends_on| n137
 n242 -->|depends_on| n137
-n192 -->|depends_on| n137
+n193 -->|depends_on| n137
 n143 -->|depends_on| n243
 n139 -->|depends_on| n242
-n139 -->|depends_on| n192
+n139 -->|depends_on| n193
 n139 -->|depends_on| n137
 n245 -->|depends_on| n143
 n244 -->|depends_on| n137
 n137 -->|depends_on| n243
 n127 -->|reads| n242
-n127 -->|reads| n192
+n127 -->|reads| n193
 n126 -->|depends_on| n243
 n77 -->|depends_on| n137
-n121 -->|writes| n192
-n163 -->|depends_on| n137
-n162 -->|depends_on| n137
+n121 -->|writes| n193
 n164 -->|depends_on| n137
-n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n161 -->|depends_on| n137
+n163 -->|depends_on| n137
 n165 -->|depends_on| n137
-n160 -->|depends_on| n137
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
+n162 -->|depends_on| n137
+n166 -->|depends_on| n137
+n161 -->|depends_on| n137
 n134 -->|depends_on| n137
-n134 -->|writes| n163
-n134 -->|writes| n162
 n134 -->|writes| n164
-n134 -->|depends_on| n166
-n134 -->|writes| n161
+n134 -->|writes| n163
 n134 -->|writes| n165
+n134 -->|depends_on| n167
+n134 -->|writes| n162
+n134 -->|writes| n166
+n134 -->|writes| n161
 n134 -->|writes| n160
-n134 -->|writes| n159
-n159 -->|depends_on| n137
+n160 -->|depends_on| n137
 n83 -->|depends_on| n137
 n135 -->|depends_on| n137
-n135 -->|writes| n182
-n182 -->|depends_on| n137
-n188 -->|depends_on| n192
-n188 -->|writes| n182
-n248 -->|reads| n192
-n204 -->|depends_on| n137
-n208 -->|depends_on| n137
+n135 -->|writes| n183
+n183 -->|depends_on| n137
+n189 -->|depends_on| n193
+n189 -->|writes| n183
+n248 -->|reads| n193
+n205 -->|depends_on| n137
+n209 -->|depends_on| n137
 n247 -->|reads| n246
 n248 -->|reads| n246
 n127 -->|reads| n246
 n139 -->|depends_on| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n243,n143,n137,n192,n242,n139,n244,n245,n246 internal;
-class n191,n106,n132,n193,n130,n29,n30,n68,n31,n247,n197,n127,n126,n77,n121,n163,n162,n164,n166,n161,n165,n160,n134,n159,n83,n135,n182,n188,n248,n204,n208 external;
+class n243,n143,n137,n193,n242,n139,n244,n245,n246 internal;
+class n192,n106,n132,n194,n130,n29,n30,n68,n31,n247,n198,n127,n126,n77,n121,n164,n163,n165,n167,n162,n166,n161,n134,n160,n83,n135,n183,n189,n248,n205,n209 external;
 ```
 
 ### Ops and Observability
@@ -2010,13 +2014,13 @@ n124["Metrics Registry"]
 n125["Structured Logger"]
 n126["Health and Readiness"]
 n127["Audit Viewer"]
-n195["Contention Metrics (Claims and Leases)"]
+n196["Contention Metrics (Claims and Leases)"]
 n34["Execution Provider Selector (Laya Decision Service)"]
 n76["Latency Metrics (Laya Decision Service)"]
 n249["Metrics Reporter (Testing and Evaluation)"]
 n27(["Fleet Operator"])
 n242["Block Changelog Writer (Memory and Persistence)"]
-n192["Event Log Writer (Memory and Persistence)"]
+n193["Event Log Writer (Memory and Persistence)"]
 n62["Emergency Stop Controller (Autonomy and Safety)"]
 n151["Event Stream (Transport and Protocol)"]
 n33["Model Loader (Laya Decision Service)"]
@@ -2024,15 +2028,15 @@ n243["SQLite Runtime (Memory and Persistence)"]
 n136["Message Schema Registry (Transport and Protocol)"]
 n58["Skill Host (Bot Runtime and Mineflayer Adapter)"]
 n149["Presence Tracker (Bot Registry and Profiles)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n193["Claim Repository (Claims and Leases)"]
-n182["Task Repository (Task Board)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n194["Claim Repository (Claims and Leases)"]
+n183["Task Repository (Task Board)"]
 n48["Planner Budget Limiter (Cloud Planner)"]
 n42["Planner Trigger Evaluator (Cloud Planner)"]
 n82["Skill Progress Reporter (Skill Runtime)"]
 n246["Episode Store (Memory and Persistence)"]
-n195 -->|depends_on| n193
-n195 -->|observes| n124
+n196 -->|depends_on| n194
+n196 -->|observes| n124
 n34 -->|controls| n33
 n34 -->|observes| n125
 n76 -->|observes| n124
@@ -2040,7 +2044,7 @@ n76 -->|writes| n124
 n249 -->|observes| n124
 n27 -->|controls| n63
 n127 -->|reads| n242
-n127 -->|reads| n192
+n127 -->|reads| n193
 n65 -->|controls| n62
 n65 -->|depends_on| n151
 n126 -->|depends_on| n33
@@ -2053,15 +2057,15 @@ n63 -->|depends_on| n136
 n64 -->|controls| n58
 n64 -->|depends_on| n149
 n64 -->|depends_on| n151
-n123 -->|depends_on| n166
+n123 -->|depends_on| n167
 n122 -->|depends_on| n149
-n122 -->|reads| n193
+n122 -->|reads| n194
 n122 -->|observes| n124
-n122 -->|reads| n166
-n122 -->|reads| n182
+n122 -->|reads| n167
+n122 -->|reads| n183
 n48 -->|observes| n124
 n42 -->|observes| n124
-n42 -->|reads| n166
+n42 -->|reads| n167
 n62 -->|depends_on| n151
 n82 -->|observes| n124
 n82 -->|publishes| n151
@@ -2069,7 +2073,7 @@ n127 -->|reads| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n63,n122,n64,n65,n123,n124,n125,n126,n127 internal;
-class n195,n34,n76,n249,n242,n192,n62,n151,n33,n243,n136,n58,n149,n166,n193,n182,n48,n42,n82,n246,n27 external;
+class n196,n34,n76,n249,n242,n193,n62,n151,n33,n243,n136,n58,n149,n167,n194,n183,n48,n42,n82,n246,n27 external;
 ```
 
 ### Config and Profiles
@@ -2083,14 +2087,14 @@ n141["Config Schema Validator"]
 n147["Profile Resolver"]
 n225["Hardware Probe"]
 n157["Secrets Loader"]
-n203["Name Pool Validator"]
+n204["Name Pool Validator"]
 n226["Laya Runtime Resolver"]
 n250["Fail Fast Handler"]
 n53["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
 n107["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
 n108["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
 n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n202["Name Pool Allocator (Bot Registry and Profiles)"]
+n203["Name Pool Allocator (Bot Registry and Profiles)"]
 n26(["Host Hardware"])
 n68["Process Bootstrap (Coordinator Runtime)"]
 n69["Service Composition (Coordinator Runtime)"]
@@ -2106,14 +2110,14 @@ n107 -->|depends_on| n53
 n107 -->|depends_on| n147
 n108 -->|depends_on| n141
 n148 -->|depends_on| n157
-n202 -->|depends_on| n203
+n203 -->|depends_on| n204
 n141 -->|depends_on| n142
 n250 -->|depends_on| n141
 n225 -->|depends_on| n147
 n225 -->|depends_on| n26
 n226 -->|depends_on| n225
 n226 -->|depends_on| n147
-n203 -->|depends_on| n141
+n204 -->|depends_on| n141
 n147 -->|depends_on| n141
 n157 -->|depends_on| n142
 n68 -->|depends_on| n141
@@ -2132,8 +2136,8 @@ n154 -->|depends_on| n148
 n154 -->|depends_on| n157
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n142,n141,n147,n225,n157,n203,n226,n250 internal;
-class n53,n107,n108,n148,n202,n68,n69,n38,n34,n33,n73,n223,n40,n154,n26 external;
+class n142,n141,n147,n225,n157,n204,n226,n250 internal;
+class n53,n107,n108,n148,n203,n68,n69,n38,n34,n33,n73,n223,n40,n154,n26 external;
 ```
 
 ### Testing and Evaluation
@@ -2147,27 +2151,27 @@ n224["Detector Fixtures"]
 n252["Docker Server Harness"]
 n253["Scenario Runner"]
 n247["Replay Engine"]
-n190["Contention Harness"]
+n191["Contention Harness"]
 n249["Metrics Reporter"]
 n254["Soak Runner"]
 n255["Architecture Guard Tests"]
 n227["Laya Benchmark Harness"]
-n193["Claim Repository (Claims and Leases)"]
-n182["Task Repository (Task Board)"]
+n194["Claim Repository (Claims and Leases)"]
+n183["Task Repository (Task Board)"]
 n222["Detector Pipeline (Perception)"]
 n23(["Minecraft 1.20.1 LAN Server"])
 n76["Latency Metrics (Laya Decision Service)"]
 n33["Model Loader (Laya Decision Service)"]
 n124["Metrics Registry (Ops and Observability)"]
-n192["Event Log Writer (Memory and Persistence)"]
+n193["Event Log Writer (Memory and Persistence)"]
 n256["Promotion Gate (Laya Training)"]
 n246["Episode Store (Memory and Persistence)"]
 n76 -->|observes| n124
 n76 -->|writes| n124
 n255 -->|depends_on| n251
-n190 -->|depends_on| n193
-n190 -->|delegates_to| n253
-n190 -->|depends_on| n182
+n191 -->|depends_on| n194
+n191 -->|delegates_to| n253
+n191 -->|depends_on| n183
 n224 -->|depends_on| n251
 n224 -->|depends_on| n222
 n252 -->|depends_on| n251
@@ -2177,7 +2181,7 @@ n227 -->|depends_on| n33
 n227 -->|delegates_to| n253
 n249 -->|observes| n124
 n247 -->|depends_on| n253
-n247 -->|depends_on| n192
+n247 -->|depends_on| n193
 n253 -->|controls| n252
 n253 -->|publishes| n249
 n254 -->|depends_on| n249
@@ -2186,8 +2190,8 @@ n256 -->|depends_on| n227
 n247 -->|reads| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n251,n224,n252,n253,n247,n190,n249,n254,n255,n227 internal;
-class n193,n182,n222,n76,n33,n124,n192,n256,n246,n23 external;
+class n251,n224,n252,n253,n247,n191,n249,n254,n255,n227 internal;
+class n194,n183,n222,n76,n33,n124,n193,n256,n246,n23 external;
 ```
 
 ### Laya Training
@@ -2205,7 +2209,7 @@ n228["Calibration Fitter"]
 n256["Promotion Gate"]
 n38["Confidence Calibrator (Laya Decision Service)"]
 n227["Laya Benchmark Harness (Testing and Evaluation)"]
-n192["Event Log Writer (Memory and Persistence)"]
+n193["Event Log Writer (Memory and Persistence)"]
 n246["Episode Store (Memory and Persistence)"]
 n228 -->|reads| n38
 n228 -->|depends_on| n248
@@ -2217,12 +2221,12 @@ n256 -->|depends_on| n227
 n256 -->|depends_on| n228
 n256 -->|depends_on| n260
 n258 -->|depends_on| n248
-n248 -->|reads| n192
+n248 -->|reads| n193
 n248 -->|reads| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n248,n257,n258,n259,n260,n228,n256 internal;
-class n38,n227,n192,n246 external;
+class n38,n227,n193,n246 external;
 ```
 
 ### Brains
@@ -2238,7 +2242,7 @@ n129["Laya Client"]
 n55["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
 n79["Skill Registry (Skill Runtime)"]
 n109["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
-n200["Behavior Profile Manager (Bot Registry and Profiles)"]
+n201["Behavior Profile Manager (Bot Registry and Profiles)"]
 n151["Event Stream (Transport and Protocol)"]
 n57["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
 n38["Confidence Calibrator (Laya Decision Service)"]
@@ -2256,7 +2260,7 @@ n128 -->|depends_on| n66
 n128 -->|depends_on| n79
 n67 -->|depends_on| n128
 n67 -->|depends_on| n109
-n67 -->|reads| n200
+n67 -->|reads| n201
 n67 -->|subscribes| n151
 n57 -->|depends_on| n60
 n57 -->|delegates_to| n66
@@ -2279,7 +2283,7 @@ n129 -->|depends_on| n67
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n66,n128,n67,n129 internal;
-class n55,n79,n109,n200,n151,n57,n38,n60,n116,n111,n113,n115,n112,n114,n81,n144 external;
+class n55,n79,n109,n201,n151,n57,n38,n60,n116,n111,n113,n115,n112,n114,n81,n144 external;
 ```
 
 ### Bootstrap and Toolchain

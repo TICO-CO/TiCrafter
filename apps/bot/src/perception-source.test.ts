@@ -48,7 +48,7 @@ describe('MineflayerPerceptionSource', () => {
         expect(position).toEqual({ x: 8, y: 64, z: 8 });
         if (position === null) return;
 
-        const snapshot = source.nextLoadedChunk(position, 32);
+        const snapshot = source.nextLoadedChunks(position, 32, 1)[0];
 
         expect(snapshot?.chunk).toEqual({ x: 0, z: 0 });
         expect((snapshot?.version ?? 0) > 0).toBe(true);
@@ -70,6 +70,6 @@ describe('MineflayerPerceptionSource', () => {
     it('returns no snapshot when no columns are inside the ring', () => {
         const source = new MineflayerPerceptionSource(bot);
 
-        expect(source.nextLoadedChunk({ x: 1000, y: 64, z: 1000 }, 16)).toBeNull();
+        expect(source.nextLoadedChunks({ x: 1000, y: 64, z: 1000 }, 16, 1)).toEqual([]);
     });
 });

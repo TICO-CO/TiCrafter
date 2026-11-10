@@ -1,4 +1,7 @@
 import {
+    BLOCK_UPDATE_EVENT,
+    type BlockUpdateMessage,
+    blockUpdateSchema,
     CHUNK_SNAPSHOT_EVENT,
     type ChunkSnapshotMessage,
     chunkSnapshotSchema,
@@ -23,6 +26,7 @@ export interface MessageRouterOptions {
     logger: LoggerPort;
     onChunkSnapshot?: (payload: ChunkSnapshotMessage) => void;
     onLandmarkCandidate?: (payload: LandmarkCandidateMessage) => void;
+    onBlockUpdate?: (payload: BlockUpdateMessage) => void;
 }
 
 export class MessageRouter {
@@ -69,6 +73,16 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onLandmarkCandidate?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === BLOCK_UPDATE_EVENT) {
+            const parsed = blockUpdateSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid block update');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onBlockUpdate?.(parsed.data);
             return;
         }
         if (envelope.kind === 'request') {

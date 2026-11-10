@@ -1,4 +1,6 @@
 import {
+    BLOCK_UPDATE_EVENT,
+    type BlockUpdateMessage,
     CHUNK_SNAPSHOT_EVENT,
     type ChunkSnapshotMessage,
     LANDMARK_CANDIDATE_EVENT,
@@ -60,9 +62,23 @@ function landmarkPayload(): LandmarkCandidateMessage {
     };
 }
 
+function blockUpdatePayload(): BlockUpdateMessage {
+    return {
+        botId: 'bot.tibot1',
+        chunk: { x: 0, z: 0 },
+        observedAt: '2026-11-10T12:00:00.000Z',
+        block: {
+            position: { x: 1, y: 64, z: 1 },
+            blockId: 'stone',
+            solid: true,
+        },
+    };
+}
+
 function router(received: {
     chunks: ChunkSnapshotMessage[];
     landmarks: LandmarkCandidateMessage[];
+    blocks: BlockUpdateMessage[];
 }): MessageRouter {
     return new MessageRouter({
         sessions: new SessionManager(),
@@ -72,12 +88,13 @@ function router(received: {
         logger,
         onChunkSnapshot: (payload) => received.chunks.push(payload),
         onLandmarkCandidate: (payload) => received.landmarks.push(payload),
+        onBlockUpdate: (payload) => received.blocks.push(payload),
     });
 }
 
 describe('MessageRouter perception events', () => {
     it('routes validated perception events', () => {
-        const received = { chunks: [], landmarks: [] };
+        const received = { chunks: [], landmarks: [], blocks: [] };
         const messageRouter = router(received);
         const client = connection();
 
@@ -89,13 +106,18 @@ describe('MessageRouter perception events', () => {
             client,
             ProtocolEnvelope.create('event', LANDMARK_CANDIDATE_EVENT, landmarkPayload()),
         );
+        messageRouter.handleMessage(
+            client,
+            ProtocolEnvelope.create('event', BLOCK_UPDATE_EVENT, blockUpdatePayload()),
+        );
 
         expect(received.chunks).toHaveLength(1);
         expect(received.landmarks).toHaveLength(1);
+        expect(received.blocks).toHaveLength(1);
     });
 
     it('rejects events whose bot id does not match the session', () => {
-        const received = { chunks: [], landmarks: [] };
+        const received = { chunks: [], landmarks: [], blocks: [] };
         const messageRouter = router(received);
         const client = connection();
         const payload = { ...chunkPayload(), botId: 'bot.other' };

@@ -32,6 +32,7 @@ n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
 n157["Secrets Loader (Config and Profiles)"]
 n158["Observation Ingestor (World Model and Landmarks)"]
 n129["Laya Client (Brains)"]
+n159["Block Update Listener (Perception)"]
 n67 -->|depends_on| n109
 n67 -->|subscribes| n151
 n59 -->|depends_on| n153
@@ -75,7 +76,8 @@ n158 -->|subscribes| n151
 n158 -->|reads| n136
 n129 -->|depends_on| n144
 n129 -->|depends_on| n67
+n159 -->|publishes| n151
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n136,n144,n150,n151,n152,n153,n154,n131 internal;
-class n67,n59,n109,n106,n71,n28,n68,n70,n75,n37,n72,n155,n65,n63,n64,n156,n49,n62,n61,n85,n82,n148,n157,n158,n129 external;
+class n67,n59,n109,n106,n71,n28,n68,n70,n75,n37,n72,n155,n65,n63,n64,n156,n49,n62,n61,n85,n82,n148,n157,n158,n129,n159 external;

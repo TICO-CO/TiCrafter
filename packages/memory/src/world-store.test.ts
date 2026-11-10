@@ -65,6 +65,34 @@ describe('WorldStore', () => {
         database.close();
     });
 
+    it('round-trips container observations', () => {
+        const [database, openError] = TestDatabase.openTemporary();
+        expect(openError).toBeNull();
+        if (database === null) return;
+        const store = new WorldStore(database);
+
+        const [, saveError] = store.saveContainerObservation({
+            id: 'container.chest.1',
+            positionJson: '{"x":1,"y":64,"z":1}',
+            role: 'storage',
+            contentsJson: '[{"itemId":"minecraft:oak_log","count":12}]',
+            observedAt: '2026-11-10T12:00:00.000Z',
+            confidence: 0.8,
+            updatedAt: '2026-11-10T12:00:00.000Z',
+        });
+        expect(saveError).toBeNull();
+
+        const [container, readError] = store.getContainerObservation('container.chest.1');
+        expect(readError).toBeNull();
+        expect(container?.role).toBe('storage');
+        expect(container?.contentsJson).toBe('[{"itemId":"minecraft:oak_log","count":12}]');
+
+        const [containers, listError] = store.listContainerObservations();
+        expect(listError).toBeNull();
+        expect(containers).toHaveLength(1);
+        database.close();
+    });
+
     it('updates an existing landmark', () => {
         const [database, openError] = TestDatabase.openTemporary();
         expect(openError).toBeNull();

@@ -8,13 +8,13 @@ n124["Metrics Registry"]
 n125["Structured Logger"]
 n126["Health and Readiness"]
 n127["Audit Viewer"]
-n195["Contention Metrics (Claims and Leases)"]
+n196["Contention Metrics (Claims and Leases)"]
 n34["Execution Provider Selector (Laya Decision Service)"]
 n76["Latency Metrics (Laya Decision Service)"]
 n249["Metrics Reporter (Testing and Evaluation)"]
 n27(["Fleet Operator"])
 n242["Block Changelog Writer (Memory and Persistence)"]
-n192["Event Log Writer (Memory and Persistence)"]
+n193["Event Log Writer (Memory and Persistence)"]
 n62["Emergency Stop Controller (Autonomy and Safety)"]
 n151["Event Stream (Transport and Protocol)"]
 n33["Model Loader (Laya Decision Service)"]
@@ -22,15 +22,15 @@ n243["SQLite Runtime (Memory and Persistence)"]
 n136["Message Schema Registry (Transport and Protocol)"]
 n58["Skill Host (Bot Runtime and Mineflayer Adapter)"]
 n149["Presence Tracker (Bot Registry and Profiles)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n193["Claim Repository (Claims and Leases)"]
-n182["Task Repository (Task Board)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n194["Claim Repository (Claims and Leases)"]
+n183["Task Repository (Task Board)"]
 n48["Planner Budget Limiter (Cloud Planner)"]
 n42["Planner Trigger Evaluator (Cloud Planner)"]
 n82["Skill Progress Reporter (Skill Runtime)"]
 n246["Episode Store (Memory and Persistence)"]
-n195 -->|depends_on| n193
-n195 -->|observes| n124
+n196 -->|depends_on| n194
+n196 -->|observes| n124
 n34 -->|controls| n33
 n34 -->|observes| n125
 n76 -->|observes| n124
@@ -38,7 +38,7 @@ n76 -->|writes| n124
 n249 -->|observes| n124
 n27 -->|controls| n63
 n127 -->|reads| n242
-n127 -->|reads| n192
+n127 -->|reads| n193
 n65 -->|controls| n62
 n65 -->|depends_on| n151
 n126 -->|depends_on| n33
@@ -51,15 +51,15 @@ n63 -->|depends_on| n136
 n64 -->|controls| n58
 n64 -->|depends_on| n149
 n64 -->|depends_on| n151
-n123 -->|depends_on| n166
+n123 -->|depends_on| n167
 n122 -->|depends_on| n149
-n122 -->|reads| n193
+n122 -->|reads| n194
 n122 -->|observes| n124
-n122 -->|reads| n166
-n122 -->|reads| n182
+n122 -->|reads| n167
+n122 -->|reads| n183
 n48 -->|observes| n124
 n42 -->|observes| n124
-n42 -->|reads| n166
+n42 -->|reads| n167
 n62 -->|depends_on| n151
 n82 -->|observes| n124
 n82 -->|publishes| n151
@@ -67,4 +67,4 @@ n127 -->|reads| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n63,n122,n64,n65,n123,n124,n125,n126,n127 internal;
-class n195,n34,n76,n249,n242,n192,n62,n151,n33,n243,n136,n58,n149,n166,n193,n182,n48,n42,n82,n246,n27 external;
+class n196,n34,n76,n249,n242,n193,n62,n151,n33,n243,n136,n58,n149,n167,n194,n183,n48,n42,n82,n246,n27 external;

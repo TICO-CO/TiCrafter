@@ -1,7 +1,7 @@
 flowchart LR
-n214["Ring Sampler"]
-n215["Chunk Snapshot Encoder"]
-n216["Block Update Listener"]
+n215["Ring Sampler"]
+n216["Chunk Snapshot Encoder"]
+n159["Block Update Listener"]
 n217["Path and Road Detector"]
 n218["House Detector"]
 n219["Farm Detector"]
@@ -16,29 +16,30 @@ n55["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
 n224["Detector Fixtures (Testing and Evaluation)"]
 n151["Event Stream (Transport and Protocol)"]
 n147["Profile Resolver (Config and Profiles)"]
-n54 -->|delegates_to| n216
+n54 -->|delegates_to| n159
 n110 -->|depends_on| n222
-n110 -->|depends_on| n214
+n110 -->|depends_on| n215
 n55 -->|depends_on| n54
-n55 -->|delegates_to| n214
+n55 -->|delegates_to| n215
 n224 -->|depends_on| n222
-n215 -->|depends_on| n214
-n222 -->|depends_on| n215
+n216 -->|depends_on| n215
+n222 -->|depends_on| n216
 n222 -->|depends_on| n219
 n222 -->|depends_on| n218
 n222 -->|depends_on| n221
 n222 -->|depends_on| n217
 n222 -->|depends_on| n220
-n219 -->|depends_on| n215
-n218 -->|depends_on| n215
+n219 -->|depends_on| n216
+n218 -->|depends_on| n216
 n156 -->|depends_on| n222
 n156 -->|publishes| n151
-n221 -->|depends_on| n215
-n217 -->|depends_on| n215
+n221 -->|depends_on| n216
+n217 -->|depends_on| n216
 n223 -->|depends_on| n147
-n214 -->|depends_on| n223
-n220 -->|depends_on| n215
+n215 -->|depends_on| n223
+n220 -->|depends_on| n216
+n159 -->|publishes| n151
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n214,n215,n216,n217,n218,n219,n220,n221,n222,n156,n223 internal;
+class n215,n216,n159,n217,n218,n219,n220,n221,n222,n156,n223 internal;
 class n54,n110,n55,n224,n151,n147 external;

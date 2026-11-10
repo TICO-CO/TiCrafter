@@ -12,39 +12,39 @@ n77["Plan Cache"]
 n49["Planner Arbitration Handler"]
 n50["Keep Last Good Fallback"]
 n30["Global Scheduler (Coordinator Runtime)"]
-n172["Compatibility Checker (Edit Grants and Collaboration)"]
+n173["Compatibility Checker (Edit Grants and Collaboration)"]
 n133["Grant Issuer (Edit Grants and Collaboration)"]
 n151["Event Stream (Transport and Protocol)"]
 n124["Metrics Registry (Ops and Observability)"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n182["Task Repository (Task Board)"]
-n176["Spatial Query Engine (World Model and Landmarks)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n183["Task Repository (Task Board)"]
+n177["Spatial Query Engine (World Model and Landmarks)"]
 n141["Config Schema Validator (Config and Profiles)"]
 n157["Secrets Loader (Config and Profiles)"]
 n24(["Muse Spark Planner Endpoint"])
 n137["Transaction Manager (Memory and Persistence)"]
-n168["Dependency Validator (Shared Infrastructure Plan)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
+n169["Dependency Validator (Shared Infrastructure Plan)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
 n79["Skill Registry (Skill Runtime)"]
-n169["SIP Mutation Proposer (Shared Infrastructure Plan)"]
-n187["Dead Letter Manager (Task Board)"]
+n170["SIP Mutation Proposer (Shared Infrastructure Plan)"]
+n188["Dead Letter Manager (Task Board)"]
 n61["Recovery Ladder (Autonomy and Safety)"]
-n191 -->|depends_on| n137
+n192 -->|depends_on| n137
 n30 -->|delegates_to| n42
-n172 -->|depends_on| n165
-n133 -->|depends_on| n172
-n49 -->|reads| n172
+n173 -->|depends_on| n166
+n133 -->|depends_on| n173
+n49 -->|reads| n173
 n49 -->|proposes_to| n133
 n49 -->|subscribes| n151
 n48 -->|observes| n124
 n48 -->|controls| n40
-n41 -->|reads| n191
-n41 -->|reads| n166
-n41 -->|reads| n182
-n41 -->|reads| n176
+n41 -->|reads| n192
+n41 -->|reads| n167
+n41 -->|reads| n183
+n41 -->|reads| n177
 n50 -->|depends_on| n77
-n50 -->|reads| n166
+n50 -->|reads| n167
 n40 -->|depends_on| n141
 n40 -->|depends_on| n157
 n40 -->|depends_on| n24
@@ -57,29 +57,29 @@ n45 -->|depends_on| n44
 n43 -->|controls| n45
 n44 -->|controls| n45
 n44 -->|depends_on| n43
-n44 -->|depends_on| n168
-n44 -->|reads| n165
+n44 -->|depends_on| n169
+n44 -->|reads| n166
 n44 -->|reads| n79
-n44 -->|reads| n176
+n44 -->|reads| n177
 n46 -->|depends_on| n45
-n46 -->|proposes_to| n169
+n46 -->|proposes_to| n170
 n47 -->|depends_on| n45
-n47 -->|proposes_to| n182
+n47 -->|proposes_to| n183
 n42 -->|observes| n124
 n42 -->|delegates_to| n41
-n42 -->|reads| n166
-n42 -->|reads| n187
+n42 -->|reads| n167
+n42 -->|reads| n188
 n61 -->|proposes_to| n42
 n61 -->|depends_on| n151
-n168 -->|reads| n176
-n169 -->|depends_on| n168
-n169 -->|depends_on| n166
+n169 -->|reads| n177
+n170 -->|depends_on| n169
+n170 -->|depends_on| n167
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
 n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n165 -->|depends_on| n137
-n187 -->|writes| n182
-n182 -->|depends_on| n137
+n188 -->|writes| n183
+n183 -->|depends_on| n137
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n40,n41,n42,n43,n44,n45,n46,n47,n48,n77,n49,n50 internal;
-class n30,n172,n133,n151,n124,n191,n166,n182,n176,n141,n157,n137,n168,n165,n79,n169,n187,n61,n24 external;
+class n30,n173,n133,n151,n124,n192,n167,n183,n177,n141,n157,n137,n169,n166,n79,n170,n188,n61,n24 external;

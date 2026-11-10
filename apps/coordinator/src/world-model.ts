@@ -6,15 +6,34 @@ import type {
 } from '@ticrafter/core';
 import { WorldStore } from '@ticrafter/memory';
 import {
+    type BlockPosition,
+    type BlockUpdateObservation,
     type BoundingBox,
+    type ChunkBlockObservation,
     ConfidenceDecay,
+    ContainerMemory,
+    type ContainerObservation,
+    type DecayedLandmark,
+    DetectorResultIntegrator,
+    type DeviationFinding,
+    type IntendedStructure,
+    type Landmark,
     type LandmarkCandidate,
+    LandmarkDecayService,
     LandmarkRegistry,
+    type LandmarkType,
     MergeConflictResolver,
+    type NearestLandmark,
     ObservationIngestor,
+    type PlanTag,
+    PlanTagging,
+    SparseOccupancyGrid,
+    SpatialQueryEngine,
     SqliteChunkStore,
+    SqliteContainerObservationStore,
     SqliteLandmarkStore,
     type WorldFailure,
+    WorldReconciler,
 } from '@ticrafter/worldmodel';
 
 import type { CoordinatorDatabase } from './core/index.js';
@@ -24,21 +43,39 @@ const dayMilliseconds = 24 * 60 * 60 * 1000;
 export class CoordinatorWorldModel {
     private readonly chunks: ObservationIngestor;
     private readonly landmarks: LandmarkRegistry;
+    private readonly integrator: DetectorResultIntegrator;
+    private readonly planTagging = new PlanTagging();
+    private readonly containers: ContainerMemory;
+    private readonly occupancy: SparseOccupancyGrid;
+    private readonly spatial: SpatialQueryEngine;
+    private readonly decay: LandmarkDecayService;
+    private readonly reconciler: WorldReconciler;
 
     constructor(
         database: CoordinatorDatabase,
         private readonly logger: LoggerPort,
     ) {
         const store = new WorldStore(database);
-        const decay = new ConfidenceDecay({
+        const chunkStore = new SqliteChunkStore(store);
+        const landmarkStore = new SqliteLandmarkStore(store);
+        const confidenceDecay = new ConfidenceDecay({
             halfLifeMilliseconds: dayMilliseconds,
             verificationThreshold: 0.3,
         });
-        this.chunks = new ObservationIngestor(new SqliteChunkStore(store));
+        this.chunks = new ObservationIngestor(chunkStore);
+        this.occupancy = new SparseOccupancyGrid(chunkStore);
         this.landmarks = new LandmarkRegistry(
-            new SqliteLandmarkStore(store),
-            new MergeConflictResolver(decay),
+            landmarkStore,
+            new MergeConflictResolver(confidenceDecay),
         );
+        this.integrator = new DetectorResultIntegrator(this.landmarks, this.planTagging);
+        this.containers = new ContainerMemory(new SqliteContainerObservationStore(store));
+        this.spatial = new SpatialQueryEngine(this.landmarks, {
+            occupancy: this.occupancy,
+            containers: this.containers,
+        });
+        this.decay = new LandmarkDecayService(landmarkStore, confidenceDecay);
+        this.reconciler = new WorldReconciler(this.spatial);
     }
 
     ingestChunk(payload: ChunkSnapshotMessage): Result<void, string> {
@@ -51,6 +88,7 @@ export class CoordinatorWorldModel {
         });
         if (ingestError) return [null, CoordinatorWorldModel.failure(ingestError)];
         if (result !== null) {
+            this.occupancy.invalidate();
             this.logger.debug(
                 { chunk: result.chunk, version: result.version, outcome: result.outcome },
                 'chunk observation ingested',
@@ -60,11 +98,8 @@ export class CoordinatorWorldModel {
     }
 
     ingestLandmark(payload: LandmarkCandidateMessage): Result<void, string> {
-        const [landmarkId, landmarkIdError] = this.landmarkId(payload);
-        if (landmarkIdError) return [null, landmarkIdError];
-        if (landmarkId === null) return [null, 'landmark id missing'];
         const candidate: LandmarkCandidate = {
-            id: landmarkId,
+            id: '',
             type: payload.candidate.type,
             bbox: payload.candidate.bbox,
             anchors: payload.candidate.anchors,
@@ -79,9 +114,10 @@ export class CoordinatorWorldModel {
             },
             planId: null,
         };
-        const [result, upsertError] = this.landmarks.upsert(candidate, payload.observedAt);
-        if (upsertError) return [null, CoordinatorWorldModel.failure(upsertError)];
+        const [result, ingestError] = this.integrator.integrate(candidate);
+        if (ingestError) return [null, CoordinatorWorldModel.failure(ingestError)];
         if (result !== null) {
+            this.recordContainers(payload, result.landmark.id);
             this.logger.debug(
                 { landmarkId: result.landmark.id, outcome: result.outcome },
                 'landmark candidate ingested',
@@ -90,54 +126,99 @@ export class CoordinatorWorldModel {
         return [undefined, null];
     }
 
-    private landmarkId(payload: LandmarkCandidateMessage): Result<string, string> {
-        const [existing, listError] = this.landmarks.list();
-        if (listError) return [null, CoordinatorWorldModel.failure(listError)];
-        if (existing === null) return [null, 'landmark list returned null'];
-        const match = existing.find(
-            (landmark) =>
-                landmark.type === payload.candidate.type &&
-                CoordinatorWorldModel.overlap(landmark.bbox, payload.candidate.bbox) >= 0.5,
-        );
-        if (match !== undefined) return [match.id, null];
-        const { min, max } = payload.candidate.bbox;
-        return [
-            ['landmark', payload.candidate.type, min.x, min.y, min.z, max.x, max.y, max.z].join(
-                ':',
-            ),
-            null,
-        ];
+    ingestBlockUpdate(payload: BlockUpdateObservation): Result<void, string> {
+        const [result, ingestError] = this.chunks.applyBlockUpdate(payload);
+        if (ingestError) return [null, CoordinatorWorldModel.failure(ingestError)];
+        if (result !== null) {
+            this.occupancy.invalidate();
+            this.logger.debug(
+                { chunk: result.chunk, version: result.version },
+                'block update ingested',
+            );
+        }
+        return [undefined, null];
     }
 
-    private static overlap(left: BoundingBox, right: BoundingBox): number {
-        const intersection =
-            CoordinatorWorldModel.axisOverlap(left.min.x, left.max.x, right.min.x, right.max.x) *
-            CoordinatorWorldModel.axisOverlap(left.min.y, left.max.y, right.min.y, right.max.y) *
-            CoordinatorWorldModel.axisOverlap(left.min.z, left.max.z, right.min.z, right.max.z);
-        if (intersection <= 0) return 0;
-        const union =
-            CoordinatorWorldModel.volume(left) + CoordinatorWorldModel.volume(right) - intersection;
-        return union === 0 ? 0 : intersection / union;
+    applyDecay(observedAt: string): Result<readonly DecayedLandmark[], string> {
+        const [results, decayError] = this.decay.apply(observedAt);
+        if (decayError) return [null, CoordinatorWorldModel.failure(decayError)];
+        return [results, null];
     }
 
-    private static axisOverlap(
-        leftMinimum: number,
-        leftMaximum: number,
-        rightMinimum: number,
-        rightMaximum: number,
-    ): number {
-        return Math.max(
-            0,
-            Math.min(leftMaximum, rightMaximum) - Math.max(leftMinimum, rightMinimum) + 1,
-        );
+    replacePlanTags(tags: readonly PlanTag[], revision: number): Result<void, string> {
+        const [, tagError] = this.planTagging.replace(tags, revision);
+        if (tagError) return [null, CoordinatorWorldModel.failure(tagError)];
+        return [undefined, null];
     }
 
-    private static volume(bounds: BoundingBox): number {
-        return (
-            (bounds.max.x - bounds.min.x + 1) *
-            (bounds.max.y - bounds.min.y + 1) *
-            (bounds.max.z - bounds.min.z + 1)
-        );
+    reconcile(intended: readonly IntendedStructure[]): Result<readonly DeviationFinding[], string> {
+        const [findings, reconcileError] = this.reconciler.reconcile(intended);
+        if (reconcileError) return [null, CoordinatorWorldModel.failure(reconcileError)];
+        return [findings, null];
+    }
+
+    nearest(
+        position: BlockPosition,
+        type: LandmarkType | null = null,
+    ): Result<NearestLandmark | null, WorldFailure> {
+        return this.spatial.nearest(position, type);
+    }
+
+    intersecting(
+        bbox: BoundingBox,
+        type: LandmarkType | null = null,
+    ): Result<readonly Landmark[], WorldFailure> {
+        return this.spatial.intersecting(bbox, type);
+    }
+
+    blockAt(position: BlockPosition): Result<ChunkBlockObservation | null, WorldFailure> {
+        return this.spatial.blockAt(position);
+    }
+
+    containerAt(position: BlockPosition): Result<ContainerObservation | null, WorldFailure> {
+        return this.spatial.containerAt(position);
+    }
+
+    insideBase(position: BlockPosition): Result<boolean, WorldFailure> {
+        return this.spatial.insideBase(position);
+    }
+
+    route(
+        from: BlockPosition,
+        to: BlockPosition,
+    ): Result<readonly BlockPosition[] | null, WorldFailure> {
+        return this.spatial.route(from, to);
+    }
+
+    isProtected(position: BlockPosition): Result<boolean, WorldFailure> {
+        return this.spatial.isProtected(position);
+    }
+
+    whoOwns(bbox: BoundingBox): Result<readonly string[], WorldFailure> {
+        return this.spatial.whoOwns(bbox);
+    }
+
+    private recordContainers(payload: LandmarkCandidateMessage, landmarkId: string): void {
+        if (payload.candidate.type !== 'storage') {
+            return;
+        }
+        payload.candidate.anchors.forEach((anchor) => {
+            const observation: ContainerObservation = {
+                id: `${landmarkId}:${anchor.name}`,
+                position: anchor.position,
+                role: 'storage',
+                contents: null,
+                observedAt: payload.observedAt,
+                confidence: payload.candidate.confidence,
+            };
+            const [, recordError] = this.containers.record(observation);
+            if (recordError) {
+                this.logger.warn(
+                    { error: recordError, containerId: observation.id },
+                    'container observation rejected',
+                );
+            }
+        });
     }
 
     private static failure(failure: WorldFailure): string {

@@ -2,49 +2,49 @@ flowchart LR
 n243["SQLite Runtime"]
 n143["Migration Runner"]
 n137["Transaction Manager"]
-n192["Event Log Writer"]
+n193["Event Log Writer"]
 n242["Block Changelog Writer"]
 n139["Retention Pruner"]
 n244["Snapshot Export"]
 n245["Schema Version Registry"]
 n246["Episode Store"]
-n191["Bot Profile Store (Bot Registry and Profiles)"]
+n192["Bot Profile Store (Bot Registry and Profiles)"]
 n106["Rollback Journal (Building)"]
 n132["Atomic Claim Acquirer (Claims and Leases)"]
-n193["Claim Repository (Claims and Leases)"]
+n194["Claim Repository (Claims and Leases)"]
 n130["Fencing Token Authority (Claims and Leases)"]
 n29["Coordinator Epoch Authority (Coordinator Runtime)"]
 n30["Global Scheduler (Coordinator Runtime)"]
 n68["Process Bootstrap (Coordinator Runtime)"]
 n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n247["Replay Engine (Testing and Evaluation)"]
-n197["Grant Repository (Edit Grants and Collaboration)"]
+n198["Grant Repository (Edit Grants and Collaboration)"]
 n127["Audit Viewer (Ops and Observability)"]
 n126["Health and Readiness (Ops and Observability)"]
 n77["Plan Cache (Cloud Planner)"]
 n121["Incident Journal (Autonomy and Safety)"]
-n163["Container Registry (Shared Infrastructure Plan)"]
-n162["Farm Store (Shared Infrastructure Plan)"]
-n164["Path Graph Store (Shared Infrastructure Plan)"]
-n166["SIP Revision Manager (Shared Infrastructure Plan)"]
-n161["Road Store (Shared Infrastructure Plan)"]
-n165["Rules Store (Shared Infrastructure Plan)"]
-n160["Structure Store (Shared Infrastructure Plan)"]
+n164["Container Registry (Shared Infrastructure Plan)"]
+n163["Farm Store (Shared Infrastructure Plan)"]
+n165["Path Graph Store (Shared Infrastructure Plan)"]
+n167["SIP Revision Manager (Shared Infrastructure Plan)"]
+n162["Road Store (Shared Infrastructure Plan)"]
+n166["Rules Store (Shared Infrastructure Plan)"]
+n161["Structure Store (Shared Infrastructure Plan)"]
 n134["SIP Transactional Committer (Shared Infrastructure Plan)"]
-n159["Zone Store (Shared Infrastructure Plan)"]
+n160["Zone Store (Shared Infrastructure Plan)"]
 n83["Skill Checkpoint Manager (Skill Runtime)"]
 n135["Atomic Task Claimer (Task Board)"]
-n182["Task Repository (Task Board)"]
-n188["Task State Machine (Task Board)"]
+n183["Task Repository (Task Board)"]
+n189["Task State Machine (Task Board)"]
 n248["Trace Exporter (Laya Training)"]
-n204["Chunk Version Store (World Model and Landmarks)"]
-n208["Landmark Registry (World Model and Landmarks)"]
-n191 -->|depends_on| n137
+n205["Chunk Version Store (World Model and Landmarks)"]
+n209["Landmark Registry (World Model and Landmarks)"]
+n192 -->|depends_on| n137
 n106 -->|writes| n242
-n106 -->|reads| n160
-n132 -->|writes| n193
+n106 -->|reads| n161
+n132 -->|writes| n194
 n132 -->|depends_on| n137
-n193 -->|depends_on| n137
+n194 -->|depends_on| n137
 n130 -->|depends_on| n29
 n130 -->|depends_on| n137
 n29 -->|controls| n130
@@ -54,54 +54,54 @@ n30 -->|delegates_to| n139
 n68 -->|depends_on| n31
 n68 -->|depends_on| n143
 n31 -->|depends_on| n137
-n247 -->|depends_on| n192
-n197 -->|depends_on| n137
+n247 -->|depends_on| n193
+n198 -->|depends_on| n137
 n242 -->|depends_on| n137
-n192 -->|depends_on| n137
+n193 -->|depends_on| n137
 n143 -->|depends_on| n243
 n139 -->|depends_on| n242
-n139 -->|depends_on| n192
+n139 -->|depends_on| n193
 n139 -->|depends_on| n137
 n245 -->|depends_on| n143
 n244 -->|depends_on| n137
 n137 -->|depends_on| n243
 n127 -->|reads| n242
-n127 -->|reads| n192
+n127 -->|reads| n193
 n126 -->|depends_on| n243
 n77 -->|depends_on| n137
-n121 -->|writes| n192
-n163 -->|depends_on| n137
-n162 -->|depends_on| n137
+n121 -->|writes| n193
 n164 -->|depends_on| n137
-n166 -->|depends_on| n137
-n166 -->|depends_on| n165
-n161 -->|depends_on| n137
+n163 -->|depends_on| n137
 n165 -->|depends_on| n137
-n160 -->|depends_on| n137
+n167 -->|depends_on| n137
+n167 -->|depends_on| n166
+n162 -->|depends_on| n137
+n166 -->|depends_on| n137
+n161 -->|depends_on| n137
 n134 -->|depends_on| n137
-n134 -->|writes| n163
-n134 -->|writes| n162
 n134 -->|writes| n164
-n134 -->|depends_on| n166
-n134 -->|writes| n161
+n134 -->|writes| n163
 n134 -->|writes| n165
+n134 -->|depends_on| n167
+n134 -->|writes| n162
+n134 -->|writes| n166
+n134 -->|writes| n161
 n134 -->|writes| n160
-n134 -->|writes| n159
-n159 -->|depends_on| n137
+n160 -->|depends_on| n137
 n83 -->|depends_on| n137
 n135 -->|depends_on| n137
-n135 -->|writes| n182
-n182 -->|depends_on| n137
-n188 -->|depends_on| n192
-n188 -->|writes| n182
-n248 -->|reads| n192
-n204 -->|depends_on| n137
-n208 -->|depends_on| n137
+n135 -->|writes| n183
+n183 -->|depends_on| n137
+n189 -->|depends_on| n193
+n189 -->|writes| n183
+n248 -->|reads| n193
+n205 -->|depends_on| n137
+n209 -->|depends_on| n137
 n247 -->|reads| n246
 n248 -->|reads| n246
 n127 -->|reads| n246
 n139 -->|depends_on| n246
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n243,n143,n137,n192,n242,n139,n244,n245,n246 internal;
-class n191,n106,n132,n193,n130,n29,n30,n68,n31,n247,n197,n127,n126,n77,n121,n163,n162,n164,n166,n161,n165,n160,n134,n159,n83,n135,n182,n188,n248,n204,n208 external;
+class n243,n143,n137,n193,n242,n139,n244,n245,n246 internal;
+class n192,n106,n132,n194,n130,n29,n30,n68,n31,n247,n198,n127,n126,n77,n121,n164,n163,n165,n167,n162,n166,n161,n134,n160,n83,n135,n183,n189,n248,n205,n209 external;
