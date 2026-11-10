@@ -190,6 +190,14 @@ if (err) return [null, err];
 - Keep cyclomatic complexity low: one method, one decision family. Add a
   helper instead of adding a branch.
 - Never nest deeper than 2 levels; prefer 1. The method body is level 0.
+- Minimize indentation. Keep code at the shallowest level that still reads
+  correctly; never indent code just because a wrapper (`if`, loop, function)
+  was convenient.
+- Flatten aggressively: guard clauses, early returns, `continue`, and
+  extracted helpers instead of indented blocks. If a block can be lifted out
+  of a wrapper, lift it.
+- A nesting level must earn its place; unnecessary indentation is a defect,
+  not a style preference.
 - Use guard clauses: early-return, `continue`, fail fast.
 - Never use `else if` blocks; use `switch` with small arms instead (for union
   kinds see §6 exhaustive matching). Avoid

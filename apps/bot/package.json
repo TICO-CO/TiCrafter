@@ -5,10 +5,15 @@
     "type": "module",
     "main": "src/main.ts",
     "dependencies": {
+        "@ticrafter/brains": "0.1.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/perception": "0.1.0",
+        "@ticrafter/safety": "0.1.0",
+        "@ticrafter/skills": "0.1.0",
         "mineflayer": "4.39.0",
+        "mineflayer-pathfinder": "2.4.5",
         "pino": "10.4.0",
+        "vec3": "0.1.10",
         "ws": "8.22.2"
     }
 }

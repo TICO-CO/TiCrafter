@@ -5,6 +5,7 @@ import {
     BLOCK_UPDATE_EVENT,
     CHUNK_SNAPSHOT_EVENT,
     LANDMARK_CANDIDATE_EVENT,
+    SKILL_PROGRESS_EVENT,
 } from './event-types.js';
 import type { TransportFailure } from './failures.js';
 import {
@@ -23,6 +24,7 @@ import {
     PROTOCOL_VERSION,
     sessionHelloResponseSchema,
     sessionHelloSchema,
+    skillProgressSchema,
 } from './schemas.js';
 
 export * from './schemas.js';
@@ -79,7 +81,8 @@ export class MessageSchemaRegistry {
             .register('bot.event', botEventSchema)
             .register(CHUNK_SNAPSHOT_EVENT, chunkSnapshotSchema)
             .register(LANDMARK_CANDIDATE_EVENT, landmarkCandidateSchema)
-            .register(BLOCK_UPDATE_EVENT, blockUpdateSchema);
+            .register(BLOCK_UPDATE_EVENT, blockUpdateSchema)
+            .register(SKILL_PROGRESS_EVENT, skillProgressSchema);
     }
 
     private static describe(error: unknown): string {

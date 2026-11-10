@@ -167,15 +167,13 @@ export class LinearGeometry {
     }
 
     private static cells(span: LinearSpan, y: number): readonly VoxelPosition[] {
+        const alongCount = span.end - span.start + 1;
+        const perpendicularCount = span.perpendicularEnd - span.perpendicularStart + 1;
         const cells: VoxelPosition[] = [];
-        for (let along = span.start; along <= span.end; along += 1) {
-            for (
-                let perpendicular = span.perpendicularStart;
-                perpendicular <= span.perpendicularEnd;
-                perpendicular += 1
-            ) {
-                cells.push(LinearGeometry.cellPosition(span, along, perpendicular, y));
-            }
+        for (let index = 0; index < alongCount * perpendicularCount; index += 1) {
+            const along = span.start + (index % alongCount);
+            const perpendicular = span.perpendicularStart + Math.floor(index / alongCount);
+            cells.push(LinearGeometry.cellPosition(span, along, perpendicular, y));
         }
         return cells;
     }

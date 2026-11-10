@@ -1,21 +1,34 @@
-import type { LoggerPort, Result } from '@ticrafter/core';
+import type {
+    ActionDispatchPort,
+    ActionOutcome,
+    ActionRequest,
+    LoggerPort,
+    Result,
+} from '@ticrafter/core';
 
-import { GuardianHook, type ProposedAction } from './guardian.js';
+import type { GuardianHook } from './guardian.js';
 
-export class ActionExecutor {
+export class ActionExecutor implements ActionDispatchPort {
     constructor(
         private readonly guardian: GuardianHook,
+        private readonly dispatchPort: ActionDispatchPort,
         private readonly logger: LoggerPort,
     ) {}
 
-    execute(action: ProposedAction | null): Result<void, string> {
-        const decision = this.guardian.evaluate(action);
+    dispatch(request: ActionRequest): Result<string, string> {
+        const decision = this.guardian.evaluate(request);
         if (!decision.allowed) {
-            const reason = decision.reason ?? 'action vetoed';
-            this.logger.warn({ action, reason }, 'action vetoed');
-            return [null, reason];
+            this.logger.warn({ request, reason: decision.reason }, 'action vetoed');
+            return [null, decision.reason];
         }
-        this.logger.info({ action }, 'action accepted (executor stub)');
-        return [undefined, null];
+        return this.dispatchPort.dispatch(request);
+    }
+
+    poll(handleId: string): Result<ActionOutcome | null, string> {
+        return this.dispatchPort.poll(handleId);
+    }
+
+    cancel(handleId: string): Result<void, string> {
+        return this.dispatchPort.cancel(handleId);
     }
 }

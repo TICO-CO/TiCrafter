@@ -144,22 +144,35 @@ export function printStatus() {
     console.log(`log: ${status.logPath}`);
 }
 
-if (isMain(import.meta.url)) {
-    const command = process.argv[2] ?? 'status';
-    const acceptEula = process.argv.includes('--accept-eula');
-    try {
-        if (command === 'start') startServer({ acceptEula });
-        else if (command === 'stop') stopServer();
-        else if (command === 'status') printStatus();
-        else {
+function runCommand(command, acceptEula) {
+    switch (command) {
+        case 'start':
+            startServer({ acceptEula });
+            break;
+        case 'stop':
+            stopServer();
+            break;
+        case 'status':
+            printStatus();
+            break;
+        default:
             warn(`unknown command ${command}`);
             console.log(
                 'usage: bun tools/bootstrap/minecraft-server.mjs <start|stop|status> [--accept-eula]',
             );
             process.exit(1);
-        }
+    }
+}
+
+function main() {
+    const command = process.argv[2] ?? 'status';
+    const acceptEula = process.argv.includes('--accept-eula');
+    try {
+        runCommand(command, acceptEula);
     } catch (error) {
         console.error(`error: ${error instanceof Error ? error.message : String(error)}`);
         process.exit(1);
     }
 }
+
+if (isMain(import.meta.url)) main();

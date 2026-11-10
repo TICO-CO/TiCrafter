@@ -97,32 +97,60 @@ export class MineflayerPerceptionSource implements PerceptionSource {
         column: ChunkColumnLike,
         chunk: { x: number; z: number },
     ): readonly VoxelBlock[] {
-        const minY = Number(column.minY ?? 0);
+        const minimumY = Number(column.minY ?? 0);
         const worldHeight = Number(column.worldHeight ?? 256);
         const blocks: VoxelBlock[] = [];
-        for (let y = minY; y < minY + worldHeight; y += 1) {
-            for (let z = 0; z < 16; z += 1) {
-                for (let x = 0; x < 16; x += 1) {
-                    const block = column.getBlock({ x, y, z });
-                    if (
-                        block === null ||
-                        block.name === undefined ||
-                        block.name.length === 0 ||
-                        airBlockIds.has(block.name)
-                    ) {
-                        continue;
-                    }
-                    const properties = this.properties(block);
-                    blocks.push({
-                        position: { x: chunk.x * 16 + x, y, z: chunk.z * 16 + z },
-                        blockId: block.name,
-                        solid: block.boundingBox === 'block',
-                        ...(properties === null ? {} : { properties }),
-                    });
-                }
-            }
+        for (let y = minimumY; y < minimumY + worldHeight; y += 1) {
+            blocks.push(...this.layerBlocks(column, chunk, y));
         }
         return blocks;
+    }
+
+    private layerBlocks(
+        column: ChunkColumnLike,
+        chunk: { x: number; z: number },
+        y: number,
+    ): readonly VoxelBlock[] {
+        const blocks: VoxelBlock[] = [];
+        for (let z = 0; z < 16; z += 1) {
+            blocks.push(...this.rowBlocks(column, chunk, y, z));
+        }
+        return blocks;
+    }
+
+    private rowBlocks(
+        column: ChunkColumnLike,
+        chunk: { x: number; z: number },
+        y: number,
+        z: number,
+    ): readonly VoxelBlock[] {
+        const blocks: VoxelBlock[] = [];
+        for (let x = 0; x < 16; x += 1) {
+            const block = this.voxelBlock(column, chunk, x, y, z);
+            if (block !== null) blocks.push(block);
+        }
+        return blocks;
+    }
+
+    private voxelBlock(
+        column: ChunkColumnLike,
+        chunk: { x: number; z: number },
+        x: number,
+        y: number,
+        z: number,
+    ): VoxelBlock | null {
+        const block = column.getBlock({ x, y, z });
+        if (block === null) return null;
+        if (block.name === undefined || block.name.length === 0 || airBlockIds.has(block.name)) {
+            return null;
+        }
+        const properties = this.properties(block);
+        return {
+            position: { x: chunk.x * 16 + x, y, z: chunk.z * 16 + z },
+            blockId: block.name,
+            solid: block.boundingBox === 'block',
+            ...(properties === null ? {} : { properties }),
+        };
     }
 
     private properties(block: BlockLike): Readonly<Record<string, string>> | null {

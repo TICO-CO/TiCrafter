@@ -6,6 +6,7 @@ export * from './migration-runner.js';
 export * from './migrations.js';
 export * from './retention-pruner.js';
 export * from './schema-version-registry.js';
+export * from './skill-checkpoint-store.js';
 export * from './snapshot-export.js';
 export * from './sqlite-runtime.js';
 export * from './transaction-manager.js';

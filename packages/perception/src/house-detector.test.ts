@@ -7,15 +7,44 @@ function solid(position: VoxelPosition, blockId = 'stone'): VoxelBlock {
     return { position, blockId, solid: true };
 }
 
+function blockKey(position: VoxelPosition): string {
+    return `${position.x},${position.y},${position.z}`;
+}
+
+function cuboidPositions(minimum: VoxelPosition, maximum: VoxelPosition): readonly VoxelPosition[] {
+    const width = maximum.x - minimum.x + 1;
+    const height = maximum.y - minimum.y + 1;
+    const depth = maximum.z - minimum.z + 1;
+    const positions: VoxelPosition[] = [];
+    for (let index = 0; index < width * height * depth; index += 1) {
+        positions.push({
+            x: minimum.x + (index % width),
+            y: minimum.y + Math.floor(index / (width * depth)),
+            z: minimum.z + (Math.floor(index / width) % depth),
+        });
+    }
+    return positions;
+}
+
+function boundaryPositions(
+    minimum: VoxelPosition,
+    maximum: VoxelPosition,
+): readonly VoxelPosition[] {
+    return cuboidPositions(minimum, maximum).filter(
+        (position) =>
+            position.x === minimum.x ||
+            position.x === maximum.x ||
+            position.y === minimum.y ||
+            position.y === maximum.y ||
+            position.z === minimum.z ||
+            position.z === maximum.z,
+    );
+}
+
 function houseBlocks(): readonly VoxelBlock[] {
     const blocks = new Map<string, VoxelBlock>();
-    for (let y = 63; y <= 68; y += 1) {
-        for (let x = 0; x <= 5; x += 1) {
-            for (let z = 0; z <= 5; z += 1) {
-                const boundary = x === 0 || x === 5 || z === 0 || z === 5 || y === 63 || y === 68;
-                if (boundary) blocks.set(`${x},${y},${z}`, solid({ x, y, z }));
-            }
-        }
+    for (const position of boundaryPositions({ x: 0, y: 63, z: 0 }, { x: 5, y: 68, z: 5 })) {
+        blocks.set(blockKey(position), solid(position));
     }
     blocks.set('2,64,0', solid({ x: 2, y: 64, z: 0 }, 'oak_door'));
     blocks.set('0,65,2', solid({ x: 0, y: 65, z: 2 }, 'glass'));
@@ -60,13 +89,8 @@ describe('HouseDetector', () => {
 
     it('ignores an enclosed cavity without house features', () => {
         const blocks = new Map<string, VoxelBlock>();
-        for (let x = 0; x <= 3; x += 1) {
-            for (let y = 0; y <= 3; y += 1) {
-                for (let z = 0; z <= 3; z += 1) {
-                    const boundary = x === 0 || x === 3 || y === 0 || y === 3 || z === 0 || z === 3;
-                    if (boundary) blocks.set(`${x},${y},${z}`, solid({ x, y, z }));
-                }
-            }
+        for (const position of boundaryPositions({ x: 0, y: 0, z: 0 }, { x: 3, y: 3, z: 3 })) {
+            blocks.set(blockKey(position), solid(position));
         }
         const candidates = new HouseDetector().detect({
             ...snapshot,
@@ -102,19 +126,8 @@ describe('HouseDetector', () => {
 
     it('ignores interiors shorter than two blocks', () => {
         const blocks = new Map<string, VoxelBlock>();
-        for (let x = 0; x <= 4; x += 1) {
-            for (let z = 0; z <= 4; z += 1) {
-                blocks.set(`${x},63,${z}`, solid({ x, y: 63, z }));
-                blocks.set(`${x},65,${z}`, solid({ x, y: 65, z }));
-            }
-        }
-        for (let y = 63; y <= 65; y += 1) {
-            for (let along = 0; along <= 4; along += 1) {
-                blocks.set(`0,${y},${along}`, solid({ x: 0, y, z: along }));
-                blocks.set(`4,${y},${along}`, solid({ x: 4, y, z: along }));
-                blocks.set(`${along},${y},0`, solid({ x: along, y, z: 0 }));
-                blocks.set(`${along},${y},4`, solid({ x: along, y, z: 4 }));
-            }
+        for (const position of boundaryPositions({ x: 0, y: 63, z: 0 }, { x: 4, y: 65, z: 4 })) {
+            blocks.set(blockKey(position), solid(position));
         }
         const candidates = new HouseDetector().detect({
             ...snapshot,

@@ -10,9 +10,7 @@ import {
     type TicrafterConfig,
 } from '@ticrafter/core';
 
-import { ActionExecutor } from './action-executor.js';
 import { BotConnection } from './bot-connection.js';
-import { GuardianHook } from './guardian.js';
 import { ReconnectSupervisor } from './reconnect-supervisor.js';
 
 export interface BotHandle {
@@ -53,15 +51,14 @@ export class BotRuntime {
         this.logger = logger;
         const registry = MessageSchemaRegistry.withDefaults();
         const url = `ws://${config.transport.host}:${config.transport.port}`;
-        const executor = new ActionExecutor(new GuardianHook(), logger);
 
-        void attemptAsync(() =>
-            this.loop(config, name, botId, url, registry, executor, logger),
-        ).then(([, loopError]) => {
-            if (loopError) {
-                logger.error({ error: this.describe(loopError) }, 'bot loop failed');
-            }
-        });
+        void attemptAsync(() => this.loop(config, name, botId, url, registry, logger)).then(
+            ([, loopError]) => {
+                if (loopError) {
+                    logger.error({ error: this.describe(loopError) }, 'bot loop failed');
+                }
+            },
+        );
 
         return [
             {
@@ -79,7 +76,6 @@ export class BotRuntime {
         botId: string,
         url: string,
         registry: MessageSchemaRegistry,
-        executor: ActionExecutor,
         logger: LoggerPort,
     ): Promise<void> {
         while (!this.closed) {
@@ -89,7 +85,6 @@ export class BotRuntime {
                 botId,
                 url,
                 registry,
-                executor,
                 logger,
             );
             if (connectionError) {
@@ -110,7 +105,6 @@ export class BotRuntime {
         botId: string,
         url: string,
         registry: MessageSchemaRegistry,
-        executor: ActionExecutor,
         logger: LoggerPort,
     ): Promise<Result<boolean, string>> {
         const connection = new BotConnection({
@@ -119,7 +113,6 @@ export class BotRuntime {
             botId,
             url,
             registry,
-            executor,
             logger,
         });
         this.activeConnection = connection;

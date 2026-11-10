@@ -1,3 +1,4 @@
+import type { GuardianReport } from '@ticrafter/brains';
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
@@ -5,15 +6,22 @@ import {
     type LoggerPort,
     type MessageSchemaRegistry,
     type Result,
+    SKILL_PROGRESS_EVENT,
     type TicrafterConfig,
 } from '@ticrafter/core';
 import { BlockUpdateListener, PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
+import type { SkillProgressSink } from '@ticrafter/skills';
 import { type Bot, createBot } from 'mineflayer';
 
-import type { ActionExecutor } from './action-executor.js';
+import { ActionExecutor } from './action-executor.js';
 import { BotEventBridge } from './event-bridge.js';
+import { GuardianHook } from './guardian.js';
+import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
 import { MineflayerPerceptionSource } from './perception-source.js';
+import { SafetySnapshotSource } from './safety-snapshot.js';
+import { BotSkillContextSource } from './skill-context-source.js';
+import { SkillHost } from './skill-host.js';
 import { StateDigest } from './state-digest.js';
 import { BotTransportClient } from './transport/index.js';
 import { WorldCacheAdapter } from './world-cache.js';
@@ -24,7 +32,6 @@ export interface BotConnectionOptions {
     botId: string;
     url: string;
     registry: MessageSchemaRegistry;
-    executor: ActionExecutor;
     logger: LoggerPort;
 }
 
@@ -40,6 +47,10 @@ export class BotConnection {
     private transport: BotTransportClient | null = null;
     private world: WorldCacheAdapter | null = null;
     private perception: PerceptionHost | null = null;
+    private guardian: GuardianHook | null = null;
+    private skills: SkillHost | null = null;
+    private autonomyStarted = false;
+    private lastReflexAt = 0;
 
     constructor(private readonly options: BotConnectionOptions) {}
 
@@ -81,7 +92,46 @@ export class BotConnection {
             return [null, `mineflayer failed: ${this.describe(botError)}`];
         }
         this.bot = bot;
-        this.world = new WorldCacheAdapter(bot);
+        const world = new WorldCacheAdapter(bot);
+        this.world = world;
+        const actionPort = new MineflayerActionExecutor(bot, this.options.logger);
+        const [, installError] = actionPort.install();
+        if (installError) {
+            this.options.logger.warn({ error: installError }, 'pathfinder install failed');
+        }
+        const safetySource = new SafetySnapshotSource(
+            bot,
+            world,
+            () => this.skills?.activeSkillId ?? null,
+        );
+        this.guardian = new GuardianHook({
+            source: safetySource,
+            logger: this.options.logger,
+            intervalMilliseconds: Math.max(
+                1,
+                Math.floor(1000 / this.options.config.safety.guardianHz),
+            ),
+            onCritical: (report) => this.handleCritical(report),
+        });
+        const actionExecutor = new ActionExecutor(this.guardian, actionPort, this.options.logger);
+        const progressSink: SkillProgressSink = {
+            report: (event) => {
+                const [, sendError] = transport.sendEvent(SKILL_PROGRESS_EVENT, event);
+                return sendError ? [null, sendError.type] : [undefined, null];
+            },
+        };
+        const [skills, skillsError] = SkillHost.create({
+            source: new BotSkillContextSource(bot, world),
+            dispatch: actionExecutor,
+            progressSink,
+            logger: this.options.logger,
+            tickMilliseconds: this.options.config.skills.tickMilliseconds,
+        });
+        if (skillsError) {
+            this.options.logger.error({ error: skillsError }, 'skill host creation failed');
+        } else {
+            this.skills = skills;
+        }
 
         const blockUpdates = new BlockUpdateListener();
         const bridge = new BotEventBridge(
@@ -97,31 +147,33 @@ export class BotConnection {
         bot.once('spawn', () => {
             spawned = true;
             this.options.logger.info({ name: this.options.name }, 'bot spawned');
+            this.startAutonomy();
         });
         bot.once('login', () => {
             spawned = true;
             this.options.logger.info({ name: this.options.name }, 'bot logged in');
+            this.startAutonomy();
         });
 
         const heartbeat = setInterval(() => this.sendHeartbeat(), 1000);
-        const [, actionError] = this.options.executor.execute({ type: 'idle' });
-        if (actionError) {
-            this.options.logger.debug({ error: actionError }, 'idle action rejected');
-        }
 
         await this.waitForEnd();
 
         clearInterval(heartbeat);
+        this.stopAutonomy();
         this.perception?.stop();
         this.perception = null;
         bridge.detachAll();
         this.closeTransport();
         this.bot = null;
         this.world = null;
+        this.guardian = null;
+        this.skills = null;
         return [spawned, null];
     }
 
     close(): void {
+        this.stopAutonomy();
         this.perception?.stop();
         this.perception = null;
         const [, quitError] = attempt(() => this.bot?.quit());
@@ -131,6 +183,54 @@ export class BotConnection {
         this.closeTransport();
         this.bot = null;
         this.world = null;
+        this.guardian = null;
+        this.skills = null;
+    }
+
+    private startAutonomy(): void {
+        if (this.autonomyStarted) return;
+        this.autonomyStarted = true;
+        if (this.guardian) {
+            const [, guardianError] = this.guardian.start();
+            if (guardianError) {
+                this.options.logger.warn({ error: guardianError }, 'guardian start failed');
+            }
+        }
+        if (this.skills) {
+            const [, skillError] = this.skills.start();
+            if (skillError) {
+                this.options.logger.warn({ error: skillError }, 'skill host start failed');
+            }
+        }
+    }
+
+    private stopAutonomy(): void {
+        this.guardian?.stop();
+        this.skills?.stop();
+        this.autonomyStarted = false;
+    }
+
+    private handleCritical(report: GuardianReport): void {
+        if (this.skills === null) return;
+        if (report.emergencyStop) {
+            this.skills.preempt('guardian emergency stop');
+            return;
+        }
+        if (Date.now() - this.lastReflexAt < 2000) return;
+        this.lastReflexAt = Date.now();
+        const hunger = report.signals.some((signal) => signal.code === 'hunger.low');
+        const threat = report.signals.some((signal) => signal.code === 'mob.threat');
+        if (hunger && this.skills.activeSkillId !== 'eat') {
+            this.skills.preempt('hunger critical');
+            const [, error] = this.skills.run('eat', {});
+            if (error) this.options.logger.warn({ error }, 'reflex eat failed');
+            return;
+        }
+        if (threat && this.skills.activeSkillId !== 'flee-defend') {
+            this.skills.preempt('threat critical');
+            const [, error] = this.skills.run('flee-defend', {});
+            if (error) this.options.logger.warn({ error }, 'reflex flee failed');
+        }
     }
 
     private forwardBlockUpdate(
@@ -233,7 +333,7 @@ export class BotConnection {
         const [, sendError] = this.transport.sendEvent('bot.heartbeat', {
             botId: this.options.botId,
             at: new Date().toISOString(),
-            digest: StateDigest.collect(this.bot),
+            digest: StateDigest.collect(this.bot, this.skills?.activeSkillId ?? null),
         });
         if (sendError) {
             this.options.logger.debug({ error: this.describe(sendError) }, 'heartbeat send failed');

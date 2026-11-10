@@ -35,5 +35,8 @@
     },
     "safety": {
         "guardianHz": 20
+    },
+    "skills": {
+        "tickMilliseconds": 250
     }
 }

@@ -22,12 +22,11 @@ function crop(x: number, z: number, age = '7'): VoxelBlock {
 }
 
 function plotSnapshot(): ChunkSnapshot {
-    const blocks: VoxelBlock[] = [];
-    for (let x = 0; x <= 2; x += 1) {
-        for (let z = 0; z <= 2; z += 1) {
-            blocks.push(farmland(x, z), crop(x, z));
-        }
-    }
+    const blocks = Array.from({ length: 9 }, (_, index) => {
+        const x = index % 3;
+        const z = Math.floor(index / 3);
+        return [farmland(x, z), crop(x, z)];
+    }).flat();
     blocks.push({ position: { x: 3, y: 64, z: 1 }, blockId: 'water', solid: false });
     return {
         botId: 'bot.tibot1',

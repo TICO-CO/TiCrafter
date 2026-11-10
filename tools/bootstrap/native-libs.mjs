@@ -5,6 +5,14 @@ import { ensureDirectory, exists, log, readManifest, root, runCapture, warn } fr
 
 export const NATIVE_LIBRARIES = ['libstdc++.so.6', 'libgcc_s.so.1'];
 
+const globMatches = (pattern) => {
+    try {
+        return fileSystem.globSync(pattern);
+    } catch {
+        return [];
+    }
+};
+
 export function findSharedLibrary(library) {
     const compiler = process.env.CXX || 'g++';
     const found = runCapture(compiler, ['-print-file-name', library]);
@@ -17,12 +25,8 @@ export function findSharedLibrary(library) {
     if (majorVersion) patterns.push(`/nix/store/*gcc-${majorVersion}.*-lib/lib/${library}`);
     patterns.push(`/nix/store/*gcc-*-lib/lib/${library}`);
     for (const pattern of patterns) {
-        try {
-            const matches = fileSystem.globSync(pattern);
-            if (matches.length) return matches.sort().at(-1);
-        } catch {
-            continue;
-        }
+        const matches = globMatches(pattern);
+        if (matches.length) return matches.sort().at(-1);
     }
 
     for (const directory of [

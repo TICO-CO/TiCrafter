@@ -16,6 +16,7 @@ const defaultConfig: Record<string, unknown> = {
     planner: { enabled: false, baseUrl: '', apiKey: '' },
     logging: { level: 'info' },
     safety: { guardianHz: 20 },
+    skills: { tickMilliseconds: 250 },
 };
 
 const profiles: Record<string, Record<string, unknown>> = {

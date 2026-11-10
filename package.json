@@ -23,6 +23,7 @@
         "render:graphs": "bun tools/architecture/render-graphs.mjs",
         "render:svg": "bun tools/architecture/render-svg.mjs",
         "server:start": "bun tools/bootstrap/minecraft-server.mjs start",
+        "server:start:accept-eula": "bun tools/bootstrap/minecraft-server.mjs start --accept-eula",
         "server:stop": "bun tools/bootstrap/minecraft-server.mjs stop",
         "server:status": "bun tools/bootstrap/minecraft-server.mjs status",
         "bench:laya": "bun tools/laya-bench/benchmark.mjs",

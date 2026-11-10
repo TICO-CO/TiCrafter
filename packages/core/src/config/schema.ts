@@ -46,6 +46,9 @@ export const configSchema = zod
         safety: zod.object({
             guardianHz: zod.number().int().min(1).max(100),
         }),
+        skills: zod.object({
+            tickMilliseconds: zod.number().int().min(200).max(500),
+        }),
     })
     .superRefine((config, context) => {
         if (config.botNames.length < config.botCount) {

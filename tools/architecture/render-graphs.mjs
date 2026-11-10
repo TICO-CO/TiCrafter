@@ -18,11 +18,12 @@ const systemById = new Map(systems.map((system) => [system.id, system]));
 const componentById = new Map();
 const componentToSystem = new Map();
 const externalById = new Map(externals.map((external) => [external.id, external]));
-for (const system of systems) {
-    for (const component of system.components) {
-        componentById.set(component.id, component);
-        componentToSystem.set(component.id, system.id);
-    }
+const componentEntries = systems.flatMap((system) =>
+    system.components.map((component) => ({ component, systemId: system.id })),
+);
+for (const { component, systemId } of componentEntries) {
+    componentById.set(component.id, component);
+    componentToSystem.set(component.id, systemId);
 }
 
 const relationTypeDescriptions = {
@@ -60,6 +61,12 @@ const endpointName = (id) => {
 };
 
 const endpointSystem = (id) => componentToSystem.get(id) ?? (systemById.has(id) ? id : 'external');
+
+const appendExternalNode = (lines, externalId) => {
+    const external = externalById.get(externalId);
+    if (external === undefined) return;
+    lines.push(`${idFor(externalId)}(["${escapeMermaid(external.name)}"])`);
+};
 
 const aggregatedSystemEdges = () => {
     const identifierMap = new Map();
@@ -149,18 +156,17 @@ function mermaidSafetyControl() {
         seen.add(key);
         lines.push(`${idFor(from)} -->|${escapeMermaid(relation.type)}| ${idFor(to)}`);
     }
-    for (const system of systems.filter((system) => keepSystems.has(system.id))) {
-        for (const component of system.components) {
-            if (
-                relations.some(
-                    (relation) =>
-                        keepTypes.has(relation.type) &&
-                        (relation.from === component.id || relation.to === component.id),
-                )
-            ) {
-                lines.push(`${idFor(component.id)}["${escapeMermaid(component.name)}"]`);
-            }
-        }
+    const keptComponents = systems
+        .filter((system) => keepSystems.has(system.id))
+        .flatMap((system) => system.components);
+    for (const component of keptComponents) {
+        const relevant = relations.some(
+            (relation) =>
+                keepTypes.has(relation.type) &&
+                (relation.from === component.id || relation.to === component.id),
+        );
+        if (!relevant) continue;
+        lines.push(`${idFor(component.id)}["${escapeMermaid(component.name)}"]`);
     }
     for (const relation of relations.filter((relation) => keepTypes.has(relation.type))) {
         if (!componentById.has(relation.from) || !componentById.has(relation.to)) continue;
@@ -241,26 +247,25 @@ function mermaidSystem(system) {
     const localComponentIds = new Set(system.components.map((component) => component.id));
     const includedComponentIds = new Set(system.components.map((component) => component.id));
     for (const relation of relations) {
-        if (localComponentIds.has(relation.from) || localComponentIds.has(relation.to)) {
-            if (componentById.has(relation.from)) includedComponentIds.add(relation.from);
-            if (componentById.has(relation.to)) includedComponentIds.add(relation.to);
-            if (externalById.has(relation.from)) includedComponentIds.add(relation.from);
-            if (externalById.has(relation.to)) includedComponentIds.add(relation.to);
-        }
+        const touchesLocal =
+            localComponentIds.has(relation.from) || localComponentIds.has(relation.to);
+        if (!touchesLocal) continue;
+        if (componentById.has(relation.from)) includedComponentIds.add(relation.from);
+        if (componentById.has(relation.to)) includedComponentIds.add(relation.to);
+        if (externalById.has(relation.from)) includedComponentIds.add(relation.from);
+        if (externalById.has(relation.to)) includedComponentIds.add(relation.to);
     }
     for (const componentId of includedComponentIds) {
         const component = componentById.get(componentId);
-        if (component) {
-            const outside = componentToSystem.get(componentId) !== system.id;
-            const suffix = outside
-                ? ` (${systemById.get(componentToSystem.get(componentId))?.name ?? 'external'})`
-                : '';
-            lines.push(`${idFor(componentId)}["${escapeMermaid(component.name + suffix)}"]`);
-        } else if (externalById.has(componentId)) {
-            lines.push(
-                `${idFor(componentId)}(["${escapeMermaid(externalById.get(componentId).name)}"])`,
-            );
+        if (component === undefined) {
+            appendExternalNode(lines, componentId);
+            continue;
         }
+        const outside = componentToSystem.get(componentId) !== system.id;
+        const suffix = outside
+            ? ` (${systemById.get(componentToSystem.get(componentId))?.name ?? 'external'})`
+            : '';
+        lines.push(`${idFor(componentId)}["${escapeMermaid(component.name + suffix)}"]`);
     }
     for (const relation of relations) {
         if (!includedComponentIds.has(relation.from) || !includedComponentIds.has(relation.to))
@@ -311,6 +316,100 @@ const headingSlug = (value) =>
 const header = (title) =>
     `# ${title}\n\n> Generated from \`docs/architecture/graph.json\`. Edit the graph, then run \`bun tools/architecture/render-graphs.mjs\`.\n\n`;
 
+function appendSystemIndex(document, systemList) {
+    document.push('## System index\n');
+    document.push('| ID | System | Components | Owner package | Milestone |');
+    document.push('|---|---|---:|---|---:|');
+    for (const system of systemList) {
+        document.push(
+            `| \`${system.id}\` | [${system.name}](#${headingSlug(system.name)}) | ${system.components.length} | \`${system.ownerPackage}\` | ${system.milestone} |`,
+        );
+    }
+    document.push('');
+}
+
+function appendComponentTable(document, system) {
+    document.push('### Components\n');
+    document.push('| ID | Component | Responsibility | Owner path | Milestone |');
+    document.push('|---|---|---|---|---:|');
+    for (const component of system.components) {
+        document.push(
+            `| \`${component.id}\` | ${component.name} | ${component.responsibility} | \`${component.plannedPath}\` | ${component.milestone} |`,
+        );
+    }
+    document.push('');
+}
+
+function appendComponentDetails(document, component) {
+    document.push(`### \`${component.id}\` — ${component.name}\n`);
+    document.push(`- **Responsibility:** ${component.responsibility}`);
+    document.push(`- **Owner path:** \`${component.plannedPath}\``);
+    document.push(
+        `- **Provides:** ${component.provides.map((providedInterface) => `\`${providedInterface}\``).join(', ')}`,
+    );
+    document.push(
+        `- **Requires:** ${component.requires.length ? component.requires.map((providedInterface) => `\`${providedInterface}\``).join(', ') : 'none'}`,
+    );
+    document.push(
+        `- **Owns state:** ${component.ownsState.length ? component.ownsState.map((providedInterface) => `\`${providedInterface}\``).join(', ') : 'none'}`,
+    );
+    document.push(
+        `- **Source refs:** ${component.sourceRefs.map((sourceRef) => `\`${sourceRef}\``).join(', ')}`,
+    );
+    document.push(`- **Milestone:** ${component.milestone}`);
+    document.push('- **Invariants:**');
+    for (const invariant of component.invariants) document.push(`  - ${invariant}`);
+    document.push('- **Failure modes:**');
+    for (const failureMode of component.failureModes) document.push(`  - ${failureMode}`);
+    document.push('- **Tests:**');
+    for (const test of component.tests) document.push(`  - ${test}`);
+    document.push('- **Metrics:**');
+    for (const metric of component.metrics) document.push(`  - \`${metric}\``);
+    document.push('');
+}
+
+function appendSystemCatalog(document, system) {
+    document.push(`## ${system.name}\n`);
+    document.push(`- **ID:** \`${system.id}\``);
+    document.push(`- **Owner package:** \`${system.ownerPackage}\``);
+    document.push(`- **Milestone:** ${system.milestone}`);
+    document.push(
+        `- **Source refs:** ${system.sourceRefs.map((sourceRef) => `\`${sourceRef}\``).join(', ')}`,
+    );
+    document.push(
+        `- **Allowed cross-system dependencies:** ${system.allowedDependencies.length ? system.allowedDependencies.map((dependency) => `\`${dependency}\``).join(', ') : 'none'}`,
+    );
+    document.push(
+        `- **Forbidden dependencies:** ${system.forbiddenDependencies.length ? system.forbiddenDependencies.map((dependency) => `\`${dependency}\``).join(', ') : 'none'}`,
+    );
+    document.push('');
+    document.push('**Purpose.** ' + system.purpose + '\n');
+    document.push('**System invariants.**');
+    for (const invariant of system.invariants) document.push(`- ${invariant}`);
+    document.push('');
+    appendComponentTable(document, system);
+    for (const component of system.components) appendComponentDetails(document, component);
+    document.push('---\n');
+}
+
+function appendSystemRelations(document, system) {
+    const systemRelations = relations.filter(
+        (relation) => (componentToSystem.get(relation.from) ?? relation.from) === system.id,
+    );
+    if (systemRelations.length === 0) return;
+    document.push(`## ${system.name} relations\n`);
+    document.push(
+        '| ID | From | Type | To | Protocol | Sync | Criticality | Payload | Failure behavior | Notes |',
+    );
+    document.push('|---|---|---|---|---|---|---|---|---|---|');
+    for (const relation of systemRelations) {
+        document.push(
+            `| \`${relation.id}\` | \`${relation.from}\` | \`${relation.type}\` | \`${relation.to}\` | \`${relation.protocol}\` | ${relation.sync ? 'sync' : 'async'} | ${relation.criticality} | ${relation.payload} | ${relation.failureBehavior} | ${relation.notes} |`,
+        );
+    }
+    document.push('');
+}
+
 const decomposition = [];
 decomposition.push(header('TiCrafter System Decomposition'));
 decomposition.push(
@@ -320,72 +419,8 @@ decomposition.push('## Reading this catalog\n');
 decomposition.push(
     'A component is the smallest owned implementation boundary in this architecture. It has one responsibility, one owning package path, an explicit interface, owned state (if any), invariants, failure modes, tests, and metrics. Components are not individual functions.\n',
 );
-decomposition.push('## System index\n');
-decomposition.push('| ID | System | Components | Owner package | Milestone |');
-decomposition.push('|---|---|---:|---|---:|');
-for (const system of systems) {
-    decomposition.push(
-        `| \`${system.id}\` | [${system.name}](#${headingSlug(system.name)}) | ${system.components.length} | \`${system.ownerPackage}\` | ${system.milestone} |`,
-    );
-}
-decomposition.push('');
-for (const system of systems) {
-    decomposition.push(`## ${system.name}\n`);
-    decomposition.push(`- **ID:** \`${system.id}\``);
-    decomposition.push(`- **Owner package:** \`${system.ownerPackage}\``);
-    decomposition.push(`- **Milestone:** ${system.milestone}`);
-    decomposition.push(
-        `- **Source refs:** ${system.sourceRefs.map((sourceRef) => `\`${sourceRef}\``).join(', ')}`,
-    );
-    decomposition.push(
-        `- **Allowed cross-system dependencies:** ${system.allowedDependencies.length ? system.allowedDependencies.map((dependency) => `\`${dependency}\``).join(', ') : 'none'}`,
-    );
-    decomposition.push(
-        `- **Forbidden dependencies:** ${system.forbiddenDependencies.length ? system.forbiddenDependencies.map((dependency) => `\`${dependency}\``).join(', ') : 'none'}`,
-    );
-    decomposition.push('');
-    decomposition.push('**Purpose.** ' + system.purpose + '\n');
-    decomposition.push('**System invariants.**');
-    for (const inv of system.invariants) decomposition.push(`- ${inv}`);
-    decomposition.push('');
-    decomposition.push('### Components\n');
-    decomposition.push('| ID | Component | Responsibility | Owner path | Milestone |');
-    decomposition.push('|---|---|---|---|---:|');
-    for (const component of system.components) {
-        decomposition.push(
-            `| \`${component.id}\` | ${component.name} | ${component.responsibility} | \`${component.plannedPath}\` | ${component.milestone} |`,
-        );
-    }
-    decomposition.push('');
-    for (const component of system.components) {
-        decomposition.push(`### \`${component.id}\` — ${component.name}\n`);
-        decomposition.push(`- **Responsibility:** ${component.responsibility}`);
-        decomposition.push(`- **Owner path:** \`${component.plannedPath}\``);
-        decomposition.push(
-            `- **Provides:** ${component.provides.map((providedInterface) => `\`${providedInterface}\``).join(', ')}`,
-        );
-        decomposition.push(
-            `- **Requires:** ${component.requires.length ? component.requires.map((providedInterface) => `\`${providedInterface}\``).join(', ') : 'none'}`,
-        );
-        decomposition.push(
-            `- **Owns state:** ${component.ownsState.length ? component.ownsState.map((providedInterface) => `\`${providedInterface}\``).join(', ') : 'none'}`,
-        );
-        decomposition.push(
-            `- **Source refs:** ${component.sourceRefs.map((sourceRef) => `\`${sourceRef}\``).join(', ')}`,
-        );
-        decomposition.push(`- **Milestone:** ${component.milestone}`);
-        decomposition.push('- **Invariants:**');
-        for (const inv of component.invariants) decomposition.push(`  - ${inv}`);
-        decomposition.push('- **Failure modes:**');
-        for (const failure of component.failureModes) decomposition.push(`  - ${failure}`);
-        decomposition.push('- **Tests:**');
-        for (const test of component.tests) decomposition.push(`  - ${test}`);
-        decomposition.push('- **Metrics:**');
-        for (const metric of component.metrics) decomposition.push(`  - \`${metric}\``);
-        decomposition.push('');
-    }
-    decomposition.push('---\n');
-}
+appendSystemIndex(decomposition, systems);
+for (const system of systems) appendSystemCatalog(decomposition, system);
 fileSystem.writeFileSync(path.join(outputDirectory, 'decomposition.md'), decomposition.join('\n'));
 
 const relationsDocument = [];
@@ -430,14 +465,15 @@ for (const entry of aggregated) {
 }
 relationsDocument.push('| From system | To system | Relations | Types |');
 relationsDocument.push('|---|---|---:|---|');
-for (const system of systems) {
-    for (const entry of (bySource.get(system.id) ?? []).sort((left, right) =>
-        left.to.localeCompare(right.to),
-    )) {
-        relationsDocument.push(
-            `| \`${system.name}\` | \`${systemById.get(entry.to).name}\` | ${entry.count} | ${edgeLabel(entry)} |`,
-        );
-    }
+const systemEntries = systems.flatMap((system) =>
+    (bySource.get(system.id) ?? [])
+        .sort((left, right) => left.to.localeCompare(right.to))
+        .map((entry) => ({ system, entry })),
+);
+for (const { system, entry } of systemEntries) {
+    relationsDocument.push(
+        `| \`${system.name}\` | \`${systemById.get(entry.to).name}\` | ${entry.count} | ${edgeLabel(entry)} |`,
+    );
 }
 relationsDocument.push('');
 relationsDocument.push('## Allowed dependency cycles\n');
@@ -457,22 +493,7 @@ for (const rule of graph.meta.forbiddenEdges)
         `| \`${rule.id}\` | \`${rule.fromPattern}\` | \`${rule.toPattern}\` | ${rule.types.map((relationType) => `\`${relationType}\``).join(', ')} | ${rule.reason} |`,
     );
 relationsDocument.push('');
-for (const system of systems) {
-    const sysRelations = relations.filter(
-        (relation) => (componentToSystem.get(relation.from) ?? relation.from) === system.id,
-    );
-    if (sysRelations.length === 0) continue;
-    relationsDocument.push(`## ${system.name} relations\n`);
-    relationsDocument.push(
-        '| ID | From | Type | To | Protocol | Sync | Criticality | Payload | Failure behavior | Notes |',
-    );
-    relationsDocument.push('|---|---|---|---|---|---|---|---|---|---|');
-    for (const relation of sysRelations)
-        relationsDocument.push(
-            `| \`${relation.id}\` | \`${relation.from}\` | \`${relation.type}\` | \`${relation.to}\` | \`${relation.protocol}\` | ${relation.sync ? 'sync' : 'async'} | ${relation.criticality} | ${relation.payload} | ${relation.failureBehavior} | ${relation.notes} |`,
-        );
-    relationsDocument.push('');
-}
+for (const system of systems) appendSystemRelations(relationsDocument, system);
 fileSystem.writeFileSync(path.join(outputDirectory, 'relations.md'), relationsDocument.join('\n'));
 
 const diagramsDocument = [];

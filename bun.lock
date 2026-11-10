@@ -54,6 +54,15 @@
         "ws": "8.22.2",
       },
     },
+    "packages/brains": {
+      "name": "@ticrafter/brains",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ticrafter/core": "0.1.0",
+        "@ticrafter/safety": "0.1.0",
+        "@ticrafter/skills": "0.1.0",
+      },
+    },
     "packages/core": {
       "name": "@ticrafter/core",
       "version": "0.1.0",
@@ -78,6 +87,20 @@
     },
     "packages/perception": {
       "name": "@ticrafter/perception",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ticrafter/core": "0.1.0",
+      },
+    },
+    "packages/safety": {
+      "name": "@ticrafter/safety",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ticrafter/core": "0.1.0",
+      },
+    },
+    "packages/skills": {
+      "name": "@ticrafter/skills",
       "version": "0.1.0",
       "dependencies": {
         "@ticrafter/core": "0.1.0",
@@ -227,6 +250,8 @@
 
     "@ticrafter/bot": ["@ticrafter/bot@workspace:apps/bot"],
 
+    "@ticrafter/brains": ["@ticrafter/brains@workspace:packages/brains"],
+
     "@ticrafter/coordinator": ["@ticrafter/coordinator@workspace:apps/coordinator"],
 
     "@ticrafter/core": ["@ticrafter/core@workspace:packages/core"],
@@ -236,6 +261,10 @@
     "@ticrafter/memory": ["@ticrafter/memory@workspace:packages/memory"],
 
     "@ticrafter/perception": ["@ticrafter/perception@workspace:packages/perception"],
+
+    "@ticrafter/safety": ["@ticrafter/safety@workspace:packages/safety"],
+
+    "@ticrafter/skills": ["@ticrafter/skills@workspace:packages/skills"],
 
     "@ticrafter/worldmodel": ["@ticrafter/worldmodel@workspace:packages/worldmodel"],
 

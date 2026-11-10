@@ -461,7 +461,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - **Pinned and verified:** `tools/bootstrap/manifest.json` holds download URLs and checksums. Python requirements are pinned; PyTorch follows `PYTORCH_VARIANT` or `HARDWARE_PROFILE` (`cpu` for `home-min`, `rocm` for `home-full`).
 - **Install scripts denied:** dependency lifecycle scripts are blocked. Verified prebuilt binaries cover `onnxruntime-node` and `esbuild`. Chromium is never downloaded.
 - **Diagram rendering:** Mermaid CLI uses the installed Firefox through `.cache/mermaid/puppeteer.json`. Override with `FIREFOX=/path/to/firefox`. Fenced Mermaid stays the default when Firefox is absent.
-- **Minecraft EULA:** accepting it is explicit. `bun run server:start` writes `data/minecraft/eula.txt` only with `--accept-eula`.
+- **Minecraft EULA:** accepting it is explicit. `bun run server:start` refuses to start until `data/minecraft/eula.txt` exists. Run `bun run server:start:accept-eula` once to write it and start the server; running that command means accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA). Later starts can use `bun run server:start`.
 - **Disk guard:** bootstrap estimates pending install size, prints free space, and aborts before downloading when the full profile cannot fit. `--check` reports without installing; `--clean` forces `bun install --frozen-lockfile`.
 - **Low-priority I/O:** `bun install` runs under `nice`/`ionice` when available with a repo-local cache.
 

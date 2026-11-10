@@ -69,6 +69,16 @@ assertArray(policy.installRoots, 'meta.dependencyPolicy.installRoots', 1);
 assertArray(policy.runtimeForbiddenSystems, 'meta.dependencyPolicy.runtimeForbiddenSystems', 1);
 assertArray(policy.bootstrapComponents, 'meta.dependencyPolicy.bootstrapComponents', 1);
 
+const validatePinnedDependencies = (packageJson, section) => {
+    for (const [name, versionSpec] of Object.entries(packageJson[section] ?? {})) {
+        if (versionSpec === '*' || versionSpec === 'latest' || versionSpec === '') {
+            errors.push(
+                `package.json: ${section}.${name} must be pinned, got ${JSON.stringify(versionSpec)}`,
+            );
+        }
+    }
+};
+
 const packageJsonPath = path.join(root, 'package.json');
 const lockfilePath = path.join(root, 'bun.lock');
 if (!fileSystem.existsSync(packageJsonPath)) {
@@ -87,15 +97,8 @@ if (!fileSystem.existsSync(packageJsonPath)) {
         'devDependencies',
         'optionalDependencies',
         'peerDependencies',
-    ]) {
-        for (const [name, versionSpec] of Object.entries(packageJson[section] ?? {})) {
-            if (versionSpec === '*' || versionSpec === 'latest' || versionSpec === '') {
-                errors.push(
-                    `package.json: ${section}.${name} must be pinned, got ${JSON.stringify(versionSpec)}`,
-                );
-            }
-        }
-    }
+    ])
+        validatePinnedDependencies(packageJson, section);
 }
 if (!fileSystem.existsSync(lockfilePath)) errors.push('bun.lock: missing committed lockfile');
 
@@ -119,6 +122,68 @@ for (const external of graph.externals ?? []) {
     if (externalIds.has(external.id)) errors.push(`duplicate external id ${external.id}`);
     externalIds.add(external.id);
 }
+
+const validateComponent = (system, component, componentNames) => {
+    const label = `component ${component.id ?? '<unknown>'}`;
+    required(
+        component,
+        [
+            'id',
+            'name',
+            'responsibility',
+            'plannedPath',
+            'provides',
+            'requires',
+            'ownsState',
+            'invariants',
+            'failureModes',
+            'tests',
+            'metrics',
+            'sourceRefs',
+            'milestone',
+        ],
+        label,
+    );
+    if (!/^[a-z0-9-]+\.[a-z0-9-]+$/.test(component.id ?? '')) errors.push(`${label}: invalid id`);
+    if (componentIds.has(component.id)) errors.push(`duplicate component id ${component.id}`);
+    if (componentNames.has(component.name))
+        errors.push(`${system.id}: duplicate component name ${component.name}`);
+    componentNames.add(component.name);
+    componentIds.add(component.id);
+    componentToSystem.set(component.id, system.id);
+    assertArray(component.provides, `${label}.provides`, 1);
+    for (const provided of component.provides ?? []) {
+        if (providers.has(provided)) {
+            errors.push(
+                `${label}: duplicate provided interface ${provided} (also ${providers.get(provided)})`,
+            );
+        }
+        providers.set(provided, component.id);
+    }
+    assertArray(component.requires, `${label}.requires`, 0);
+    assertArray(component.invariants, `${label}.invariants`, 1);
+    assertArray(component.failureModes, `${label}.failureModes`, 1);
+    assertArray(component.tests, `${label}.tests`, 1);
+    assertArray(component.metrics, `${label}.metrics`, 1);
+    assertArray(component.sourceRefs, `${label}.sourceRefs`, 1);
+    const placeholder = 'Single responsibility; no side effects outside the declared interface.';
+    if ((component.invariants ?? []).includes(placeholder))
+        errors.push(`${label}: placeholder invariant is not allowed`);
+    if (!Number.isInteger(component.milestone) || component.milestone < 1)
+        errors.push(`${label}: invalid milestone`);
+    if (!component.plannedPath.startsWith(`${system.ownerPackage}/`)) {
+        warnings.push(
+            `${label}: plannedPath does not start with system ownerPackage ${system.ownerPackage}`,
+        );
+    }
+};
+
+const validateSystemComponents = (system) => {
+    const componentNames = new Set();
+    for (const component of system.components ?? []) {
+        validateComponent(system, component, componentNames);
+    }
+};
 
 for (const system of graph.systems ?? []) {
     required(
@@ -144,74 +209,20 @@ for (const system of graph.systems ?? []) {
     assertArray(system.sourceRefs, `${system.id}.sourceRefs`, 1);
     assertArray(system.invariants, `${system.id}.invariants`, 1);
     assertArray(system.components, `${system.id}.components`, 1);
-
-    const componentNames = new Set();
-    for (const component of system.components ?? []) {
-        const label = `component ${component.id ?? '<unknown>'}`;
-        required(
-            component,
-            [
-                'id',
-                'name',
-                'responsibility',
-                'plannedPath',
-                'provides',
-                'requires',
-                'ownsState',
-                'invariants',
-                'failureModes',
-                'tests',
-                'metrics',
-                'sourceRefs',
-                'milestone',
-            ],
-            label,
-        );
-        if (!/^[a-z0-9-]+\.[a-z0-9-]+$/.test(component.id ?? ''))
-            errors.push(`${label}: invalid id`);
-        if (componentIds.has(component.id)) errors.push(`duplicate component id ${component.id}`);
-        if (componentNames.has(component.name))
-            errors.push(`${system.id}: duplicate component name ${component.name}`);
-        componentNames.add(component.name);
-        componentIds.add(component.id);
-        componentToSystem.set(component.id, system.id);
-        assertArray(component.provides, `${label}.provides`, 1);
-        for (const provided of component.provides ?? []) {
-            if (providers.has(provided)) {
-                errors.push(
-                    `${label}: duplicate provided interface ${provided} (also ${providers.get(provided)})`,
-                );
-            }
-            providers.set(provided, component.id);
-        }
-        assertArray(component.requires, `${label}.requires`, 0);
-        assertArray(component.invariants, `${label}.invariants`, 1);
-        assertArray(component.failureModes, `${label}.failureModes`, 1);
-        assertArray(component.tests, `${label}.tests`, 1);
-        assertArray(component.metrics, `${label}.metrics`, 1);
-        assertArray(component.sourceRefs, `${label}.sourceRefs`, 1);
-        const placeholder =
-            'Single responsibility; no side effects outside the declared interface.';
-        if ((component.invariants ?? []).includes(placeholder))
-            errors.push(`${label}: placeholder invariant is not allowed`);
-        if (!Number.isInteger(component.milestone) || component.milestone < 1)
-            errors.push(`${label}: invalid milestone`);
-        if (!component.plannedPath.startsWith(`${system.ownerPackage}/`)) {
-            warnings.push(
-                `${label}: plannedPath does not start with system ownerPackage ${system.ownerPackage}`,
-            );
-        }
-    }
+    validateSystemComponents(system);
 }
 
-for (const system of graph.systems ?? []) {
-    for (const component of system.components ?? []) {
-        for (const req of component.requires ?? []) {
-            if (!componentIds.has(req) && !externalIds.has(req))
-                errors.push(`component ${component.id}: unknown requirement ${req}`);
+const components = (graph.systems ?? []).flatMap((system) => system.components ?? []);
+
+const validateRequirements = (component) => {
+    for (const requirement of component.requires ?? []) {
+        if (!componentIds.has(requirement) && !externalIds.has(requirement)) {
+            errors.push(`component ${component.id}: unknown requirement ${requirement}`);
         }
     }
-}
+};
+
+for (const component of components) validateRequirements(component);
 
 for (const id of policy.bootstrapComponents ?? []) {
     if (!componentIds.has(id))
@@ -289,7 +300,7 @@ for (const relation of graph.relations ?? []) {
     }
 }
 
-for (const forbiddenSystem of policy.runtimeForbiddenSystems ?? []) {
+const validateRuntimeForbidden = (forbiddenSystem) => {
     for (const relation of graph.relations ?? []) {
         if (!['depends_on', 'controls', 'writes'].includes(relation.type)) continue;
         const toSystem =
@@ -305,6 +316,10 @@ for (const forbiddenSystem of policy.runtimeForbiddenSystems ?? []) {
             `relation ${relation.id}: runtime system ${fromSystem} cannot depend on ${forbiddenSystem}`,
         );
     }
+};
+
+for (const forbiddenSystem of policy.runtimeForbiddenSystems ?? []) {
+    validateRuntimeForbidden(forbiddenSystem);
 }
 
 const globToRegExp = (pattern) =>
@@ -315,14 +330,16 @@ const globToRegExp = (pattern) =>
             .join('.*')}$`,
     );
 
-for (const rule of graph.meta.forbiddenEdges ?? []) {
-    const fromRe = globToRegExp(rule.fromPattern);
-    const toRe = globToRegExp(rule.toPattern);
+const validateForbiddenRule = (rule) => {
+    const fromExpression = globToRegExp(rule.fromPattern);
+    const toExpression = globToRegExp(rule.toPattern);
     for (const relation of graph.relations ?? []) {
         const fromMatch =
-            fromRe.test(relation.from) || fromRe.test(componentToSystem.get(relation.from) ?? '');
+            fromExpression.test(relation.from) ||
+            fromExpression.test(componentToSystem.get(relation.from) ?? '');
         const toMatch =
-            toRe.test(relation.to) || toRe.test(componentToSystem.get(relation.to) ?? '');
+            toExpression.test(relation.to) ||
+            toExpression.test(componentToSystem.get(relation.to) ?? '');
         const typeMatch = rule.types.includes('*') || rule.types.includes(relation.type);
         if (fromMatch && toMatch && typeMatch) {
             errors.push(
@@ -330,7 +347,9 @@ for (const rule of graph.meta.forbiddenEdges ?? []) {
             );
         }
     }
-}
+};
+
+for (const rule of graph.meta.forbiddenEdges ?? []) validateForbiddenRule(rule);
 
 const owners = new Map();
 for (const state of graph.stateOwnership ?? []) {
@@ -346,14 +365,20 @@ for (const state of graph.stateOwnership ?? []) {
             `state owner ${state.owner} owns multiple states; keep state ownership explicit`,
         );
     owners.set(state.owner, state);
-    for (const writer of state.writers ?? []) {
-        if (!componentIds.has(writer))
-            errors.push(`state ${state.state}: unknown writer ${writer}`);
-    }
-    for (const reader of state.readers ?? []) {
-        if (!componentIds.has(reader))
-            errors.push(`state ${state.state}: unknown reader ${reader}`);
-    }
+}
+
+const stateWriters = (graph.stateOwnership ?? []).flatMap((state) =>
+    (state.writers ?? []).map((writer) => ({ state, writer })),
+);
+for (const { state, writer } of stateWriters) {
+    if (!componentIds.has(writer)) errors.push(`state ${state.state}: unknown writer ${writer}`);
+}
+
+const stateReaders = (graph.stateOwnership ?? []).flatMap((state) =>
+    (state.readers ?? []).map((reader) => ({ state, reader })),
+);
+for (const { state, reader } of stateReaders) {
+    if (!componentIds.has(reader)) errors.push(`state ${state.state}: unknown reader ${reader}`);
 }
 
 for (const relation of (graph.relations ?? []).filter((relation) => relation.type === 'writes')) {
@@ -372,12 +397,12 @@ for (const relation of (graph.relations ?? []).filter((relation) => relation.typ
 }
 
 const declaredStates = new Set((graph.stateOwnership ?? []).map((state) => state.state));
-for (const system of graph.systems ?? []) {
-    for (const component of system.components ?? []) {
-        for (const owned of component.ownsState ?? []) {
-            if (!declaredStates.has(owned))
-                errors.push(`component ${component.id}: owns undeclared state ${owned}`);
-        }
+const ownedStates = components.flatMap((component) =>
+    (component.ownsState ?? []).map((ownedState) => ({ component, ownedState })),
+);
+for (const { component, ownedState } of ownedStates) {
+    if (!declaredStates.has(ownedState)) {
+        errors.push(`component ${component.id}: owns undeclared state ${ownedState}`);
     }
 }
 
@@ -386,13 +411,11 @@ const writeEdges = new Set(
         .filter((relation) => relation.type === 'writes')
         .map((relation) => `${relation.from}|${relation.to}`),
 );
-for (const state of graph.stateOwnership ?? []) {
-    for (const writer of state.writers ?? []) {
-        if (!writeEdges.has(`${writer}|${state.owner}`)) {
-            warnings.push(
-                `state ${state.state}: declared writer ${writer} has no writes edge to ${state.owner}`,
-            );
-        }
+for (const { state, writer } of stateWriters) {
+    if (!writeEdges.has(`${writer}|${state.owner}`)) {
+        warnings.push(
+            `state ${state.state}: declared writer ${writer} has no writes edge to ${state.owner}`,
+        );
     }
 }
 
@@ -430,9 +453,10 @@ function strongConnect(vertex) {
         if (!indexes.has(neighbor)) {
             strongConnect(neighbor);
             lowlinks.set(vertex, Math.min(lowlinks.get(vertex), lowlinks.get(neighbor)));
-        } else if (onStack.has(neighbor)) {
-            lowlinks.set(vertex, Math.min(lowlinks.get(vertex), indexes.get(neighbor)));
+            continue;
         }
+        if (!onStack.has(neighbor)) continue;
+        lowlinks.set(vertex, Math.min(lowlinks.get(vertex), indexes.get(neighbor)));
     }
     if (lowlinks.get(vertex) === indexes.get(vertex)) {
         const component = [];
@@ -470,28 +494,28 @@ for (const line of main.split('\n')) {
         .replace(/\s+/g, '-');
     anchors.add(anchor);
 }
-for (const system of graph.systems ?? []) {
-    for (const ref of system.sourceRefs ?? []) {
-        if (!ref.startsWith('main.md#')) {
-            errors.push(`${system.id}: sourceRef ${ref} must target main.md#anchor`);
-            continue;
-        }
-        const anchor = ref.slice('main.md#'.length);
-        if (!anchors.has(anchor)) errors.push(`${system.id}: sourceRef anchor not found: ${ref}`);
+const systemSourceRefs = (graph.systems ?? []).flatMap((system) =>
+    (system.sourceRefs ?? []).map((ref) => ({ system, ref })),
+);
+for (const { system, ref } of systemSourceRefs) {
+    if (!ref.startsWith('main.md#')) {
+        errors.push(`${system.id}: sourceRef ${ref} must target main.md#anchor`);
+        continue;
     }
+    const anchor = ref.slice('main.md#'.length);
+    if (!anchors.has(anchor)) errors.push(`${system.id}: sourceRef anchor not found: ${ref}`);
 }
-for (const system of graph.systems ?? []) {
-    for (const component of system.components ?? []) {
-        for (const ref of component.sourceRefs ?? []) {
-            if (!ref.startsWith('main.md#')) {
-                errors.push(`${component.id}: sourceRef ${ref} must target main.md#anchor`);
-                continue;
-            }
-            const anchor = ref.slice('main.md#'.length);
-            if (!anchors.has(anchor))
-                errors.push(`${component.id}: sourceRef anchor not found: ${ref}`);
-        }
+
+const componentSourceRefs = components.flatMap((component) =>
+    (component.sourceRefs ?? []).map((ref) => ({ component, ref })),
+);
+for (const { component, ref } of componentSourceRefs) {
+    if (!ref.startsWith('main.md#')) {
+        errors.push(`${component.id}: sourceRef ${ref} must target main.md#anchor`);
+        continue;
     }
+    const anchor = ref.slice('main.md#'.length);
+    if (!anchors.has(anchor)) errors.push(`${component.id}: sourceRef anchor not found: ${ref}`);
 }
 
 const connected = new Set();
@@ -515,14 +539,20 @@ for (const relation of (graph.relations ?? []).filter(
     if (from && to && from !== to) crossSystem.add(`${from}->${to}`);
 }
 
-const declared = new Set();
-for (const system of graph.systems ?? [])
-    for (const dep of system.allowedDependencies ?? []) declared.add(`${system.id}->${dep}`);
-for (const dep of crossSystem)
-    if (!declared.has(dep))
-        warnings.push(`system dependency not listed in allowedDependencies: ${dep}`);
-for (const dep of declared)
-    if (!crossSystem.has(dep)) warnings.push(`allowedDependencies lists unused dependency: ${dep}`);
+const declaredDependencies = (graph.systems ?? []).flatMap((system) =>
+    (system.allowedDependencies ?? []).map((dependency) => `${system.id}->${dependency}`),
+);
+const declared = new Set(declaredDependencies);
+for (const dependency of crossSystem) {
+    if (!declared.has(dependency)) {
+        warnings.push(`system dependency not listed in allowedDependencies: ${dependency}`);
+    }
+}
+for (const dependency of declared) {
+    if (!crossSystem.has(dependency)) {
+        warnings.push(`allowedDependencies lists unused dependency: ${dependency}`);
+    }
+}
 
 const componentCount = [...componentIds].length;
 const cycleCount = stronglyConnectedComponents.filter((component) => component.length > 1).length;

@@ -99,16 +99,22 @@ export class BlockClusterer {
     }
 
     private static offsets(maximumDistance: number): readonly ClusterOffset[] {
+        const size = maximumDistance * 2 + 1;
         const offsets: ClusterOffset[] = [];
-        for (let x = -maximumDistance; x <= maximumDistance; x += 1) {
-            for (let y = -maximumDistance; y <= maximumDistance; y += 1) {
-                for (let z = -maximumDistance; z <= maximumDistance; z += 1) {
-                    if (x === 0 && y === 0 && z === 0) continue;
-                    offsets.push({ x, y, z });
-                }
-            }
+        for (let index = 0; index < size ** 3; index += 1) {
+            const offset = BlockClusterer.offsetAt(index, size, maximumDistance);
+            if (offset.x === 0 && offset.y === 0 && offset.z === 0) continue;
+            offsets.push(offset);
         }
         return offsets;
+    }
+
+    private static offsetAt(index: number, size: number, maximumDistance: number): ClusterOffset {
+        return {
+            x: (index % size) - maximumDistance,
+            y: (Math.floor(index / size) % size) - maximumDistance,
+            z: (Math.floor(index / (size * size)) % size) - maximumDistance,
+        };
     }
 
     private static key(position: VoxelPosition): string {

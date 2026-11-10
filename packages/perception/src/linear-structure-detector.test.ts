@@ -8,11 +8,10 @@ function solid(x: number, y: number, z: number): VoxelBlock {
 }
 
 function layer(xRange: number, zRange: number, y: number): readonly VoxelBlock[] {
+    const width = xRange + 1;
     const blocks: VoxelBlock[] = [];
-    for (let x = 0; x <= xRange; x += 1) {
-        for (let z = 0; z <= zRange; z += 1) {
-            blocks.push(solid(x, y, z));
-        }
+    for (let index = 0; index < width * (zRange + 1); index += 1) {
+        blocks.push(solid(index % width, y, Math.floor(index / width)));
     }
     return blocks;
 }
@@ -73,12 +72,7 @@ describe('LinearStructureDetector', () => {
     });
 
     it('detects a diagonal wall using line fitting', () => {
-        const ground: VoxelBlock[] = [];
-        for (let x = 0; x <= 9; x += 1) {
-            for (let z = 0; z <= 9; z += 1) {
-                ground.push(solid(x, 63, z));
-            }
-        }
+        const ground = layer(9, 9, 63);
         const wall = Array.from({ length: 10 }, (_, index) =>
             [64, 65, 66].map((y) => solid(index, y, index)),
         ).flat();

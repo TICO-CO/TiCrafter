@@ -35,22 +35,34 @@ export class EnclosureGeometry {
         );
         const visited = new Set<string>();
         const regions: EnclosedRegion[] = [];
-        for (let y = bounds.min.y; y <= bounds.max.y; y += 1) {
-            for (let z = bounds.min.z; z <= bounds.max.z; z += 1) {
-                for (let x = bounds.min.x; x <= bounds.max.x; x += 1) {
-                    const position = { x, y, z };
-                    EnclosureGeometry.visit(
-                        position,
-                        bounds,
-                        barriers,
-                        visited,
-                        minimumVolume,
-                        regions,
-                    );
-                }
-            }
+        for (const position of EnclosureGeometry.positionsIn(bounds)) {
+            EnclosureGeometry.visit(position, bounds, barriers, visited, minimumVolume, regions);
         }
         return regions;
+    }
+
+    private static positionsIn(bounds: DetectionBoundingBox): readonly VoxelPosition[] {
+        const width = bounds.max.x - bounds.min.x + 1;
+        const height = bounds.max.y - bounds.min.y + 1;
+        const depth = bounds.max.z - bounds.min.z + 1;
+        const positions: VoxelPosition[] = [];
+        for (let index = 0; index < width * height * depth; index += 1) {
+            positions.push(EnclosureGeometry.positionAt(index, bounds, width, depth));
+        }
+        return positions;
+    }
+
+    private static positionAt(
+        index: number,
+        bounds: DetectionBoundingBox,
+        width: number,
+        depth: number,
+    ): VoxelPosition {
+        return {
+            x: bounds.min.x + (index % width),
+            y: bounds.min.y + Math.floor(index / (width * depth)),
+            z: bounds.min.z + (Math.floor(index / width) % depth),
+        };
     }
 
     private static visit(

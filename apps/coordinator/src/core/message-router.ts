@@ -10,6 +10,8 @@ import {
     type LandmarkCandidateMessage,
     landmarkCandidateSchema,
     type LoggerPort,
+    SKILL_PROGRESS_EVENT,
+    skillProgressSchema,
 } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
 
@@ -53,6 +55,15 @@ export class MessageRouter {
                 { botId: connection.botId, event: envelope.payload },
                 'bot event',
             );
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === SKILL_PROGRESS_EVENT) {
+            const parsed = skillProgressSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid skill progress');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
             return;
         }
         if (envelope.kind === 'event' && envelope.type === CHUNK_SNAPSHOT_EVENT) {
