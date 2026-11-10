@@ -59,6 +59,14 @@
         "zod": "4.6.7",
       },
     },
+    "packages/eval": {
+      "name": "@ticrafter/eval",
+      "version": "0.1.0",
+      "dependencies": {
+        "@receptron/laya": "0.2.0",
+        "@ticrafter/core": "0.1.0",
+      },
+    },
     "packages/memory": {
       "name": "@ticrafter/memory",
       "version": "0.1.0",
@@ -205,6 +213,8 @@
     "@ticrafter/coordinator": ["@ticrafter/coordinator@workspace:apps/coordinator"],
 
     "@ticrafter/core": ["@ticrafter/core@workspace:packages/core"],
+
+    "@ticrafter/eval": ["@ticrafter/eval@workspace:packages/eval"],
 
     "@ticrafter/memory": ["@ticrafter/memory@workspace:packages/memory"],
 
