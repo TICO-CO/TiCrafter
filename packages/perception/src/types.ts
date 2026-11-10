@@ -13,6 +13,7 @@ export interface VoxelBlock {
     position: VoxelPosition;
     blockId: string;
     solid: boolean;
+    properties?: Readonly<Record<string, string>>;
 }
 
 export interface ChunkSnapshot {
@@ -64,4 +65,7 @@ export type PerceptionFailure =
     | { type: 'INVALID_VERSION'; value: number }
     | { type: 'INVALID_BLOCK_POSITION'; position: VoxelPosition }
     | { type: 'BLOCK_OUTSIDE_CHUNK'; position: VoxelPosition; chunk: ChunkCoordinate }
-    | { type: 'INVALID_RATE_LIMIT_OPTIONS'; tokensPerSecond: number; burst: number };
+    | { type: 'INVALID_RATE_LIMIT_OPTIONS'; tokensPerSecond: number; burst: number }
+    | { type: 'INVALID_RING_RADIUS'; value: number }
+    | { type: 'INVALID_TIMESTAMP'; value: string }
+    | { type: 'INVALID_BLOCK_ID'; value: string };

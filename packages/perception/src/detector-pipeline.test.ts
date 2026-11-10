@@ -49,6 +49,17 @@ describe('DetectorPipeline', () => {
         expect(candidates[0]?.evidence).toBe('higher confidence');
     });
 
+    it('builds a pipeline with the default detector set', () => {
+        const corridor = Array.from({ length: 10 }, (_, index) => ({
+            position: { x: index, y: 64, z: 0 },
+            blockId: 'stone',
+            solid: true,
+        }));
+        const candidates = DetectorPipeline.withDefaults().run({ ...snapshot, blocks: corridor });
+
+        expect(candidates.some((candidate) => candidate.type === 'path')).toBe(true);
+    });
+
     it('keeps distinct landmarks', () => {
         const pipeline = new DetectorPipeline([
             new StubDetector('path', [pathCandidate]),

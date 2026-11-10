@@ -1,7 +1,22 @@
+import { FarmDetector } from './farm-detector.js';
+import { HouseDetector } from './house-detector.js';
+import { LinearStructureDetector } from './linear-structure-detector.js';
+import { PathDetector } from './path-detector.js';
+import { StorageWorkstationDetector } from './storage-workstation-detector.js';
 import type { ChunkSnapshot, DetectionCandidate, DetectorPort } from './types.js';
 
 export class DetectorPipeline {
     constructor(private readonly detectors: readonly DetectorPort[]) {}
+
+    static withDefaults(): DetectorPipeline {
+        return new DetectorPipeline([
+            new PathDetector(),
+            new HouseDetector(),
+            new FarmDetector(),
+            new StorageWorkstationDetector(),
+            new LinearStructureDetector(),
+        ]);
+    }
 
     run(snapshot: ChunkSnapshot): readonly DetectionCandidate[] {
         const candidates = new Map<string, DetectionCandidate>();
