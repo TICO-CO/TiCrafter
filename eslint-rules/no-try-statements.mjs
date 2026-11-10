@@ -7,7 +7,7 @@ export default {
         schema: [],
         messages: {
             unexpectedTry:
-                'Use attempt or attemptAsync instead. Only packages/core/src/result.ts may use try.',
+                'Use attempt or attemptAsync instead. Only packages/core/src/kernel/result.ts may use try.',
         },
     },
     create(context) {

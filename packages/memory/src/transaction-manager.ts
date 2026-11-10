@@ -1,12 +1,13 @@
-import type { Database } from 'bun:sqlite';
 import { attempt, type Result } from '@ticrafter/core';
-import { StorageFailures, type StorageFailure } from './failures.js';
+import type { Database } from 'bun:sqlite';
+
+import { type StorageFailure, StorageFailures } from './failures.js';
 
 export class TransactionManager {
-    constructor(private readonly db: Database) {}
+    constructor(private readonly database: Database) {}
 
     run<T>(operation: () => T): Result<T, StorageFailure> {
-        const [value, error] = attempt(() => this.db.transaction(operation)());
+        const [value, error] = attempt(() => this.database.transaction(operation)());
         if (error) {
             return [null, StorageFailures.from('TRANSACTION_FAILED', error)];
         }

@@ -17,10 +17,10 @@ Do not edit generated Markdown. Edit `graph.json`, then regenerate.
 ## Commands
 
 ```sh
-npm run bootstrap
-npm run bootstrap:check
-node tools/architecture/validate-graph.mjs
-node tools/architecture/render-graphs.mjs
+bun run bootstrap
+bun run bootstrap:check
+bun tools/architecture/validate-graph.mjs
+bun tools/architecture/render-graphs.mjs
 ```
 
 `validate-graph.mjs` exits non-zero on:
@@ -127,7 +127,7 @@ These rules are intentionally encoded as data, not prose. Add new forbidden edge
 GitHub renders the fenced Mermaid blocks in `diagrams.md`. For local SVG or PNG output, use the installed Firefox browser through the repo-local Mermaid CLI:
 
 ```sh
-npm run render:svg -- docs/architecture/graphs/fleet-overview.mmd /tmp/fleet-overview.svg
+bun run render:svg -- docs/architecture/graphs/fleet-overview.mmd /tmp/fleet-overview.svg
 ```
 
 Set `FIREFOX=/path/to/firefox` to override browser detection. No Chromium download is performed.

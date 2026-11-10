@@ -1,88 +1,96 @@
+import fileSystem from 'node:fs';
 import path from 'node:path';
-import fs from 'node:fs';
+
+import { bunExecutable, bunStatus } from './bun-env.mjs';
 import {
-  diskInfo,
-  exists,
-  formatBytes,
-  hashFile,
-  hashText,
-  readJson,
-  readManifest,
-  readMarker,
-  root,
-  runCapture,
-  warn,
+    diskInformation,
+    exists,
+    formatBytes,
+    readManifest,
+    readMarker,
+    root,
+    runCapture,
+    warn,
 } from './lib.mjs';
+import { nativeLibrariesStatus } from './native-libs.mjs';
 
 const required = [];
 const optional = [];
 
-const pkg = readJson(path.join(root, 'package.json'));
-const range = pkg.engines?.node ?? '';
-const major = Number.parseInt(process.versions.node.split('.')[0], 10);
-const min = Number.parseInt(/>=?\s*(\d+)/.exec(range)?.[1] ?? '0', 10);
-const max = Number.parseInt(/<\s*(\d+)/.exec(range)?.[1] ?? '999', 10);
+const manifest = readManifest();
+const bunProbe = runCapture(bunExecutable(manifest), ['--version']);
+required.push({ name: 'bun', ok: bunProbe.ok, detail: bunProbe.stdout || 'missing' });
+
+const lockfile = path.join(root, manifest.bun.lockfile);
+required.push({ name: manifest.bun.lockfile, ok: exists(lockfile), detail: manifest.bun.lockfile });
+
+const dependencyStatus = bunStatus(manifest);
 required.push({
-  name: `node ${range}`,
-  ok: major >= min && major < max,
-  detail: process.versions.node,
+    name: 'node_modules',
+    ok: dependencyStatus.ready,
+    detail: dependencyStatus.ready ? dependencyStatus.reason : 'run bun run bootstrap',
 });
 
-const npm = runCapture('npm', ['--version']);
-required.push({ name: 'npm', ok: npm.ok, detail: npm.stdout || 'missing' });
-
-const manifest = readManifest();
-const lockfile = path.join(root, manifest.npm.lockfile);
-required.push({ name: manifest.npm.lockfile, ok: exists(lockfile), detail: manifest.npm.lockfile });
-
-let npmReady = false;
-if (exists(lockfile) && exists(path.join(root, 'node_modules'))) {
-  const expected = hashText(
-    `${hashFile(lockfile, 'sha256')}:${hashFile(path.join(root, 'package.json'), 'sha256')}`,
-    'sha256',
-  );
-  npmReady = readMarker(path.join(root, manifest.npm.marker)) === expected;
-}
-required.push({ name: 'node_modules', ok: npmReady, detail: npmReady ? 'ready' : 'run npm run bootstrap' });
+const nativeLibraries = nativeLibrariesStatus(manifest);
+optional.push({
+    name: 'native libraries',
+    ok: nativeLibraries.ready,
+    detail: nativeLibraries.reason,
+});
 
 const pythonProbe = runCapture(process.env.PYTHON || 'python3', ['--version']);
-optional.push({ name: 'python3 (training)', ok: pythonProbe.ok, detail: pythonProbe.stdout || 'missing' });
+optional.push({
+    name: 'python3 (training)',
+    ok: pythonProbe.ok,
+    detail: pythonProbe.stdout || 'missing',
+});
 
 const firefoxProbe = runCapture('which', ['firefox']);
 const firefoxReady = Boolean(process.env.FIREFOX) || firefoxProbe.ok;
 optional.push({
-  name: 'firefox (diagrams)',
-  ok: firefoxReady,
-  detail: process.env.FIREFOX || firefoxProbe.stdout || 'missing',
+    name: 'firefox (diagrams)',
+    ok: firefoxReady,
+    detail: process.env.FIREFOX || firefoxProbe.stdout || 'missing',
 });
 
-const { free } = diskInfo(root);
-optional.push({ name: 'free disk', ok: free > 5_000_000_000, detail: formatBytes(free) });
+const disk = diskInformation(root);
+optional.push({
+    name: 'free disk',
+    ok: disk.free > 5_000_000_000,
+    detail: formatBytes(disk.free),
+});
 
-for (const [name, entry] of Object.entries(manifest.downloads)) {
-  const dest = path.join(root, entry.dest);
-  const target = entry.bin ? path.join(dest, entry.bin) : dest;
-  const expected = entry.sha256 ?? entry.sha1;
-  const ready = exists(target) && readMarker(path.join(root, entry.marker)) === expected;
-  optional.push({ name, ok: ready, detail: entry.dest });
+for (const [downloadName, downloadEntry] of Object.entries(manifest.downloads)) {
+    const destination = path.join(root, downloadEntry.dest);
+    const target = downloadEntry.bin ? path.join(destination, downloadEntry.bin) : destination;
+    const expectedChecksum = downloadEntry.sha256 ?? downloadEntry.sha1;
+    const marker = readMarker(path.join(root, downloadEntry.marker));
+    const ready = exists(target) && marker === expectedChecksum;
+    optional.push({
+        name: downloadName,
+        ok: ready,
+        detail: ready ? downloadEntry.dest : `${downloadEntry.dest} (marker mismatch)`,
+    });
 }
 
-const eula = path.join(root, 'data/minecraft/eula.txt');
-const eulaAccepted = exists(eula) && /^\s*eula\s*=\s*true\s*$/im.test(fs.readFileSync(eula, 'utf8'));
+const eulaPath = path.join(root, 'data/minecraft/eula.txt');
+const eulaAccepted =
+    exists(eulaPath) && /^\s*eula\s*=\s*true\s*$/im.test(fileSystem.readFileSync(eulaPath, 'utf8'));
 optional.push({
-  name: 'minecraft eula',
-  ok: eulaAccepted,
-  detail: eulaAccepted ? 'accepted' : 'not accepted',
+    name: 'minecraft eula',
+    ok: eulaAccepted,
+    detail: eulaAccepted ? 'accepted' : 'not accepted',
 });
 
-const print = (item) => console.log(`${item.ok ? 'ok  ' : 'miss'} ${item.name}: ${item.detail}`);
+const printCapability = (capability) =>
+    console.log(`${capability.ok ? 'ok  ' : 'miss'} ${capability.name}: ${capability.detail}`);
 
 console.log('required:');
-for (const item of required) print(item);
+for (const capability of required) printCapability(capability);
 console.log('optional:');
-for (const item of optional) print(item);
+for (const capability of optional) printCapability(capability);
 
-if (required.some((item) => !item.ok)) {
-  warn('required capabilities missing');
-  process.exit(1);
+if (required.some((capability) => !capability.ok)) {
+    warn('required capabilities missing');
+    process.exit(1);
 }

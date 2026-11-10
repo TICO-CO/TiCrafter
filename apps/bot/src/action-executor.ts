@@ -1,11 +1,11 @@
-import type { Result } from '@ticrafter/core';
-import type { Logger } from 'pino';
+import type { LoggerPort, Result } from '@ticrafter/core';
+
 import { GuardianHook, type ProposedAction } from './guardian.js';
 
 export class ActionExecutor {
     constructor(
         private readonly guardian: GuardianHook,
-        private readonly logger: Logger,
+        private readonly logger: LoggerPort,
     ) {}
 
     execute(action: ProposedAction | null): Result<void, string> {

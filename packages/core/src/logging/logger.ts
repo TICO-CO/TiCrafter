@@ -1,20 +1,24 @@
-import pino, { type Logger } from 'pino';
+export interface LoggerPort {
+    debug(payload: unknown, message?: string): void;
+    info(payload: unknown, message?: string): void;
+    warn(payload: unknown, message?: string): void;
+    error(payload: unknown, message?: string): void;
+}
 
-export function createLogger(name: string, level = 'info'): Logger {
-  return pino({
-    name,
-    level,
-    redact: {
-      paths: [
-        '*.apiKey',
-        '*.PLANNER_API_KEY',
-        'config.planner.apiKey',
-        'planner.apiKey',
-        'apiKey',
-        'password',
-        'token',
-      ],
-      censor: '[redacted]',
-    },
-  });
+export interface LoggerFactoryPort {
+    create(name: string, level: string): LoggerPort;
+}
+
+export class LoggerConfig {
+    static redactionPaths(): string[] {
+        return [
+            '*.apiKey',
+            '*.PLANNER_API_KEY',
+            'config.planner.apiKey',
+            'planner.apiKey',
+            'apiKey',
+            'password',
+            'token',
+        ];
+    }
 }

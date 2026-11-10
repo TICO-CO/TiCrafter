@@ -1,4 +1,4 @@
-import type { ClientConnection } from '@ticrafter/core';
+import type { ClientConnection } from '../transport/index.js';
 
 export interface Session {
     botId: string;

@@ -1,19 +1,19 @@
 import {
-    ProtocolEnvelope,
-    type ClientConnection,
     type Envelope,
+    type LoggerPort,
+    ProtocolEnvelope,
     type Result,
     type TransportFailure,
-    type TransportServer,
 } from '@ticrafter/core';
-import type { Logger } from 'pino';
+
+import type { ClientConnection, TransportServer } from '../transport/index.js';
 import { SessionManager } from './session-manager.js';
 
 export interface CommandRouterOptions {
     epoch: number;
     sessions: SessionManager;
     transport: TransportServer;
-    logger: Logger;
+    logger: LoggerPort;
 }
 
 export class CommandRouter {

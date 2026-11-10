@@ -1,6 +1,7 @@
 import path from 'node:path';
+
 import {
-    ensureDir,
+    ensureDirectory,
     exists,
     fail,
     hashFile,
@@ -79,14 +80,16 @@ export function provisionBun({ check = false, clean = false, manifest = readMani
     if (!exists(lockfile)) fail(`missing ${manifest.bun.lockfile}; run bun install`);
 
     const cache = path.join(root, manifest.bun.cache);
-    ensureDir(cache);
+    ensureDirectory(cache);
 
     const hasNodeModules = exists(path.join(root, 'node_modules'));
     const command = clean || !hasNodeModules ? ['install', '--frozen-lockfile'] : ['install'];
     const invocation = lowPriority(executable, command);
 
-    log(`bun deps: ${status.reason}; running ${invocation.command} ${invocation.args.join(' ')}`);
-    run(invocation.command, invocation.args, {
+    log(
+        `bun deps: ${status.reason}; running ${invocation.command} ${invocation.argumentsList.join(' ')}`,
+    );
+    run(invocation.command, invocation.argumentsList, {
         env: {
             ...process.env,
             BUN_INSTALL_CACHE_DIR: cache,

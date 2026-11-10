@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import fileSystem from 'node:fs';
 import path from 'node:path';
 
 const extensionPattern = /\.(?:[cm]?[jt]s)$/;
@@ -7,14 +7,14 @@ const facadeFiles = ['index.ts', 'index.mts', 'index.cts', 'index.js', 'index.mj
 
 const isRelative = (specifier) => specifier.startsWith('./') || specifier.startsWith('../');
 
-const directoryHasFacade = (dir) =>
-    facadeFiles.some((name) => fs.existsSync(path.join(dir, name)));
+const directoryHasFacade = (directory) =>
+    facadeFiles.some((name) => fileSystem.existsSync(path.join(directory, name)));
 
-const isFacadeTarget = (target) => {
-    const base = path.basename(target).replace(extensionPattern, '');
-    if (facadeNames.has(base)) return true;
+const isFacadeTarget = (targetPath) => {
+    const baseName = path.basename(targetPath).replace(extensionPattern, '');
+    if (facadeNames.has(baseName)) return true;
     try {
-        return fs.statSync(target).isDirectory() && directoryHasFacade(target);
+        return fileSystem.statSync(targetPath).isDirectory() && directoryHasFacade(targetPath);
     } catch {
         return false;
     }
@@ -36,23 +36,23 @@ export default {
     },
     create(context) {
         const filename = context.filename ?? context.getFilename();
-        const fromDir = path.dirname(filename);
+        const sourceDirectory = path.dirname(filename);
 
-        const check = (node) => {
+        const checkImport = (node) => {
             const source = sourceOf(node);
             if (!source || !isRelative(source)) return;
 
-            const target = path.resolve(fromDir, source);
-            if (path.dirname(target) === fromDir) return;
-            if (isFacadeTarget(target)) return;
+            const targetPath = path.resolve(sourceDirectory, source);
+            if (path.dirname(targetPath) === sourceDirectory) return;
+            if (isFacadeTarget(targetPath)) return;
 
             context.report({ node, messageId: 'nonFacadeImport', data: { source } });
         };
 
         return {
-            ImportDeclaration: check,
-            ExportAllDeclaration: check,
-            ExportNamedDeclaration: check,
+            ImportDeclaration: checkImport,
+            ExportAllDeclaration: checkImport,
+            ExportNamedDeclaration: checkImport,
         };
     },
 };

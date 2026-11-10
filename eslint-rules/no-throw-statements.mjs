@@ -7,7 +7,7 @@ export default {
         schema: [],
         messages: {
             unexpectedThrow:
-                'Use Result instead of throwing. Only packages/core/src/assert.ts may throw.',
+                'Use Result instead of throwing. Only packages/core/src/kernel/assert.ts may throw.',
         },
     },
     create(context) {

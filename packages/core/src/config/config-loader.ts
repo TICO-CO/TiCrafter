@@ -1,59 +1,72 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { attempt, type Result } from '../result.js';
+import { attempt, type Result } from '../kernel/index.js';
+import { EnvOverlay } from './env-overlay.js';
 import { EnvParser } from './env-parser.js';
 import type { ConfigFailure } from './failures.js';
 import { DeepMerge } from './merge.js';
 import { ConfigSchemaValidator, type TicrafterConfig } from './schema.js';
 
-export interface LoadConfigOptions {
-    cwd?: string;
-    env?: NodeJS.ProcessEnv;
-    configDir?: string;
+export interface ConfigSource {
+    readEnvironmentFile(): Result<string, ConfigFailure>;
+    readDefaults(): Result<string, ConfigFailure>;
+    readProfile(name: string): Result<string, ConfigFailure>;
+}
+
+export interface ConfigLoaderOptions {
+    source: ConfigSource;
+    environment?: Record<string, string | undefined>;
 }
 
 export class ConfigLoader {
-    constructor(private readonly options: LoadConfigOptions = {}) {}
+    constructor(private readonly options: ConfigLoaderOptions) {}
 
     load(): Result<TicrafterConfig, ConfigFailure> {
-        const cwd = this.options.cwd ?? process.cwd();
-        const configDir = this.options.configDir ?? path.resolve(cwd, 'config');
-        const env = {
-            ...this.readEnvFile(path.join(configDir, '.env')),
-            ...(this.options.env ?? process.env),
+        const [environmentText, environmentError] = this.options.source.readEnvironmentFile();
+        if (environmentError) return [null, environmentError];
+        if (environmentText === null) return [null, this.invalid('environment file returned null')];
+
+        const environment = {
+            ...EnvParser.parse(environmentText),
+            ...(this.options.environment ?? {}),
         };
 
-        const [defaults, defaultsErr] = this.readJson(path.join(configDir, 'default.json'));
-        if (defaultsErr) return [null, defaultsErr];
+        const [defaultsText, defaultsError] = this.options.source.readDefaults();
+        if (defaultsError) return [null, defaultsError];
+        if (defaultsText === null) return [null, this.invalid('default.json returned null')];
+
+        const [defaults, defaultsParseError] = this.parseJson(defaultsText, 'default.json');
+        if (defaultsParseError) return [null, defaultsParseError];
         if (defaults === null) return [null, this.invalid('default.json returned null')];
 
-        const profileName = env.HARDWARE_PROFILE ?? defaults.hardwareProfile;
-        const [profile, profileErr] = this.readJson(
-            path.join(configDir, 'profiles', `${String(profileName)}.json`),
+        const profileName = environment.HARDWARE_PROFILE ?? String(defaults.hardwareProfile ?? '');
+        const [profileText, profileError] = this.options.source.readProfile(profileName);
+        if (profileError) return [null, profileError];
+        if (profileText === null) return [null, this.invalid('profile returned null')];
+
+        const [profile, profileParseError] = this.parseJson(
+            profileText,
+            `profiles/${profileName}.json`,
         );
-        if (profileErr) return [null, profileErr];
+        if (profileParseError) return [null, profileParseError];
         if (profile === null) return [null, this.invalid('profile returned null')];
 
-        const merged = DeepMerge.merge<Record<string, unknown>>(defaults, profile, EnvParser.overlay(env));
+        const merged = DeepMerge.merge<Record<string, unknown>>(
+            defaults,
+            profile,
+            EnvOverlay.apply(environment),
+        );
         return ConfigSchemaValidator.validate(merged);
     }
 
-    private readEnvFile(file: string): Record<string, string> {
-        const [text, error] = attempt(() => fs.readFileSync(file, 'utf8'));
-        if (error || text === null) return {};
-        return EnvParser.parse(text);
-    }
+    private parseJson(text: string, path: string): Result<Record<string, unknown>, ConfigFailure> {
+        const [parsed, parseError] = attempt(() => JSON.parse(text) as unknown);
+        if (parseError) {
+            return [null, { type: 'READ_FAILED', path, message: this.describe(parseError) }];
+        }
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            return [null, { type: 'READ_FAILED', path, message: 'expected a JSON object' }];
+        }
 
-    private readJson(file: string): Result<Record<string, unknown>, ConfigFailure> {
-        const [text, readError] = attempt(() => fs.readFileSync(file, 'utf8'));
-        if (readError || text === null) {
-            return [null, { type: 'READ_FAILED', path: file, message: this.describe(readError) }];
-        }
-        const [parsed, parseError] = attempt(() => JSON.parse(text) as Record<string, unknown>);
-        if (parseError || parsed === null) {
-            return [null, { type: 'READ_FAILED', path: file, message: this.describe(parseError) }];
-        }
-        return [parsed, null];
+        return [parsed as Record<string, unknown>, null];
     }
 
     private invalid(message: string): ConfigFailure {

@@ -1,6 +1,6 @@
 import http from 'node:http';
-import { attemptAsync, type Result } from '@ticrafter/core';
-import type { Logger } from 'pino';
+
+import { attemptAsync, type LoggerPort, type Result } from '@ticrafter/core';
 
 export interface OpsStatus {
     ok: boolean;
@@ -13,7 +13,7 @@ export interface OpsStatus {
 export interface OpsServerOptions {
     host: string;
     port: number;
-    logger: Logger;
+    logger: LoggerPort;
     status: () => OpsStatus;
 }
 
@@ -37,7 +37,9 @@ export class OpsServer {
                 }),
         );
         if (startError) return [null, startError];
-        if (started === null) return [null, { type: 'LISTEN_FAILED', message: 'server returned null' }];
+        if (started === null) {
+            return [null, { type: 'LISTEN_FAILED', message: 'server returned null' }];
+        }
 
         this.options.logger.info(
             { host: this.options.host, port: this.options.port },

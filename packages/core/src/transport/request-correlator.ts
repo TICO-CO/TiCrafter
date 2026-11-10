@@ -1,10 +1,10 @@
-import type { Result } from '../result.js';
+import type { Result } from '../kernel/index.js';
 import type { TransportFailure } from './failures.js';
-import { ProtocolEnvelope, type Envelope } from './messages.js';
+import { type Envelope, ProtocolEnvelope } from './messages.js';
 
 interface PendingRequest {
     resolve: (result: Result<Envelope, TransportFailure>) => void;
-    timer: NodeJS.Timeout;
+    timer: ReturnType<typeof setTimeout>;
 }
 
 export class RequestCorrelator {
@@ -41,10 +41,18 @@ export class RequestCorrelator {
         return true;
     }
 
-    rejectAll(error: TransportFailure): void {
+    reject(id: string, failure: TransportFailure): void {
+        const pending = this.pending.get(id);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        this.pending.delete(id);
+        pending.resolve([null, failure]);
+    }
+
+    rejectAll(failure: TransportFailure): void {
         for (const [id, pending] of this.pending) {
             clearTimeout(pending.timer);
-            pending.resolve([null, error]);
+            pending.resolve([null, failure]);
             this.pending.delete(id);
         }
     }

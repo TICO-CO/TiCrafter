@@ -1,6 +1,7 @@
-import type { Database } from 'bun:sqlite';
 import { attempt, type Result } from '@ticrafter/core';
-import { StorageFailures, type StorageFailure } from './failures.js';
+import type { Database } from 'bun:sqlite';
+
+import { type StorageFailure, StorageFailures } from './failures.js';
 
 export interface DomainEvent {
     botId?: string;
@@ -21,11 +22,11 @@ interface EventRow {
 }
 
 export class EventLogWriter {
-    constructor(private readonly db: Database) {}
+    constructor(private readonly database: Database) {}
 
     append(event: DomainEvent): Result<number, StorageFailure> {
         const [id, error] = attempt(() => {
-            const result = this.db
+            const result = this.database
                 .prepare(
                     `INSERT INTO bot_events (bot_id, type, payload_json, actor, causation_id, created_at)
                      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -52,7 +53,7 @@ export class EventLogWriter {
 
     list(limit = 100): Result<DomainEvent[], StorageFailure> {
         const [events, error] = attempt(() => {
-            const rows = this.db
+            const rows = this.database
                 .prepare(
                     'SELECT bot_id, type, payload_json, actor, causation_id, created_at FROM bot_events ORDER BY id DESC LIMIT ?',
                 )

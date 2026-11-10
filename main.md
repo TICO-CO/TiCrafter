@@ -15,7 +15,7 @@
 - Bots **may modify existing builds/farms**, under coordination, logging, and rollback rules.
 - **Active builds are private by default.** A non-owner may edit only through an explicit scoped grant that confirms compatibility with the owner's current plan.
 - Bots persist identity, role, behavior profile, current task, claims, and skill checkpoints; restart resumes last state.
-- Dev-only Python allowed for Laya fine-tuning; **runtime stays Node-only**.
+- Dev-only Python allowed for Laya fine-tuning; **runtime stays Bun-only**.
 - **Self-contained bootstrap:** missing deps and apps install into repo-local, gitignored paths. No global installs or system package manager.
 - Infrastructure recognition: paths, houses, farms, walls, bridges, storage, workstations.
 
@@ -52,7 +52,7 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
 
 ```
                  ┌────────────────────────────────────────────┐
-                 │ Fleet Coordinator (one Node process)       │
+                 │ Fleet Coordinator (one Bun process)        │
                  │  • Shared Infrastructure Plan (SIP)        │
                  │  • Shared world model + landmark DB        │
                  │  • Task board + atomic claims + leases     │
@@ -162,11 +162,11 @@ Protocol:
 2. Coordinator loads the structure policy.
 3. **open** → coordinator issues a scoped grant immediately.
 4. **invite** → owner bot's deterministic compatibility policy evaluates:
-   - design revision matches,
-   - proposed ops do not undo completed work or collide with another bot's claimed work package,
-   - preserves load-bearing/structural invariants and zone rules,
-   - reduces remaining work or repairs damage,
-   - materials/requirements feasible.
+    - design revision matches,
+    - proposed ops do not undo completed work or collide with another bot's claimed work package,
+    - preserves load-bearing/structural invariants and zone rules,
+    - reduces remaining work or repairs damage,
+    - materials/requirements feasible.
 5. Approved → grant issued. Denied → reason returned; requester may retry with a modified proposal or request a planner-mediated joint task.
 6. **Owner offline** → coordinator applies the owner's persisted `autoAcceptCompatibleHelpers` plus the same compatibility check. Default is **deny**.
 7. All grants expire; lease heartbeat renews; revocation is immediate via fencing token bump.
@@ -231,11 +231,11 @@ Each bot samples loaded chunks on a ring (16–64 blocks configurable) and strea
 
 - Sparse 3D occupancy grid; per-chunk snapshots; update on `blockUpdate`.
 - Detection heuristics:
-  - **Paths/roads**: standable-surface graph; corridor width 1–3; length ≥8; material hints.
-  - **Houses**: enclosed interior air flood-fill; shell materials; doors, beds, windows, roof.
-  - **Farms**: farmland moisture + adjacent water + crop age; cluster into plots.
-  - **Storage/workstations**: chest/barrel/furnace/crafting table clusters; container memory.
-  - **Walls/bridges/mineshafts**: linear features via PCA/RANSAC; deck-over-air detection.
+    - **Paths/roads**: standable-surface graph; corridor width 1–3; length ≥8; material hints.
+    - **Houses**: enclosed interior air flood-fill; shell materials; doors, beds, windows, roof.
+    - **Farms**: farmland moisture + adjacent water + crop age; cluster into plots.
+    - **Storage/workstations**: chest/barrel/furnace/crafting table clusters; container memory.
+    - **Walls/bridges/mineshafts**: linear features via PCA/RANSAC; deck-over-air detection.
 - Landmarks: `{id, type, bbox, anchors, confidence, lastSeen, evidence, planId?}`.
 - Merge rules: newest observation wins; confidence decays; conflicts flagged for re-verification.
 - Blocks belonging to an **active planId** are tagged as in-progress, not natural infrastructure.
@@ -258,9 +258,9 @@ Per decision request from a bot:
 - State digest ≤512 tokens: health, food, time, biome, y-level, target, 5-line inventory, nearby hazards/mobs, current skill and progress, last result.
 - Affordances: 8–16 legal actions, each ≤12-word label.
 - Questions:
-  - `nextAction: choice` over affordance ids.
-  - `danger: noul` ("about to take damage or die?").
-  - `shouldContinue: noul` ("current skill still making progress?").
+    - `nextAction: choice` over affordance ids.
+    - `danger: noul` ("about to take damage or die?").
+    - `shouldContinue: noul` ("current skill still making progress?").
 - Return `{choice, probabilities, answer_confidence, danger, latency}`.
 - Concurrency: priority queue; per-bot rate limit; digest cache; timeout.
 - **Confidence gate**: if `answer_confidence` < calibrated threshold (start 0.60), bot uses its deterministic utility policy.
@@ -316,13 +316,13 @@ Executor:
 - Laya called on skill completion, failure, danger, or 1Hz heartbeat.
 - Recovery ladder: local retry → Laya alternative → planner replan → safe mode → emergency stop.
 - Multi-bot safety even though edits are allowed:
-  - non-owner edits to active builds require a valid, unexpired grant/fencing token;
-  - never break blocks supporting an online bot;
-  - never edit inside another bot's active work-package bbox unless the grant covers it;
-  - owner-offline edits default to deny unless explicitly pre-authorized;
-  - no fire/lava/TNT unless explicitly enabled;
-  - every destructive change journaled and reversible;
-  - coordinator restart must not orphan grants: tokens include a coordinator epoch and are revalidated.
+    - non-owner edits to active builds require a valid, unexpired grant/fencing token;
+    - never break blocks supporting an online bot;
+    - never edit inside another bot's active work-package bbox unless the grant covers it;
+    - owner-offline edits default to deny unless explicitly pre-authorized;
+    - no fire/lava/TNT unless explicitly enabled;
+    - every destructive change journaled and reversible;
+    - coordinator restart must not orphan grants: tokens include a coordinator epoch and are revalidated.
 
 ## 12. Memory and persistence
 
@@ -354,21 +354,21 @@ tools/laya-train/        dev-only Python: labeling, fine-tune, ONNX export
 config/                  default.json, .env.example,
                          profiles/home-min.json, profiles/home-full.json
 package.json             workspace root, pinned deps, bootstrap scripts
-package-lock.json        committed lockfile
+bun.lock        committed lockfile
 ```
 
 Repo-local, gitignored install roots: `node_modules/`, `.venv/`, `.cache/`, `.toolchain/`, `data/`, `models/`.
 
 Profile selection env: `HARDWARE_PROFILE`, `BOT_COUNT`, `BOT_NAMES` (ordered array, default `["TiBot1" … "TiBot8"]`), `LAYA_EP` (`auto`|`cpu`|`webgpu`), `LAYA_THREADS`, `LAN_HOST=localhost`, `LAN_PORT=25565`, `DATA_DIR=./data`. Secrets: `PLANNER_BASE_URL`/`PLANNER_API_KEY` come from process env or gitignored `config/.env`; `config/.env.example` ships with empty values. Laya pins `onnxruntime-node ^1.22.0`; WebGPU on Linux x64 may require an override to a newer `onnxruntime-node` once validated.
 
-Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `mineflayer-crafting-util`, `prismarine-block/chunk/world`, `prismarine-schematic`, `@receptron/laya`, `zod`, `better-sqlite3`, `pino`, `vitest`, `tsx`, dev-only `@mermaid-js/mermaid-cli`.
+Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `mineflayer-crafting-util`, `prismarine-block/chunk/world`, `prismarine-schematic`, `@receptron/laya`, `zod`, `bun:sqlite`, `pino`, `ws`, `bun test`, dev-only `@mermaid-js/mermaid-cli`.
 
-## 14. Laya training and calibration (dev-time Python, runtime Node)
+## 14. Laya training and calibration (dev-time Python, runtime Bun)
 
 1. Log `(state digest, affordances, action, outcome)` from deterministic policy and fleet runs.
 2. Label with cloud teacher + outcome rewards: progress, damage, time, materials, task completion.
 3. Fine-tune Laya; export ONNX bundle into `models/`; load via `modelDir`.
-4. Dev-time Python may use ROCm PyTorch on `home-full`, but the runtime remains Node-only and loads only the exported ONNX bundle.
+4. Dev-time Python may use ROCm PyTorch on `home-full`, but the runtime remains Bun-only and loads only the exported ONNX bundle.
 5. Fit per-question-type temperature on held-out traces.
 6. Tune confidence gate to target precision (e.g. 0.90) against the deterministic baseline.
 7. Promote only if it beats the deterministic policy end-to-end.
@@ -376,22 +376,22 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 ## 15. Testing and evaluation
 
 - Unit: detector fixtures, SIP validation, claim transactions, edit grants, blueprint diff, guardian invariants, resume logic.
-- Integration: repo-provisioned 1.20.1 server (`npm run server:start`), offline, superflat; bots join via LAN. Docker remains an optional alternative only.
+- Integration: repo-provisioned 1.20.1 server (`bun run server:start`), offline, superflat; bots join via LAN. Docker remains an optional alternative only.
 - Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
 - Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95.
 - Multi-bot scenarios:
-  - 3 bots build one house without duplicate/conflicting blocks.
-  - 2 bots race to claim a farm plot; only one proceeds.
-  - road built by multiple bots from partitioned segments.
-  - shared storage deposit/withdraw with reservations.
-  - one bot edits an existing build while another is nearby; safety rules hold.
-  - one bot requests a compatible edit grant while the owner is building → allowed and merged without duplicate work.
-  - incompatible/undoing edit request → denied with reason.
-  - owner offline with `autoAcceptCompatibleHelpers=false` → denied; `true` + compatible → allowed.
-  - design revision bump mid-build → outstanding grants invalidated; no stale writes.
-  - kill bot mid-build → restart → resumes task, lease, and checkpoint; no duplicate blocks.
-  - kill coordinator during multi-bot build → restart → bots reconnect, leases recovered, SIP consistent.
-  - 8-bot contention test: claim throughput, decision queue latency, no deadlock.
+    - 3 bots build one house without duplicate/conflicting blocks.
+    - 2 bots race to claim a farm plot; only one proceeds.
+    - road built by multiple bots from partitioned segments.
+    - shared storage deposit/withdraw with reservations.
+    - one bot edits an existing build while another is nearby; safety rules hold.
+    - one bot requests a compatible edit grant while the owner is building → allowed and merged without duplicate work.
+    - incompatible/undoing edit request → denied with reason.
+    - owner offline with `autoAcceptCompatibleHelpers=false` → denied; `true` + compatible → allowed.
+    - design revision bump mid-build → outstanding grants invalidated; no stale writes.
+    - kill bot mid-build → restart → resumes task, lease, and checkpoint; no duplicate blocks.
+    - kill coordinator during multi-bot build → restart → bots reconnect, leases recovered, SIP consistent.
+    - 8-bot contention test: claim throughput, decision queue latency, no deadlock.
 - Metrics: task success, time, deaths, blocks/min, claim contention, duplicate work, idle time, Laya accuracy/ECE, planner calls/tokens/cost.
 - Soak test: 2+ hours on both profiles — 4 bots on `home-min`, 8 bots on `home-full`; no memory growth, no deadlocks, claims stable.
 
@@ -441,15 +441,15 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 
 ## 19. Self-contained bootstrap
 
-`node tools/bootstrap/bootstrap.mjs` is the only supported entry point for provisioning. It installs everything into repo-local, gitignored paths and reuses it on later runs.
+`bun tools/bootstrap/bootstrap.mjs` is the only supported entry point for provisioning. It installs everything into repo-local, gitignored paths and reuses it on later runs.
 
-- **Full by default:** npm deps, Python training env, local Java 17, and the Minecraft 1.20.1 server jar. Opt out with `--no-python`, `--no-server`, `--no-npm`, or `--no-browser`.
-- **Repo-local only:** `node_modules/`, `.venv/`, `.cache/`, `.toolchain/`, `data/`, `models/`. No `npm -g`, `sudo`, or `apt`.
+- **Full by default:** Bun deps, Python training env, local Java 17, and the Minecraft 1.20.1 server jar. Opt out with `--no-python`, `--no-server`, `--no-bun`, or `--no-browser`.
+- **Repo-local only:** `node_modules/`, `.venv/`, `.cache/`, `.toolchain/`, `data/`, `models/`. No `bun -g`, `sudo`, or `apt`.
 - **Pinned and verified:** `tools/bootstrap/manifest.json` holds download URLs and checksums. Python requirements are pinned; PyTorch follows `PYTORCH_VARIANT` or `HARDWARE_PROFILE` (`cpu` for `home-min`, `rocm` for `home-full`).
-- **Install scripts denied:** npm 11 blocks dependency lifecycle scripts. Verified prebuilt binaries cover `better-sqlite3`, `onnxruntime-node`, and `esbuild`. Chromium is never downloaded.
+- **Install scripts denied:** dependency lifecycle scripts are blocked. Verified prebuilt binaries cover `onnxruntime-node` and `esbuild`. Chromium is never downloaded.
 - **Diagram rendering:** Mermaid CLI uses the installed Firefox through `.cache/mermaid/puppeteer.json`. Override with `FIREFOX=/path/to/firefox`. Fenced Mermaid stays the default when Firefox is absent.
-- **Minecraft EULA:** accepting it is explicit. `npm run server:start` writes `data/minecraft/eula.txt` only with `--accept-eula`.
-- **Disk guard:** bootstrap estimates pending install size, prints free space, and aborts before downloading when the full profile cannot fit. `--check` reports without installing; `--clean` forces `npm ci`.
-- **Low-priority I/O:** npm runs under `nice`/`ionice` when available, with `--maxsockets=2` and `--prefer-offline`.
+- **Minecraft EULA:** accepting it is explicit. `bun run server:start` writes `data/minecraft/eula.txt` only with `--accept-eula`.
+- **Disk guard:** bootstrap estimates pending install size, prints free space, and aborts before downloading when the full profile cannot fit. `--check` reports without installing; `--clean` forces `bun install --frozen-lockfile`.
+- **Low-priority I/O:** `bun install` runs under `nice`/`ionice` when available with a repo-local cache.
 
-Verification: `npm run bootstrap:check`, `npm run validate:graph`, `npm run render:graphs`, `npm run render:svg`, `npm test`.
+Verification: `bun run bootstrap:check`, `bun run validate:graph`, `bun run render:graphs`, `bun run render:svg`, `bun test`.

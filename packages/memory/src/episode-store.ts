@@ -1,6 +1,7 @@
-import type { Database } from 'bun:sqlite';
 import { attempt, type Result } from '@ticrafter/core';
-import { StorageFailures, type StorageFailure } from './failures.js';
+import type { Database } from 'bun:sqlite';
+
+import { type StorageFailure, StorageFailures } from './failures.js';
 
 export interface Episode {
     id: string;
@@ -21,11 +22,11 @@ interface EpisodeRow {
 }
 
 export class EpisodeStore {
-    constructor(private readonly db: Database) {}
+    constructor(private readonly database: Database) {}
 
     save(episode: Episode): Result<void, StorageFailure> {
         const [, error] = attempt(() => {
-            this.db
+            this.database
                 .prepare(
                     `INSERT OR REPLACE INTO episodes (id, task_id, bot_id, outcome, payload_json, created_at)
                      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -48,7 +49,7 @@ export class EpisodeStore {
 
     list(limit = 100): Result<Episode[], StorageFailure> {
         const [episodes, error] = attempt(() => {
-            const rows = this.db
+            const rows = this.database
                 .prepare(
                     'SELECT id, task_id, bot_id, outcome, payload_json, created_at FROM episodes ORDER BY created_at DESC LIMIT ?',
                 )

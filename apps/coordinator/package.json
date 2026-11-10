@@ -1,11 +1,13 @@
 {
-  "name": "@ticrafter/coordinator",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "src/main.ts",
-  "dependencies": {
-    "@ticrafter/core": "0.1.0",
-    "@ticrafter/memory": "0.1.0"
-  }
+    "name": "@ticrafter/coordinator",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "main": "src/main.ts",
+    "dependencies": {
+        "@ticrafter/core": "0.1.0",
+        "@ticrafter/memory": "0.1.0",
+        "pino": "10.4.0",
+        "ws": "8.22.2"
+    }
 }

@@ -1,8 +1,10 @@
-import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { attempt, type Result } from '@ticrafter/core';
-import { StorageFailures, type StorageFailure } from './failures.js';
+import { Database } from 'bun:sqlite';
+
+import { type StorageFailure, StorageFailures } from './failures.js';
 
 export interface SqliteRuntimeOptions {
     dataDir: string;
@@ -20,11 +22,11 @@ export class SqliteRuntime {
                 this.options.dataDir,
                 this.options.filename ?? 'ticrafter.sqlite',
             );
-            const db = new Database(filename);
-            db.exec('PRAGMA journal_mode = WAL');
-            db.exec(`PRAGMA busy_timeout = ${this.options.busyTimeoutMs ?? 5000}`);
-            db.exec('PRAGMA foreign_keys = ON');
-            return db;
+            const database = new Database(filename);
+            database.exec('PRAGMA journal_mode = WAL');
+            database.exec(`PRAGMA busy_timeout = ${this.options.busyTimeoutMs ?? 5000}`);
+            database.exec('PRAGMA foreign_keys = ON');
+            return database;
         });
         if (error) {
             return [null, StorageFailures.from('DATABASE_OPEN_FAILED', error)];

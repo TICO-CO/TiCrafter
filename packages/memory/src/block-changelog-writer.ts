@@ -1,6 +1,7 @@
-import type { Database } from 'bun:sqlite';
 import { attempt, type Result } from '@ticrafter/core';
-import { StorageFailures, type StorageFailure } from './failures.js';
+import type { Database } from 'bun:sqlite';
+
+import { type StorageFailure, StorageFailures } from './failures.js';
 
 export interface BlockChange {
     botId: string;
@@ -13,11 +14,11 @@ export interface BlockChange {
 }
 
 export class BlockChangelogWriter {
-    constructor(private readonly db: Database) {}
+    constructor(private readonly database: Database) {}
 
     append(change: BlockChange): Result<number, StorageFailure> {
         const [id, error] = attempt(() => {
-            const result = this.db
+            const result = this.database
                 .prepare(
                     `INSERT INTO block_changelog (bot_id, x, y, z, before_json, after_json, grant_id, claim_id, created_at)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,

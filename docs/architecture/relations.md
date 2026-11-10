@@ -1,6 +1,6 @@
 # TiCrafter Relation Catalog
 
-> Generated from `docs/architecture/graph.json`. Edit the graph, then run `node tools/architecture/render-graphs.mjs`.
+> Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
 **Relations:** 493  

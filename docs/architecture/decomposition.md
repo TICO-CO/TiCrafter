@@ -1,6 +1,6 @@
 # TiCrafter System Decomposition
 
-> Generated from `docs/architecture/graph.json`. Edit the graph, then run `node tools/architecture/render-graphs.mjs`.
+> Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
 **Version:** 1.2.0  
@@ -5138,7 +5138,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **ID:** `sys.training`
 - **Owner package:** `tools/laya-train`
 - **Milestone:** 10
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Allowed cross-system dependencies:** `sys.eval`
 - **Forbidden dependencies:** `fe.training-runtime`
 
@@ -5168,7 +5168,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.trace-exporter.interface`
 - **Requires:** `memory.event-log-writer`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Trace export reads runtime data but never becomes a runtime dependency.
@@ -5187,7 +5187,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.labeling-pipeline.interface`
 - **Requires:** `training.trace-exporter`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Training is dev-only and is never imported by runtime.
@@ -5207,7 +5207,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.reward-computer.interface`
 - **Requires:** `training.trace-exporter`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Training is dev-only and is never imported by runtime.
@@ -5227,7 +5227,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.fine-tune-runner.interface`
 - **Requires:** `training.labeling-pipeline`, `training.reward-computer`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Training is dev-only and is never imported by runtime.
@@ -5247,7 +5247,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.onnx-exporter.interface`
 - **Requires:** `training.fine-tune-runner`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Training is dev-only and is never imported by runtime.
@@ -5267,7 +5267,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.calibration-fitter.interface`
 - **Requires:** `training.trace-exporter`, `decision.confidence-calibrator`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Training is dev-only and is never imported by runtime.
@@ -5287,7 +5287,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Provides:** `training.promotion-gate.interface`
 - **Requires:** `eval.laya-benchmark-harness`, `training.calibration-fitter`, `training.onnx-exporter`
 - **Owns state:** none
-- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-node`
+- **Source refs:** `main.md#14-laya-training-and-calibration-dev-time-python-runtime-bun`
 - **Milestone:** 10
 - **Invariants:**
   - Training is dev-only and is never imported by runtime.

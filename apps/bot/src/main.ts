@@ -1,9 +1,22 @@
-import { ConfigErrorFormatter, attemptAsync } from '@ticrafter/core';
+import path from 'node:path';
+
+import { attemptAsync, ConfigErrorFormatter, ConfigLoader } from '@ticrafter/core';
+
 import { BotRuntime } from './bot-runtime.js';
+import { NodeConfigSource } from './config-source.js';
+import { NodeLoggerFactory } from './logger.js';
 
 export class BotMain {
     async run(): Promise<void> {
-        const [handle, startError] = await new BotRuntime().start();
+        const configDirectory = path.resolve(process.cwd(), 'config');
+        const runtime = new BotRuntime({
+            configLoader: new ConfigLoader({
+                source: new NodeConfigSource(configDirectory),
+                environment: process.env,
+            }),
+            loggerFactory: new NodeLoggerFactory(),
+        });
+        const [handle, startError] = await runtime.start();
         if (startError) return this.fail(startError);
         if (handle === null) return this.fail('bot start returned null');
 

@@ -1,17 +1,18 @@
-import type { Database } from 'bun:sqlite';
 import { attempt, type Result } from '@ticrafter/core';
-import { StorageFailures, type StorageFailure } from './failures.js';
+import type { Database } from 'bun:sqlite';
+
+import { type StorageFailure, StorageFailures } from './failures.js';
 
 interface VersionRow {
     version: number | null;
 }
 
 export class SchemaVersionRegistry {
-    constructor(private readonly db: Database) {}
+    constructor(private readonly database: Database) {}
 
     current(): Result<number, StorageFailure> {
         const [version, error] = attempt(() => {
-            const row = this.db
+            const row = this.database
                 .prepare('SELECT MAX(version) AS version FROM schema_version')
                 .get() as VersionRow | null;
             return row?.version ?? 0;

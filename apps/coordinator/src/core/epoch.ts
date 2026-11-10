@@ -8,16 +8,16 @@ interface EpochRow {
 }
 
 export class EpochStore {
-    constructor(private readonly db: CoordinatorDatabase) {}
+    constructor(private readonly database: CoordinatorDatabase) {}
 
     bump(): Result<number, StorageFailure> {
         const now = new Date().toISOString();
         return attempt<number, StorageFailure>(() => {
-            const row = this.db.prepare('SELECT epoch FROM coordinator_state WHERE id = 1').get() as
-                | EpochRow
-                | undefined;
+            const row = this.database
+                .prepare('SELECT epoch FROM coordinator_state WHERE id = 1')
+                .get() as EpochRow | undefined;
             const next = (row?.epoch ?? 0) + 1;
-            this.db
+            this.database
                 .prepare(
                     `INSERT INTO coordinator_state (id, epoch, updated_at) VALUES (1, ?, ?)
                      ON CONFLICT(id) DO UPDATE SET epoch = excluded.epoch, updated_at = excluded.updated_at`,
@@ -29,9 +29,9 @@ export class EpochStore {
 
     current(): Result<number, StorageFailure> {
         return attempt<number, StorageFailure>(() => {
-            const row = this.db.prepare('SELECT epoch FROM coordinator_state WHERE id = 1').get() as
-                | EpochRow
-                | undefined;
+            const row = this.database
+                .prepare('SELECT epoch FROM coordinator_state WHERE id = 1')
+                .get() as EpochRow | undefined;
             return row?.epoch ?? 0;
         });
     }

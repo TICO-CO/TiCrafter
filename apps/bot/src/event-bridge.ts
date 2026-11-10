@@ -1,6 +1,5 @@
-import { attempt, type Result } from '@ticrafter/core';
+import { attempt, type LoggerPort, type Result, type TransportFailure } from '@ticrafter/core';
 import type { Bot } from 'mineflayer';
-import type { Logger } from 'pino';
 
 export interface BridgeEvent {
     event: string;
@@ -8,7 +7,7 @@ export interface BridgeEvent {
     data?: unknown;
 }
 
-export type BridgeEmitter = (event: BridgeEvent) => Result<void, unknown>;
+export type BridgeEmitter = (event: BridgeEvent) => Result<void, TransportFailure>;
 
 export class BotEventBridge {
     private readonly detach: Array<() => void> = [];
@@ -16,7 +15,7 @@ export class BotEventBridge {
     constructor(
         private readonly bot: Bot,
         private readonly emit: BridgeEmitter,
-        private readonly logger: Logger,
+        private readonly logger: LoggerPort,
     ) {}
 
     attach(): void {
@@ -31,22 +30,22 @@ export class BotEventBridge {
     }
 
     detachAll(): void {
-        for (const detach of this.detach) detach();
+        this.detach.forEach((detach) => detach());
         this.detach.length = 0;
     }
 
-    private bind(event: string, data: (...args: unknown[]) => unknown): void {
-        const handler = (...args: unknown[]) => this.handle(event, data, args);
+    private bind(event: string, data: (...argumentsList: unknown[]) => unknown): void {
+        const handler = (...argumentsList: unknown[]) => this.handle(event, data, argumentsList);
         this.bot.on(event as never, handler as never);
         this.detach.push(() => this.bot.removeListener(event as never, handler as never));
     }
 
     private handle(
         event: string,
-        data: (...args: unknown[]) => unknown,
-        args: unknown[],
+        data: (...argumentsList: unknown[]) => unknown,
+        argumentsList: unknown[],
     ): void {
-        const [value, dataError] = attempt(() => data(...args));
+        const [value, dataError] = attempt(() => data(...argumentsList));
         if (dataError) {
             this.logger.warn(
                 { event, error: this.describe(dataError) },

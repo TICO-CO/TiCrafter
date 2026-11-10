@@ -1,4 +1,4 @@
-import type { Result } from '../result.js';
+import type { Result } from '../kernel/index.js';
 import type { ConfigFailure } from './failures.js';
 import type { TicrafterConfig } from './schema.js';
 

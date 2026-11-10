@@ -1,4 +1,4 @@
-import type { Result } from '../result.js';
+import type { Result } from '../kernel/index.js';
 import type { TransportFailure } from './failures.js';
 import type { Envelope } from './messages.js';
 
@@ -10,7 +10,10 @@ export class EventStream {
 
     publish(envelope: Envelope): Result<void, TransportFailure> {
         if (envelope.kind !== 'event') {
-            return [null, { type: 'INVALID_FRAME', message: 'event stream accepts event envelopes only' }];
+            return [
+                null,
+                { type: 'INVALID_FRAME', message: 'event stream accepts event envelopes only' },
+            ];
         }
         this.cursor += 1;
         for (const handler of this.handlers.get(envelope.type) ?? []) handler(envelope);

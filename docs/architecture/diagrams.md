@@ -1,9 +1,9 @@
 # TiCrafter Architecture Graphs
 
-> Generated from `docs/architecture/graph.json`. Edit the graph, then run `node tools/architecture/render-graphs.mjs`.
+> Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-Mermaid source lives in `docs/architecture/graphs/`. GitHub renders these fenced blocks directly. For local SVG rendering, run `npm run render:svg -- <input.mmd> <output.svg>`; it uses the installed Firefox browser and never downloads Chromium.
+Mermaid source lives in `docs/architecture/graphs/`. GitHub renders these fenced blocks directly. For local SVG rendering, run `bun run render:svg -- <input.mmd> <output.svg>`; it uses the installed Firefox browser and never downloads Chromium.
 
 ## Fleet overview
 

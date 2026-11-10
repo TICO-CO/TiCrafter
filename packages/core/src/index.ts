@@ -1,3 +1,4 @@
-export * from './config';
-export * from './logging/logger';
-export * from './transport';
+export * from './config/index.js';
+export * from './kernel/index.js';
+export * from './logging/index.js';
+export * from './transport/index.js';

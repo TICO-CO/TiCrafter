@@ -8,7 +8,9 @@ export const attempt = <T, E = unknown>(operation: () => T): Result<T, E> => {
     }
 };
 
-export const attemptAsync = async <T, E = unknown>(operation: () => Promise<T>): Promise<Result<T, E>> => {
+export const attemptAsync = async <T, E = unknown>(
+    operation: () => Promise<T>,
+): Promise<Result<T, E>> => {
     try {
         return [await operation(), null];
     } catch (error) {

@@ -1,9 +1,8 @@
-import { attempt } from '@ticrafter/core';
-import type { Logger } from 'pino';
+import { attempt, type LoggerPort } from '@ticrafter/core';
 
 export interface SchedulerOptions {
     intervalMs: number;
-    logger: Logger;
+    logger: LoggerPort;
     tick: () => void;
 }
 

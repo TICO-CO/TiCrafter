@@ -21,9 +21,9 @@ declare module 'bun:sqlite' {
         exec(sql: string): void;
         prepare(sql: string): Statement;
         query(sql: string): Statement;
-        transaction<Args extends unknown[], R>(
-            operation: (...args: Args) => R,
-        ): (...args: Args) => R;
+        transaction<Arguments extends unknown[], R>(
+            operation: (...parameters: Arguments) => R,
+        ): (...parameters: Arguments) => R;
         serialize(): Uint8Array;
         close(): void;
     }

@@ -1,7 +1,14 @@
-import os from 'node:os';
+export interface SystemInfo {
+    platform: string;
+    arch: string;
+    cpuModel: string;
+    cpuCount: number;
+    totalMemoryBytes: number;
+    freeMemoryBytes: number;
+}
 
 export interface HardwareReport {
-    platform: NodeJS.Platform;
+    platform: string;
     arch: string;
     cpuModel: string;
     cpuCount: number;
@@ -11,15 +18,16 @@ export interface HardwareReport {
 }
 
 export class HardwareProbe {
+    constructor(private readonly system: SystemInfo) {}
+
     probe(): HardwareReport {
-        const cpus = os.cpus();
         return {
-            platform: process.platform,
-            arch: process.arch,
-            cpuModel: cpus[0]?.model ?? 'unknown',
-            cpuCount: cpus.length,
-            totalMemoryGiB: HardwareProbe.toGiB(os.totalmem()),
-            freeMemoryGiB: HardwareProbe.toGiB(os.freemem()),
+            platform: this.system.platform,
+            arch: this.system.arch,
+            cpuModel: this.system.cpuModel,
+            cpuCount: this.system.cpuCount,
+            totalMemoryGiB: HardwareProbe.toGiB(this.system.totalMemoryBytes),
+            freeMemoryGiB: HardwareProbe.toGiB(this.system.freeMemoryBytes),
             webgpu: false,
         };
     }

@@ -5,7 +5,7 @@ Normative for agents working in this repo. `spec.md` is normative for the build;
 
 ## 1. Result pattern, heavily
 
-Standardize on the existing tuple (`packages/core/result.ts`):
+Standardize on the existing tuple (`packages/core/src/kernel/result.ts`):
 
 ```ts
 export type Result<T, E = unknown> = [value: T | null, err: E | null];
@@ -33,7 +33,7 @@ if (err) return [null, err];
   Never use `value` when `err` is non-null.
 - Type `E` narrowly (`string` or a `FailureType` union). Never leave bare
   `unknown` at call sites.
-- Reference example: `packages/core/config/validate.ts`.
+- Reference example: `packages/core/src/config/schema.ts`.
 
 ## 2. Exceptions only at the irreplacable boundary
 
@@ -47,8 +47,8 @@ if (err) return [null, err];
 - The process entrypoint's terminal `.catch` (log + non-zero exit) is the
   single allowed rejection handler outside `attempt`. Never swallow errors.
 - The only sanctioned `throw` is `assertNever(value: never)` from
-  `packages/core/assert.js`: unreachable-arm guard for exhaustive `switch`
-  defaults (§6). Never call it for reachable control flow.
+  `packages/core/src/kernel/assert.ts`: unreachable-arm guard for exhaustive
+  `switch` defaults (§6). Never call it for reachable control flow.
 
 ## 3. OOP by default, functional iteration style
 
@@ -109,6 +109,27 @@ if (err) return [null, err];
   touching a file, ensure the whole file is formatted via Prettier.
 - Do not add `// prettier-ignore` or `/* prettier-ignore */` except for
   generated assets or when explicitly justified; comment the justification.
+
+### Naming [NORMATIVE]
+
+- Use complete, descriptive names for variables, parameters, functions,
+  methods, types, and constants.
+- Never use single-letter or cryptic identifiers. Banned examples: `v`, `l`,
+  `e`, `i`, `n`, `pkg`, `ctx`, `req`, `res`, `msg`, `obj`, `fn`, `cb`, `idx`,
+  `len`, `tmp`, `val`, `dir`, `src`, `dst`.
+- Prefer full words over abbreviations: `database` not `db`, `environment` not
+  `env`, `currentWorkingDirectory` not `cwd`, `fileSystem` not `fs`,
+  `operatingSystem` not `os`, `packageJson` not `pkg`, `cliArguments` not
+  `args`, `context` not `ctx`, `payload`/`message` not `obj`/`msg`, `zod` not
+  `z` when importing zod.
+- Loop variables use `index`, `botIndex`, `downloadIndex`, and similar names;
+  never `i`, `j`, or `k`.
+- Test fixtures use descriptive keys, never `a`, `b`, or `c`.
+- Exceptions: coordinate axes `x`, `y`, and `z` in Minecraft position fields;
+  the wire-format field `v`; standard acronyms `id`, `url`, and `apiKey`; and
+  `value`/`err` in the `Result` tuple.
+- Applies to TypeScript and JavaScript, including tests, tools, and ESLint
+  rules. External wire-format fields and third-party API names are exempt.
 
 ## 6. Airtight TypeScript designs
 
@@ -244,8 +265,8 @@ this repository and records sanctioned exceptions.
   `bun run format:check`, `bun run lint`, `bun run typecheck`, `bun test`, and
   `bun run validate:graph` are the repository commands.
 - **Result module:** `packages/core/result.ts` maps to
-  `packages/core/src/result.ts`. `packages/core/assert.ts` maps to
-  `packages/core/src/assert.ts`.
+  `packages/core/src/kernel/result.ts`. `packages/core/assert.ts` maps to
+  `packages/core/src/kernel/assert.ts`.
 - **Path aliases:** `@core` maps to `@ticrafter/core`. `@engine`, `@schemas`,
   `@events`, and `@llm` do not exist yet. `apps/server` maps to
   `apps/coordinator`. `apps/web` does not exist yet.

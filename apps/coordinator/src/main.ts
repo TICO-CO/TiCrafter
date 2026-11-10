@@ -1,73 +1,82 @@
 import path from 'node:path';
+
 import {
+    attempt,
+    attemptAsync,
     ConfigErrorFormatter,
     ConfigLoader,
     HardwareProbe,
     LayaRuntimeResolver,
-    LoggerFactory,
+    type LoggerPort,
     PlannerSecretsLoader,
-    attempt,
-    attemptAsync,
 } from '@ticrafter/core';
 import { MigrationRunner, SchemaVersionRegistry, SqliteRuntime } from '@ticrafter/memory';
-import type { Logger } from 'pino';
-import { Coordinator, EpochStore, type CoordinatorDatabase } from './core/index.js';
+
+import { NodeConfigSource } from './config-source.js';
+import { CoordinatorComposition } from './coordinator-composition.js';
+import { Coordinator, type CoordinatorDatabase, EpochStore } from './core/index.js';
+import { NodeLoggerFactory } from './logger.js';
+import { NodeSystemInfo } from './system-info.js';
 
 export class CoordinatorMain {
-    private logger: Logger | null = null;
+    private logger: LoggerPort | null = null;
 
     async run(): Promise<void> {
-        const [config, configError] = new ConfigLoader().load();
+        const currentWorkingDirectory = process.cwd();
+        const configDirectory = path.resolve(currentWorkingDirectory, 'config');
+        const [config, configError] = new ConfigLoader({
+            source: new NodeConfigSource(configDirectory),
+            environment: process.env,
+        }).load();
         if (configError) return this.fail(ConfigErrorFormatter.format(configError));
         if (config === null) return this.fail('configuration returned null');
 
-        const logger = new LoggerFactory().create('coordinator', config.logging.level);
+        const logger = new NodeLoggerFactory().create('coordinator', config.logging.level);
         this.logger = logger;
-        const cwd = process.cwd();
-        const dataDir = path.resolve(cwd, config.dataDir);
-        const [db, dbError] = new SqliteRuntime({ dataDir }).open();
-        if (dbError) return this.fail(this.describe(dbError));
-        if (db === null) return this.fail('database returned null');
+        const dataDirectory = path.resolve(currentWorkingDirectory, config.dataDir);
+        const [database, databaseError] = new SqliteRuntime({ dataDir: dataDirectory }).open();
+        if (databaseError) return this.fail(this.describe(databaseError));
+        if (database === null) return this.fail('database returned null');
 
-        const [, migrationError] = new MigrationRunner(db).run();
+        const [, migrationError] = new MigrationRunner(database).run();
         if (migrationError) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail(this.describe(migrationError));
         }
 
-        const [schemaVersion, versionError] = new SchemaVersionRegistry(db).current();
+        const [schemaVersion, versionError] = new SchemaVersionRegistry(database).current();
         if (versionError) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail(this.describe(versionError));
         }
         if (schemaVersion === null) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail('schema version returned null');
         }
 
-        const [epoch, epochError] = new EpochStore(db).bump();
+        const [epoch, epochError] = new EpochStore(database).bump();
         if (epochError) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail(this.describe(epochError));
         }
         if (epoch === null) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail('epoch returned null');
         }
 
         const [planner, plannerError] = new PlannerSecretsLoader(config).load();
         if (plannerError) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail(ConfigErrorFormatter.format(plannerError));
         }
         if (planner === null) {
-            this.closeDatabase(db);
+            this.closeDatabase(database);
             return this.fail('planner secrets returned null');
         }
 
-        const hardware = new HardwareProbe().probe();
+        const hardware = new HardwareProbe(new NodeSystemInfo()).probe();
         const laya = LayaRuntimeResolver.resolve(config);
-        logger.info({ epoch, dataDir, schemaVersion, hardware }, 'coordinator starting');
+        logger.info({ epoch, dataDirectory, schemaVersion, hardware }, 'coordinator starting');
         logger.info(
             {
                 laya,
@@ -77,17 +86,13 @@ export class CoordinatorMain {
             'runtime resolved',
         );
 
-        const coordinator = new Coordinator({
+        const coordinator = CoordinatorComposition.build({
             config,
             logger,
-            db,
+            database: database,
             epoch,
             schemaVersion,
-            hardware,
-            laya,
-            planner,
-            dataDir,
-            cwd,
+            currentWorkingDirectory: currentWorkingDirectory,
         });
         const [started, startError] = await coordinator.start();
         if (startError) {
@@ -113,8 +118,8 @@ export class CoordinatorMain {
         process.exit(0);
     }
 
-    private closeDatabase(db: CoordinatorDatabase): void {
-        const [, closeError] = attempt(() => db.close());
+    private closeDatabase(database: CoordinatorDatabase): void {
+        const [, closeError] = attempt(() => database.close());
         if (closeError) {
             this.logger?.warn({ error: this.describe(closeError) }, 'database close failed');
         }

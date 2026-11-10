@@ -1,52 +1,54 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
-import { attempt } from '@ticrafter/core';
-import type { Logger } from 'pino';
+
+import { attempt, type LoggerPort } from '@ticrafter/core';
 
 export interface BotProcessSupervisorOptions {
     root: string;
     botCount: number;
-    logger: Logger;
+    logger: LoggerPort;
 }
 
 export class BotProcessSupervisor {
-    private readonly children = new Map<number, ChildProcess>();
+    private readonly processes = new Map<number, ChildProcess>();
 
     constructor(private readonly options: BotProcessSupervisorOptions) {}
 
     spawnAll(): void {
-        for (let index = 0; index < this.options.botCount; index += 1) this.spawn(index);
+        for (let botIndex = 0; botIndex < this.options.botCount; botIndex += 1) {
+            this.spawn(botIndex);
+        }
     }
 
-    spawn(index: number): void {
-        if (this.children.has(index)) return;
-        const entry = path.join(this.options.root, 'apps/bot/src/main.ts');
-        const [child, spawnError] = attempt(() =>
-            spawn(process.execPath, ['--import', 'tsx', entry], {
+    spawn(botIndex: number): void {
+        if (this.processes.has(botIndex)) return;
+        const entryPoint = path.join(this.options.root, 'apps/bot/src/main.ts');
+        const [childProcess, spawnError] = attempt(() =>
+            spawn(process.execPath, [entryPoint], {
                 cwd: this.options.root,
-                env: { ...process.env, BOT_INDEX: String(index) },
+                env: { ...process.env, BOT_INDEX: String(botIndex) },
                 stdio: 'inherit',
             }),
         );
-        if (spawnError || child === null) {
+        if (spawnError || childProcess === null) {
             this.options.logger.error(
-                { index, error: this.describe(spawnError) },
+                { botIndex, error: this.describe(spawnError) },
                 'bot process failed to spawn',
             );
             return;
         }
-        this.children.set(index, child);
-        this.options.logger.info({ index, pid: child.pid }, 'bot process spawned');
-        child.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
-            this.children.delete(index);
-            this.options.logger.warn({ index, code, signal }, 'bot process exited');
+        this.processes.set(botIndex, childProcess);
+        this.options.logger.info({ botIndex, processId: childProcess.pid }, 'bot process spawned');
+        childProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+            this.processes.delete(botIndex);
+            this.options.logger.warn({ botIndex, code, signal }, 'bot process exited');
         });
     }
 
     stopAll(): void {
-        for (const [index, child] of this.children) {
-            child.kill('SIGTERM');
-            this.children.delete(index);
+        for (const [botIndex, childProcess] of this.processes) {
+            childProcess.kill('SIGTERM');
+            this.processes.delete(botIndex);
         }
     }
 

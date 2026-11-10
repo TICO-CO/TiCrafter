@@ -1,4 +1,4 @@
-import { attempt, type Result } from '../result.js';
+import { attempt, type Result } from '../kernel/index.js';
 import type { TransportFailure } from './failures.js';
 import type { Envelope, MessageSchemaRegistry } from './messages.js';
 
@@ -8,7 +8,8 @@ export class WsCodec {
     encode(envelope: Envelope): Result<string, TransportFailure> {
         const [validated, validationError] = this.registry.validate(envelope);
         if (validationError) return [null, validationError];
-        if (validated === null) return [null, { type: 'INVALID_FRAME', message: 'envelope returned null' }];
+        if (validated === null)
+            return [null, { type: 'INVALID_FRAME', message: 'envelope returned null' }];
         return [JSON.stringify(validated), null];
     }
 

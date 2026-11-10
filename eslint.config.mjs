@@ -92,13 +92,13 @@ export default tseslint.config(
         },
     },
     {
-        files: ['packages/core/src/result.ts'],
+        files: ['packages/core/src/kernel/result.ts'],
         rules: {
             '@ticrafter/no-try-statements': 'off',
         },
     },
     {
-        files: ['packages/core/src/assert.ts'],
+        files: ['packages/core/src/kernel/assert.ts'],
         rules: {
             '@ticrafter/no-throw-statements': 'off',
         },
@@ -107,6 +107,22 @@ export default tseslint.config(
         files: ['packages/core/**/*.{ts,mts,cts}'],
         rules: {
             'no-restricted-imports': corePurity,
+        },
+    },
+    {
+        files: ['packages/core/**/*.test.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            group: ['node:*', 'fs', 'fs/promises', 'bun:sqlite', 'bun:ffi'],
+                            message: 'packages/core tests may only use bun:test from Bun.',
+                        },
+                    ],
+                },
+            ],
         },
     },
     {

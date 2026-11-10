@@ -1,93 +1,28 @@
-import { z } from 'zod';
-import { attempt, type Result } from '../result.js';
+import type { z as zod } from 'zod';
+
+import { attempt, type Result } from '../kernel/index.js';
 import type { TransportFailure } from './failures.js';
+import {
+    botEventSchema,
+    botHeartbeatSchema,
+    coordinatorErrorSchema,
+    coordinatorPingResponseSchema,
+    coordinatorPingSchema,
+    coordinatorStatusResponseSchema,
+    coordinatorStatusSchema,
+    type Envelope,
+    envelopeSchema,
+    PROTOCOL_VERSION,
+    sessionHelloResponseSchema,
+    sessionHelloSchema,
+} from './schemas.js';
 
-export const PROTOCOL_VERSION = 1;
-
-export const envelopeSchema = z.object({
-    v: z.literal(PROTOCOL_VERSION),
-    id: z.string().min(1),
-    kind: z.enum(['request', 'response', 'event']),
-    type: z.string().min(1),
-    payload: z.unknown(),
-    replyTo: z.string().optional(),
-    error: z
-        .object({
-            code: z.string().min(1),
-            message: z.string().min(1),
-        })
-        .optional(),
-    timestamp: z.string().optional(),
-});
-
-export type Envelope = z.infer<typeof envelopeSchema>;
-
-export const sessionHelloSchema = z.object({
-    botId: z.string().min(1),
-    name: z.string().min(1),
-    version: z.string().optional(),
-});
-
-export const sessionHelloResponseSchema = z.object({
-    accepted: z.boolean(),
-    epoch: z.number().int().nonnegative(),
-    reason: z.string().optional(),
-});
-
-export const coordinatorPingSchema = z.object({});
-
-export const coordinatorPingResponseSchema = z.object({
-    pong: z.literal(true),
-    at: z.string(),
-});
-
-export const coordinatorStatusSchema = z.object({});
-
-export const coordinatorStatusResponseSchema = z.object({
-    epoch: z.number().int().nonnegative(),
-    sessions: z.array(
-        z.object({
-            botId: z.string(),
-            name: z.string(),
-            connectedAt: z.string(),
-            lastSeen: z.string(),
-        }),
-    ),
-});
-
-export const coordinatorErrorSchema = z.object({
-    code: z.string().min(1),
-    message: z.string().min(1),
-});
-
-export const botHeartbeatSchema = z.object({
-    botId: z.string().min(1),
-    at: z.string(),
-    digest: z.object({
-        health: z.number(),
-        food: z.number(),
-        position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-        inventoryCount: z.number().int().nonnegative(),
-    }),
-});
-
-export const botEventSchema = z.object({
-    botId: z.string().min(1),
-    event: z.string().min(1),
-    at: z.string(),
-    data: z.unknown().optional(),
-});
-
-export type SessionHello = z.infer<typeof sessionHelloSchema>;
-export type SessionHelloResponse = z.infer<typeof sessionHelloResponseSchema>;
-export type CoordinatorStatusResponse = z.infer<typeof coordinatorStatusResponseSchema>;
-export type BotHeartbeat = z.infer<typeof botHeartbeatSchema>;
-export type BotEvent = z.infer<typeof botEventSchema>;
+export * from './schemas.js';
 
 export class MessageSchemaRegistry {
-    private readonly schemas = new Map<string, z.ZodType>();
+    private readonly schemas = new Map<string, zod.ZodType>();
 
-    register(type: string, schema: z.ZodType): this {
+    register(type: string, schema: zod.ZodType): this {
         this.schemas.set(type, schema);
         return this;
     }
@@ -99,7 +34,13 @@ export class MessageSchemaRegistry {
     validate(input: unknown): Result<Envelope, TransportFailure> {
         const [parsed, envelopeError] = attempt(() => envelopeSchema.parse(input));
         if (envelopeError || parsed === null) {
-            return [null, { type: 'INVALID_FRAME', message: MessageSchemaRegistry.describe(envelopeError) }];
+            return [
+                null,
+                {
+                    type: 'INVALID_FRAME',
+                    message: MessageSchemaRegistry.describe(envelopeError),
+                },
+            ];
         }
         const schema = this.schemas.get(parsed.type);
         if (!schema) return [null, { type: 'UNKNOWN_MESSAGE', messageType: parsed.type }];
