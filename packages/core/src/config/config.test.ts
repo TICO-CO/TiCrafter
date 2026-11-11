@@ -20,6 +20,7 @@ describe('config', () => {
         expect(config.decision.minConfidence).toBe(0.6);
         expect(config.planner.model).toBe('Muse Spark 1.3 Contributor');
         expect(config.planner.maxRepairAttempts).toBe(2);
+        expect(config.training.traceEnabled).toBe(false);
     });
 
     it('loads the home-full profile from env', () => {
@@ -38,6 +39,7 @@ describe('config', () => {
             BOT_NAMES: '["Alpha","Beta"]',
             LAN_PORT: '25570',
             LAYA_EP: 'cpu,webgpu',
+            TRAINING_TRACE_ENABLED: 'true',
             PLANNER_ENABLED: 'true',
             PLANNER_BASE_URL: 'https://planner.invalid',
             PLANNER_API_KEY: 'secret',
@@ -51,6 +53,7 @@ describe('config', () => {
         expect(config.laya.executionProviders).toEqual(['cpu', 'webgpu']);
         expect(config.planner.enabled).toBe(true);
         expect(config.planner.model).toBe('planner-model');
+        expect(config.training.traceEnabled).toBe(true);
     });
 
     it('rejects a short or duplicate name pool', () => {

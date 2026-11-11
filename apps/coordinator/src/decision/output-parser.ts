@@ -31,13 +31,17 @@ export class DecisionOutputParser {
             return [null, { type: 'INVALID_OUTPUT', message: parsed.error.message }];
         }
         const nextAction = parsed.data.answers.nextAction;
+        const dangerScore = parsed.data.answers.danger.noul;
+        const shouldContinueScore = parsed.data.answers.shouldContinue.noul;
         return [
             {
                 choiceId: nextAction.choice,
                 probabilities: nextAction.probabilities,
                 answerConfidence: nextAction.answer_confidence,
-                danger: parsed.data.answers.danger.noul >= 0.5,
-                shouldContinue: parsed.data.answers.shouldContinue.noul >= 0.5,
+                danger: dangerScore >= 0.5,
+                shouldContinue: shouldContinueScore >= 0.5,
+                dangerScore,
+                shouldContinueScore,
             },
             null,
         ];

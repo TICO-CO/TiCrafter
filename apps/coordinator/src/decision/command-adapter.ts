@@ -11,12 +11,14 @@ import {
 import type { ClientConnection, TransportServer } from '../transport/index.js';
 import type { DecisionService } from './decision-service.js';
 import { DecisionFailures } from './failures.js';
+import type { DecisionTraceRecorder } from './trace-recorder.js';
 
 export class DecisionCommandAdapter {
     constructor(
         private readonly service: DecisionService,
         private readonly transport: TransportServer,
         private readonly logger: LoggerPort,
+        private readonly trace: DecisionTraceRecorder | null = null,
     ) {}
 
     async handle(
@@ -34,10 +36,12 @@ export class DecisionCommandAdapter {
                 failure === null
                     ? 'decision service returned null'
                     : DecisionFailures.message(failure);
+            if (failure !== null) this.trace?.recordFailure(request, failure);
             this.sendError(connection, envelope, 'decision_failed', message);
             this.logger.warn({ error: message, botId: connection.botId }, 'decision failed');
             return;
         }
+        this.trace?.record(request, outcome);
         if (outcome.fallback !== null) {
             this.logger.debug(
                 { botId: connection.botId, reason: outcome.fallback.reason },

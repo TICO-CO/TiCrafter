@@ -41,6 +41,7 @@ const defaultConfig: Record<string, unknown> = {
     logging: { level: 'info' },
     safety: { guardianHz: 20 },
     skills: { tickMilliseconds: 250 },
+    training: { traceEnabled: false },
 };
 
 const profiles: Record<string, Record<string, unknown>> = {

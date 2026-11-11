@@ -8,6 +8,11 @@ import {
     DECISION_RESPONSE,
     LANDMARK_CANDIDATE_EVENT,
     SKILL_PROGRESS_EVENT,
+    TASK_CLAIM,
+    TASK_COMPLETE,
+    TASK_FAIL,
+    TASK_RENEW,
+    TASK_RESPONSE,
 } from './event-types.js';
 import type { TransportFailure } from './failures.js';
 import {
@@ -22,6 +27,11 @@ import {
     botSkillCancelSchema,
     botSkillResumeSchema,
     botSkillStartSchema,
+    botTaskClaimSchema,
+    botTaskCompleteSchema,
+    botTaskFailSchema,
+    botTaskRenewSchema,
+    botTaskResponseSchema,
     chunkSnapshotSchema,
     coordinatorErrorSchema,
     coordinatorPingResponseSchema,
@@ -100,7 +110,12 @@ export class MessageSchemaRegistry {
             .register(BOT_SKILL_RESUME, botSkillResumeSchema)
             .register(BOT_SAFETY_RESUME, botSafetyResumeSchema)
             .register(DECISION_REQUEST, decisionRequestSchema)
-            .register(DECISION_RESPONSE, decisionResponseSchema);
+            .register(DECISION_RESPONSE, decisionResponseSchema)
+            .register(TASK_CLAIM, botTaskClaimSchema)
+            .register(TASK_RENEW, botTaskRenewSchema)
+            .register(TASK_COMPLETE, botTaskCompleteSchema)
+            .register(TASK_FAIL, botTaskFailSchema)
+            .register(TASK_RESPONSE, botTaskResponseSchema);
     }
 
     private static describe(error: unknown): string {

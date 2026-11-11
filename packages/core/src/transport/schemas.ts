@@ -83,6 +83,7 @@ export const skillProgressSchema = zod.object({
     botId: zod.string().min(1),
     at: zod.string().min(1),
     skillId: zod.string().min(1),
+    taskId: zod.string().min(1).optional(),
     status: zod.enum(['running', 'completed', 'failed', 'cancelled']),
     progress: zod.object({
         done: zod.number().nonnegative(),
@@ -90,6 +91,73 @@ export const skillProgressSchema = zod.object({
         label: zod.string(),
     }),
     failureClass: zod.string().optional(),
+});
+
+const taskPositionSchema = zod.object({
+    x: zod.number(),
+    y: zod.number(),
+    z: zod.number(),
+});
+
+const taskInventoryItemSchema = zod.object({
+    name: zod.string().min(1),
+    count: zod.number().int().nonnegative(),
+});
+
+const taskRoleSchema = zod.enum(['builder', 'farmer', 'miner', 'scout', 'hauler', 'guard']);
+
+const taskFailureClassSchema = zod.enum([
+    'transient',
+    'precondition',
+    'blocked',
+    'invalid',
+    'fatal',
+]);
+
+export const botTaskClaimSchema = zod.object({
+    botId: zod.string().min(1),
+    at: zod.string().min(1),
+    position: taskPositionSchema,
+    inventory: zod.array(taskInventoryItemSchema),
+    role: taskRoleSchema.nullable().optional(),
+});
+
+export const botTaskRenewSchema = zod.object({
+    botId: zod.string().min(1),
+    taskId: zod.string().min(1),
+    fencingToken: zod.number().int().nonnegative(),
+});
+
+export const botTaskCompleteSchema = zod.object({
+    botId: zod.string().min(1),
+    taskId: zod.string().min(1),
+    fencingToken: zod.number().int().nonnegative(),
+});
+
+export const botTaskFailSchema = zod.object({
+    botId: zod.string().min(1),
+    taskId: zod.string().min(1),
+    fencingToken: zod.number().int().nonnegative(),
+    failureClass: taskFailureClassSchema,
+    reason: zod.string().min(1),
+});
+
+const taskAssignmentSchema = zod.object({
+    id: zod.string().min(1),
+    title: zod.string().min(1),
+    priority: zod.number(),
+    payload: zod.record(zod.string(), zod.unknown()),
+    target: taskPositionSchema.nullable(),
+    requiredRole: taskRoleSchema.nullable(),
+});
+
+export const botTaskResponseSchema = zod.object({
+    ok: zod.boolean(),
+    taskId: zod.string().min(1).optional(),
+    task: taskAssignmentSchema.nullable(),
+    fencingToken: zod.number().int().nonnegative().nullable(),
+    leaseUntil: zod.string().min(1).nullable(),
+    reason: zod.string().optional(),
 });
 
 export const botEventSchema = zod.object({
@@ -300,3 +368,8 @@ export type DecisionRequest = zod.infer<typeof decisionRequestSchema>;
 export type DecisionResponse = zod.infer<typeof decisionResponseSchema>;
 export type DecisionAffordance = zod.infer<typeof decisionAffordanceSchema>;
 export type DecisionDigest = zod.infer<typeof decisionDigestSchema>;
+export type BotTaskClaim = zod.infer<typeof botTaskClaimSchema>;
+export type BotTaskRenew = zod.infer<typeof botTaskRenewSchema>;
+export type BotTaskComplete = zod.infer<typeof botTaskCompleteSchema>;
+export type BotTaskFail = zod.infer<typeof botTaskFailSchema>;
+export type BotTaskResponse = zod.infer<typeof botTaskResponseSchema>;

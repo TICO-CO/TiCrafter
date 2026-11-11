@@ -16,4 +16,5 @@ export * from './queue.js';
 export * from './rate-limiter.js';
 export * from './single-inflight-guard.js';
 export * from './timeout-fallback.js';
+export * from './trace-recorder.js';
 export * from './types.js';

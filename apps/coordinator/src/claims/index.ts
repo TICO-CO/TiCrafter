@@ -1,5 +1,6 @@
 export * from './atomic-acquirer.js';
 export * from './claim-codec.js';
+export * from './claim-fixtures.js';
 export * from './claim-releaser.js';
 export * from './claim-repository.js';
 export * from './claim-service.js';

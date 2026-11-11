@@ -4,6 +4,17 @@
     "private": true,
     "type": "module",
     "main": "src/main.ts",
+    "exports": {
+        ".": "./src/main.ts",
+        "./bots": "./src/bots/index.ts",
+        "./claims": "./src/claims/index.ts",
+        "./core": "./src/core/index.ts",
+        "./decision": "./src/decision/index.ts",
+        "./grants": "./src/grants/index.ts",
+        "./sip": "./src/sip/index.ts",
+        "./tasks": "./src/tasks/index.ts",
+        "./testing": "./src/testing/index.ts"
+    },
     "dependencies": {
         "@receptron/laya": "0.2.0",
         "@ticrafter/core": "0.1.0",

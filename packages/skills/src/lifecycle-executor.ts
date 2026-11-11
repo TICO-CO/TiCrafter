@@ -226,6 +226,7 @@ export class SkillLifecycleExecutor {
             context.at,
             step,
             step.status,
+            context.taskId,
         ) ?? [undefined, null];
         if (reportError) return [null, reportError];
         if (reported === null) return [null, 'skill report returned null'];

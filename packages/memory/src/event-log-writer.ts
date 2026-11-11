@@ -12,7 +12,12 @@ export interface DomainEvent {
     createdAt?: string;
 }
 
+export interface StoredDomainEvent extends DomainEvent {
+    id: number;
+}
+
 interface EventRow {
+    id: number;
     bot_id: string | null;
     type: string;
     payload_json: string;
@@ -55,17 +60,10 @@ export class EventLogWriter {
         const [events, error] = attempt(() => {
             const rows = this.database
                 .prepare(
-                    'SELECT bot_id, type, payload_json, actor, causation_id, created_at FROM bot_events ORDER BY id DESC LIMIT ?',
+                    'SELECT id, bot_id, type, payload_json, actor, causation_id, created_at FROM bot_events ORDER BY id DESC LIMIT ?',
                 )
                 .all(limit) as EventRow[];
-            return rows.map((row) => ({
-                botId: row.bot_id ?? undefined,
-                type: row.type,
-                payload: JSON.parse(row.payload_json) as unknown,
-                actor: row.actor ?? undefined,
-                causationId: row.causation_id ?? undefined,
-                createdAt: row.created_at,
-            }));
+            return rows.map((row) => EventLogWriter.mapRow(row));
         });
         if (error) {
             return [null, StorageFailures.from('READ_FAILED', error)];
@@ -75,5 +73,56 @@ export class EventLogWriter {
         }
 
         return [events, null];
+    }
+
+    listAfter(id: number, limit = 1000): Result<StoredDomainEvent[], StorageFailure> {
+        const [events, error] = attempt(() => {
+            const rows = this.database
+                .prepare(
+                    'SELECT id, bot_id, type, payload_json, actor, causation_id, created_at FROM bot_events WHERE id > ? ORDER BY id ASC LIMIT ?',
+                )
+                .all(id, limit) as EventRow[];
+            return rows.map((row) => EventLogWriter.mapStoredRow(row));
+        });
+        if (error) {
+            return [null, StorageFailures.from('READ_FAILED', error)];
+        }
+        if (events === null) {
+            return [null, StorageFailures.from('READ_FAILED', 'Events missing')];
+        }
+        return [events, null];
+    }
+
+    listByType(type: string, limit = 1000): Result<StoredDomainEvent[], StorageFailure> {
+        const [events, error] = attempt(() => {
+            const rows = this.database
+                .prepare(
+                    'SELECT id, bot_id, type, payload_json, actor, causation_id, created_at FROM bot_events WHERE type = ? ORDER BY id ASC LIMIT ?',
+                )
+                .all(type, limit) as EventRow[];
+            return rows.map((row) => EventLogWriter.mapStoredRow(row));
+        });
+        if (error) {
+            return [null, StorageFailures.from('READ_FAILED', error)];
+        }
+        if (events === null) {
+            return [null, StorageFailures.from('READ_FAILED', 'Events missing')];
+        }
+        return [events, null];
+    }
+
+    private static mapRow(row: EventRow): DomainEvent {
+        return {
+            botId: row.bot_id ?? undefined,
+            type: row.type,
+            payload: JSON.parse(row.payload_json) as unknown,
+            actor: row.actor ?? undefined,
+            causationId: row.causation_id ?? undefined,
+            createdAt: row.created_at,
+        };
+    }
+
+    private static mapStoredRow(row: EventRow): StoredDomainEvent {
+        return { id: row.id, ...EventLogWriter.mapRow(row) };
     }
 }

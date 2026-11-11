@@ -73,6 +73,9 @@ export const configSchema = zod
         skills: zod.object({
             tickMilliseconds: zod.number().int().min(200).max(500),
         }),
+        training: zod.object({
+            traceEnabled: zod.boolean(),
+        }),
     })
     .superRefine((config, context) => {
         if (config.botNames.length < config.botCount) {

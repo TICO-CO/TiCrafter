@@ -1,3 +1,4 @@
+export * from './block-changelog-reader.js';
 export * from './block-changelog-writer.js';
 export * from './episode-store.js';
 export * from './event-log-writer.js';

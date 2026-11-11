@@ -54,6 +54,8 @@ export interface DecisionParsedAnswer {
     answerConfidence: number;
     danger: boolean;
     shouldContinue: boolean;
+    dangerScore: number;
+    shouldContinueScore: number;
 }
 
 export interface DecisionCalibratedAnswer extends DecisionParsedAnswer {
@@ -69,6 +71,7 @@ export interface DecisionFallbackSignal {
 export interface DecisionOutcome {
     response: DecisionResponse;
     fallback: DecisionFallbackSignal | null;
+    parsed?: DecisionParsedAnswer;
 }
 
 export interface DecisionJob {

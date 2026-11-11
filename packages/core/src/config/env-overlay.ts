@@ -19,6 +19,7 @@ const KNOWN_KEYS = new Set([
     'PLANNER_API_KEY',
     'PLANNER_MODEL',
     'LOG_LEVEL',
+    'TRAINING_TRACE_ENABLED',
 ]);
 
 export class EnvOverlay {
@@ -76,6 +77,8 @@ export class EnvOverlay {
         EnvOverlay.applyPlanner(overrides, environment);
         const logLevel = read('LOG_LEVEL');
         if (logLevel) overrides.logging = { level: logLevel };
+        const traceEnabled = EnvOverlay.boolean(read('TRAINING_TRACE_ENABLED'));
+        if (traceEnabled !== undefined) overrides.training = { traceEnabled };
         return overrides;
     }
 

@@ -2,6 +2,14 @@ import {
     BLOCK_UPDATE_EVENT,
     type BlockUpdateMessage,
     blockUpdateSchema,
+    type BotTaskClaim,
+    botTaskClaimSchema,
+    type BotTaskComplete,
+    botTaskCompleteSchema,
+    type BotTaskFail,
+    botTaskFailSchema,
+    type BotTaskRenew,
+    botTaskRenewSchema,
     CHUNK_SNAPSHOT_EVENT,
     type ChunkSnapshotMessage,
     chunkSnapshotSchema,
@@ -15,6 +23,10 @@ import {
     type LoggerPort,
     SKILL_PROGRESS_EVENT,
     skillProgressSchema,
+    TASK_CLAIM,
+    TASK_COMPLETE,
+    TASK_FAIL,
+    TASK_RENEW,
 } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
 
@@ -37,6 +49,14 @@ export interface MessageRouterOptions {
         payload: DecisionRequest,
         envelope: Envelope,
     ) => void;
+    onTaskClaim?: (connection: ClientConnection, payload: BotTaskClaim, envelope: Envelope) => void;
+    onTaskRenew?: (connection: ClientConnection, payload: BotTaskRenew, envelope: Envelope) => void;
+    onTaskComplete?: (
+        connection: ClientConnection,
+        payload: BotTaskComplete,
+        envelope: Envelope,
+    ) => void;
+    onTaskFail?: (connection: ClientConnection, payload: BotTaskFail, envelope: Envelope) => void;
     onSessionClosed?: (botId: string) => void;
 }
 
@@ -64,6 +84,7 @@ export class MessageRouter {
                 { botId: connection.botId, event: envelope.payload },
                 'bot event',
             );
+            this.appendEvent(connection.botId, 'bot.event', envelope.payload);
             return;
         }
         if (envelope.kind === 'event' && envelope.type === SKILL_PROGRESS_EVENT) {
@@ -73,6 +94,7 @@ export class MessageRouter {
                 return;
             }
             this.options.sessions.touch(connection.botId);
+            this.appendEvent(connection.botId, SKILL_PROGRESS_EVENT, parsed.data);
             return;
         }
         if (envelope.kind === 'event' && envelope.type === CHUNK_SNAPSHOT_EVENT) {
@@ -103,6 +125,46 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onBlockUpdate?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === TASK_CLAIM) {
+            const parsed = botTaskClaimSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid task claim');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onTaskClaim?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === TASK_RENEW) {
+            const parsed = botTaskRenewSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid task renew');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onTaskRenew?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === TASK_COMPLETE) {
+            const parsed = botTaskCompleteSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid task complete');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onTaskComplete?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === TASK_FAIL) {
+            const parsed = botTaskFailSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid task fail');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onTaskFail?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request' && envelope.type === DECISION_REQUEST) {
@@ -141,6 +203,13 @@ export class MessageRouter {
             );
         }
         this.options.sessions.remove(connection.botId);
+    }
+
+    private appendEvent(botId: string, type: string, payload: unknown): void {
+        const [, logError] = this.options.events.append({ botId, type, payload });
+        if (logError) {
+            this.options.logger.warn({ error: this.describe(logError), type }, 'event log failed');
+        }
     }
 
     private describe(error: unknown): string {

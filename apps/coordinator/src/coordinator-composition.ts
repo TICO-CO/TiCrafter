@@ -5,6 +5,7 @@ import {
     type TicrafterConfig,
 } from '@ticrafter/core';
 import {
+    BlockChangelogWriter,
     EventLogWriter,
     SqlitePlannerPlanStore,
     SqliteSkillCheckpointStore,
@@ -48,7 +49,12 @@ import {
     SessionHandshake,
     SessionManager,
 } from './core/index.js';
-import { DecisionCommandAdapter, DecisionModelLoader, DecisionService } from './decision/index.js';
+import {
+    DecisionCommandAdapter,
+    DecisionModelLoader,
+    DecisionService,
+    DecisionTraceRecorder,
+} from './decision/index.js';
 import { EditGrantRepository, GrantService } from './grants/index.js';
 import {
     CoordinatorPlannerContextSource,
@@ -57,7 +63,7 @@ import {
     PlannerRuntime,
 } from './planner/index.js';
 import { SipTransactionalCommitter } from './sip/index.js';
-import { TaskBoard, TaskRepository } from './tasks/index.js';
+import { TaskBoard, TaskCommandHandler, TaskRepository } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
@@ -76,6 +82,7 @@ export class CoordinatorComposition {
         const sessions = new SessionManager();
         const registry = MessageSchemaRegistry.withDefaults();
         const events = new EventLogWriter(options.database);
+        const blockChanges = new BlockChangelogWriter(options.database);
         const worldModel = new CoordinatorWorldModel(options.database, options.logger);
         const transactions = new TransactionManager(options.database);
         const claimRepository = new ClaimRepository(options.database);
@@ -181,7 +188,18 @@ export class CoordinatorComposition {
             logger: options.logger,
             loader: new DecisionModelLoader(),
         });
-        const decisionAdapter = new DecisionCommandAdapter(decision, transport, options.logger);
+        const decisionTrace = new DecisionTraceRecorder(
+            events,
+            options.config.training.traceEnabled,
+            options.logger,
+        );
+        const decisionAdapter = new DecisionCommandAdapter(
+            decision,
+            transport,
+            options.logger,
+            decisionTrace,
+        );
+        const taskCommands = new TaskCommandHandler(tasks, transport, options.logger);
         const handshake = new SessionHandshake({
             epoch: options.epoch,
             botNames: options.config.botNames,
@@ -223,17 +241,40 @@ export class CoordinatorComposition {
                 plannerRuntime?.noteLandmark(payload.candidate.type);
             },
             onBlockUpdate: (payload) => {
+                const [before] = worldModel.blockAt(payload.block.position);
                 const [, ingestError] = worldModel.ingestBlockUpdate(payload);
                 if (ingestError) {
                     options.logger.warn(
                         { error: ingestError, chunk: payload.chunk },
                         'block update ingestion failed',
                     );
+                    return;
+                }
+                const [, changelogError] = blockChanges.append({
+                    botId: payload.botId,
+                    position: payload.block.position,
+                    before: before ?? undefined,
+                    after: payload.block,
+                    createdAt: payload.observedAt,
+                });
+                if (changelogError) {
+                    options.logger.warn(
+                        { error: changelogError.type },
+                        'block changelog write failed',
+                    );
                 }
             },
             onDecisionRequest: (connection, payload, envelope) => {
                 void decisionAdapter.handle(connection, payload, envelope);
             },
+            onTaskClaim: (connection, payload, envelope) =>
+                taskCommands.handleClaim(connection, payload, envelope),
+            onTaskRenew: (connection, payload, envelope) =>
+                taskCommands.handleRenew(connection, payload, envelope),
+            onTaskComplete: (connection, payload, envelope) =>
+                taskCommands.handleComplete(connection, payload, envelope),
+            onTaskFail: (connection, payload, envelope) =>
+                taskCommands.handleFail(connection, payload, envelope),
             onSessionClosed: (botId) => {
                 const [, presenceError] = botPresence.markOffline(botId);
                 if (presenceError) {

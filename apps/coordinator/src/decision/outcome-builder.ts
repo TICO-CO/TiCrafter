@@ -49,6 +49,7 @@ export class DecisionOutcomeBuilder {
                     ...(fallback ? { reason: 'confidence below gate' } : {}),
                 },
                 fallback: fallback ? { source: 'fallback', reason: 'confidence below gate' } : null,
+                parsed,
             },
             null,
         ];

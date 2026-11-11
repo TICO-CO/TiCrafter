@@ -157,6 +157,28 @@ export class TaskRepository {
         return [Number(row.token), null];
     }
 
+    renew(
+        taskId: string,
+        botId: string,
+        leaseUntil: string,
+        leaseToken: number,
+        now: string,
+    ): Result<boolean, StorageFailure> {
+        const [changes, writeError] = attempt<number, unknown>(() => {
+            const result = this.database
+                .prepare(
+                    `UPDATE tasks SET lease_until = ?, updated_at = ?
+                     WHERE id = ? AND claimed_by = ? AND lease_token = ?
+                       AND status IN ('claimed', 'running')`,
+                )
+                .run(leaseUntil, now, taskId, botId, leaseToken);
+            return Number(result.changes);
+        });
+        if (writeError) return [null, StorageFailures.from('WRITE_FAILED', writeError)];
+        if (changes === null) return [null, StorageFailures.from('WRITE_FAILED', 'renew missing')];
+        return [changes > 0, null];
+    }
+
     claim(
         taskId: string,
         botId: string,

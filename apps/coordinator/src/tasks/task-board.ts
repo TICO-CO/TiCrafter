@@ -122,6 +122,43 @@ export class TaskBoard {
         );
     }
 
+    renew(
+        taskId: string,
+        botId: string,
+        fencingToken: number,
+        leaseTtlMilliseconds = 30_000,
+        now = new Date().toISOString(),
+    ): Result<boolean, TaskFailure> {
+        const leaseUntil = new Date(Date.parse(now) + leaseTtlMilliseconds).toISOString();
+        const [renewed, renewError] = this.repository.renew(
+            taskId,
+            botId,
+            leaseUntil,
+            fencingToken,
+            now,
+        );
+        if (renewError) return [null, { type: 'STORAGE', failure: renewError }];
+        return [renewed, null];
+    }
+
+    verifyLease(
+        taskId: string,
+        botId: string,
+        fencingToken: number,
+    ): Result<TaskRecord, TaskFailure> {
+        const [task, readError] = this.repository.get(taskId);
+        if (readError) return [null, { type: 'STORAGE', failure: readError }];
+        if (task === null) return [null, { type: 'TASK_NOT_FOUND', taskId }];
+        if (
+            task.claimedBy !== botId ||
+            task.leaseToken !== fencingToken ||
+            (task.status !== 'claimed' && task.status !== 'running')
+        ) {
+            return [null, { type: 'CLAIM_CONFLICT', taskId }];
+        }
+        return [task, null];
+    }
+
     start(
         taskId: string,
         actor: string,

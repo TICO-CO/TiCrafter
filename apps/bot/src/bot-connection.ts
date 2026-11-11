@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import type { GuardianReport } from '@ticrafter/brains';
+import { DeterministicPolicy, type GuardianReport, LayaClient } from '@ticrafter/brains';
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
@@ -41,6 +41,7 @@ import { SafetySnapshotSource } from './safety-snapshot.js';
 import { BotSkillContextSource } from './skill-context-source.js';
 import { SkillHost } from './skill-host.js';
 import { StateDigest } from './state-digest.js';
+import { TaskAutonomy, type TaskAutonomySnapshot } from './task-autonomy.js';
 import { BotTransportClient } from './transport/index.js';
 import { WorldCacheAdapter } from './world-cache.js';
 
@@ -69,6 +70,7 @@ export class BotConnection {
     private perception: PerceptionHost | null = null;
     private guardian: GuardianHook | null = null;
     private skills: SkillHost | null = null;
+    private taskAutonomy: TaskAutonomy | null = null;
     private unsubscribeInbound: (() => void) | null = null;
     private autonomyStarted = false;
     private lastReflexAt = 0;
@@ -163,6 +165,7 @@ export class BotConnection {
         const actionExecutor = new ActionExecutor(this.guardian, actionPort, this.options.logger);
         const progressSink: SkillProgressSink = {
             report: (event) => {
+                this.taskAutonomy?.observeProgress(event);
                 const [, sendError] = transport.sendEvent(SKILL_PROGRESS_EVENT, event);
                 return sendError ? [null, sendError.type] : [undefined, null];
             },
@@ -267,12 +270,56 @@ export class BotConnection {
                 this.options.logger.warn({ error: skillError }, 'skill host start failed');
             }
         }
+        if (this.skills !== null && this.transport !== null && this.bot !== null) {
+            const decisions = new LayaClient({
+                transport: this.transport,
+                timeoutMilliseconds: this.options.config.decision.timeoutMilliseconds,
+                minimumConfidence: this.options.config.decision.minConfidence,
+                policy: new DeterministicPolicy(),
+            });
+            const autonomy = new TaskAutonomy({
+                botId: this.options.botId,
+                transport: this.transport,
+                decisions,
+                skills: this.skills,
+                snapshot: { read: () => this.readTaskSnapshot() },
+                logger: this.options.logger,
+            });
+            this.taskAutonomy = autonomy;
+            autonomy.start();
+        }
     }
 
     private stopAutonomy(): void {
+        this.taskAutonomy?.stop();
+        this.taskAutonomy = null;
         this.guardian?.stop();
         this.skills?.stop();
         this.autonomyStarted = false;
+    }
+
+    private readTaskSnapshot(): TaskAutonomySnapshot {
+        const bot = this.bot;
+        if (bot === null) {
+            return {
+                health: 0,
+                food: 0,
+                position: { x: 0, y: 0, z: 0 },
+                inventory: [],
+                hazards: [],
+            };
+        }
+        const digest = StateDigest.collect(bot, this.skills?.activeSkillId ?? null);
+        return {
+            health: digest.health,
+            food: digest.food,
+            position: digest.position,
+            inventory: (bot.inventory?.items() ?? []).map((item) => ({
+                name: item.name,
+                count: item.count,
+            })),
+            hazards: digest.hazards ?? [],
+        };
     }
 
     private handleCommand(envelope: Envelope): void {
