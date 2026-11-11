@@ -1,0 +1,30 @@
+[
+    {
+        "id": "seed-collect-1",
+        "title": "Collect nearby dropped items",
+        "skillId": "collect",
+        "input": { "radius": 8 },
+        "priority": 1
+    },
+    {
+        "id": "seed-collect-2",
+        "title": "Collect nearby dropped items",
+        "skillId": "collect",
+        "input": { "radius": 8 },
+        "priority": 1
+    },
+    {
+        "id": "seed-collect-3",
+        "title": "Collect nearby dropped items",
+        "skillId": "collect",
+        "input": { "radius": 8 },
+        "priority": 1
+    },
+    {
+        "id": "seed-collect-4",
+        "title": "Collect nearby dropped items",
+        "skillId": "collect",
+        "input": { "radius": 8 },
+        "priority": 1
+    }
+]

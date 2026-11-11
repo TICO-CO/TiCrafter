@@ -8,6 +8,7 @@ export class FetchPlannerHttpPort implements PlannerHttpPort {
             fetch(request.url, {
                 method: 'POST',
                 headers: {
+                    ...request.headers,
                     authorization: `Bearer ${request.apiKey}`,
                     'content-type': 'application/json',
                 },

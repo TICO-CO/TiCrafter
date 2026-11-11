@@ -100,6 +100,7 @@ export interface PlannerChatMessage {
 export interface PlannerHttpRequest {
     url: string;
     apiKey: string;
+    headers: Readonly<Record<string, string>>;
     bodyJson: string;
     signal: AbortSignal;
 }

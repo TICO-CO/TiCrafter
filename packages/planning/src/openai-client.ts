@@ -29,6 +29,7 @@ export interface OpenAiPlannerClientOptions {
     baseUrl: string;
     apiKey: string;
     model: string;
+    sessionId: string;
     http: PlannerHttpPort;
     timeoutMilliseconds: number;
     now?: () => number;
@@ -98,6 +99,10 @@ export class OpenAiPlannerClient {
         const [response, transportError] = await this.options.http.post({
             url: `${baseUrl.replace(/\/+$/, '')}/chat/completions`,
             apiKey: this.options.apiKey,
+            headers: {
+                'x-opencode-session': this.options.sessionId,
+                'user-agent': 'ticrafter/0.1',
+            },
             bodyJson: JSON.stringify({
                 model: this.options.model,
                 messages: request.messages,

@@ -126,6 +126,15 @@ export class BotConnection {
             return [null, `mineflayer failed: ${this.describe(botError)}`];
         }
         this.bot = bot;
+        const [injected, injectionError] = await this.waitForInjection(bot);
+        if (injectionError) {
+            this.close();
+            return [null, injectionError];
+        }
+        if (injected === null) {
+            this.close();
+            return [null, 'mineflayer injection returned null'];
+        }
         const world = new WorldCacheAdapter(bot);
         this.world = world;
         const actionPort = new MineflayerActionExecutor(
@@ -730,6 +739,13 @@ export class BotConnection {
         if (sendError) {
             this.options.logger.debug({ error: this.describe(sendError) }, 'heartbeat send failed');
         }
+    }
+
+    private waitForInjection(bot: Bot): Promise<Result<void, string>> {
+        return new Promise((resolve) => {
+            bot.once('inject_allowed', () => resolve([undefined, null]));
+            bot.once('end', () => resolve([null, 'mineflayer ended before injection']));
+        });
     }
 
     private waitForEnd(): Promise<void> {

@@ -31,6 +31,7 @@ function handler(content: string): PlannerArbitrationHandler {
             baseUrl: 'https://planner.invalid',
             apiKey: 'secret',
             model: 'test-model',
+            sessionId: 'ses_test',
             http: new FakeHttpPort(content),
             timeoutMilliseconds: 1_000,
         }),

@@ -112,6 +112,7 @@ function service(
         baseUrl: 'https://planner.invalid',
         apiKey: 'secret',
         model: 'test-model',
+        sessionId: 'ses_test',
         http,
         timeoutMilliseconds: 1_000,
     });

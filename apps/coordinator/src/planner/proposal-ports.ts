@@ -47,9 +47,15 @@ export class CoordinatorTaskProposalPort implements PlannerTaskProposalPort {
         if (existingError) return [null, existingError.type];
         if (existing === null) return [null, 'task list missing'];
         const existingIds = new Set(existing.map((task) => task.id));
-        const proposedIds = new Set(inputs.map((task) => task.id));
+        const proposedIds = new Set<string>();
         for (const task of inputs) {
-            if (existingIds.has(task.id)) return [null, `task ${task.id} already exists`];
+            if (proposedIds.has(task.id)) {
+                return [null, `task ${task.id} appears more than once`];
+            }
+            proposedIds.add(task.id);
+        }
+        for (const task of inputs) {
+            if (existingIds.has(task.id)) continue;
             if (
                 task.parentId !== null &&
                 !proposedIds.has(task.parentId) &&

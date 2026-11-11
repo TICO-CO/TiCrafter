@@ -1,9 +1,24 @@
-import type { LoggerPort } from '@ticrafter/core';
-import type { PlannerService, PlannerTrigger, PlannerTriggerEvaluator } from '@ticrafter/planning';
+import type { LoggerPort, Result } from '@ticrafter/core';
+import type {
+    PlannerCycleResult,
+    PlannerFailure,
+    PlannerTrigger,
+    PlannerTriggerEvaluator,
+} from '@ticrafter/planning';
+
+import type { PlannerCycleApplierPort } from './cycle-applier.js';
+
+export interface PlannerCycleSource {
+    plan(
+        trigger: PlannerTrigger,
+        signal?: AbortSignal,
+    ): Promise<Result<PlannerCycleResult, PlannerFailure>>;
+}
 
 export interface PlannerRuntimeOptions {
-    service: PlannerService;
+    service: PlannerCycleSource;
     triggers: PlannerTriggerEvaluator;
+    applier: PlannerCycleApplierPort;
     logger: LoggerPort;
     now?: () => number;
 }
@@ -65,18 +80,7 @@ export class PlannerRuntime {
                         return;
                     }
                     if (cycle === null) return;
-                    this.options.logger.info(
-                        {
-                            source: cycle.source,
-                            planId: cycle.plan?.planId ?? null,
-                            applicable: cycle.applicable,
-                            attempts: cycle.attempts,
-                            sipMutations: cycle.sipProposal?.mutations.length ?? 0,
-                            tasks: cycle.taskProposals.length,
-                            failure: cycle.failure?.type ?? null,
-                        },
-                        'planner cycle complete',
-                    );
+                    this.apply(cycle, trigger);
                 },
                 (error: unknown) => {
                     this.options.logger.error(
@@ -88,6 +92,30 @@ export class PlannerRuntime {
             .finally(() => {
                 this.running = false;
             });
+    }
+
+    private apply(cycle: PlannerCycleResult, trigger: PlannerTrigger): void {
+        const [report, applyError] = this.options.applier.apply(cycle);
+        if (applyError) {
+            this.options.logger.warn(
+                { error: applyError, trigger: trigger.kind, planId: cycle.plan?.planId ?? null },
+                'planner cycle apply failed',
+            );
+            return;
+        }
+        this.options.logger.info(
+            {
+                source: cycle.source,
+                planId: cycle.plan?.planId ?? null,
+                applicable: cycle.applicable,
+                attempts: cycle.attempts,
+                sipMutations: cycle.sipProposal?.mutations.length ?? 0,
+                tasks: cycle.taskProposals.length,
+                failure: cycle.failure?.type ?? null,
+                applied: report,
+            },
+            'planner cycle applied',
+        );
     }
 
     private now(): number {

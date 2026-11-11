@@ -46,6 +46,7 @@ function repairLoop(contents: readonly string[], maxRepairAttempts = 2): Planner
             baseUrl: 'https://planner.invalid',
             apiKey: 'secret',
             model: 'test-model',
+            sessionId: 'ses_test',
             http: new SequenceHttpPort(contents),
             timeoutMilliseconds: 1_000,
         }),

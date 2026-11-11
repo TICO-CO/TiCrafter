@@ -76,6 +76,7 @@ import {
     CoordinatorPlannerContextSource,
     CoordinatorSipProposalPort,
     CoordinatorTaskProposalPort,
+    PlannerCycleApplier,
     PlannerRuntime,
 } from './planner/index.js';
 import { SipReconciliationEngine, SipTransactionalCommitter } from './sip/index.js';
@@ -184,6 +185,7 @@ export class CoordinatorComposition {
                     logger: options.logger,
                     secrets: options.planner,
                     database: options.database,
+                    tasks,
                     taskRepository,
                     botStore,
                     worldModel,
@@ -537,6 +539,7 @@ export class CoordinatorComposition {
         logger: LoggerPort;
         secrets: PlannerSecrets;
         database: CoordinatorDatabase;
+        tasks: TaskBoard;
         taskRepository: TaskRepository;
         botStore: BotProfileStore;
         worldModel: CoordinatorWorldModel;
@@ -548,6 +551,7 @@ export class CoordinatorComposition {
             baseUrl: options.secrets.baseUrl,
             apiKey: options.secrets.apiKey,
             model: planner.model,
+            sessionId: `ses_${crypto.randomUUID()}`,
             http: new FetchPlannerHttpPort(),
             timeoutMilliseconds: planner.timeoutMilliseconds,
         });
@@ -602,6 +606,7 @@ export class CoordinatorComposition {
             triggers: new PlannerTriggerEvaluator({
                 intervalMilliseconds: planner.intervalMilliseconds,
             }),
+            applier: PlannerCycleApplier.forTaskBoard(options.sip, options.tasks),
             logger: options.logger,
         });
     }

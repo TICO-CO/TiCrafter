@@ -4,6 +4,8 @@ export * from './dead-letter-manager.js';
 export * from './precondition-evaluator.js';
 export * from './priority-scheduler.js';
 export * from './retry-manager.js';
+export * from './seed-task-applicator.js';
+export * from './seed-task-loader.js';
 export * from './task-board.js';
 export * from './task-codec.js';
 export * from './task-command-handler.js';

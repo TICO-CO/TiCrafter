@@ -17,6 +17,7 @@ import { CoordinatorComposition } from './coordinator-composition.js';
 import { Coordinator, type CoordinatorDatabase, EpochStore } from './core/index.js';
 import { NodeLoggerFactory } from './logger.js';
 import { NodeSystemInfo } from './system-info.js';
+import { SeedTaskApplicator, SeedTaskLoader } from './tasks/index.js';
 
 export class CoordinatorMain {
     private logger: LoggerPort | null = null;
@@ -30,6 +31,9 @@ export class CoordinatorMain {
         }).load();
         if (configError) return this.fail(ConfigErrorFormatter.format(configError));
         if (config === null) return this.fail('configuration returned null');
+        const [seedTasks, seedTasksError] = SeedTaskLoader.load(configDirectory);
+        if (seedTasksError) return this.fail(seedTasksError);
+        if (seedTasks === null) return this.fail('seed tasks returned null');
 
         const logger = new NodeLoggerFactory().create('coordinator', config.logging.level);
         this.logger = logger;
@@ -95,6 +99,19 @@ export class CoordinatorMain {
             currentWorkingDirectory: currentWorkingDirectory,
             planner: planner,
         });
+        const [seedReport, seedApplyError] = new SeedTaskApplicator(
+            coordinator.tasks,
+            logger,
+        ).apply(seedTasks);
+        if (seedApplyError) {
+            await coordinator.close();
+            return this.fail(seedApplyError);
+        }
+        if (seedReport === null) {
+            await coordinator.close();
+            return this.fail('seed task apply returned null');
+        }
+        logger.info(seedReport, 'seed tasks applied');
         const [started, startError] = await coordinator.start();
         if (startError) {
             await coordinator.close();

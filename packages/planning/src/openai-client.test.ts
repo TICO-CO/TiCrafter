@@ -5,12 +5,15 @@ import { OpenAiPlannerClient } from './openai-client.js';
 import type { PlannerHttpPort, PlannerHttpRequest, PlannerHttpResponse } from './types.js';
 
 class FakeHttpPort implements PlannerHttpPort {
+    lastRequest: PlannerHttpRequest | null = null;
+
     constructor(
         private readonly response: Result<PlannerHttpResponse, string>,
         private readonly delayMilliseconds = 0,
     ) {}
 
-    async post(_request: PlannerHttpRequest): Promise<Result<PlannerHttpResponse, string>> {
+    async post(request: PlannerHttpRequest): Promise<Result<PlannerHttpResponse, string>> {
+        this.lastRequest = request;
         if (this.delayMilliseconds > 0) {
             await new Promise((resolve) => setTimeout(resolve, this.delayMilliseconds));
         }
@@ -23,6 +26,7 @@ function client(http: PlannerHttpPort, baseUrl = 'https://planner.invalid'): Ope
         baseUrl,
         apiKey: 'secret',
         model: 'test-model',
+        sessionId: 'ses_test',
         http,
         timeoutMilliseconds: 100,
     });
@@ -48,6 +52,9 @@ describe('OpenAiPlannerClient', () => {
         expect(completionError).toBeNull();
         expect(completion?.content).toBe('{"ok":true}');
         expect(completion?.usage.totalTokens).toBe(15);
+        expect(http.lastRequest?.url).toBe('https://planner.invalid/chat/completions');
+        expect(http.lastRequest?.headers['x-opencode-session']).toBe('ses_test');
+        expect(http.lastRequest?.headers['user-agent']).toBe('ticrafter/0.1');
     });
 
     it('rejects a missing endpoint', async () => {
@@ -92,6 +99,7 @@ describe('OpenAiPlannerClient', () => {
             baseUrl: 'https://planner.invalid',
             apiKey: 'secret',
             model: 'test-model',
+            sessionId: 'ses_test',
             http,
             timeoutMilliseconds: 1,
         });

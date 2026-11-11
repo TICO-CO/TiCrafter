@@ -27,7 +27,7 @@
     },
     "decision": {
         "enabled": true,
-        "timeoutMilliseconds": 1200,
+        "timeoutMilliseconds": 5000,
         "minConfidence": 0.6,
         "maxQueueDepth": 64,
         "fleetRatePerSecond": 4,
@@ -46,7 +46,7 @@
         "enabled": false,
         "baseUrl": "",
         "apiKey": "",
-        "model": "Muse Spark 1.3 Contributor",
+        "model": "muse-spark-1.3-contributor",
         "intervalMilliseconds": 300000,
         "callsPerMinute": 6,
         "maxTokensPerCall": 16000,

@@ -57,6 +57,23 @@ On bot reconnect, the session response carries the prior task, lease token,
 checkpoint, and SIP revision. The bot restores the task and resumes the skill
 checkpoint before claiming new work.
 
+## Startup task seeds
+
+`config/seed-tasks.json` is optional. When present, the coordinator creates its
+tasks before startup. Existing task IDs are skipped, so restarts do not duplicate
+work. The default file seeds four `collect` tasks with an eight-block radius.
+
+## Planner application
+
+When `planner.enabled` is true, each successful planner cycle commits its SIP
+proposal first and then creates its task proposals through the task board.
+Existing task IDs are treated as no-ops. SIP commit failures leave the cycle
+unapplied for the next planner trigger.
+
+The planner client sends `x-opencode-session` and a TiCrafter user agent. For
+OpenCode Go, set `PLANNER_BASE_URL=https://opencode.ai/inference/go/openai/v1`
+and `PLANNER_MODEL=muse-spark-1.3-contributor`.
+
 ## SIP reconciliation
 
 Reconciliation compares observed landmarks with SIP structure work packages.
