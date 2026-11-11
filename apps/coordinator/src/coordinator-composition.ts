@@ -1,11 +1,15 @@
 import {
+    attempt,
     type LoggerPort,
     MessageSchemaRegistry,
     type PlannerSecrets,
+    type Result,
     type TicrafterConfig,
 } from '@ticrafter/core';
 import {
+    BlockChangelogReader,
     BlockChangelogWriter,
+    EpisodeStore,
     EventLogWriter,
     SqlitePlannerPlanStore,
     SqliteSkillCheckpointStore,
@@ -43,7 +47,6 @@ import {
     Coordinator,
     type CoordinatorDatabase,
     MessageRouter,
-    OpsServer,
     RestartRecovery,
     Scheduler,
     SessionHandshake,
@@ -56,6 +59,17 @@ import {
     DecisionTraceRecorder,
 } from './decision/index.js';
 import { EditGrantRepository, GrantService } from './grants/index.js';
+import {
+    OpsApi,
+    OpsAuditViewer,
+    OpsFleetEmergencyStop,
+    OpsHealthReadiness,
+    OpsMetricsRegistry,
+    OpsPauseResumeController,
+    OpsSipDump,
+    OpsStatusAggregator,
+    OpsStructuredLogger,
+} from './ops/index.js';
 import {
     CoordinatorPlannerContextSource,
     CoordinatorSipProposalPort,
@@ -285,17 +299,68 @@ export class CoordinatorComposition {
                 }
             },
         });
-        const ops = new OpsServer({
+        const opsMetrics = new OpsMetricsRegistry();
+        const opsLogger = new OpsStructuredLogger(options.logger);
+        const status = new OpsStatusAggregator({
+            bots: { list: () => botPresence.list() },
+            tasks: taskRepository,
+            claims: claimRepository,
+            grants: grantRepository,
+            sip: { loadSnapshot: () => sip.loadSnapshot() },
+            decisions: { status: () => decision.status() },
+            metrics: opsMetrics,
+        });
+        const opsHealth = new OpsHealthReadiness({
+            status,
+            decisions: { status: () => decision.status() },
+            database: {
+                ping: (): Result<void, string> => {
+                    const [, pingError] = attempt(() => options.database.prepare('SELECT 1').get());
+                    return pingError
+                        ? [null, pingError instanceof Error ? pingError.message : String(pingError)]
+                        : [undefined, null];
+                },
+            },
+            transport: { isListening: () => transport.isListening() },
+            uptimeSeconds: () => Math.round(process.uptime()),
+            metrics: opsMetrics,
+        });
+        const ops = new OpsApi({
             host: options.config.ops.host,
             port: options.config.ops.port,
-            logger: options.logger,
-            status: () => ({
-                ok: true,
-                epoch: options.epoch,
-                uptimeSeconds: Math.round(process.uptime()),
-                sessions: sessions.count(),
-                schemaVersion: options.schemaVersion,
+            logger: opsLogger,
+            metrics: opsMetrics,
+            status,
+            health: opsHealth,
+            sip: new OpsSipDump({ loadSnapshot: () => sip.loadSnapshot() }, opsMetrics),
+            audit: new OpsAuditViewer(
+                {
+                    events,
+                    blocks: new BlockChangelogReader(options.database),
+                    episodes: new EpisodeStore(options.database),
+                },
+                opsMetrics,
+            ),
+            pauseResume: new OpsPauseResumeController({
+                transport,
+                presence: botPresence,
+                audit: events,
+                logger: opsLogger,
+                metrics: opsMetrics,
             }),
+            emergencyStop: new OpsFleetEmergencyStop({
+                transport,
+                presence: botPresence,
+                audit: events,
+                logger: opsLogger,
+                metrics: opsMetrics,
+            }),
+            context: {
+                epoch: options.epoch,
+                schemaVersion: options.schemaVersion,
+                sessions: () => sessions.count(),
+                uptimeSeconds: () => Math.round(process.uptime()),
+            },
         });
         let lastDecayAt = Date.now();
         const scheduler = new Scheduler({

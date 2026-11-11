@@ -13,7 +13,14 @@ import {
 import { FlowController } from './flow-control.js';
 import { MessageSchemaRegistry, ProtocolEnvelope } from './messages.js';
 import { RequestCorrelator } from './request-correlator.js';
-import { BOT_SAFETY_RESUME, BOT_SKILL_CANCEL, BOT_SKILL_START } from './schemas.js';
+import {
+    BOT_AUTONOMY_PAUSE,
+    BOT_AUTONOMY_RESUME,
+    BOT_SAFETY_RESUME,
+    BOT_SAFETY_STOP,
+    BOT_SKILL_CANCEL,
+    BOT_SKILL_START,
+} from './schemas.js';
 
 describe('transport', () => {
     const registry = MessageSchemaRegistry.withDefaults();
@@ -256,5 +263,17 @@ describe('transport', () => {
         const remoteCursor = { ...DeltaSync.initialCursor(), sipRevision: 1 };
         expect(DeltaSync.shouldResync(localCursor, remoteCursor)).toBe(true);
         expect(DeltaSync.shouldResync(localCursor, DeltaSync.initialCursor())).toBe(false);
+    });
+
+    it('round-trips ops control messages', () => {
+        const envelopes = [
+            ProtocolEnvelope.create('request', BOT_AUTONOMY_PAUSE, { reason: 'operator pause' }),
+            ProtocolEnvelope.create('request', BOT_AUTONOMY_RESUME, { reason: 'operator resume' }),
+            ProtocolEnvelope.create('request', BOT_SAFETY_STOP, { reason: 'operator stop' }),
+        ];
+
+        envelopes.forEach((envelope) => {
+            expect(codec.encode(envelope)[1]).toBeNull();
+        });
     });
 });

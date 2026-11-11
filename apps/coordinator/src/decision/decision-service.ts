@@ -31,6 +31,19 @@ export interface DecisionServiceOptions {
     now?: () => number;
 }
 
+export interface DecisionServiceStatus {
+    enabled: boolean;
+    provider: string;
+    modelLoaded: boolean;
+    failure: string | null;
+    latency: {
+        samples: number;
+        p50: number;
+        p95: number;
+        fallbackRate: number;
+    };
+}
+
 export class DecisionService {
     private readonly queue: DecisionQueue;
     private readonly rateLimiter: DecisionRateLimiter;
@@ -113,6 +126,22 @@ export class DecisionService {
 
     get latency(): DecisionLatencyMetrics {
         return this.metrics;
+    }
+
+    status(): DecisionServiceStatus {
+        const latency = this.metrics.snapshot();
+        return {
+            enabled: this.options.config.decision.enabled,
+            provider: this.models.provider,
+            modelLoaded: this.models.loadedModel !== null,
+            failure: this.models.loadFailure,
+            latency: {
+                samples: latency.samples,
+                p50: latency.p50,
+                p95: latency.p95,
+                fallbackRate: latency.fallbackRate,
+            },
+        };
     }
 
     private async drain(): Promise<void> {

@@ -11,6 +11,7 @@
         "./core": "./src/core/index.ts",
         "./decision": "./src/decision/index.ts",
         "./grants": "./src/grants/index.ts",
+        "./ops": "./src/ops/index.ts",
         "./sip": "./src/sip/index.ts",
         "./tasks": "./src/tasks/index.ts",
         "./testing": "./src/testing/index.ts"

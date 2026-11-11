@@ -9,13 +9,13 @@ import {
 import type { ClaimService } from '../claims/index.js';
 import type { DecisionService } from '../decision/index.js';
 import type { GrantService } from '../grants/index.js';
+import type { OpsApi, OpsFailure } from '../ops/index.js';
 import type { SipTransactionalCommitter } from '../sip/index.js';
 import type { TaskBoard } from '../tasks/index.js';
 import type { TransportServer } from '../transport/index.js';
 import type { BotProcessSupervisor } from './bot-process-supervisor.js';
 import type { CoordinatorDatabase } from './epoch.js';
 import type { MessageRouter } from './message-router.js';
-import type { OpsServer } from './ops-server.js';
 import type { RestartRecovery } from './recovery.js';
 import type { Scheduler } from './scheduler.js';
 
@@ -27,7 +27,7 @@ export interface CoordinatorOptions {
     schemaVersion: number;
     transport: TransportServer;
     messageRouter: MessageRouter;
-    ops: OpsServer;
+    ops: OpsApi;
     scheduler: Scheduler;
     recovery: RestartRecovery;
     supervisor: BotProcessSupervisor | null;
@@ -47,7 +47,7 @@ export class Coordinator {
         if (transportStarted === null) return [null, 'transport start returned null'];
 
         const [opsStarted, opsError] = await this.options.ops.start();
-        if (opsError) return [null, opsError.message];
+        if (opsError) return [null, this.opsFailureMessage(opsError)];
         if (opsStarted === null) return [null, 'ops server start returned null'];
 
         this.options.scheduler.start();
@@ -126,6 +126,20 @@ export class Coordinator {
 
     private failureMessage(failure: TransportFailure): string {
         return 'message' in failure ? failure.message : failure.type;
+    }
+
+    private opsFailureMessage(failure: OpsFailure): string {
+        switch (failure.type) {
+            case 'STORAGE':
+                return failure.failure.message;
+            case 'BOT_NOT_CONNECTED':
+                return `bot is not connected: ${failure.botId}`;
+            case 'LISTEN_FAILED':
+            case 'COMMAND_FAILED':
+            case 'INVALID_REQUEST':
+            case 'UNAVAILABLE':
+                return failure.message;
+        }
     }
 
     private describe(error: unknown): string {

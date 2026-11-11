@@ -50,6 +50,7 @@ export interface BotProfile {
 export interface BotProfileStorePort {
     get(botId: string): Result<BotProfile | null, StorageFailure>;
     getByName(username: string): Result<BotProfile | null, StorageFailure>;
+    list(): Result<readonly BotProfile[], StorageFailure>;
     save(profile: BotProfile): Result<void, StorageFailure>;
 }
 

@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 494  
+**Relations:** 496  
 **State owners:** 21  
 **Allowed cycles:** 0
 
@@ -36,7 +36,7 @@
 | `reads` | 59 |
 | `subscribes` | 5 |
 | `validates` | 2 |
-| `writes` | 36 |
+| `writes` | 38 |
 
 ## State ownership
 
@@ -59,7 +59,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `chunks` | `world.chunk-version-store` | `world.observation-ingestor`, `world.merge-conflict-resolver` | `world.occupancy-grid` |
 | `landmarks` | `world.landmark-registry` | `world.detector-result-integrator`, `world.confidence-decay` | `world.spatial-query-engine`, `world.world-reconciler` |
 | `world.containerMemory` | `world.container-memory` | `building.container-refill-adapter` | `skills.deposit`, `skills.withdraw`, `building.material-preflight` |
-| `bot_events` | `memory.event-log-writer` | `memory.event-log-writer`, `safety.incident-journal` | `ops.audit-viewer`, `eval.replay-engine`, `training.trace-exporter` |
+| `bot_events` | `memory.event-log-writer` | `memory.event-log-writer`, `safety.incident-journal`, `ops.pause-resume-controller`, `ops.fleet-emergency-stop` | `ops.audit-viewer`, `eval.replay-engine`, `training.trace-exporter` |
 | `block_changelog` | `memory.block-changelog-writer` | `building.rollback-journal` | `ops.audit-viewer`, `eval.replay-engine` |
 | `metrics` | `ops.metrics-registry` | `decision.latency-metrics` | `ops.status-aggregator`, `ops.health-readiness`, `eval.metrics-reporter` |
 | `skill_checkpoints` | `skill-runtime.checkpoint-manager` | `skill-runtime.checkpoint-manager` | `bots.resume-orchestrator`, `skill-runtime.restore-validator` |
@@ -167,7 +167,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Ops and Observability` | `Bot Registry and Profiles` | 2 | depends_on×2 |
 | `Ops and Observability` | `Claims and Leases` | 1 | reads×1 |
 | `Ops and Observability` | `Laya Decision Service` | 1 | depends_on×1 |
-| `Ops and Observability` | `Memory and Persistence` | 4 | reads×3, depends_on×1 |
+| `Ops and Observability` | `Memory and Persistence` | 6 | reads×3, depends_on×1, writes×2 |
 | `Ops and Observability` | `Autonomy and Safety` | 1 | controls×1 |
 | `Ops and Observability` | `Shared Infrastructure Plan` | 2 | depends_on×1, reads×1 |
 | `Ops and Observability` | `Task Board` | 1 | reads×1 |
@@ -725,6 +725,8 @@ None.
 | `rel.0232` | `ops.status-aggregator` | `reads` | `sip.revision-manager` | `in-process` | sync | hard | SIP revision | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Status is read-only. |
 | `rel.0233` | `ops.status-aggregator` | `reads` | `tasks.task-repository` | `in-process` | sync | hard | task status | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Status is read-only. |
 | `rel.0482` | `ops.audit-viewer` | `reads` | `memory.episode-store` | `in-process` | sync | hard | episode traces | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Audit Viewer reads Episode Store. |
+| `rel.0495` | `ops.pause-resume-controller` | `writes` | `memory.event-log-writer` | `in-process` | sync | soft | ops pause and resume audit events | Control still applies; drop the audit record and record telemetry loss through structured logging. | Every pause and resume is audited. |
+| `rel.0496` | `ops.fleet-emergency-stop` | `writes` | `memory.event-log-writer` | `in-process` | sync | soft | ops emergency stop audit event | Control still applies; drop the audit record and record telemetry loss through structured logging. | Every fleet emergency stop is audited. |
 
 ## Config and Profiles relations
 

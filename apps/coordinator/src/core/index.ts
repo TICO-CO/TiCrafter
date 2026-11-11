@@ -3,7 +3,6 @@ export * from './command-router.js';
 export * from './coordinator.js';
 export * from './epoch.js';
 export * from './message-router.js';
-export * from './ops-server.js';
 export * from './recovery.js';
 export * from './safety-command-sender.js';
 export * from './scheduler.js';

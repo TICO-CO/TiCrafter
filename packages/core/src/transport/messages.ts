@@ -17,13 +17,19 @@ import {
 import type { TransportFailure } from './failures.js';
 import {
     blockUpdateSchema,
+    BOT_AUTONOMY_PAUSE,
+    BOT_AUTONOMY_RESUME,
     BOT_SAFETY_RESUME,
+    BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
     BOT_SKILL_RESUME,
     BOT_SKILL_START,
+    botAutonomyPauseSchema,
+    botAutonomyResumeSchema,
     botEventSchema,
     botHeartbeatSchema,
     botSafetyResumeSchema,
+    botSafetyStopSchema,
     botSkillCancelSchema,
     botSkillResumeSchema,
     botSkillStartSchema,
@@ -109,6 +115,9 @@ export class MessageSchemaRegistry {
             .register(BOT_SKILL_CANCEL, botSkillCancelSchema)
             .register(BOT_SKILL_RESUME, botSkillResumeSchema)
             .register(BOT_SAFETY_RESUME, botSafetyResumeSchema)
+            .register(BOT_SAFETY_STOP, botSafetyStopSchema)
+            .register(BOT_AUTONOMY_PAUSE, botAutonomyPauseSchema)
+            .register(BOT_AUTONOMY_RESUME, botAutonomyResumeSchema)
             .register(DECISION_REQUEST, decisionRequestSchema)
             .register(DECISION_RESPONSE, decisionResponseSchema)
             .register(TASK_CLAIM, botTaskClaimSchema)

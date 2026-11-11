@@ -81,6 +81,11 @@ export class GuardianHook {
         this.loop.stop();
     }
 
+    triggerEmergencyStop(reason: string): void {
+        this.emergencyStop.trigger(reason);
+        this.options.logger.warn({ reason }, 'emergency stop triggered');
+    }
+
     resumeSafety(): void {
         this.emergencyStop.resume();
         this.recovery.reset();

@@ -4,11 +4,17 @@ import { DeterministicPolicy, type GuardianReport, LayaClient } from '@ticrafter
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
+    BOT_AUTONOMY_PAUSE,
+    BOT_AUTONOMY_RESUME,
     BOT_SAFETY_RESUME,
+    BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
     BOT_SKILL_RESUME,
     BOT_SKILL_START,
+    botAutonomyPauseSchema,
+    botAutonomyResumeSchema,
     botSafetyResumeSchema,
+    botSafetyStopSchema,
     botSkillCancelSchema,
     botSkillResumeSchema,
     botSkillStartSchema,
@@ -73,6 +79,7 @@ export class BotConnection {
     private taskAutonomy: TaskAutonomy | null = null;
     private unsubscribeInbound: (() => void) | null = null;
     private autonomyStarted = false;
+    private autonomyPausedReason: string | null = null;
     private lastReflexAt = 0;
 
     constructor(private readonly options: BotConnectionOptions) {}
@@ -287,6 +294,7 @@ export class BotConnection {
             });
             this.taskAutonomy = autonomy;
             autonomy.start();
+            if (this.autonomyPausedReason !== null) autonomy.pause(this.autonomyPausedReason);
         }
     }
 
@@ -338,6 +346,18 @@ export class BotConnection {
         }
         if (envelope.type === BOT_SAFETY_RESUME) {
             this.handleSafetyResume(envelope.payload);
+            return;
+        }
+        if (envelope.type === BOT_SAFETY_STOP) {
+            this.handleSafetyStop(envelope.payload);
+            return;
+        }
+        if (envelope.type === BOT_AUTONOMY_PAUSE) {
+            this.handleAutonomyPause(envelope.payload);
+            return;
+        }
+        if (envelope.type === BOT_AUTONOMY_RESUME) {
+            this.handleAutonomyResume(envelope.payload);
         }
     }
 
@@ -460,7 +480,65 @@ export class BotConnection {
             return;
         }
         this.guardian.resumeSafety();
+        this.autonomyPausedReason = null;
+        this.taskAutonomy?.resume();
         this.options.logger.info({ reason: parsed.data.reason }, 'safety resumed');
+    }
+
+    private handleSafetyStop(payload: unknown): void {
+        const parsed = botSafetyStopSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid safety stop command',
+            );
+            return;
+        }
+        this.autonomyPausedReason = parsed.data.reason;
+        this.guardian?.triggerEmergencyStop(parsed.data.reason);
+        this.taskAutonomy?.pause(parsed.data.reason);
+        if (this.skills !== null) {
+            const [, stopError] = this.skills.preempt(parsed.data.reason);
+            if (stopError) {
+                this.options.logger.warn({ error: stopError }, 'emergency skill preempt failed');
+            }
+        }
+        this.options.logger.warn({ reason: parsed.data.reason }, 'safety stopped');
+    }
+
+    private handleAutonomyPause(payload: unknown): void {
+        const parsed = botAutonomyPauseSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid autonomy pause command',
+            );
+            return;
+        }
+        const reason = parsed.data.reason ?? 'operator pause';
+        this.autonomyPausedReason = reason;
+        this.taskAutonomy?.pause(reason);
+        if (this.skills !== null) {
+            const [, cancelError] = this.skills.cancel(reason);
+            if (cancelError) {
+                this.options.logger.warn({ error: cancelError }, 'autonomy pause cancel failed');
+            }
+        }
+        this.options.logger.info({ reason }, 'autonomy paused');
+    }
+
+    private handleAutonomyResume(payload: unknown): void {
+        const parsed = botAutonomyResumeSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid autonomy resume command',
+            );
+            return;
+        }
+        this.autonomyPausedReason = null;
+        this.taskAutonomy?.resume();
+        this.options.logger.info({ reason: parsed.data.reason }, 'autonomy resumed');
     }
 
     private handleCritical(report: GuardianReport): void {

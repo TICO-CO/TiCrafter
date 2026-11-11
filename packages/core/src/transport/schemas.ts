@@ -6,6 +6,9 @@ export const BOT_SKILL_START = 'bot.skill.start';
 export const BOT_SKILL_CANCEL = 'bot.skill.cancel';
 export const BOT_SKILL_RESUME = 'bot.skill.resume';
 export const BOT_SAFETY_RESUME = 'bot.safety.resume';
+export const BOT_SAFETY_STOP = 'bot.safety.stop';
+export const BOT_AUTONOMY_PAUSE = 'bot.autonomy.pause';
+export const BOT_AUTONOMY_RESUME = 'bot.autonomy.resume';
 
 export const envelopeSchema = zod.object({
     v: zod.literal(PROTOCOL_VERSION),
@@ -309,6 +312,18 @@ export const botSafetyResumeSchema = zod.object({
     reason: zod.string().min(1).optional(),
 });
 
+export const botSafetyStopSchema = zod.object({
+    reason: zod.string().min(1),
+});
+
+export const botAutonomyPauseSchema = zod.object({
+    reason: zod.string().min(1).optional(),
+});
+
+export const botAutonomyResumeSchema = zod.object({
+    reason: zod.string().min(1).optional(),
+});
+
 const decisionDigestSchema = zod.object({
     health: zod.number(),
     food: zod.number(),
@@ -364,6 +379,9 @@ export type BotSkillStartMessage = zod.infer<typeof botSkillStartSchema>;
 export type BotSkillCancelMessage = zod.infer<typeof botSkillCancelSchema>;
 export type BotSkillResumeMessage = zod.infer<typeof botSkillResumeSchema>;
 export type BotSafetyResumeMessage = zod.infer<typeof botSafetyResumeSchema>;
+export type BotSafetyStopMessage = zod.infer<typeof botSafetyStopSchema>;
+export type BotAutonomyPauseMessage = zod.infer<typeof botAutonomyPauseSchema>;
+export type BotAutonomyResumeMessage = zod.infer<typeof botAutonomyResumeSchema>;
 export type DecisionRequest = zod.infer<typeof decisionRequestSchema>;
 export type DecisionResponse = zod.infer<typeof decisionResponseSchema>;
 export type DecisionAffordance = zod.infer<typeof decisionAffordanceSchema>;

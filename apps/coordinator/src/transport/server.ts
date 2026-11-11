@@ -74,6 +74,10 @@ export class TransportServer {
         return [...this.clients.values()];
     }
 
+    isListening(): boolean {
+        return this.wss.address() !== null;
+    }
+
     async close(): Promise<Result<void, TransportFailure>> {
         const [, closeError] = await attemptAsync<void, TransportFailure>(
             () =>

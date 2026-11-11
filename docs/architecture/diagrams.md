@@ -98,7 +98,7 @@ n5 -->|reads×1, depends_on×1| n4
 n5 -->|depends_on×3, reads×1| n2
 n5 -->|depends_on×1| n16
 n5 -->|reads×2| n6
-n17 -->|reads×3, depends_on×1| n16
+n17 -->|reads×3, depends_on×1, writes×2| n16
 n17 -->|controls×1| n15
 n17 -->|depends_on×3| n1
 n17 -->|depends_on×1| n9
@@ -250,7 +250,7 @@ n5 -->|reads×1, depends_on×1| n4
 n5 -->|depends_on×3, reads×1| n2
 n5 -->|depends_on×1| n16
 n5 -->|reads×2| n6
-n17 -->|reads×3, depends_on×1| n16
+n17 -->|reads×3, depends_on×1, writes×2| n16
 n17 -->|controls×1| n15
 n17 -->|depends_on×3| n1
 n17 -->|depends_on×1| n9
@@ -1879,6 +1879,7 @@ n239 -->|depends_on| n52
 n239 -->|depends_on| n60
 n237 -->|depends_on| n56
 n237 -->|depends_on| n112
+n65 -->|writes| n193
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n111,n112,n113,n114,n115,n116,n117,n118,n119,n120,n60,n61,n62,n121 internal;
@@ -1931,6 +1932,8 @@ n189["Task State Machine (Task Board)"]
 n248["Trace Exporter (Laya Training)"]
 n205["Chunk Version Store (World Model and Landmarks)"]
 n209["Landmark Registry (World Model and Landmarks)"]
+n64["Pause and Resume Controller (Ops and Observability)"]
+n65["Fleet Emergency Stop (Ops and Observability)"]
 n192 -->|depends_on| n137
 n106 -->|writes| n242
 n106 -->|reads| n161
@@ -1993,10 +1996,12 @@ n247 -->|reads| n246
 n248 -->|reads| n246
 n127 -->|reads| n246
 n139 -->|depends_on| n246
+n64 -->|writes| n193
+n65 -->|writes| n193
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n243,n143,n137,n193,n242,n139,n244,n245,n246 internal;
-class n192,n106,n132,n194,n130,n29,n30,n68,n31,n247,n198,n127,n126,n77,n121,n164,n163,n165,n167,n162,n166,n161,n134,n160,n83,n135,n183,n189,n248,n205,n209 external;
+class n192,n106,n132,n194,n130,n29,n30,n68,n31,n247,n198,n127,n126,n77,n121,n164,n163,n165,n167,n162,n166,n161,n134,n160,n83,n135,n183,n189,n248,n205,n209,n64,n65 external;
 ```
 
 ### Ops and Observability
@@ -2070,6 +2075,8 @@ n62 -->|depends_on| n151
 n82 -->|observes| n124
 n82 -->|publishes| n151
 n127 -->|reads| n246
+n64 -->|writes| n193
+n65 -->|writes| n193
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n63,n122,n64,n65,n123,n124,n125,n126,n127 internal;

@@ -91,6 +91,7 @@ export class TaskAutonomy {
     private active: ActiveTask | null = null;
     private busy = false;
     private closed = false;
+    private paused = false;
     private readonly tickMilliseconds: number;
     private readonly timeoutMilliseconds: number;
     private readonly renewMilliseconds: number;
@@ -106,19 +107,33 @@ export class TaskAutonomy {
     start(): void {
         if (this.timer !== null) return;
         this.closed = false;
+        this.paused = false;
         this.timer = setInterval(() => this.tickSafely(), this.tickMilliseconds);
         this.tickSafely();
     }
 
     stop(): void {
         this.closed = true;
-        if (this.timer !== null) {
-            clearInterval(this.timer);
-            this.timer = null;
-        }
+        this.paused = false;
+        this.clearTimer();
+    }
+
+    pause(reason: string): void {
+        if (this.closed || this.paused) return;
+        this.paused = true;
+        this.clearTimer();
+        this.options.logger.info({ reason }, 'task autonomy paused');
+    }
+
+    resume(): void {
+        if (this.closed || !this.paused) return;
+        this.paused = false;
+        this.timer = setInterval(() => this.tickSafely(), this.tickMilliseconds);
+        this.tickSafely();
     }
 
     observeProgress(event: TaskProgressObservation): void {
+        if (this.closed || this.paused) return;
         const active = this.active;
         if (active === null) return;
         if (event.taskId !== active.id) return;
@@ -145,10 +160,16 @@ export class TaskAutonomy {
     }
 
     private async tick(): Promise<void> {
-        if (this.closed || this.busy) return;
+        if (this.closed || this.paused || this.busy) return;
         this.busy = true;
         await attemptAsync(() => this.runTick());
         this.busy = false;
+    }
+
+    private clearTimer(): void {
+        if (this.timer === null) return;
+        clearInterval(this.timer);
+        this.timer = null;
     }
 
     private async runTick(): Promise<void> {

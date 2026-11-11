@@ -123,6 +123,18 @@ describe('guardian hook', () => {
         expect(guardian.evaluate({ kind: 'wait', milliseconds: 1 }).allowed).toBe(true);
     });
 
+    it('triggers an operator emergency stop until resumed', () => {
+        const source = new FakeSource(snapshot(new FakeWorld()));
+        const guardian = new GuardianHook({ source, logger });
+
+        guardian.triggerEmergencyStop('operator stop');
+        expect(guardian.emergencyStopActive).toBe(true);
+        expect(guardian.evaluate({ kind: 'wait', milliseconds: 1 }).allowed).toBe(false);
+
+        guardian.resumeSafety();
+        expect(guardian.emergencyStopActive).toBe(false);
+    });
+
     it('logs a veto incident once per request and reason', () => {
         const incidents: SafetyIncident[] = [];
         const source = new FakeSource(snapshot(new FakeWorld()));

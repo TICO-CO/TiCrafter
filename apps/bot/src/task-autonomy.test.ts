@@ -142,4 +142,33 @@ describe('TaskAutonomy', () => {
         expect(skills.runs[0]?.input.taskId).toBe('task-1');
         expect(transport.requests.some((request) => request.type === TASK_COMPLETE)).toBe(true);
     });
+
+    it('stops claiming tasks while paused and resumes afterwards', async () => {
+        const transport = new FakeTransport();
+        const decisions = new FakeDecision();
+        const skills = new FakeSkills();
+        const autonomy = new TaskAutonomy({
+            botId: 'bot.one',
+            transport,
+            decisions,
+            skills,
+            snapshot: { read: () => snapshot },
+            logger,
+            tickMilliseconds: 10,
+        });
+
+        autonomy.start();
+        await wait(20);
+        autonomy.pause('operator pause');
+        await wait(20);
+        const pausedRequests = transport.requests.length;
+        await wait(20);
+        expect(transport.requests.length).toBe(pausedRequests);
+
+        autonomy.resume();
+        await wait(20);
+        autonomy.stop();
+
+        expect(transport.requests.length > pausedRequests).toBe(true);
+    });
 });

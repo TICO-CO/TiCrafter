@@ -29,6 +29,10 @@ export class DecisionModelManager {
         return this.model?.loadedProvider ?? this.selector.select();
     }
 
+    get loadFailure(): string | null {
+        return this.failure;
+    }
+
     async ensure(): Promise<Result<DecisionModelPort, DecisionFailure>> {
         if (this.model !== null) return [this.model, null];
         if (this.failure !== null) {

@@ -23,6 +23,12 @@ export class BotPresenceTracker {
         return profile.status === 'online';
     }
 
+    list(): Result<readonly BotProfile[], BotFailure> {
+        const [profiles, listError] = this.store.list();
+        if (listError) return [null, { type: 'STORAGE', failure: listError }];
+        return [profiles, null];
+    }
+
     private mark(
         botId: string,
         status: BotPresenceStatus,

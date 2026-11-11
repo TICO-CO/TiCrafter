@@ -5096,7 +5096,12 @@
         {
             "state": "bot_events",
             "owner": "memory.event-log-writer",
-            "writers": ["memory.event-log-writer", "safety.incident-journal"],
+            "writers": [
+                "memory.event-log-writer",
+                "safety.incident-journal",
+                "ops.pause-resume-controller",
+                "ops.fleet-emergency-stop"
+            ],
             "readers": ["ops.audit-viewer", "eval.replay-engine", "training.trace-exporter"]
         },
         {
@@ -11531,6 +11536,30 @@
             "criticality": "hard",
             "failureBehavior": "Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected.",
             "notes": "Block updates incrementally refresh the shared world model."
+        },
+        {
+            "id": "rel.0495",
+            "from": "ops.pause-resume-controller",
+            "to": "memory.event-log-writer",
+            "type": "writes",
+            "protocol": "in-process",
+            "payload": "ops pause and resume audit events",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Control still applies; drop the audit record and record telemetry loss through structured logging.",
+            "notes": "Every pause and resume is audited."
+        },
+        {
+            "id": "rel.0496",
+            "from": "ops.fleet-emergency-stop",
+            "to": "memory.event-log-writer",
+            "type": "writes",
+            "protocol": "in-process",
+            "payload": "ops emergency stop audit event",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Control still applies; drop the audit record and record telemetry loss through structured logging.",
+            "notes": "Every fleet emergency stop is audited."
         }
     ]
 }
