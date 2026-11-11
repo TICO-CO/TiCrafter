@@ -93,6 +93,7 @@ export class CoordinatorMain {
             epoch,
             schemaVersion,
             currentWorkingDirectory: currentWorkingDirectory,
+            planner: planner,
         });
         const [started, startError] = await coordinator.start();
         if (startError) {

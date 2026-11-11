@@ -56,6 +56,13 @@ export const configSchema = zod
             enabled: zod.boolean(),
             baseUrl: zod.string(),
             apiKey: zod.string(),
+            model: zod.string().min(1),
+            intervalMilliseconds: zod.number().int().positive(),
+            callsPerMinute: zod.number().int().positive(),
+            maxTokensPerCall: zod.number().int().positive(),
+            timeoutMilliseconds: zod.number().int().positive(),
+            maxRepairAttempts: zod.number().int().min(0).max(2),
+            maxContextCharacters: zod.number().int().positive(),
         }),
         logging: zod.object({
             level: zod.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']),

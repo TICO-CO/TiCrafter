@@ -17,6 +17,7 @@ const KNOWN_KEYS = new Set([
     'PLANNER_ENABLED',
     'PLANNER_BASE_URL',
     'PLANNER_API_KEY',
+    'PLANNER_MODEL',
     'LOG_LEVEL',
 ]);
 
@@ -98,11 +99,13 @@ export class EnvOverlay {
         const enabled = EnvOverlay.boolean(environment.PLANNER_ENABLED);
         const baseUrl = environment.PLANNER_BASE_URL;
         const apiKey = environment.PLANNER_API_KEY;
-        if (enabled === undefined && !baseUrl && !apiKey) return;
+        const model = environment.PLANNER_MODEL;
+        if (enabled === undefined && !baseUrl && !apiKey && !model) return;
         overrides.planner = {
             ...(enabled !== undefined ? { enabled } : {}),
             ...(baseUrl ? { baseUrl } : {}),
             ...(apiKey ? { apiKey } : {}),
+            ...(model ? { model } : {}),
         };
     }
 

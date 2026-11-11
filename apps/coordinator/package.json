@@ -8,6 +8,8 @@
         "@receptron/laya": "0.2.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/memory": "0.1.0",
+        "@ticrafter/planning": "0.1.0",
+        "@ticrafter/skills": "0.1.0",
         "@ticrafter/worldmodel": "0.1.0",
         "pino": "10.4.0",
         "ws": "8.22.2",

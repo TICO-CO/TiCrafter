@@ -157,6 +157,18 @@ export class CoordinatorWorldModel {
         return [findings, null];
     }
 
+    listLandmarks(): Result<readonly Landmark[], string> {
+        const [landmarks, listError] = this.landmarks.list();
+        if (listError) return [null, CoordinatorWorldModel.failure(listError)];
+        return [landmarks, null];
+    }
+
+    listContainers(): Result<readonly ContainerObservation[], string> {
+        const [containers, listError] = this.containers.list();
+        if (listError) return [null, CoordinatorWorldModel.failure(listError)];
+        return [containers, null];
+    }
+
     nearest(
         position: BlockPosition,
         type: LandmarkType | null = null,

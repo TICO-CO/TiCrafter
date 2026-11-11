@@ -57,6 +57,8 @@
         "@receptron/laya": "0.2.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/memory": "0.1.0",
+        "@ticrafter/planning": "0.1.0",
+        "@ticrafter/skills": "0.1.0",
         "@ticrafter/worldmodel": "0.1.0",
         "pino": "10.4.0",
         "ws": "8.22.2",
@@ -110,6 +112,15 @@
       "version": "0.1.0",
       "dependencies": {
         "@ticrafter/core": "0.1.0",
+      },
+    },
+    "packages/planning": {
+      "name": "@ticrafter/planning",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ticrafter/core": "0.1.0",
+        "@ticrafter/memory": "0.1.0",
+        "zod": "4.6.7",
       },
     },
     "packages/safety": {
@@ -283,6 +294,8 @@
     "@ticrafter/memory": ["@ticrafter/memory@workspace:packages/memory"],
 
     "@ticrafter/perception": ["@ticrafter/perception@workspace:packages/perception"],
+
+    "@ticrafter/planning": ["@ticrafter/planning@workspace:packages/planning"],
 
     "@ticrafter/safety": ["@ticrafter/safety@workspace:packages/safety"],
 

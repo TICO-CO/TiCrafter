@@ -45,7 +45,14 @@
     "planner": {
         "enabled": false,
         "baseUrl": "",
-        "apiKey": ""
+        "apiKey": "",
+        "model": "Muse Spark 1.3 Contributor",
+        "intervalMilliseconds": 300000,
+        "callsPerMinute": 6,
+        "maxTokensPerCall": 16000,
+        "timeoutMilliseconds": 60000,
+        "maxRepairAttempts": 2,
+        "maxContextCharacters": 48000
     },
     "logging": {
         "level": "info"

@@ -4,6 +4,7 @@ export * from './event-log-writer.js';
 export * from './failures.js';
 export * from './migration-runner.js';
 export * from './migrations.js';
+export * from './planner-plan-store.js';
 export * from './retention-pruner.js';
 export * from './schema-version-registry.js';
 export * from './skill-checkpoint-store.js';

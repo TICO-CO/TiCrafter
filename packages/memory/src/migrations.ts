@@ -98,4 +98,28 @@ export const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_edit_grants_structure_status ON edit_grants(structure_id, status);
     `,
     },
+    {
+        version: 8,
+        name: 'planner-cache',
+        sql: `
+      CREATE TABLE IF NOT EXISTS planner_plans (
+        id TEXT PRIMARY KEY,
+        revision INTEGER NOT NULL,
+        context_hash TEXT,
+        plan_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_planner_plans_created_at ON planner_plans(created_at);
+      CREATE TABLE IF NOT EXISTS planner_responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id TEXT,
+        status TEXT NOT NULL,
+        content TEXT NOT NULL,
+        error TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_planner_responses_created_at
+        ON planner_responses(created_at);
+    `,
+    },
 ];

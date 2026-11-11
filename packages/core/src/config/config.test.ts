@@ -18,6 +18,8 @@ describe('config', () => {
         expect(config.laya.executionProviders).toEqual(['cpu']);
         expect(config.decision.enabled).toBe(true);
         expect(config.decision.minConfidence).toBe(0.6);
+        expect(config.planner.model).toBe('Muse Spark 1.3 Contributor');
+        expect(config.planner.maxRepairAttempts).toBe(2);
     });
 
     it('loads the home-full profile from env', () => {
@@ -39,6 +41,7 @@ describe('config', () => {
             PLANNER_ENABLED: 'true',
             PLANNER_BASE_URL: 'https://planner.invalid',
             PLANNER_API_KEY: 'secret',
+            PLANNER_MODEL: 'planner-model',
         });
         expect(configError).toBeNull();
         if (config === null) return;
@@ -47,6 +50,7 @@ describe('config', () => {
         expect(config.lan.port).toBe(25570);
         expect(config.laya.executionProviders).toEqual(['cpu', 'webgpu']);
         expect(config.planner.enabled).toBe(true);
+        expect(config.planner.model).toBe('planner-model');
     });
 
     it('rejects a short or duplicate name pool', () => {
@@ -72,7 +76,7 @@ describe('config', () => {
         if (baseConfig === null) return;
         const [validated, validationError] = ConfigSchemaValidator.validate({
             ...baseConfig,
-            planner: { enabled: true, baseUrl: '', apiKey: '' },
+            planner: { ...baseConfig.planner, enabled: true, baseUrl: '', apiKey: '' },
         });
         expect(validated).toBeNull();
         expect(validationError).not.toBeNull();

@@ -1,5 +1,32 @@
-import { type LoggerPort, MessageSchemaRegistry, type TicrafterConfig } from '@ticrafter/core';
-import { EventLogWriter, SqliteSkillCheckpointStore, TransactionManager } from '@ticrafter/memory';
+import {
+    type LoggerPort,
+    MessageSchemaRegistry,
+    type PlannerSecrets,
+    type TicrafterConfig,
+} from '@ticrafter/core';
+import {
+    EventLogWriter,
+    SqlitePlannerPlanStore,
+    SqliteSkillCheckpointStore,
+    TransactionManager,
+} from '@ticrafter/memory';
+import {
+    FetchPlannerHttpPort,
+    OpenAiPlannerClient,
+    PlannerArbitrationHandler,
+    PlannerBudgetLimiter,
+    PlannerContextBuilder,
+    PlannerKeepLastGoodFallback,
+    PlannerPlanCache,
+    PlannerRepairLoop,
+    PlannerSchemaValidator,
+    PlannerSemanticValidator,
+    PlannerService,
+    PlannerSipMutationTranslator,
+    PlannerTaskDagTranslator,
+    PlannerTriggerEvaluator,
+} from '@ticrafter/planning';
+import { SkillCatalog } from '@ticrafter/skills';
 
 import {
     BotDeltaSyncPlanner,
@@ -23,6 +50,12 @@ import {
 } from './core/index.js';
 import { DecisionCommandAdapter, DecisionModelLoader, DecisionService } from './decision/index.js';
 import { EditGrantRepository, GrantService } from './grants/index.js';
+import {
+    CoordinatorPlannerContextSource,
+    CoordinatorSipProposalPort,
+    CoordinatorTaskProposalPort,
+    PlannerRuntime,
+} from './planner/index.js';
 import { SipTransactionalCommitter } from './sip/index.js';
 import { TaskBoard, TaskRepository } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
@@ -35,6 +68,7 @@ export interface CoordinatorCompositionOptions {
     epoch: number;
     schemaVersion: number;
     currentWorkingDirectory: string;
+    planner: PlannerSecrets;
 }
 
 export class CoordinatorComposition {
@@ -46,9 +80,11 @@ export class CoordinatorComposition {
         const transactions = new TransactionManager(options.database);
         const claimRepository = new ClaimRepository(options.database);
         let grants: GrantService | null = null;
-        const sip = new SipTransactionalCommitter(options.database, (commit) =>
-            grants?.handleSipCommit(commit),
-        );
+        let plannerRuntime: PlannerRuntime | null = null;
+        const sip = new SipTransactionalCommitter(options.database, (commit) => {
+            grants?.handleSipCommit(commit);
+            plannerRuntime?.noteConflict(`SIP revision ${commit.revision} committed`);
+        });
         let claims: ClaimService | null = null;
         const tasks = new TaskBoard({
             database: options.database,
@@ -80,6 +116,28 @@ export class CoordinatorComposition {
         const taskRepository = new TaskRepository(options.database);
         const grantRepository = new EditGrantRepository(options.database);
         const botStore = new BotProfileStore(options.database);
+        if (options.config.planner.enabled) {
+            const [skillRegistry, skillError] = SkillCatalog.createRegistry();
+            if (skillError) {
+                options.logger.error(
+                    { error: skillError },
+                    'planner disabled: skill catalog failed',
+                );
+            }
+            if (skillError === null && skillRegistry !== null) {
+                plannerRuntime = CoordinatorComposition.buildPlannerRuntime({
+                    config: options.config,
+                    logger: options.logger,
+                    secrets: options.planner,
+                    database: options.database,
+                    taskRepository,
+                    botStore,
+                    worldModel,
+                    sip,
+                    skillIds: new Set(skillRegistry.list().map((skill) => skill.id)),
+                });
+            }
+        }
         const botPresence = new BotPresenceTracker(botStore);
         const botIdentity = new BotIdentityAuthenticator(botStore, options.config.botNames);
         const botDelta = new BotDeltaSyncPlanner(botStore, {
@@ -160,7 +218,9 @@ export class CoordinatorComposition {
                         { error: ingestError, type: payload.candidate.type },
                         'landmark candidate ingestion failed',
                     );
+                    return;
                 }
+                plannerRuntime?.noteLandmark(payload.candidate.type);
             },
             onBlockUpdate: (payload) => {
                 const [, ingestError] = worldModel.ingestBlockUpdate(payload);
@@ -230,6 +290,7 @@ export class CoordinatorComposition {
                         options.logger.warn({ error: decayError }, 'landmark decay failed');
                     }
                 }
+                plannerRuntime?.tick();
             },
         });
         const recovery = new RestartRecovery(options.database);
@@ -258,6 +319,80 @@ export class CoordinatorComposition {
             claims,
             grants,
             decision,
+        });
+    }
+
+    private static buildPlannerRuntime(options: {
+        config: TicrafterConfig;
+        logger: LoggerPort;
+        secrets: PlannerSecrets;
+        database: CoordinatorDatabase;
+        taskRepository: TaskRepository;
+        botStore: BotProfileStore;
+        worldModel: CoordinatorWorldModel;
+        sip: SipTransactionalCommitter;
+        skillIds: ReadonlySet<string>;
+    }): PlannerRuntime {
+        const planner = options.config.planner;
+        const client = new OpenAiPlannerClient({
+            baseUrl: options.secrets.baseUrl,
+            apiKey: options.secrets.apiKey,
+            model: planner.model,
+            http: new FetchPlannerHttpPort(),
+            timeoutMilliseconds: planner.timeoutMilliseconds,
+        });
+        const budget = new PlannerBudgetLimiter({
+            callsPerMinute: planner.callsPerMinute,
+            maxTokensPerCall: planner.maxTokensPerCall,
+        });
+        const schema = new PlannerSchemaValidator();
+        const sipPorts = new CoordinatorSipProposalPort();
+        const semantic = new PlannerSemanticValidator({
+            skills: { has: (skillId) => options.skillIds.has(skillId) },
+            sip: sipPorts,
+        });
+        const cache = new PlannerPlanCache({
+            store: new SqlitePlannerPlanStore(options.database),
+            schemaValidator: schema,
+        });
+        const context = new PlannerContextBuilder({
+            source: new CoordinatorPlannerContextSource({
+                sip: options.sip,
+                tasks: options.taskRepository,
+                bots: options.botStore,
+                world: options.worldModel,
+            }),
+            maxContextCharacters: planner.maxContextCharacters,
+        });
+        const service = new PlannerService({
+            enabled: true,
+            contextBuilder: context,
+            repairLoop: new PlannerRepairLoop({
+                client,
+                schemaValidator: schema,
+                semanticValidator: semantic,
+                budgetLimiter: budget,
+                maxRepairAttempts: planner.maxRepairAttempts,
+                maxOutputTokens: planner.maxTokensPerCall,
+            }),
+            cache,
+            keepLastGood: new PlannerKeepLastGoodFallback(cache),
+            sipTranslator: new PlannerSipMutationTranslator(sipPorts),
+            taskTranslator: new PlannerTaskDagTranslator(
+                new CoordinatorTaskProposalPort(options.taskRepository),
+            ),
+            arbitration: new PlannerArbitrationHandler({
+                client,
+                budgetLimiter: budget,
+                maxOutputTokens: planner.maxTokensPerCall,
+            }),
+        });
+        return new PlannerRuntime({
+            service,
+            triggers: new PlannerTriggerEvaluator({
+                intervalMilliseconds: planner.intervalMilliseconds,
+            }),
+            logger: options.logger,
         });
     }
 }
