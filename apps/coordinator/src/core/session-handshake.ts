@@ -6,6 +6,7 @@ import {
     ProtocolEnvelope,
     type Result,
     SessionAuthenticator,
+    type SessionResume,
     type TransportFailure,
 } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
@@ -107,7 +108,14 @@ export class SessionHandshake {
             ProtocolEnvelope.create(
                 'response',
                 'session.hello.response',
-                { accepted: true, epoch: this.options.epoch },
+                {
+                    accepted: true,
+                    epoch: this.options.epoch,
+                    resume:
+                        resumePlan === null
+                            ? undefined
+                            : SessionHandshake.resumePayload(resumePlan),
+                },
                 { replyTo: request.id },
             ),
         );
@@ -138,6 +146,31 @@ export class SessionHandshake {
                 'socket close failed',
             );
         }
+    }
+
+    private static resumePayload(plan: BotResumePlan): SessionResume | undefined {
+        const task = plan.task;
+        if (
+            task === null ||
+            task.leaseToken === null ||
+            (task.status !== 'claimed' && task.status !== 'running')
+        ) {
+            return undefined;
+        }
+        return {
+            task: {
+                id: task.id,
+                title: task.title,
+                priority: task.priority,
+                payload: task.payload,
+                target: task.target,
+                requiredRole: task.requiredRole,
+            },
+            fencingToken: task.leaseToken,
+            leaseUntil: task.leaseUntil,
+            checkpoint: plan.checkpoint ?? undefined,
+            sipRevision: plan.delta.sipRevision,
+        };
     }
 
     private sendEnvelope(connection: ClientConnection, envelope: Envelope): void {

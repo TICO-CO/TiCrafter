@@ -82,6 +82,10 @@ export class FleetScenarioDriver implements ScenarioDriver {
         return this.options.server.stop();
     }
 
+    get childPid(): number | null {
+        return this.process?.pid ?? null;
+    }
+
     private environment(definition: ScenarioDefinition): NodeJS.ProcessEnv {
         return {
             ...process.env,

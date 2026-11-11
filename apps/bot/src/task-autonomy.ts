@@ -7,6 +7,7 @@ import {
     type Envelope,
     type LoggerPort,
     type Result,
+    type SessionResume,
     skillInputSchema,
     TASK_CLAIM,
     TASK_COMPLETE,
@@ -15,6 +16,8 @@ import {
     type TransportFailure,
 } from '@ticrafter/core';
 import type { SkillInput, SkillProgress, SkillStep } from '@ticrafter/skills';
+
+import { FailureTaxonomy, type TaskFailureClass } from './failure-taxonomy.js';
 
 const MAXIMUM_LABEL_WORDS = 12;
 const INVENTORY_SLOTS = 36;
@@ -132,6 +135,21 @@ export class TaskAutonomy {
         this.tickSafely();
     }
 
+    resumeTask(resume: SessionResume): boolean {
+        if (this.closed) return false;
+        if (resume.task === null || resume.fencingToken === null) return false;
+        const prepared = TaskAutonomy.prepare({
+            ok: true,
+            task: resume.task,
+            fencingToken: resume.fencingToken,
+            leaseUntil: resume.leaseUntil,
+        });
+        if (prepared === null) return false;
+        prepared.lastRenewAt = this.now();
+        this.active = prepared;
+        return true;
+    }
+
     observeProgress(event: TaskProgressObservation): void {
         if (this.closed || this.paused) return;
         const active = this.active;
@@ -149,10 +167,14 @@ export class TaskAutonomy {
             void this.completeActive(active);
             return;
         }
-        this.failActive(active, 'transient', {
-            ...event,
-            reason: event.failureClass ?? event.status,
-        });
+        this.failActive(
+            active,
+            FailureTaxonomy.taskClassForSkill(event.failureClass ?? event.status),
+            {
+                ...event,
+                reason: event.failureClass ?? event.status,
+            },
+        );
     }
 
     private tickSafely(): void {
@@ -275,7 +297,7 @@ export class TaskAutonomy {
 
     private failActive(
         active: ActiveTask,
-        failureClass: 'transient' | 'precondition' | 'blocked' | 'invalid' | 'fatal',
+        failureClass: TaskFailureClass,
         failure: { reason?: string; failureClass?: string },
     ): void {
         if (this.active !== active) return;

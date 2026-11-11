@@ -37,6 +37,37 @@ describe('transport', () => {
         expect(decoded).toMatchObject({ type: 'coordinator.ping', kind: 'request' });
     });
 
+    it('round-trips a session resume plan', () => {
+        const response = ProtocolEnvelope.create('response', 'session.hello.response', {
+            accepted: true,
+            epoch: 4,
+            resume: {
+                task: {
+                    id: 'task-1',
+                    title: 'Build wall',
+                    priority: 5,
+                    payload: { skillId: 'place-build' },
+                    target: { x: 1, y: 64, z: 1 },
+                    requiredRole: 'builder',
+                },
+                fencingToken: 7,
+                leaseUntil: '2026-11-11T12:00:30.000Z',
+                checkpoint: { step: 2 },
+                sipRevision: 9,
+            },
+        });
+        const [encoded, encodeError] = codec.encode(response);
+        expect(encodeError).toBeNull();
+        if (encoded === null) return;
+        const [decoded, decodeError] = codec.decode(encoded);
+        expect(decodeError).toBeNull();
+        expect(decoded?.payload).toMatchObject({
+            accepted: true,
+            epoch: 4,
+            resume: { fencingToken: 7, sipRevision: 9, checkpoint: { step: 2 } },
+        });
+    });
+
     it('rejects unknown message types', () => {
         const envelope = ProtocolEnvelope.create('request', 'unknown.type', {});
         const [encoded, encodeError] = codec.encode(envelope);

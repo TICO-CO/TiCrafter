@@ -4,8 +4,10 @@ import {
     type BotTaskResponse,
     type Envelope,
     type Result,
+    type SessionResume,
     TASK_CLAIM,
     TASK_COMPLETE,
+    TASK_FAIL,
     type TransportFailure,
 } from '@ticrafter/core';
 import type { SkillInput, SkillStep } from '@ticrafter/skills';
@@ -141,6 +143,81 @@ describe('TaskAutonomy', () => {
         expect(skills.runs[0]?.skillId).toBe('navigate');
         expect(skills.runs[0]?.input.taskId).toBe('task-1');
         expect(transport.requests.some((request) => request.type === TASK_COMPLETE)).toBe(true);
+    });
+
+    it('restores a resumed task without claiming a new one', async () => {
+        const transport = new FakeTransport();
+        const decisions = new FakeDecision();
+        const skills = new FakeSkills();
+        const autonomy = new TaskAutonomy({
+            botId: 'bot.one',
+            transport,
+            decisions,
+            skills,
+            snapshot: { read: () => snapshot },
+            logger,
+            tickMilliseconds: 1000,
+        });
+        const resume: SessionResume = {
+            task: {
+                id: 'task-1',
+                title: 'Walk north',
+                priority: 1,
+                payload: { skillId: 'navigate', target: { x: 0, y: 64, z: 4 } },
+                target: null,
+                requiredRole: null,
+            },
+            fencingToken: 7,
+            leaseUntil: '2026-11-11T10:01:00.000Z',
+            checkpoint: { step: 2 },
+            sipRevision: 4,
+        };
+
+        expect(autonomy.resumeTask(resume)).toBe(true);
+        autonomy.start();
+        await wait(20);
+        autonomy.stop();
+
+        expect(transport.requests.some((request) => request.type === TASK_CLAIM)).toBe(false);
+        expect(skills.runs[0]?.skillId).toBe('navigate');
+        expect(transport.requests.some((request) => request.type === TASK_COMPLETE)).toBe(true);
+    });
+
+    it('maps skill failure classes into task retry classes', async () => {
+        const transport = new FakeTransport();
+        const autonomy = new TaskAutonomy({
+            botId: 'bot.one',
+            transport,
+            decisions: new FakeDecision(),
+            skills: new FakeSkills(),
+            snapshot: { read: () => snapshot },
+            logger,
+        });
+        autonomy.resumeTask({
+            task: {
+                id: 'task-1',
+                title: 'Walk north',
+                priority: 1,
+                payload: { skillId: 'navigate', target: { x: 0, y: 64, z: 4 } },
+                target: null,
+                requiredRole: null,
+            },
+            fencingToken: 7,
+            leaseUntil: '2026-11-11T10:01:00.000Z',
+            sipRevision: 4,
+        });
+
+        autonomy.observeProgress({
+            taskId: 'task-1',
+            skillId: 'navigate',
+            status: 'failed',
+            progress: { done: 0, total: 1, label: 'blocked' },
+            failureClass: 'no-path',
+        });
+        await wait(0);
+
+        const failure = transport.requests.find((request) => request.type === TASK_FAIL);
+        expect((failure?.payload as { failureClass?: string }).failureClass).toBe('blocked');
     });
 
     it('stops claiming tasks while paused and resumes afterwards', async () => {

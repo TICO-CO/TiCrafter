@@ -9,7 +9,10 @@ import type { BotFailure, BotProfile, BotProfileStorePort } from './types.js';
 
 export interface BotResumePorts {
     claims: { listActive(): Result<readonly ClaimRecord[], StorageFailure> };
-    tasks: { get(taskId: string): Result<TaskRecord | null, StorageFailure> };
+    tasks: {
+        get(taskId: string): Result<TaskRecord | null, StorageFailure>;
+        list(): Result<readonly TaskRecord[], StorageFailure>;
+    };
     grants: { listActive(): Result<readonly EditGrantRecord[], StorageFailure> };
     checkpoints: {
         load(botId: string, taskId: string, skillId: string): Result<unknown, StorageFailure>;
@@ -30,6 +33,7 @@ export class BotResumeOrchestrator {
         private readonly store: BotProfileStorePort,
         private readonly ports: BotResumePorts,
         private readonly delta: BotDeltaSyncPlanner,
+        private readonly epoch: number,
     ) {}
 
     resume(botId: string, now = new Date().toISOString()): Result<BotResumePlan, BotFailure> {
@@ -74,10 +78,24 @@ export class BotResumeOrchestrator {
     }
 
     private task(profile: BotProfile): Result<TaskRecord | null, BotFailure> {
-        if (profile.currentTaskId === null) return [null, null];
-        const [task, readError] = this.ports.tasks.get(profile.currentTaskId);
-        if (readError) return [null, { type: 'STORAGE', failure: readError }];
-        return [task, null];
+        if (profile.currentTaskId !== null) {
+            const [task, readError] = this.ports.tasks.get(profile.currentTaskId);
+            if (readError) return [null, { type: 'STORAGE', failure: readError }];
+            return [task, null];
+        }
+        const [tasks, listError] = this.ports.tasks.list();
+        if (listError) return [null, { type: 'STORAGE', failure: listError }];
+        if (tasks === null) {
+            return [null, { type: 'INVALID_PROFILE', message: 'task list missing' }];
+        }
+        const active = tasks
+            .filter(
+                (task) =>
+                    task.claimedBy === profile.botId &&
+                    (task.status === 'claimed' || task.status === 'running'),
+            )
+            .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+        return [active[0] ?? null, null];
     }
 
     private claims(botId: string): Result<readonly ClaimRecord[], BotFailure> {
@@ -92,7 +110,11 @@ export class BotResumeOrchestrator {
         if (readError) return [null, { type: 'STORAGE', failure: readError }];
         if (grants === null) return [null, { type: 'INVALID_PROFILE', message: 'grants missing' }];
         return [
-            grants.filter((grant) => grant.granteeBotId === botId || grant.ownerBotId === botId),
+            grants.filter(
+                (grant) =>
+                    grant.epoch === this.epoch &&
+                    (grant.granteeBotId === botId || grant.ownerBotId === botId),
+            ),
             null,
         ];
     }
@@ -107,8 +129,11 @@ export class BotResumeOrchestrator {
             profile.currentTaskId !== null &&
             (task === null || this.isTerminal(task) || this.isOwnedElsewhere(task, profile.botId));
         if (!staleTask) {
+            const skill = task === null ? null : (profile.currentSkill ?? this.taskSkill(task));
             const updated = {
                 ...profile,
+                currentTaskId: task?.id ?? null,
+                currentSkill: skill,
                 activeClaimIds: claims.map((claim) => claim.id),
                 lastSeen: now,
                 updatedAt: now,
@@ -140,6 +165,11 @@ export class BotResumeOrchestrator {
         );
         if (readError) return [null, { type: 'STORAGE', failure: readError }];
         return [checkpoint, null];
+    }
+
+    private taskSkill(task: TaskRecord): string | null {
+        const skillId = task.payload.skillId;
+        return typeof skillId === 'string' && skillId.length > 0 ? skillId : null;
     }
 
     private isTerminal(task: TaskRecord): boolean {

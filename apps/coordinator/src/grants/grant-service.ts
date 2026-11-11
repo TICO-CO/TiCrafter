@@ -51,8 +51,11 @@ export class GrantService {
         });
         this.revoker = new GrantRevoker(this.repository);
         this.expiry = new GrantExpiry(this.repository, options.transactions);
-        this.authorizer = new GrantAuthorizer(this.repository, options.sip, (grant, structure) =>
-            this.guard.validate(grant, structure),
+        this.authorizer = new GrantAuthorizer(
+            this.repository,
+            options.sip,
+            (grant, structure) => this.guard.validate(grant, structure),
+            options.epoch,
         );
     }
 

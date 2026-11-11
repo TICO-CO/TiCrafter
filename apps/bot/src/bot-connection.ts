@@ -23,6 +23,7 @@ import {
     type LoggerPort,
     type MessageSchemaRegistry,
     type Result,
+    type SessionResume,
     SKILL_PROGRESS_EVENT,
     type TicrafterConfig,
 } from '@ticrafter/core';
@@ -80,6 +81,7 @@ export class BotConnection {
     private unsubscribeInbound: (() => void) | null = null;
     private autonomyStarted = false;
     private autonomyPausedReason: string | null = null;
+    private pendingResume: SessionResume | null = null;
     private lastReflexAt = 0;
 
     constructor(private readonly options: BotConnectionOptions) {}
@@ -107,6 +109,7 @@ export class BotConnection {
             this.closeTransport();
             return [null, hello.reason ?? 'coordinator rejected session'];
         }
+        this.pendingResume = hello.resume ?? null;
         this.options.logger.info({ epoch: hello.epoch }, 'coordinator accepted session');
 
         const [bot, botError] = attempt<Bot>(() =>
@@ -293,9 +296,47 @@ export class BotConnection {
                 logger: this.options.logger,
             });
             this.taskAutonomy = autonomy;
+            if (this.autonomyPausedReason === null) this.applyPendingResume();
             autonomy.start();
             if (this.autonomyPausedReason !== null) autonomy.pause(this.autonomyPausedReason);
         }
+    }
+
+    private applyPendingResume(): void {
+        const autonomy = this.taskAutonomy;
+        const resume = this.pendingResume;
+        if (autonomy === null || resume === null) return;
+        if (!autonomy.resumeTask(resume)) {
+            this.pendingResume = null;
+            this.options.logger.warn(
+                { taskId: resume.task?.id },
+                'pending task resume was not applicable',
+            );
+            return;
+        }
+        this.pendingResume = null;
+        const skillId = resume.task?.payload.skillId;
+        if (
+            this.skills === null ||
+            resume.task === null ||
+            resume.checkpoint === null ||
+            resume.checkpoint === undefined ||
+            typeof skillId !== 'string'
+        ) {
+            return;
+        }
+        const [step, resumeError] = this.skills.resume(skillId, resume.task.id);
+        if (resumeError) {
+            this.options.logger.warn(
+                { error: resumeError, skillId, taskId: resume.task.id },
+                'skill checkpoint resume failed',
+            );
+            return;
+        }
+        this.options.logger.info(
+            { skillId, taskId: resume.task.id, status: step?.status },
+            'skill checkpoint resumed',
+        );
     }
 
     private stopAutonomy(): void {
@@ -481,6 +522,7 @@ export class BotConnection {
         }
         this.guardian.resumeSafety();
         this.autonomyPausedReason = null;
+        this.applyPendingResume();
         this.taskAutonomy?.resume();
         this.options.logger.info({ reason: parsed.data.reason }, 'safety resumed');
     }
@@ -537,6 +579,7 @@ export class BotConnection {
             return;
         }
         this.autonomyPausedReason = null;
+        this.applyPendingResume();
         this.taskAutonomy?.resume();
         this.options.logger.info({ reason: parsed.data.reason }, 'autonomy resumed');
     }

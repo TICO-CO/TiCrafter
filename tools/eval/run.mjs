@@ -5,9 +5,11 @@ import {
     ArchitectureGuard,
     EvalMetrics,
     FleetScenarioDriver,
+    FleetSoakProbe,
     MetricsReporter,
     MinecraftServerHarness,
     NodeServerCommands,
+    PersistentSoakRunner,
     ReplayEngine,
     ScenarioCatalog,
     ScenarioRunner,
@@ -17,8 +19,9 @@ import { BlockChangelogReader, EventLogWriter, SqliteRuntime } from '@ticrafter/
 const root = path.resolve(import.meta.dir, '../..');
 
 function usage() {
-    console.log('usage: bun tools/eval/run.mjs <scenario|guard|replay> [options]');
+    console.log('usage: bun tools/eval/run.mjs <scenario|soak|guard|replay> [options]');
     console.log('  scenario <id> [--accept-eula] [--data-dir <path>]');
+    console.log('  soak <id> [--duration <ms>] [--interval <ms>] [--accept-eula]');
     console.log('  guard');
     console.log('  replay <data-dir>');
 }
@@ -67,6 +70,53 @@ async function runScenario(identifier) {
     return result?.passed ? 0 : 1;
 }
 
+async function runSoak(identifier) {
+    const definition = ScenarioCatalog.definitions().find((scenario) => scenario.id === identifier);
+    if (definition === undefined) {
+        console.error(`unknown scenario: ${identifier}`);
+        return 1;
+    }
+    const dataDir = path.resolve(
+        argumentValue('--data-dir', path.join('data', 'eval', `soak-${identifier}`)),
+    );
+    const durationMilliseconds = Number.parseInt(argumentValue('--duration', '7200000'), 10);
+    const sampleIntervalMilliseconds = Number.parseInt(argumentValue('--interval', '30000'), 10);
+    if (
+        !Number.isFinite(durationMilliseconds) ||
+        durationMilliseconds <= 0 ||
+        !Number.isFinite(sampleIntervalMilliseconds) ||
+        sampleIntervalMilliseconds <= 0
+    ) {
+        console.error('duration and interval must be positive milliseconds');
+        return 1;
+    }
+    const driver = new FleetScenarioDriver({
+        repositoryRoot: root,
+        dataDir,
+        server: new MinecraftServerHarness(new NodeServerCommands(), root, {
+            acceptEula: process.argv.includes('--accept-eula'),
+        }),
+    });
+    const soak = new PersistentSoakRunner(
+        driver,
+        new FleetSoakProbe(dataDir, () => driver.childPid),
+        {
+            now: () => Date.now(),
+            sleep: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+        },
+    );
+    const [report, error] = await soak.run(definition, {
+        durationMilliseconds,
+        sampleIntervalMilliseconds,
+    });
+    if (error) {
+        console.error(error);
+        return 1;
+    }
+    console.log(JSON.stringify(report, null, 2));
+    return report?.completed && report.reasons.length === 0 ? 0 : 1;
+}
+
 function runGuard() {
     const result = ArchitectureGuard.atRepositoryRoot().validate();
     process.stdout.write(result.stdout);
@@ -109,6 +159,8 @@ async function main() {
     switch (command) {
         case 'scenario':
             return runScenario(argument);
+        case 'soak':
+            return runSoak(argument);
         case 'guard':
             return runGuard();
         case 'replay':

@@ -17,6 +17,7 @@ export class GrantAuthorizer {
             grant: EditGrantRecord,
             structure: SipStructure | null,
         ) => Result<void, GrantFailure>,
+        private readonly currentEpoch: number,
     ) {}
 
     authorize(
@@ -52,6 +53,17 @@ export class GrantAuthorizer {
         }
         if (grant.expiresAt <= now) {
             return [null, { type: 'GRANT_EXPIRED', grantId: grant.id, expiresAt: grant.expiresAt }];
+        }
+        if (grant.epoch !== this.currentEpoch) {
+            return [
+                null,
+                {
+                    type: 'STALE_EPOCH',
+                    grantId: grant.id,
+                    expected: this.currentEpoch,
+                    actual: grant.epoch,
+                },
+            ];
         }
         if (grant.granteeBotId !== input.botId) {
             return [null, { type: 'GRANTEE_MISMATCH', grantId: grant.id, botId: input.botId }];

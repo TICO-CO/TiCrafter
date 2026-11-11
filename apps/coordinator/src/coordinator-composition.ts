@@ -181,6 +181,7 @@ export class CoordinatorComposition {
                 checkpoints: new SqliteSkillCheckpointStore(options.database),
             },
             botDelta,
+            options.epoch,
         );
         let messageRouter: MessageRouter | null = null;
         const transport = new TransportServer({
@@ -399,7 +400,7 @@ export class CoordinatorComposition {
                 plannerRuntime?.tick();
             },
         });
-        const recovery = new RestartRecovery(options.database);
+        const recovery = new RestartRecovery(options.database, options.epoch);
         const supervisor = options.config.autoSpawnBots
             ? new BotProcessSupervisor({
                   root: options.currentWorkingDirectory,

@@ -34,10 +34,28 @@ export const sessionHelloSchema = zod.object({
     version: zod.string().optional(),
 });
 
+const sessionResumeTaskSchema = zod.object({
+    id: zod.string().min(1),
+    title: zod.string().min(1),
+    priority: zod.number(),
+    payload: zod.record(zod.string(), zod.unknown()),
+    target: zod.object({ x: zod.number(), y: zod.number(), z: zod.number() }).nullable(),
+    requiredRole: zod.enum(['builder', 'farmer', 'miner', 'scout', 'hauler', 'guard']).nullable(),
+});
+
+export const sessionResumeSchema = zod.object({
+    task: sessionResumeTaskSchema.nullable(),
+    fencingToken: zod.number().int().nonnegative().nullable(),
+    leaseUntil: zod.string().nullable(),
+    checkpoint: zod.unknown().nullable().optional(),
+    sipRevision: zod.number().int().nonnegative(),
+});
+
 export const sessionHelloResponseSchema = zod.object({
     accepted: zod.boolean(),
     epoch: zod.number().int().nonnegative(),
     reason: zod.string().optional(),
+    resume: sessionResumeSchema.optional(),
 });
 
 export const coordinatorPingSchema = zod.object({});
@@ -367,6 +385,7 @@ export const decisionResponseSchema = zod.object({
 });
 
 export type SessionHello = zod.infer<typeof sessionHelloSchema>;
+export type SessionResume = zod.infer<typeof sessionResumeSchema>;
 export type SessionHelloResponse = zod.infer<typeof sessionHelloResponseSchema>;
 export type CoordinatorStatusResponse = zod.infer<typeof coordinatorStatusResponseSchema>;
 export type BotHeartbeat = zod.infer<typeof botHeartbeatSchema>;

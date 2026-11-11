@@ -7,14 +7,20 @@ import {
     type ScenarioObservation,
     ScenarioRunner,
 } from '../scenario-runner/index.js';
-import { type SoakClock, SoakRunner, type SoakSnapshot } from './index.js';
+import { PersistentSoakRunner, type SoakClock, SoakRunner, type SoakSnapshot } from './index.js';
 
 class FakeDriver implements ScenarioDriver {
+    started = 0;
+    stopped = 0;
+    runs = 0;
+
     start(_definition: ScenarioDefinition): Result<void, string> {
+        this.started += 1;
         return [undefined, null];
     }
 
     run(_definition: ScenarioDefinition): Promise<Result<ScenarioObservation, string>> {
+        this.runs += 1;
         return Promise.resolve([
             {
                 passed: true,
@@ -28,6 +34,7 @@ class FakeDriver implements ScenarioDriver {
     }
 
     stop(_definition: ScenarioDefinition): Result<void, string> {
+        this.stopped += 1;
         return [undefined, null];
     }
 }
@@ -83,5 +90,41 @@ describe('SoakRunner', () => {
         expect(report?.completed).toBe(true);
         expect(report?.samples).toBe(3);
         expect(report?.heartbeatStable).toBe(true);
+    });
+
+    it('keeps the fleet running for the full soak', async () => {
+        const clock = new FakeClock();
+        const driver = new FakeDriver();
+        const soak = new PersistentSoakRunner(
+            driver,
+            {
+                snapshot: () => ({
+                    rssBytes: 1024,
+                    activeClaims: 2,
+                    lastHeartbeatAt: '2026-11-11T10:00:00.000Z',
+                }),
+            },
+            clock,
+        );
+
+        const [report, runError] = await soak.run(
+            {
+                id: 'house-build',
+                title: 'Test',
+                bots: [],
+                timeoutMilliseconds: 1000,
+            },
+            {
+                durationMilliseconds: 100,
+                sampleIntervalMilliseconds: 50,
+            },
+        );
+
+        expect(runError).toBeNull();
+        expect(report?.completed).toBe(true);
+        expect(report?.samples).toBe(3);
+        expect(report?.scenarios).toHaveLength(2);
+        expect(driver.started).toBe(1);
+        expect(driver.stopped).toBe(1);
     });
 });

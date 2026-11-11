@@ -35,6 +35,7 @@
         "eval:guard": "bun test packages/eval/src/architecture-guard-tests",
         "eval:run": "bun tools/eval/run.mjs",
         "eval:scenario": "bun tools/eval/run.mjs scenario",
+        "eval:soak": "bun tools/eval/run.mjs soak",
         "eval:replay": "bun tools/eval/run.mjs replay",
         "train:trace": ".venv/bin/python tools/laya-train/trace-exporter.py",
         "train:reward": ".venv/bin/python tools/laya-train/reward-computer.py",

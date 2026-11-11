@@ -84,6 +84,7 @@ export type GrantFailure =
     | { type: 'POLICY_DENIED'; reason: GrantDenialReason; message: string }
     | { type: 'REVISION_MISMATCH'; expected: number; actual: number }
     | { type: 'STALE_TOKEN'; grantId: string; expected: number; actual: number }
+    | { type: 'STALE_EPOCH'; grantId: string; expected: number; actual: number }
     | { type: 'GRANTEE_MISMATCH'; grantId: string; botId: string }
     | { type: 'INVALID_STATUS'; grantId: string; status: EditGrantStatus }
     | { type: 'GRANT_EXPIRED'; grantId: string; expiresAt: string }

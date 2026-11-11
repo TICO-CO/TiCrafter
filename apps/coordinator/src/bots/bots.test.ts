@@ -36,6 +36,7 @@ const grant = (overrides: Partial<EditGrantRecord> = {}): EditGrantRecord =>
         granteeBotId: 'bot.tibot1',
         status: 'active',
         updatedAt: now,
+        epoch: 7,
         ...overrides,
     }) as EditGrantRecord;
 
@@ -138,11 +139,15 @@ describe('bots', () => {
             store,
             {
                 claims: { listActive: () => [[claim()], null] },
-                tasks: { get: () => [task({ status: 'completed' }), null] },
+                tasks: {
+                    get: () => [task({ status: 'completed' }), null],
+                    list: () => [[task({ status: 'completed' })], null],
+                },
                 grants: { listActive: () => [[grant()], null] },
                 checkpoints: { load: () => [{ step: 2 }, null] },
             },
             delta,
+            7,
         );
         const [plan, resumeError] = resume.resume(profile.botId, now);
         expect(resumeError).toBeNull();
@@ -151,5 +156,40 @@ describe('bots', () => {
         expect(plan?.profile.currentTaskId).toBeNull();
         expect(plan?.delta.sipRevision).toBe(4);
         expect(plan?.delta.tasks).toHaveLength(1);
+    });
+
+    it('discovers a task already claimed by the reconnecting bot', () => {
+        const { store, profile } = fresh();
+        const active = task({ payload: { skillId: 'navigate' } });
+        const delta = new BotDeltaSyncPlanner(store, {
+            tasks: { list: () => [[active], null] },
+            grants: { listActive: () => [[], null] },
+            sip: { revision: () => [4, null] },
+        });
+        const requested: string[] = [];
+        const resume = new BotResumeOrchestrator(
+            store,
+            {
+                claims: { listActive: () => [[], null] },
+                tasks: { get: () => [null, null], list: () => [[active], null] },
+                grants: { listActive: () => [[], null] },
+                checkpoints: {
+                    load: (botId, taskId, skillId) => {
+                        requested.push(`${botId}|${taskId}|${skillId}`);
+                        return [{ step: 3 }, null];
+                    },
+                },
+            },
+            delta,
+            7,
+        );
+        const [plan, resumeError] = resume.resume(profile.botId, now);
+
+        expect(resumeError).toBeNull();
+        expect(plan?.task?.id).toBe('task-1');
+        expect(plan?.profile.currentTaskId).toBe('task-1');
+        expect(plan?.profile.currentSkill).toBe('navigate');
+        expect(plan?.checkpoint).toEqual({ step: 3 });
+        expect(requested).toEqual(['bot.tibot1|task-1|navigate']);
     });
 });

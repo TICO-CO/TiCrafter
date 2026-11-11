@@ -11,7 +11,10 @@ export interface RecoveryReport {
 }
 
 export class RestartRecovery {
-    constructor(private readonly database: CoordinatorDatabase) {}
+    constructor(
+        private readonly database: CoordinatorDatabase,
+        private readonly epoch: number,
+    ) {}
 
     run(): Result<RecoveryReport, StorageFailure> {
         const now = new Date().toISOString();
@@ -23,13 +26,21 @@ export class RestartRecovery {
                      WHERE status = 'active' AND lease_expires_at < ?`,
                 )
                 .run(now, now).changes;
-            const grants = this.database
+            const expiredGrants = this.database
                 .prepare(
                     `UPDATE edit_grants SET status = 'expired', fencing_token = fencing_token + 1,
                         updated_at = ?
                      WHERE expires_at < ? AND status = 'active'`,
                 )
                 .run(now, now).changes;
+            const staleGrants = this.database
+                .prepare(
+                    `UPDATE edit_grants SET status = 'revoked', fencing_token = fencing_token + 1,
+                        updated_at = ?
+                     WHERE epoch <> ? AND status = 'active'`,
+                )
+                .run(now, this.epoch).changes;
+            const grants = Number(expiredGrants) + Number(staleGrants);
             const bots = this.database
                 .prepare(
                     `UPDATE bots SET status = 'offline', updated_at = ?

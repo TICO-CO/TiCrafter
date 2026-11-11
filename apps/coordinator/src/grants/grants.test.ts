@@ -206,6 +206,32 @@ describe('GrantService', () => {
         expect(expiredError?.type).toBe('GRANT_EXPIRED');
     });
 
+    it('rejects grants issued in a previous coordinator epoch', () => {
+        const [database, openError] = CoordinatorTestSupport.openDatabase();
+        expect(openError).toBeNull();
+        const coordinatorDatabase = database as CoordinatorDatabase;
+        const options: Omit<GrantServiceOptions, 'epoch'> = {
+            database: coordinatorDatabase,
+            transactions: new TransactionManager(coordinatorDatabase),
+            sip: { load: () => [snapshot(), null] },
+            claims: { listActive: () => [[], null] },
+            presence: { isOnline: () => true },
+        };
+        const [grant] = new GrantService({ ...options, epoch: 9 }).request(request(), now);
+        const restarted = new GrantService({ ...options, epoch: 10 });
+        const [, authorizationError] = restarted.authorize(
+            {
+                grantId: 'grant-1',
+                botId: 'bot.helper',
+                fencingToken: grant?.fencingToken ?? 0,
+                bbox: request().bbox,
+                operations: ['place'],
+            },
+            now,
+        );
+        expect(authorizationError?.type).toBe('STALE_EPOCH');
+    });
+
     it('revokes and expires grants with fencing-token bumps', () => {
         const service = fresh();
         service.request(request(), now);
