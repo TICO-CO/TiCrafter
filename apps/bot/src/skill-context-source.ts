@@ -1,5 +1,10 @@
 import type { Result, Vec3 } from '@ticrafter/core';
-import type { SkillContext, SkillContextSource, SkillHostile } from '@ticrafter/skills';
+import type {
+    SkillContext,
+    SkillContextSource,
+    SkillHostile,
+    SkillServices,
+} from '@ticrafter/skills';
 import type { Bot } from 'mineflayer';
 
 import type { WorldCacheAdapter } from './world-cache.js';
@@ -26,6 +31,7 @@ export class BotSkillContextSource implements SkillContextSource {
     constructor(
         private readonly bot: Bot,
         private readonly world: WorldCacheAdapter,
+        private readonly services: SkillServices | undefined = undefined,
         private readonly taskId?: string,
     ) {}
 
@@ -49,6 +55,7 @@ export class BotSkillContextSource implements SkillContextSource {
                 })),
                 world: this.world,
                 nearestHostile: this.nearestHostile(position),
+                ...(this.services === undefined ? {} : { services: this.services }),
             },
             null,
         ];

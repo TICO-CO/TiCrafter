@@ -37,6 +37,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@ticrafter/brains": "0.1.0",
+        "@ticrafter/building": "0.1.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/memory": "0.1.0",
         "@ticrafter/perception": "0.1.0",
@@ -58,6 +59,7 @@
         "@ticrafter/worldmodel": "0.1.0",
         "pino": "10.4.0",
         "ws": "8.22.2",
+        "zod": "4.6.7",
       },
     },
     "packages/brains": {
@@ -67,6 +69,17 @@
         "@ticrafter/core": "0.1.0",
         "@ticrafter/safety": "0.1.0",
         "@ticrafter/skills": "0.1.0",
+      },
+    },
+    "packages/building": {
+      "name": "@ticrafter/building",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ticrafter/core": "0.1.0",
+        "@ticrafter/memory": "0.1.0",
+        "@ticrafter/safety": "0.1.0",
+        "@ticrafter/worldmodel": "0.1.0",
+        "prismarine-schematic": "1.3.0",
       },
     },
     "packages/core": {
@@ -257,6 +270,8 @@
     "@ticrafter/bot": ["@ticrafter/bot@workspace:apps/bot"],
 
     "@ticrafter/brains": ["@ticrafter/brains@workspace:packages/brains"],
+
+    "@ticrafter/building": ["@ticrafter/building@workspace:packages/building"],
 
     "@ticrafter/coordinator": ["@ticrafter/coordinator@workspace:apps/coordinator"],
 

@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import type { GuardianReport } from '@ticrafter/brains';
 import {
     attempt,
@@ -29,6 +31,7 @@ import {
 import { type Bot, createBot } from 'mineflayer';
 
 import { ActionExecutor } from './action-executor.js';
+import { BuildingSkillServices } from './building-services.js';
 import { BotEventBridge } from './event-bridge.js';
 import { GuardianHook } from './guardian.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
@@ -164,8 +167,18 @@ export class BotConnection {
                 return sendError ? [null, sendError.type] : [undefined, null];
             },
         };
+        const [buildingServices, buildingServicesError] = await BuildingSkillServices.create(
+            path.resolve(process.cwd(), this.options.config.dataDir),
+            world,
+        );
+        if (buildingServicesError) {
+            this.options.logger.warn(
+                { error: buildingServicesError },
+                'building skill services unavailable',
+            );
+        }
         const [skills, skillsError] = SkillHost.create({
-            source: new BotSkillContextSource(bot, world),
+            source: new BotSkillContextSource(bot, world, buildingServices ?? undefined),
             dispatch: actionExecutor,
             progressSink,
             logger: this.options.logger,
