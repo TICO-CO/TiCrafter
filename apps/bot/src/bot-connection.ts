@@ -232,19 +232,17 @@ export class BotConnection {
             this.options.logger,
             (block) => this.forwardBlockUpdate(block, blockUpdates, transport),
         );
-        bridge.attach();
-        this.startPerception(bot, transport);
-
         let spawned = false;
         bot.once('spawn', () => {
             spawned = true;
+            bridge.attach();
+            this.startPerception(bot, transport);
             this.options.logger.info({ name: this.options.name }, 'bot spawned');
             this.startAutonomy();
         });
         bot.once('login', () => {
             spawned = true;
             this.options.logger.info({ name: this.options.name }, 'bot logged in');
-            this.startAutonomy();
         });
 
         const heartbeat = setInterval(() => this.sendHeartbeat(), 1000);
