@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import type { PlannerFailure } from './failures.js';
+import type { PlannerPosition } from './plan-schema.js';
 import type {
     PlannerChatMessage,
     PlannerContext,
@@ -9,21 +10,9 @@ import type {
     PlannerTrigger,
 } from './types.js';
 
-const systemPrompt = [
-    'You are the TiCrafter fleet planner.',
-    'Return one strict JSON object, with no markdown and no prose.',
-    'Required fields: schemaVersion=1, planId, baseRevision, goals, sipMutations, tasks, blueprints, recovery, notes.',
-    'goals: array of {id, description, priority, status}.',
-    'sipMutations: array of zone, structure, road, farm, container, path-graph, or rules mutations.',
-    'tasks: array of {id, title, parentId, priority, dependencies, preconditions, requiredRole, target, skillId, payload}.',
-    'blueprints: array of {id, template, anchor, rotation, materials, parameters}.',
-    'recovery: {mode: continue|retry|safe_mode|stop, notes}.',
-    'Never emit block placement commands. Only propose SIP mutations and tasks.',
-    'Keep ids stable and within the context budget.',
-].join(' ');
-
 export interface PlannerContextBuilderOptions {
     source: PlannerContextSource;
+    allowedSkills: readonly string[];
     maxContextCharacters: number;
     now?: () => number;
 }
@@ -69,8 +58,20 @@ export class PlannerContextBuilder {
                 },
             ];
         }
+        const examplePosition = context.bots.find((bot) => bot.position !== null)?.position ?? {
+            x: 0,
+            y: 64,
+            z: 0,
+        };
         const messages: readonly PlannerChatMessage[] = [
-            { role: 'system', content: systemPrompt },
+            {
+                role: 'system',
+                content: PlannerContextBuilder.buildSystemPrompt(
+                    this.options.allowedSkills,
+                    context.sip.revision,
+                    examplePosition,
+                ),
+            },
             { role: 'user', content: `Plan request: ${serialized}` },
         ];
         return [
@@ -81,6 +82,74 @@ export class PlannerContextBuilder {
             },
             null,
         ];
+    }
+
+    private static buildSystemPrompt(
+        allowedSkills: readonly string[],
+        baseRevision: number,
+        position: PlannerPosition,
+    ): string {
+        const example = JSON.stringify({
+            schemaVersion: 1,
+            planId: 'plan-example',
+            baseRevision,
+            goals: [
+                {
+                    id: 'goal-example',
+                    description: 'Establish a starter working area',
+                    priority: 1,
+                    status: 'active',
+                },
+            ],
+            sipMutations: [],
+            tasks: [
+                {
+                    id: 'task-example',
+                    title: 'Explore near the fleet',
+                    parentId: null,
+                    priority: 1,
+                    dependencies: [],
+                    preconditions: [],
+                    requiredRole: null,
+                    target: { x: position.x, y: position.y, z: position.z },
+                    skillId: 'explore',
+                    payload: {
+                        center: { x: position.x, y: position.y, z: position.z },
+                        radius: 32,
+                        maxSteps: 16,
+                    },
+                },
+            ],
+            cancelTaskIds: [],
+            blueprints: [],
+            recovery: { mode: 'continue', notes: '' },
+            notes: '',
+        });
+
+        return [
+            'You are the TiCrafter fleet planner.',
+            'Return exactly one strict JSON object, with no markdown, prose, or code fences.',
+            'Every object rejects unknown fields.',
+            'schemaVersion must be the number 1.',
+            'baseRevision must equal context.sip.revision.',
+            'goals must contain at least one goal.',
+            'sipMutations must be an empty array unless the plan changes the SIP.',
+            'Allowed skillId values are: ' + allowedSkills.join(', ') + '.',
+            'task target must be an integer x/y/z position or null.',
+            'Use context.bots positions for task targets and explore centers.',
+            'Every task must be independent: parentId must be null and dependencies must be [].',
+            'Use unique task IDs that do not already exist in context.tasks.',
+            'Give each task a distinct target or explore center.',
+            'When actionable open tasks plus new tasks are fewer than online bots, add enough independent tasks to cover every online bot.',
+            'Use context.tasks titles, skillIds, and targets to decide whether to keep or cancel current work.',
+            'Set cancelTaskIds to existing open task IDs that no longer make sense; otherwise use [].',
+            'Do not cancel a task and create a task with the same ID.',
+            'Do not emit blueprints unless inventory covers every listed material; propose gathering or crafting tasks first.',
+            'All positions must avoid context.sip.protectedBboxes and context.sip.noBuildZones.',
+            'Never emit block placement commands. Only propose SIP mutations and tasks.',
+            'Use the provided context values instead of the example values.',
+            `Example plan shape: ${example}`,
+        ].join('\n');
     }
 
     private fit(context: PlannerContext): PlannerContext {

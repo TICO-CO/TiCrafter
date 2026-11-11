@@ -21,6 +21,7 @@ export interface PlannerRepairLoopOptions {
     budgetLimiter: PlannerBudgetLimiter;
     maxRepairAttempts: number;
     maxOutputTokens: number;
+    onRejectedResponse?: (response: PlannerRawResponse) => void;
 }
 
 export class PlannerRepairLoop {
@@ -52,7 +53,13 @@ export class PlannerRepairLoop {
             });
             if (completionError) {
                 this.options.budgetLimiter.release(permit);
-                responses.push({ content: '', failure: completionError, usage });
+                const rejected: PlannerRawResponse = {
+                    content: '',
+                    failure: completionError,
+                    usage,
+                };
+                responses.push(rejected);
+                this.options.onRejectedResponse?.(rejected);
                 return [null, completionError];
             }
             if (completion === null) {
@@ -78,11 +85,13 @@ export class PlannerRepairLoop {
                 type: 'SEMANTIC',
                 issues: ['planner validation returned no plan'],
             };
-            responses.push({
+            const rejected: PlannerRawResponse = {
                 content: completion.content,
                 failure: lastFailure,
                 usage: completion.usage,
-            });
+            };
+            responses.push(rejected);
+            this.options.onRejectedResponse?.(rejected);
             if (attempt >= this.options.maxRepairAttempts) break;
             messages.push({ role: 'assistant', content: completion.content });
             messages.push({

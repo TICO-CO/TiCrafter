@@ -10,6 +10,8 @@ import type {
 } from './plan-schema.js';
 import type { PlannerContext, PlannerSipValidationPort, PlannerSkillCatalogPort } from './types.js';
 
+const ACTIONABLE_TASK_STATUSES = new Set(['pending', 'ready', 'claimed', 'running']);
+
 export interface PlannerSemanticValidatorOptions {
     skills: PlannerSkillCatalogPort;
     sip: PlannerSipValidationPort;
@@ -27,7 +29,10 @@ export class PlannerSemanticValidator {
         this.validateCounts(plan, issues);
         this.validateRevision(plan, context, issues);
         this.validateIdentifiers(plan, issues);
+        this.validateIndependence(plan, issues);
         this.validateTasks(plan, context, issues);
+        this.validateCancellations(plan, context, issues);
+        this.validateWorkContinuity(plan, context, issues);
         this.validateSkills(plan, issues);
         this.validateSip(plan, context, issues);
         this.validateRegions(plan, context, issues);
@@ -74,6 +79,56 @@ export class PlannerSemanticValidator {
         ).forEach((id) => issues.push(`duplicate SIP mutation id ${id}`));
     }
 
+    private validateIndependence(plan: PlannerPlan, issues: string[]): void {
+        const anchors = new Map<string, string>();
+        for (const task of plan.tasks) {
+            if (task.parentId !== null) {
+                issues.push(`task ${task.id} must not have a parent`);
+            }
+            if (task.dependencies.length > 0) {
+                issues.push(`task ${task.id} must not have dependencies`);
+            }
+            const anchor = PlannerSemanticValidator.workAnchor(task);
+            if (anchor === null) continue;
+            const key = `${anchor.x},${anchor.y},${anchor.z}`;
+            const existing = anchors.get(key);
+            if (existing !== undefined) {
+                issues.push(`tasks ${existing} and ${task.id} share work anchor ${key}`);
+                continue;
+            }
+            anchors.set(key, task.id);
+        }
+    }
+
+    private validateCancellations(
+        plan: PlannerPlan,
+        context: PlannerContext,
+        issues: string[],
+    ): void {
+        const existing = new Map(context.tasks.map((task) => [task.id, task]));
+        const planIds = new Set(plan.tasks.map((task) => task.id));
+        const seen = new Set<string>();
+        for (const taskId of plan.cancelTaskIds) {
+            if (seen.has(taskId)) {
+                issues.push(`duplicate cancellation task id ${taskId}`);
+                continue;
+            }
+            seen.add(taskId);
+            if (planIds.has(taskId)) {
+                issues.push(`task ${taskId} cannot be both planned and cancelled`);
+                continue;
+            }
+            const task = existing.get(taskId);
+            if (task === undefined) {
+                issues.push(`cancellation references unknown task ${taskId}`);
+                continue;
+            }
+            if (!ACTIONABLE_TASK_STATUSES.has(task.status)) {
+                issues.push(`cancellation references non-open task ${taskId}`);
+            }
+        }
+    }
+
     private validateTasks(plan: PlannerPlan, context: PlannerContext, issues: string[]): void {
         const planIds = new Set(plan.tasks.map((task) => task.id));
         const existingIds = new Set(context.tasks.map((task) => task.id));
@@ -93,6 +148,25 @@ export class PlannerSemanticValidator {
         }
         const cycle = PlannerSemanticValidator.findCycle(plan.tasks, existingIds);
         if (cycle !== null) issues.push(`task dependency cycle involving ${cycle}`);
+    }
+
+    private validateWorkContinuity(
+        plan: PlannerPlan,
+        context: PlannerContext,
+        issues: string[],
+    ): void {
+        const existingIds = new Set(context.tasks.map((task) => task.id));
+        const cancelledIds = new Set(plan.cancelTaskIds);
+        const effectiveOpen = context.tasks.filter(
+            (task) => ACTIONABLE_TASK_STATUSES.has(task.status) && !cancelledIds.has(task.id),
+        ).length;
+        const newTasks = plan.tasks.filter((task) => !existingIds.has(task.id)).length;
+        const onlineBots = context.bots.filter((bot) => bot.online).length;
+        if (effectiveOpen + newTasks < onlineBots) {
+            issues.push(
+                `plan must provide independent tasks for every online bot: ${effectiveOpen + newTasks} available, ${onlineBots} online`,
+            );
+        }
     }
 
     private validateSkills(plan: PlannerPlan, issues: string[]): void {
@@ -205,6 +279,29 @@ export class PlannerSemanticValidator {
                 issues.push(`material ${item} requires ${count} but fleet has ${available}`);
             }
         }
+    }
+
+    private static workAnchor(task: PlannerTask): PlannerPosition | null {
+        if (task.target !== null) return task.target;
+        return PlannerSemanticValidator.readPosition(task.payload.center);
+    }
+
+    private static readPosition(value: unknown): PlannerPosition | null {
+        if (typeof value !== 'object' || value === null) return null;
+        const x = Reflect.get(value, 'x');
+        const y = Reflect.get(value, 'y');
+        const z = Reflect.get(value, 'z');
+        if (
+            typeof x !== 'number' ||
+            typeof y !== 'number' ||
+            typeof z !== 'number' ||
+            !Number.isInteger(x) ||
+            !Number.isInteger(y) ||
+            !Number.isInteger(z)
+        ) {
+            return null;
+        }
+        return { x, y, z };
     }
 
     private static findCycle(

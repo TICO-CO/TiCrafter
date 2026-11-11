@@ -179,6 +179,19 @@ export class TaskBoard {
         });
     }
 
+    cancel(
+        taskId: string,
+        actor: string,
+        reason: string,
+        now = new Date().toISOString(),
+    ): Result<TaskRecord, TaskFailure> {
+        return this.transition(taskId, 'cancelled', actor, reason, now, {
+            claimedBy: null,
+            leaseUntil: null,
+            leaseToken: null,
+        });
+    }
+
     fail(
         taskId: string,
         failureClass: TaskFailureClass,

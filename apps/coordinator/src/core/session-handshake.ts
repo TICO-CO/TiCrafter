@@ -94,6 +94,7 @@ export class SessionHandshake {
             connectionId: connection.id,
             connectedAt: now,
             lastSeen: now,
+            position: null,
         });
         const [, logError] = this.options.events.append({
             botId: bot.botId,

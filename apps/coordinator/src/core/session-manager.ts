@@ -1,11 +1,18 @@
 import type { ClientConnection } from '../transport/index.js';
 
+export interface SessionPosition {
+    x: number;
+    y: number;
+    z: number;
+}
+
 export interface Session {
     botId: string;
     name: string;
     connectionId: string;
     connectedAt: string;
     lastSeen: string;
+    position: SessionPosition | null;
 }
 
 export class SessionManager {
@@ -19,9 +26,11 @@ export class SessionManager {
         return this.sessions.get(botId);
     }
 
-    touch(botId: string, at = new Date().toISOString()): void {
+    touch(botId: string, at = new Date().toISOString(), position?: SessionPosition): void {
         const session = this.sessions.get(botId);
-        if (session) session.lastSeen = at;
+        if (!session) return;
+        session.lastSeen = at;
+        if (position !== undefined) session.position = { ...position };
     }
 
     removeByConnection(connection: ClientConnection): void {

@@ -24,6 +24,7 @@ import {
     PlannerContextBuilder,
     PlannerKeepLastGoodFallback,
     PlannerPlanCache,
+    type PlannerPosition,
     PlannerRepairLoop,
     PlannerSchemaValidator,
     PlannerSemanticValidator,
@@ -78,11 +79,14 @@ import {
     CoordinatorTaskProposalPort,
     PlannerCycleApplier,
     PlannerRuntime,
+    TaskIndependenceAuditor,
 } from './planner/index.js';
 import { SipReconciliationEngine, SipTransactionalCommitter } from './sip/index.js';
 import { TaskBoard, TaskCommandHandler, TaskRepository } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
+
+const ACTIONABLE_TASK_STATUSES = new Set(['pending', 'ready', 'claimed', 'running']);
 
 export interface CoordinatorCompositionOptions {
     config: TicrafterConfig;
@@ -151,6 +155,10 @@ export class CoordinatorComposition {
                     claims === null ? [null, 'claims unavailable'] : claims.hasActiveOverlap(bbox),
             },
         });
+        const taskAuditor = new TaskIndependenceAuditor({
+            tasks,
+            logger: options.logger,
+        });
         claims = new ClaimService({
             database: options.database,
             transactions,
@@ -190,6 +198,8 @@ export class CoordinatorComposition {
                     botStore,
                     worldModel,
                     sip,
+                    positions: (botId) => sessions.get(botId)?.position ?? null,
+                    auditor: taskAuditor,
                     skillIds: new Set(skillRegistry.list().map((skill) => skill.id)),
                 });
             }
@@ -478,7 +488,34 @@ export class CoordinatorComposition {
                         'backpressure state changed',
                     );
                 }
-                plannerRuntime?.tick();
+                if (plannerRuntime !== null) {
+                    const [, auditError] = taskAuditor.audit();
+                    if (auditError) {
+                        options.logger.warn(
+                            { error: auditError },
+                            'task independence audit failed',
+                        );
+                    }
+                }
+                const [taskList, taskListError] = taskRepository.list();
+                const [botList, botListError] = botStore.list();
+                if (taskListError || botListError) {
+                    options.logger.warn(
+                        {
+                            taskError: taskListError?.type ?? null,
+                            botError: botListError?.type ?? null,
+                        },
+                        'work gap counts unavailable',
+                    );
+                    plannerRuntime?.tick();
+                } else if (plannerRuntime !== null) {
+                    const openTasks =
+                        taskList?.filter((task) => ACTIONABLE_TASK_STATUSES.has(task.status))
+                            .length ?? 0;
+                    const onlineBots =
+                        botList?.filter((bot) => bot.status === 'online').length ?? 0;
+                    plannerRuntime.tick(openTasks, onlineBots);
+                }
             },
         });
         const recovery = new RestartRecovery(options.database, options.epoch);
@@ -544,6 +581,8 @@ export class CoordinatorComposition {
         botStore: BotProfileStore;
         worldModel: CoordinatorWorldModel;
         sip: SipTransactionalCommitter;
+        positions: (botId: string) => PlannerPosition | null;
+        auditor: TaskIndependenceAuditor;
         skillIds: ReadonlySet<string>;
     }): PlannerRuntime {
         const planner = options.config.planner;
@@ -575,7 +614,9 @@ export class CoordinatorComposition {
                 tasks: options.taskRepository,
                 bots: options.botStore,
                 world: options.worldModel,
+                positions: options.positions,
             }),
+            allowedSkills: [...options.skillIds].sort(),
             maxContextCharacters: planner.maxContextCharacters,
         });
         const service = new PlannerService({
@@ -588,6 +629,15 @@ export class CoordinatorComposition {
                 budgetLimiter: budget,
                 maxRepairAttempts: planner.maxRepairAttempts,
                 maxOutputTokens: planner.maxTokensPerCall,
+                onRejectedResponse: (response) => {
+                    const [, recordError] = cache.recordResponses(null, [response]);
+                    if (recordError) {
+                        options.logger.warn(
+                            { error: recordError.type },
+                            'planner rejected response record failed',
+                        );
+                    }
+                },
             }),
             cache,
             keepLastGood: new PlannerKeepLastGoodFallback(cache),
@@ -607,6 +657,11 @@ export class CoordinatorComposition {
                 intervalMilliseconds: planner.intervalMilliseconds,
             }),
             applier: PlannerCycleApplier.forTaskBoard(options.sip, options.tasks),
+            beforeCycle: () => {
+                const [, auditError] = options.auditor.audit();
+                if (auditError) return [null, auditError];
+                return [undefined, null];
+            },
             logger: options.logger,
         });
     }

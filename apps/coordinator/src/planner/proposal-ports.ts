@@ -52,6 +52,9 @@ export class CoordinatorTaskProposalPort implements PlannerTaskProposalPort {
             if (proposedIds.has(task.id)) {
                 return [null, `task ${task.id} appears more than once`];
             }
+            if (task.parentId !== null || task.dependencies.length > 0) {
+                return [null, `task ${task.id} must be independent`];
+            }
             proposedIds.add(task.id);
         }
         for (const task of inputs) {

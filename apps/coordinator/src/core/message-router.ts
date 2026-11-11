@@ -2,6 +2,7 @@ import {
     BLOCK_UPDATE_EVENT,
     type BlockUpdateMessage,
     blockUpdateSchema,
+    botHeartbeatSchema,
     type BotTaskClaim,
     botTaskClaimSchema,
     type BotTaskComplete,
@@ -76,7 +77,17 @@ export class MessageRouter {
             return;
         }
         if (envelope.kind === 'event' && envelope.type === 'bot.heartbeat') {
-            this.options.sessions.touch(connection.botId);
+            const parsed = botHeartbeatSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid bot heartbeat');
+                this.options.sessions.touch(connection.botId);
+                return;
+            }
+            this.options.sessions.touch(
+                connection.botId,
+                new Date().toISOString(),
+                parsed.data.digest.position,
+            );
             return;
         }
         if (envelope.kind === 'event' && envelope.type === 'bot.event') {

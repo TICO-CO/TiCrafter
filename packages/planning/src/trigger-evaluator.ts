@@ -8,12 +8,14 @@ export interface PlannerTriggerEvaluatorOptions {
     deathClusterWindowMilliseconds?: number;
     landmarkCooldownMilliseconds?: number;
     conflictCooldownMilliseconds?: number;
+    workGapCooldownMilliseconds?: number;
     createId?: () => string;
 }
 
 export class PlannerTriggerEvaluator {
     private lastIntervalAt: number | null = null;
     private lastConflictAt: number | null = null;
+    private lastWorkGapAt: number | null = null;
     private lastLandmarkAt: number | null = null;
     private lastFailureBurstAt: number | null = null;
     private lastDeathClusterAt: number | null = null;
@@ -29,6 +31,17 @@ export class PlannerTriggerEvaluator {
         }
         this.lastIntervalAt = now;
         return this.trigger('interval', 'planner interval elapsed', now, {});
+    }
+
+    observeWorkGap(openTasks: number, onlineBots: number, now: number): PlannerTrigger | null {
+        if (onlineBots <= 0 || openTasks >= onlineBots) return null;
+        const cooldown = this.options.workGapCooldownMilliseconds ?? 60_000;
+        if (this.lastWorkGapAt !== null && now - this.lastWorkGapAt < cooldown) return null;
+        this.lastWorkGapAt = now;
+        return this.trigger('work_gap', 'more online bots than open tasks', now, {
+            openTasks,
+            onlineBots,
+        });
     }
 
     observeConflict(reason: string, now: number): PlannerTrigger | null {

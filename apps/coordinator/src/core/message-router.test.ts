@@ -142,6 +142,42 @@ describe('MessageRouter perception events', () => {
         expect(received.blocks).toHaveLength(1);
     });
 
+    it('records heartbeat positions', () => {
+        const received = {
+            chunks: [] as ChunkSnapshotMessage[],
+            landmarks: [] as LandmarkCandidateMessage[],
+            blocks: [] as BlockUpdateMessage[],
+            decisions: [] as DecisionRequest[],
+        };
+        const sessions = new SessionManager();
+        sessions.add({
+            botId: 'bot.tibot1',
+            name: 'TiBot1',
+            connectionId: 'connection-1',
+            connectedAt: '2026-11-10T12:00:00.000Z',
+            lastSeen: '2026-11-10T12:00:00.000Z',
+            position: null,
+        });
+        const messageRouter = router(received, sessions);
+        const client = connection();
+
+        messageRouter.handleMessage(
+            client,
+            ProtocolEnvelope.create('event', 'bot.heartbeat', {
+                botId: 'bot.tibot1',
+                at: '2026-11-11T12:00:00.000Z',
+                digest: {
+                    health: 20,
+                    food: 18,
+                    position: { x: 4, y: -60, z: 7 },
+                    inventoryCount: 0,
+                },
+            }),
+        );
+
+        expect(sessions.get('bot.tibot1')?.position).toEqual({ x: 4, y: -60, z: 7 });
+    });
+
     it('routes validated decision requests', () => {
         const received = {
             chunks: [] as ChunkSnapshotMessage[],

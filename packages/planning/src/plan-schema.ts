@@ -216,6 +216,7 @@ export const plannerPlanSchema = zod.strictObject({
     goals: zod.array(plannerGoalSchema).min(1),
     sipMutations: zod.array(plannerSipMutationSchema).default([]),
     tasks: zod.array(plannerTaskSchema).default([]),
+    cancelTaskIds: zod.array(zod.string().min(1)).default([]),
     blueprints: zod.array(plannerBlueprintSchema).default([]),
     recovery: zod.strictObject({
         mode: zod.enum(['continue', 'retry', 'safe_mode', 'stop']),

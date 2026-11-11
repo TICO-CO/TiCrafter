@@ -12,6 +12,7 @@ import type {
     PlannerHttpRequest,
     PlannerHttpResponse,
     PlannerPrompt,
+    PlannerRawResponse,
 } from './types.js';
 
 class SequenceHttpPort implements PlannerHttpPort {
@@ -40,7 +41,11 @@ function prompt(): PlannerPrompt {
     };
 }
 
-function repairLoop(contents: readonly string[], maxRepairAttempts = 2): PlannerRepairLoop {
+function repairLoop(
+    contents: readonly string[],
+    maxRepairAttempts = 2,
+    onRejectedResponse?: (response: PlannerRawResponse) => void,
+): PlannerRepairLoop {
     return new PlannerRepairLoop({
         client: new OpenAiPlannerClient({
             baseUrl: 'https://planner.invalid',
@@ -61,6 +66,7 @@ function repairLoop(contents: readonly string[], maxRepairAttempts = 2): Planner
         }),
         maxRepairAttempts,
         maxOutputTokens: 2_000,
+        onRejectedResponse,
     });
 }
 
@@ -98,5 +104,19 @@ describe('PlannerRepairLoop', () => {
         expect(outcomeError?.type).toBe('REPAIR_EXHAUSTED');
         if (outcomeError?.type !== 'REPAIR_EXHAUSTED') return;
         expect(outcomeError.attempts).toBe(3);
+    });
+
+    it('reports rejected responses', async () => {
+        const rejected: PlannerRawResponse[] = [];
+        const loop = repairLoop(['{}', '{}', '{}'], 2, (response) => rejected.push(response));
+        const [outcome, outcomeError] = await loop.run(
+            prompt(),
+            plannerContext(),
+            new AbortController().signal,
+        );
+        expect(outcome).toBeNull();
+        expect(outcomeError?.type).toBe('REPAIR_EXHAUSTED');
+        expect(rejected.length).toBe(3);
+        expect(rejected.every((response) => response.failure !== null)).toBe(true);
     });
 });

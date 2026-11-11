@@ -19,6 +19,7 @@ import type {
 
 export type PlannerTriggerKind =
     | 'interval'
+    | 'work_gap'
     | 'sip_conflict'
     | 'task_failure_burst'
     | 'death_cluster'
@@ -36,9 +37,12 @@ export interface PlannerTrigger {
 
 export interface PlannerTaskView {
     id: string;
+    title: string;
     status: string;
     priority: number;
     dependencies: readonly string[];
+    skillId: string | null;
+    target: PlannerPosition | null;
     failureClass: string | null;
     deadLetterReason: string | null;
 }
@@ -248,6 +252,7 @@ export interface PlannerCycleResult {
     applicable: boolean;
     sipProposal: PlannerSipProposalInput | null;
     taskProposals: readonly PlannerTaskProposal[];
+    taskCancellations: readonly string[];
     attempts: number;
     usage: PlannerUsage;
     failure: PlannerFailure | null;

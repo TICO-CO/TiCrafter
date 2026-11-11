@@ -21,6 +21,7 @@ import { PlannerSemanticValidator } from './semantic-validator.js';
 import { PlannerSipMutationTranslator } from './sip-mutation-translator.js';
 import { PlannerTaskDagTranslator } from './task-dag-translator.js';
 import type {
+    PlannerContext,
     PlannerHttpPort,
     PlannerHttpRequest,
     PlannerHttpResponse,
@@ -102,6 +103,7 @@ function service(
     contents: readonly string[],
     store = new FakePlanStore(),
     enabled = true,
+    context: PlannerContext = plannerContext({ tasks: [], inventory: {} }),
 ): {
     service: PlannerService;
     store: FakePlanStore;
@@ -126,7 +128,8 @@ function service(
         service: new PlannerService({
             enabled,
             contextBuilder: new PlannerContextBuilder({
-                source: new FakePlannerContextSource(plannerContext({ tasks: [], inventory: {} })),
+                source: new FakePlannerContextSource(context),
+                allowedSkills: ['navigate'],
                 maxContextCharacters: 48_000,
             }),
             repairLoop: new PlannerRepairLoop({
@@ -170,6 +173,35 @@ describe('PlannerService', () => {
         expect(cycle?.plan?.planId).toBe('plan-1');
         expect(cycle?.taskProposals[0]?.id).toBe('task-1');
         expect(store.plans[0]?.id).toBe('plan-1');
+    });
+
+    it('passes cancellation requests through the cycle', async () => {
+        const context = plannerContext({
+            tasks: [
+                {
+                    id: 'task-old',
+                    title: 'Old task',
+                    status: 'ready',
+                    priority: 1,
+                    dependencies: [],
+                    skillId: 'navigate',
+                    target: null,
+                    failureClass: null,
+                    deadLetterReason: null,
+                },
+            ],
+            inventory: {},
+        });
+        const plan = plannerPlan({ cancelTaskIds: ['task-old'] });
+        const { service: plannerService } = service(
+            [JSON.stringify(plan)],
+            new FakePlanStore(),
+            true,
+            context,
+        );
+        const [cycle, cycleError] = await plannerService.plan(plannerTrigger());
+        expect(cycleError).toBeNull();
+        expect(cycle?.taskCancellations).toEqual(['task-old']);
     });
 
     it('falls back to the last good plan after repair exhaustion', async () => {

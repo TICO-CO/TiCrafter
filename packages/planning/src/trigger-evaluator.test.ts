@@ -23,6 +23,18 @@ describe('PlannerTriggerEvaluator', () => {
         expect(evaluator.observeTaskFailure(1_300)).toBeNull();
     });
 
+    it('fires work-gap triggers with cooldown', () => {
+        const evaluator = new PlannerTriggerEvaluator({
+            intervalMilliseconds: 100,
+            workGapCooldownMilliseconds: 1_000,
+        });
+        expect(evaluator.observeWorkGap(4, 4, 1_000)).toBeNull();
+        expect(evaluator.observeWorkGap(3, 4, 1_000)?.kind).toBe('work_gap');
+        expect(evaluator.observeWorkGap(2, 4, 1_500)).toBeNull();
+        expect(evaluator.observeWorkGap(2, 4, 2_000)?.kind).toBe('work_gap');
+        expect(evaluator.observeWorkGap(0, 0, 3_000)).toBeNull();
+    });
+
     it('fires death clusters and chat requests', () => {
         const evaluator = new PlannerTriggerEvaluator({
             intervalMilliseconds: 100,

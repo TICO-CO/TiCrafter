@@ -29,6 +29,8 @@ class FakeSipCommit implements PlannerSipCommitPort {
 
 class FakeTaskPort implements PlannerTaskPort {
     readonly creates: CreateTaskInput[] = [];
+    readonly cancels: string[] = [];
+    readonly operations: string[] = [];
 
     constructor(private readonly existing: readonly TaskRecord[] = []) {}
 
@@ -37,8 +39,17 @@ class FakeTaskPort implements PlannerTaskPort {
     }
 
     create(input: CreateTaskInput): Result<TaskRecord, TaskFailure> {
+        this.operations.push(`create:${input.id}`);
         this.creates.push(input);
         return [taskRecord(input), null];
+    }
+
+    cancel(taskId: string): Result<TaskRecord, TaskFailure> {
+        const task = this.existing.find((candidate) => candidate.id === taskId);
+        if (task === undefined) return [null, { type: 'TASK_NOT_FOUND', taskId }];
+        this.operations.push(`cancel:${taskId}`);
+        this.cancels.push(taskId);
+        return [{ ...task, status: 'cancelled' }, null];
     }
 }
 
@@ -106,6 +117,7 @@ function cycle(overrides: Partial<PlannerCycleResult> = {}): PlannerCycleResult 
         usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
         failure: null,
         ...overrides,
+        taskCancellations: overrides.taskCancellations ?? [],
     };
 }
 
@@ -162,6 +174,22 @@ describe('PlannerCycleApplier', () => {
         expect(applyError).toBeNull();
         expect(report?.tasksCreated).toBe(0);
         expect(report?.tasksSkipped).toBe(1);
+    });
+
+    it('cancels tasks before creating replacements', () => {
+        const existing = {
+            ...taskRecord({ id: 'old-1', title: 'Old task', payload: {} }),
+            status: 'ready' as const,
+        };
+        const sip = new FakeSipCommit(sipCommit());
+        const tasks = new FakeTaskPort([existing]);
+        const [report, applyError] = new PlannerCycleApplier({ sip, tasks }).apply(
+            cycle({ taskCancellations: ['old-1'] }),
+        );
+        expect(applyError).toBeNull();
+        expect(report?.tasksCancelled).toBe(1);
+        expect(report?.tasksCreated).toBe(1);
+        expect(tasks.operations).toEqual(['cancel:old-1', 'create:task-1']);
     });
 
     it('rejects unsupported landmark precondition types', () => {

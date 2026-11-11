@@ -23,6 +23,7 @@ export interface CoordinatorPlannerContextSourceOptions {
     tasks: TaskRepository;
     bots: BotProfileStore;
     world: CoordinatorPlannerWorldPort;
+    positions: (botId: string) => PlannerPosition | null;
 }
 
 export class CoordinatorPlannerContextSource implements PlannerContextSource {
@@ -56,9 +57,12 @@ export class CoordinatorPlannerContextSource implements PlannerContextSource {
         return [
             tasks.map((task) => ({
                 id: task.id,
+                title: task.title,
                 status: task.status,
                 priority: task.priority,
                 dependencies: task.dependencies,
+                skillId: typeof task.payload.skillId === 'string' ? task.payload.skillId : null,
+                target: task.target,
                 failureClass: task.failureClass,
                 deadLetterReason: task.deadLetterReason,
             })),
@@ -75,7 +79,7 @@ export class CoordinatorPlannerContextSource implements PlannerContextSource {
                 id: bot.botId,
                 role: bot.temporaryRole ?? bot.role,
                 online: bot.status === 'online',
-                position: null,
+                position: this.options.positions(bot.botId),
             })),
             null,
         ];

@@ -114,6 +114,15 @@ export class OpsStatusAggregator {
         sip: SipSnapshot,
         decisions: OpsStatusSnapshot['decisions'],
     ): OpsStatusSnapshot {
+        const activeTasks = new Map<string, TaskRecord>();
+        tasks.forEach((task) => {
+            if (
+                (task.status === 'claimed' || task.status === 'running') &&
+                task.claimedBy !== null
+            ) {
+                activeTasks.set(task.claimedBy, task);
+            }
+        });
         const online = bots.filter((bot) => bot.status === 'online').length;
         const suspended = bots.filter((bot) => bot.status === 'suspended').length;
         return {
@@ -123,15 +132,19 @@ export class OpsStatusAggregator {
                 online,
                 suspended,
                 offline: bots.length - online - suspended,
-                items: bots.map((bot) => ({
-                    botId: bot.botId,
-                    username: bot.username,
-                    role: bot.temporaryRole ?? bot.role,
-                    status: bot.status,
-                    currentTaskId: bot.currentTaskId,
-                    currentSkill: bot.currentSkill,
-                    lastSeen: bot.lastSeen,
-                })),
+                items: bots.map((bot) => {
+                    const activeTask = activeTasks.get(bot.botId) ?? null;
+                    const activeSkill = activeTask?.payload.skillId;
+                    return {
+                        botId: bot.botId,
+                        username: bot.username,
+                        role: bot.temporaryRole ?? bot.role,
+                        status: bot.status,
+                        currentTaskId: activeTask?.id ?? null,
+                        currentSkill: typeof activeSkill === 'string' ? activeSkill : null,
+                        lastSeen: bot.lastSeen,
+                    };
+                }),
             },
             tasks: {
                 total: tasks.length,

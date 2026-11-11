@@ -20,6 +20,7 @@ export interface PlannerRuntimeOptions {
     triggers: PlannerTriggerEvaluator;
     applier: PlannerCycleApplierPort;
     logger: LoggerPort;
+    beforeCycle?: () => Result<void, string>;
     now?: () => number;
 }
 
@@ -28,10 +29,16 @@ export class PlannerRuntime {
 
     constructor(private readonly options: PlannerRuntimeOptions) {}
 
-    tick(): void {
-        const trigger = this.options.triggers.evaluateInterval(this.now());
-        if (trigger === null) return;
-        this.run(trigger);
+    tick(openTasks = 0, onlineBots = 0): void {
+        if (this.running) return;
+        const now = this.now();
+        const interval = this.options.triggers.evaluateInterval(now);
+        if (interval !== null) {
+            this.run(interval);
+            return;
+        }
+        const workGap = this.options.triggers.observeWorkGap(openTasks, onlineBots, now);
+        if (workGap !== null) this.run(workGap);
     }
 
     noteConflict(reason: string): void {
@@ -66,6 +73,16 @@ export class PlannerRuntime {
         if (this.running) {
             this.options.logger.warn({ trigger: trigger.kind }, 'planner cycle already running');
             return;
+        }
+        if (this.options.beforeCycle) {
+            const [, beforeError] = this.options.beforeCycle();
+            if (beforeError) {
+                this.options.logger.warn(
+                    { error: beforeError, trigger: trigger.kind },
+                    'planner pre-cycle audit failed',
+                );
+                return;
+            }
         }
         this.running = true;
         void this.options.service
@@ -111,7 +128,7 @@ export class PlannerRuntime {
                 attempts: cycle.attempts,
                 sipMutations: cycle.sipProposal?.mutations.length ?? 0,
                 tasks: cycle.taskProposals.length,
-                failure: cycle.failure?.type ?? null,
+                failure: cycle.failure,
                 applied: report,
             },
             'planner cycle applied',

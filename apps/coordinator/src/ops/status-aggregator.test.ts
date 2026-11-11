@@ -94,6 +94,51 @@ describe('OpsStatusAggregator', () => {
         expect(metrics.snapshot().gauges.ops_bots_online).toBe(1);
     });
 
+    it('derives current task and skill from the active task board', () => {
+        const aggregator = new OpsStatusAggregator({
+            bots: {
+                list: () => [
+                    [
+                        bot({ currentTaskId: null, currentSkill: null }),
+                        bot({
+                            botId: 'bot.two',
+                            username: 'TiBot2',
+                            currentTaskId: 'stale-task',
+                            currentSkill: 'mine',
+                        }),
+                    ],
+                    null,
+                ],
+            },
+            tasks: {
+                list: () => [
+                    [
+                        task({
+                            id: 'task-live',
+                            status: 'claimed',
+                            claimedBy: 'bot.one',
+                            payload: { skillId: 'explore' },
+                        }),
+                    ],
+                    null,
+                ],
+            },
+            claims: { listActive: () => [[], null] },
+            grants: { listActive: () => [[], null] },
+            sip: { loadSnapshot: () => [sip, null] },
+            decisions: { status: () => decisionStatus },
+            now: () => at,
+        });
+
+        const [snapshot, snapshotError] = aggregator.snapshot();
+
+        expect(snapshotError).toBeNull();
+        expect(snapshot?.bots.items[0]?.currentTaskId).toBe('task-live');
+        expect(snapshot?.bots.items[0]?.currentSkill).toBe('explore');
+        expect(snapshot?.bots.items[1]?.currentTaskId).toBeNull();
+        expect(snapshot?.bots.items[1]?.currentSkill).toBeNull();
+    });
+
     it('maps storage failures to ops failures', () => {
         const failure: StorageFailure = { type: 'READ_FAILED', message: 'broken' };
         const aggregator = new OpsStatusAggregator({

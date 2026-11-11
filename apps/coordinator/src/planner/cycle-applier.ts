@@ -16,12 +16,19 @@ export interface PlannerSipCommitPort {
 export interface PlannerTaskPort {
     get(taskId: string): Result<TaskRecord | null, TaskFailure>;
     create(input: CreateTaskInput): Result<TaskRecord, TaskFailure>;
+    cancel(
+        taskId: string,
+        actor: string,
+        reason: string,
+        now?: string,
+    ): Result<TaskRecord, TaskFailure>;
 }
 
 export interface PlannerApplyReport {
     sipRevision: number | null;
     tasksCreated: number;
     tasksSkipped: number;
+    tasksCancelled: number;
 }
 
 export interface PlannerCycleApplierPort {
@@ -42,11 +49,46 @@ export class PlannerCycleApplier implements PlannerCycleApplierPort {
 
     apply(cycle: PlannerCycleResult): Result<PlannerApplyReport, string> {
         if (!cycle.applicable) {
-            return [{ sipRevision: null, tasksCreated: 0, tasksSkipped: 0 }, null];
+            return [
+                { sipRevision: null, tasksCreated: 0, tasksSkipped: 0, tasksCancelled: 0 },
+                null,
+            ];
         }
         const [sipRevision, sipError] = this.commitSip(cycle.sipProposal);
         if (sipError) return [null, sipError];
-        return this.createTasks(cycle.taskProposals, sipRevision);
+        const [tasksCancelled, cancelError] = this.cancelTasks(cycle.taskCancellations);
+        if (cancelError) return [null, cancelError];
+        if (tasksCancelled === null) return [null, 'cancelled task count missing'];
+        const [created, createError] = this.createTasks(cycle.taskProposals);
+        if (createError) return [null, createError];
+        if (created === null) return [null, 'task creation report missing'];
+        return [
+            {
+                sipRevision,
+                tasksCreated: created.tasksCreated,
+                tasksSkipped: created.tasksSkipped,
+                tasksCancelled,
+            },
+            null,
+        ];
+    }
+
+    private cancelTasks(taskIds: readonly string[]): Result<number, string> {
+        const openStatuses = new Set(['pending', 'ready', 'claimed', 'running']);
+        let tasksCancelled = 0;
+        for (const taskId of taskIds) {
+            const [task, readError] = this.options.tasks.get(taskId);
+            if (readError) return [null, JSON.stringify(readError)];
+            if (task === null || !openStatuses.has(task.status)) continue;
+            const [, cancelError] = this.options.tasks.cancel(
+                taskId,
+                'planner',
+                'planner cancelled task',
+            );
+            if (cancelError) return [null, JSON.stringify(cancelError)];
+            tasksCancelled += 1;
+        }
+        return [tasksCancelled, null];
     }
 
     private commitSip(proposal: PlannerSipProposalInput | null): Result<number | null, string> {
@@ -59,8 +101,7 @@ export class PlannerCycleApplier implements PlannerCycleApplierPort {
 
     private createTasks(
         proposals: readonly PlannerTaskProposal[],
-        sipRevision: number | null,
-    ): Result<PlannerApplyReport, string> {
+    ): Result<Pick<PlannerApplyReport, 'tasksCreated' | 'tasksSkipped'>, string> {
         let tasksCreated = 0;
         let tasksSkipped = 0;
         for (const proposal of proposals) {
@@ -83,6 +124,6 @@ export class PlannerCycleApplier implements PlannerCycleApplierPort {
             }
             tasksSkipped += 1;
         }
-        return [{ sipRevision, tasksCreated, tasksSkipped }, null];
+        return [{ tasksCreated, tasksSkipped }, null];
     }
 }
