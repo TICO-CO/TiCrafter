@@ -94,6 +94,22 @@ describe('TaskCommandHandler', () => {
         expect(response.fencingToken).not.toBeNull();
     });
 
+    it('does not assign a second task while one is active', () => {
+        const { board, handler, transport } = fresh();
+        board.create(TaskFixtures.task({ payload: { skillId: 'navigate' } }), now);
+        board.create(TaskFixtures.task({ id: 'task-2', payload: { skillId: 'navigate' } }), now);
+
+        handler.handleClaim(connection(), claim(), { id: 'request-1' } as Envelope);
+        handler.handleClaim(connection(), claim(), { id: 'request-2' } as Envelope);
+
+        const first = transport.sent[0]?.payload as BotTaskResponse;
+        const second = transport.sent[1]?.payload as BotTaskResponse;
+        expect(first.task?.id).toBe('task-1');
+        expect(second.task).toBeNull();
+        expect(board.get('task-2')[0]?.status).toBe('ready');
+        expect(board.get('task-2')[0]?.claimedBy).toBeNull();
+    });
+
     it('completes a task only for its current lease holder', () => {
         const { board, handler, transport } = fresh();
         board.create(TaskFixtures.task({ payload: { skillId: 'navigate' } }), now);

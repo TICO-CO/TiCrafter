@@ -27,12 +27,21 @@ export class TaskCommandHandler {
             this.reply(connection, envelope, this.failure('botId mismatch'));
             return;
         }
+        const [activeTaskCount, countError] = this.tasks.activeTaskCount(request.botId);
+        if (countError) {
+            this.reply(connection, envelope, this.failure(this.describe(countError)));
+            return;
+        }
+        if (activeTaskCount === null) {
+            this.reply(connection, envelope, this.failure('active task count missing'));
+            return;
+        }
         const [lease, claimError] = this.tasks.claimNext({
             botId: request.botId,
             botRole: request.role ?? null,
             botPosition: request.position,
             inventory: Object.fromEntries(request.inventory.map((item) => [item.name, item.count])),
-            activeTaskCount: 0,
+            activeTaskCount,
         });
         if (claimError) {
             this.reply(connection, envelope, this.failure(this.describe(claimError)));

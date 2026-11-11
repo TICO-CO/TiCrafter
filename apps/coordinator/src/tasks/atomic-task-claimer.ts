@@ -38,6 +38,7 @@ export class AtomicTaskClaimer {
         context: TaskClaimContext,
         now: string,
     ): Result<TaskLease | null, TaskFailure> {
+        if (context.activeTaskCount > 0) return [null, null];
         const [tasks, listError] = this.repository.list();
         if (listError) return [null, { type: 'STORAGE', failure: listError }];
         if (tasks === null) return [null, { type: 'MALFORMED_TASK', message: 'task list missing' }];

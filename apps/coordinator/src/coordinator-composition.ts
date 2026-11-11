@@ -82,7 +82,7 @@ import {
     TaskIndependenceAuditor,
 } from './planner/index.js';
 import { SipReconciliationEngine, SipTransactionalCommitter } from './sip/index.js';
-import { TaskBoard, TaskCommandHandler, TaskRepository } from './tasks/index.js';
+import { TaskBoard, TaskCommandHandler, TaskLeaseReaper, TaskRepository } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
@@ -156,6 +156,10 @@ export class CoordinatorComposition {
             },
         });
         const taskAuditor = new TaskIndependenceAuditor({
+            tasks,
+            logger: options.logger,
+        });
+        const taskLeaseReaper = new TaskLeaseReaper({
             tasks,
             logger: options.logger,
         });
@@ -487,6 +491,10 @@ export class CoordinatorComposition {
                         },
                         'backpressure state changed',
                     );
+                }
+                const [, leaseError] = taskLeaseReaper.reap();
+                if (leaseError) {
+                    options.logger.warn({ error: leaseError }, 'task lease reaping failed');
                 }
                 if (plannerRuntime !== null) {
                     const [, auditError] = taskAuditor.audit();

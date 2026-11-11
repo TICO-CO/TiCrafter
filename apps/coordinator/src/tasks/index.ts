@@ -10,6 +10,7 @@ export * from './task-board.js';
 export * from './task-codec.js';
 export * from './task-command-handler.js';
 export * from './task-fixtures.js';
+export * from './task-lease-reaper.js';
 export * from './task-repository.js';
 export * from './task-state-machine.js';
 export * from './types.js';

@@ -112,6 +112,22 @@ export class TaskBoard {
         return [task, null];
     }
 
+    activeTaskCount(botId: string): Result<number, TaskFailure> {
+        const [tasks, listError] = this.list();
+        if (listError) return [null, listError];
+        if (tasks === null) {
+            return [null, { type: 'MALFORMED_TASK', message: 'task list missing' }];
+        }
+        return [
+            tasks.filter(
+                (task) =>
+                    task.claimedBy === botId &&
+                    (task.status === 'claimed' || task.status === 'running'),
+            ).length,
+            null,
+        ];
+    }
+
     claimNext(
         context: Omit<TaskClaimContext, 'world' | 'claims'>,
         now = new Date().toISOString(),
