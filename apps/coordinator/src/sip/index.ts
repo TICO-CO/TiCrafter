@@ -1,6 +1,7 @@
 export * from './container-registry.js';
 export * from './dependency-validator.js';
 export * from './farm-store.js';
+export * from './geometry.js';
 export * from './mutation-proposer.js';
 export * from './path-graph-store.js';
 export * from './revision-manager.js';

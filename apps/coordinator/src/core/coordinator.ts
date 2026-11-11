@@ -6,7 +6,9 @@ import {
     type TransportFailure,
 } from '@ticrafter/core';
 
+import type { ClaimService } from '../claims/index.js';
 import type { SipTransactionalCommitter } from '../sip/index.js';
+import type { TaskBoard } from '../tasks/index.js';
 import type { TransportServer } from '../transport/index.js';
 import type { BotProcessSupervisor } from './bot-process-supervisor.js';
 import type { CoordinatorDatabase } from './epoch.js';
@@ -28,6 +30,8 @@ export interface CoordinatorOptions {
     recovery: RestartRecovery;
     supervisor: BotProcessSupervisor | null;
     sip: SipTransactionalCommitter;
+    tasks: TaskBoard;
+    claims: ClaimService;
 }
 
 export class Coordinator {
@@ -89,6 +93,14 @@ export class Coordinator {
 
     get sip(): SipTransactionalCommitter {
         return this.options.sip;
+    }
+
+    get tasks(): TaskBoard {
+        return this.options.tasks;
+    }
+
+    get claims(): ClaimService {
+        return this.options.claims;
     }
 
     private runRecovery(): void {

@@ -1,6 +1,7 @@
 import { type LoggerPort, MessageSchemaRegistry, type TicrafterConfig } from '@ticrafter/core';
-import { EventLogWriter } from '@ticrafter/memory';
+import { EventLogWriter, TransactionManager } from '@ticrafter/memory';
 
+import { ClaimService } from './claims/index.js';
 import {
     BotProcessSupervisor,
     CommandRouter,
@@ -14,6 +15,7 @@ import {
     SessionManager,
 } from './core/index.js';
 import { SipTransactionalCommitter } from './sip/index.js';
+import { TaskBoard } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
@@ -33,6 +35,27 @@ export class CoordinatorComposition {
         const events = new EventLogWriter(options.database);
         const worldModel = new CoordinatorWorldModel(options.database, options.logger);
         const sip = new SipTransactionalCommitter(options.database);
+        const transactions = new TransactionManager(options.database);
+        let claims: ClaimService | null = null;
+        const tasks = new TaskBoard({
+            database: options.database,
+            events,
+            transactions,
+            world: worldModel,
+            claims: {
+                hasActiveOverlap: (bbox) =>
+                    claims === null ? [null, 'claims unavailable'] : claims.hasActiveOverlap(bbox),
+            },
+        });
+        claims = new ClaimService({
+            database: options.database,
+            transactions,
+            sessions: { isConnected: (botId) => sessions.get(botId) !== undefined },
+            tasks: {
+                requeue: (taskId, actor, reason, now) => tasks.requeue(taskId, actor, reason, now),
+            },
+            epoch: options.epoch,
+        });
         let messageRouter: MessageRouter | null = null;
         const transport = new TransportServer({
             host: options.config.transport.host,
@@ -111,6 +134,14 @@ export class CoordinatorComposition {
                 if (staleSessions.length) {
                     options.logger.warn({ staleSessions }, 'pruned stale sessions');
                 }
+                if (claims !== null) {
+                    const [reaped, reapError] = claims.reapExpired();
+                    if (reapError) {
+                        options.logger.warn({ error: reapError }, 'claim lease reaping failed');
+                    } else if (reaped !== null && reaped.length > 0) {
+                        options.logger.info({ reaped: reaped.length }, 'claim leases expired');
+                    }
+                }
                 const now = Date.now();
                 if (now - lastDecayAt >= 30_000) {
                     lastDecayAt = now;
@@ -143,6 +174,8 @@ export class CoordinatorComposition {
             recovery,
             supervisor,
             sip,
+            tasks,
+            claims,
         });
     }
 }

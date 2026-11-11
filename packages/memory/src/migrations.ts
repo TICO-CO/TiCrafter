@@ -52,4 +52,30 @@ export const migrations: Migration[] = [
       ALTER TABLE skill_checkpoints ADD COLUMN task_id TEXT NOT NULL DEFAULT 'default';
     `,
     },
+    {
+        version: 6,
+        name: 'tasks-claims',
+        sql: `
+      ALTER TABLE tasks ADD COLUMN claimed_by TEXT;
+      ALTER TABLE tasks ADD COLUMN lease_until TEXT;
+      ALTER TABLE tasks ADD COLUMN lease_token INTEGER;
+      ALTER TABLE tasks ADD COLUMN available_at TEXT NOT NULL DEFAULT '';
+      ALTER TABLE tasks ADD COLUMN dependencies_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE tasks ADD COLUMN preconditions_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE tasks ADD COLUMN required_role TEXT;
+      ALTER TABLE tasks ADD COLUMN target_json TEXT;
+      ALTER TABLE tasks ADD COLUMN failure_class TEXT;
+      ALTER TABLE tasks ADD COLUMN dead_letter_reason TEXT;
+      ALTER TABLE tasks ADD COLUMN completed_at TEXT;
+      ALTER TABLE claims ADD COLUMN resource_type TEXT NOT NULL DEFAULT 'unknown';
+      ALTER TABLE claims ADD COLUMN bbox_json TEXT NOT NULL DEFAULT '{}';
+      ALTER TABLE claims ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
+      ALTER TABLE claims ADD COLUMN task_id TEXT;
+      ALTER TABLE claims ADD COLUMN epoch INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE claims ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}';
+      ALTER TABLE claims ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      CREATE INDEX IF NOT EXISTS idx_tasks_status_priority ON tasks(status, priority);
+      CREATE INDEX IF NOT EXISTS idx_claims_resource_status ON claims(resource_type, status);
+    `,
+    },
 ];
