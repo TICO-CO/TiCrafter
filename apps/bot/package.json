@@ -7,6 +7,7 @@
     "dependencies": {
         "@ticrafter/brains": "0.1.0",
         "@ticrafter/core": "0.1.0",
+        "@ticrafter/memory": "0.1.0",
         "@ticrafter/perception": "0.1.0",
         "@ticrafter/safety": "0.1.0",
         "@ticrafter/skills": "0.1.0",

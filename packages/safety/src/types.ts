@@ -6,6 +6,7 @@ export type SafetySignalCode =
     | 'hazard.lava'
     | 'hazard.fire'
     | 'hazard.drowning'
+    | 'hazard.fall'
     | 'hazard.void'
     | 'mob.threat'
     | 'hunger.low'
@@ -54,6 +55,8 @@ export interface SafetySnapshot {
     food: number;
     oxygen: number;
     onGround: boolean;
+    fallDistance?: number;
+    falling?: boolean;
     stuckMilliseconds: number;
     targetUnreachableMilliseconds: number;
     inventory: readonly SafetyInventoryItem[];

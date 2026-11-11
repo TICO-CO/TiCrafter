@@ -21,6 +21,10 @@ export class EatSkill implements Skill {
         return [SkillSharedUtilities.firstFood(context.inventory) !== null, null];
     }
 
+    plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        return [input, null];
+    }
+
     start(context: SkillContext, input: SkillInput): Result<SkillStep, string> {
         const itemName = input.itemName ?? SkillSharedUtilities.firstFood(context.inventory);
         if (itemName === null) return [null, 'no food available'];

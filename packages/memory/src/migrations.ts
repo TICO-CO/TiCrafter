@@ -45,4 +45,11 @@ export const migrations: Migration[] = [
       );
     `,
     },
+    {
+        version: 5,
+        name: 'skill-checkpoint-task-id',
+        sql: `
+      ALTER TABLE skill_checkpoints ADD COLUMN task_id TEXT NOT NULL DEFAULT 'default';
+    `,
+    },
 ];

@@ -29,11 +29,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.perception` | [Perception](#perception) | 11 | `packages/perception/src` | 3 |
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
 | `sys.planner` | [Cloud Planner](#cloud-planner) | 12 | `packages/planning/src` | 9 |
-| `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src/runtime` | 4 |
-| `sys.skills` | [Skill Library](#skill-library) | 20 | `packages/skills/src/library` | 4 |
+| `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
+| `sys.skills` | [Skill Library](#skill-library) | 20 | `packages/skills/src` | 4 |
 | `sys.building` | [Building](#building) | 21 | `packages/building/src` | 6 |
 | `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 11 | `apps/bot/src` | 1 |
-| `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/brains/src/safety` | 4 |
+| `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 9 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 9 | `apps/coordinator/src/ops` | 11 |
 | `sys.config` | [Config and Profiles](#config-and-profiles) | 8 | `packages/core/src/config` | 1 |
@@ -2589,7 +2589,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ## Skill Runtime
 
 - **ID:** `sys.skill-runtime`
-- **Owner package:** `packages/skills/src/runtime`
+- **Owner package:** `packages/skills/src`
 - **Milestone:** 4
 - **Source refs:** `main.md#9-skills`
 - **Allowed cross-system dependencies:** `sys.memory`, `sys.world`
@@ -2606,21 +2606,21 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 | ID | Component | Responsibility | Owner path | Milestone |
 |---|---|---|---|---:|
-| `skill-runtime.skill-contract` | Skill Contract | Define the typed skill interface, failure classes, progress events, and effects. | `packages/skills/src/runtime/skill-contract` | 4 |
-| `skill-runtime.skill-registry` | Skill Registry | Register and resolve skills by stable ID and validate contract compliance. | `packages/skills/src/runtime/skill-registry` | 4 |
-| `skill-runtime.lifecycle-executor` | Skill Lifecycle Executor | Execute skill plan, start, step, cancel, and completion transitions. | `packages/skills/src/runtime/lifecycle-executor` | 4 |
-| `skill-runtime.tick-scheduler` | Skill Tick Scheduler | Step active skills at 200-500ms while preserving guardian priority. | `packages/skills/src/runtime/tick-scheduler` | 4 |
-| `skill-runtime.context-builder` | Skill Context Builder | Build the bounded skill context from world, SIP, inventory, task, and checkpoint state. | `packages/skills/src/runtime/context-builder` | 4 |
-| `skill-runtime.progress-reporter` | Skill Progress Reporter | Report progress and failure class to Laya, planner, and metrics. | `packages/skills/src/runtime/progress-reporter` | 4 |
-| `skill-runtime.checkpoint-manager` | Skill Checkpoint Manager | Persist and load skill checkpoints by bot, task, and skill. | `packages/skills/src/runtime/checkpoint-manager` | 4 |
-| `skill-runtime.restore-validator` | Skill Restore Validator | Reject stale checkpoints that no longer match the world or claim state. | `packages/skills/src/runtime/restore-validator` | 4 |
-| `skill-runtime.effects-emitter` | Typed Effects Emitter | Emit declared place, break, use, attack, and inventory effects. | `packages/skills/src/runtime/effects-emitter` | 4 |
-| `skill-runtime.preemption-handler` | Skill Preemption Handler | Cancel or pause a skill when the guardian, claim, or grant state changes. | `packages/skills/src/runtime/preemption-handler` | 4 |
+| `skill-runtime.skill-contract` | Skill Contract | Define the typed skill interface, failure classes, progress events, and effects. | `packages/skills/src/skill-contract` | 4 |
+| `skill-runtime.skill-registry` | Skill Registry | Register and resolve skills by stable ID and validate contract compliance. | `packages/skills/src/skill-registry` | 4 |
+| `skill-runtime.lifecycle-executor` | Skill Lifecycle Executor | Execute skill plan, start, step, cancel, and completion transitions. | `packages/skills/src/lifecycle-executor` | 4 |
+| `skill-runtime.tick-scheduler` | Skill Tick Scheduler | Step active skills at 200-500ms while preserving guardian priority. | `packages/skills/src/tick-scheduler` | 4 |
+| `skill-runtime.context-builder` | Skill Context Builder | Build the bounded skill context from world, SIP, inventory, task, and checkpoint state. | `packages/skills/src/context-builder` | 4 |
+| `skill-runtime.progress-reporter` | Skill Progress Reporter | Report progress and failure class to Laya, planner, and metrics. | `packages/skills/src/progress-reporter` | 4 |
+| `skill-runtime.checkpoint-manager` | Skill Checkpoint Manager | Persist and load skill checkpoints by bot, task, and skill. | `packages/skills/src/checkpoint-manager` | 4 |
+| `skill-runtime.restore-validator` | Skill Restore Validator | Reject stale checkpoints that no longer match the world or claim state. | `packages/skills/src/restore-validator` | 4 |
+| `skill-runtime.effects-emitter` | Typed Effects Emitter | Emit declared place, break, use, attack, and inventory effects. | `packages/skills/src/effects-emitter` | 4 |
+| `skill-runtime.preemption-handler` | Skill Preemption Handler | Cancel or pause a skill when the guardian, claim, or grant state changes. | `packages/skills/src/preemption-handler` | 4 |
 
 ### `skill-runtime.skill-contract` — Skill Contract
 
 - **Responsibility:** Define the typed skill interface, failure classes, progress events, and effects.
-- **Owner path:** `packages/skills/src/runtime/skill-contract`
+- **Owner path:** `packages/skills/src/skill-contract`
 - **Provides:** `skill-runtime.skill-contract.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -2640,7 +2640,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.skill-registry` — Skill Registry
 
 - **Responsibility:** Register and resolve skills by stable ID and validate contract compliance.
-- **Owner path:** `packages/skills/src/runtime/skill-registry`
+- **Owner path:** `packages/skills/src/skill-registry`
 - **Provides:** `skill-runtime.skill-registry.interface`
 - **Requires:** `skill-runtime.skill-contract`
 - **Owns state:** none
@@ -2660,7 +2660,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.lifecycle-executor` — Skill Lifecycle Executor
 
 - **Responsibility:** Execute skill plan, start, step, cancel, and completion transitions.
-- **Owner path:** `packages/skills/src/runtime/lifecycle-executor`
+- **Owner path:** `packages/skills/src/lifecycle-executor`
 - **Provides:** `skill-runtime.lifecycle-executor.interface`
 - **Requires:** `skill-runtime.skill-registry`, `skill-runtime.skill-contract`, `skill-runtime.context-builder`, `skill-runtime.effects-emitter`
 - **Owns state:** none
@@ -2680,7 +2680,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.tick-scheduler` — Skill Tick Scheduler
 
 - **Responsibility:** Step active skills at 200-500ms while preserving guardian priority.
-- **Owner path:** `packages/skills/src/runtime/tick-scheduler`
+- **Owner path:** `packages/skills/src/tick-scheduler`
 - **Provides:** `skill-runtime.tick-scheduler.interface`
 - **Requires:** `skill-runtime.lifecycle-executor`, `brains.reflex-guardian-loop`
 - **Owns state:** none
@@ -2700,7 +2700,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.context-builder` — Skill Context Builder
 
 - **Responsibility:** Build the bounded skill context from world, SIP, inventory, task, and checkpoint state.
-- **Owner path:** `packages/skills/src/runtime/context-builder`
+- **Owner path:** `packages/skills/src/context-builder`
 - **Provides:** `skill-runtime.context-builder.interface`
 - **Requires:** `bot-runtime.world-cache-adapter`, `world.spatial-query-engine`, `sip.revision-manager`, `skill-runtime.checkpoint-manager`
 - **Owns state:** none
@@ -2720,7 +2720,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.progress-reporter` — Skill Progress Reporter
 
 - **Responsibility:** Report progress and failure class to Laya, planner, and metrics.
-- **Owner path:** `packages/skills/src/runtime/progress-reporter`
+- **Owner path:** `packages/skills/src/progress-reporter`
 - **Provides:** `skill-runtime.progress-reporter.interface`
 - **Requires:** `transport.event-stream`, `ops.metrics-registry`
 - **Owns state:** none
@@ -2740,7 +2740,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.checkpoint-manager` — Skill Checkpoint Manager
 
 - **Responsibility:** Persist and load skill checkpoints by bot, task, and skill.
-- **Owner path:** `packages/skills/src/runtime/checkpoint-manager`
+- **Owner path:** `packages/skills/src/checkpoint-manager`
 - **Provides:** `skill-runtime.checkpoint-manager.interface`
 - **Requires:** `memory.transaction-manager`
 - **Owns state:** `skill_checkpoints`
@@ -2760,7 +2760,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.restore-validator` — Skill Restore Validator
 
 - **Responsibility:** Reject stale checkpoints that no longer match the world or claim state.
-- **Owner path:** `packages/skills/src/runtime/restore-validator`
+- **Owner path:** `packages/skills/src/restore-validator`
 - **Provides:** `skill-runtime.restore-validator.interface`
 - **Requires:** `skill-runtime.checkpoint-manager`, `world.spatial-query-engine`
 - **Owns state:** none
@@ -2780,7 +2780,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.effects-emitter` — Typed Effects Emitter
 
 - **Responsibility:** Emit declared place, break, use, attack, and inventory effects.
-- **Owner path:** `packages/skills/src/runtime/effects-emitter`
+- **Owner path:** `packages/skills/src/effects-emitter`
 - **Provides:** `skill-runtime.effects-emitter.interface`
 - **Requires:** `transport.event-stream`
 - **Owns state:** none
@@ -2800,7 +2800,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skill-runtime.preemption-handler` — Skill Preemption Handler
 
 - **Responsibility:** Cancel or pause a skill when the guardian, claim, or grant state changes.
-- **Owner path:** `packages/skills/src/runtime/preemption-handler`
+- **Owner path:** `packages/skills/src/preemption-handler`
 - **Provides:** `skill-runtime.preemption-handler.interface`
 - **Requires:** `skill-runtime.lifecycle-executor`, `safety.action-veto-gate`
 - **Owns state:** none
@@ -2822,7 +2822,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ## Skill Library
 
 - **ID:** `sys.skills`
-- **Owner package:** `packages/skills/src/library`
+- **Owner package:** `packages/skills/src`
 - **Milestone:** 4
 - **Source refs:** `main.md#9-skills`
 - **Allowed cross-system dependencies:** `sys.bot-runtime`, `sys.building`, `sys.safety`, `sys.sip`, `sys.skill-runtime`, `sys.world`
@@ -2839,31 +2839,31 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 | ID | Component | Responsibility | Owner path | Milestone |
 |---|---|---|---|---:|
-| `skills.navigate` | Navigate | Move a bot to a target position using pathfinding and stuck recovery. | `packages/skills/src/library/navigate` | 4 |
-| `skills.follow-path` | Follow Path | Follow a SIP path graph route with waypoint and deviation handling. | `packages/skills/src/library/follow-path` | 4 |
-| `skills.mine` | Mine | Mine a targeted block with tool selection, reach checks, and drop collection. | `packages/skills/src/library/mine` | 4 |
-| `skills.collect` | Collect | Collect nearby drops or resource blocks within a bounded area. | `packages/skills/src/library/collect` | 4 |
-| `skills.craft` | Craft | Craft an item from a recipe using available inventory and workstations. | `packages/skills/src/library/craft` | 4 |
-| `skills.smelt` | Smelt | Smelt input items in a reachable furnace with fuel accounting. | `packages/skills/src/library/smelt` | 4 |
-| `skills.eat` | Eat | Consume the best available food when hunger or health requires it. | `packages/skills/src/library/eat` | 4 |
-| `skills.deposit` | Deposit | Deposit selected inventory into a reserved container. | `packages/skills/src/library/deposit` | 4 |
-| `skills.withdraw` | Withdraw | Withdraw requested materials from a reserved container. | `packages/skills/src/library/withdraw` | 4 |
-| `skills.sleep` | Sleep | Reach and use a bed safely when night or threat requires it. | `packages/skills/src/library/sleep` | 4 |
-| `skills.flee-defend` | Flee or Defend | Flee, kite, or defend against hostile mobs according to role and risk. | `packages/skills/src/library/flee-defend` | 4 |
-| `skills.explore` | Explore | Explore unknown territory while avoiding protected and claimed areas. | `packages/skills/src/library/explore` | 4 |
-| `skills.bridge` | Bridge | Place a safe bridge across a gap or obstacle without violating safety rules. | `packages/skills/src/library/bridge` | 4 |
-| `skills.clear` | Clear | Remove permitted blocks from a work package after grant and safety validation. | `packages/skills/src/library/clear` | 4 |
-| `skills.place-build` | Place Build | Place blueprint blocks for a work package in support-first order. | `packages/skills/src/library/place-build` | 4 |
-| `skills.schematic-build` | Schematic Build | Execute a schematic-backed blueprint with diffing and partitioning. | `packages/skills/src/library/schematic-build` | 4 |
-| `skills.repair` | Repair | Repair a structure by diffing intended blueprint against observed blocks. | `packages/skills/src/library/repair` | 4 |
-| `skills.harvest-farm` | Harvest Farm | Harvest mature crops from an assigned farm plot. | `packages/skills/src/library/harvest-farm` | 4 |
-| `skills.plant-farm` | Plant Farm | Plant seeds and maintain water and crop state on an assigned plot. | `packages/skills/src/library/plant-farm` | 4 |
-| `skills.shared-utilities` | Skill Shared Utilities | Provide target selection, inventory math, reach checks, and progress helpers. | `packages/skills/src/library/shared-utilities` | 4 |
+| `skills.navigate` | Navigate | Move a bot to a target position using pathfinding and stuck recovery. | `packages/skills/src/navigate` | 4 |
+| `skills.follow-path` | Follow Path | Follow a SIP path graph route with waypoint and deviation handling. | `packages/skills/src/follow-path` | 4 |
+| `skills.mine` | Mine | Mine a targeted block with tool selection, reach checks, and drop collection. | `packages/skills/src/mine` | 4 |
+| `skills.collect` | Collect | Collect nearby drops or resource blocks within a bounded area. | `packages/skills/src/collect` | 4 |
+| `skills.craft` | Craft | Craft an item from a recipe using available inventory and workstations. | `packages/skills/src/craft` | 4 |
+| `skills.smelt` | Smelt | Smelt input items in a reachable furnace with fuel accounting. | `packages/skills/src/smelt` | 4 |
+| `skills.eat` | Eat | Consume the best available food when hunger or health requires it. | `packages/skills/src/eat` | 4 |
+| `skills.deposit` | Deposit | Deposit selected inventory into a reserved container. | `packages/skills/src/deposit` | 4 |
+| `skills.withdraw` | Withdraw | Withdraw requested materials from a reserved container. | `packages/skills/src/withdraw` | 4 |
+| `skills.sleep` | Sleep | Reach and use a bed safely when night or threat requires it. | `packages/skills/src/sleep` | 4 |
+| `skills.flee-defend` | Flee or Defend | Flee, kite, or defend against hostile mobs according to role and risk. | `packages/skills/src/flee-defend` | 4 |
+| `skills.explore` | Explore | Explore unknown territory while avoiding protected and claimed areas. | `packages/skills/src/explore` | 4 |
+| `skills.bridge` | Bridge | Place a safe bridge across a gap or obstacle without violating safety rules. | `packages/skills/src/bridge` | 4 |
+| `skills.clear` | Clear | Remove permitted blocks from a work package after grant and safety validation. | `packages/skills/src/clear` | 4 |
+| `skills.place-build` | Place Build | Place blueprint blocks for a work package in support-first order. | `packages/skills/src/place-build` | 4 |
+| `skills.schematic-build` | Schematic Build | Execute a schematic-backed blueprint with diffing and partitioning. | `packages/skills/src/schematic-build` | 4 |
+| `skills.repair` | Repair | Repair a structure by diffing intended blueprint against observed blocks. | `packages/skills/src/repair` | 4 |
+| `skills.harvest-farm` | Harvest Farm | Harvest mature crops from an assigned farm plot. | `packages/skills/src/harvest-farm` | 4 |
+| `skills.plant-farm` | Plant Farm | Plant seeds and maintain water and crop state on an assigned plot. | `packages/skills/src/plant-farm` | 4 |
+| `skills.shared-utilities` | Skill Shared Utilities | Provide target selection, inventory math, reach checks, and progress helpers. | `packages/skills/src/shared-utilities` | 4 |
 
 ### `skills.navigate` — Navigate
 
 - **Responsibility:** Move a bot to a target position using pathfinding and stuck recovery.
-- **Owner path:** `packages/skills/src/library/navigate`
+- **Owner path:** `packages/skills/src/navigate`
 - **Provides:** `skills.navigate.interface`
 - **Requires:** `skill-runtime.skill-contract`, `bot-runtime.action-executor`
 - **Owns state:** none
@@ -2883,7 +2883,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.follow-path` — Follow Path
 
 - **Responsibility:** Follow a SIP path graph route with waypoint and deviation handling.
-- **Owner path:** `packages/skills/src/library/follow-path`
+- **Owner path:** `packages/skills/src/follow-path`
 - **Provides:** `skills.follow-path.interface`
 - **Requires:** `skills.navigate`, `sip.path-graph-store`
 - **Owns state:** none
@@ -2903,7 +2903,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.mine` — Mine
 
 - **Responsibility:** Mine a targeted block with tool selection, reach checks, and drop collection.
-- **Owner path:** `packages/skills/src/library/mine`
+- **Owner path:** `packages/skills/src/mine`
 - **Provides:** `skills.mine.interface`
 - **Requires:** `bot-runtime.action-executor`, `skills.navigate`
 - **Owns state:** none
@@ -2923,7 +2923,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.collect` — Collect
 
 - **Responsibility:** Collect nearby drops or resource blocks within a bounded area.
-- **Owner path:** `packages/skills/src/library/collect`
+- **Owner path:** `packages/skills/src/collect`
 - **Provides:** `skills.collect.interface`
 - **Requires:** `bot-runtime.action-executor`, `skills.navigate`, `skills.mine`
 - **Owns state:** none
@@ -2943,7 +2943,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.craft` — Craft
 
 - **Responsibility:** Craft an item from a recipe using available inventory and workstations.
-- **Owner path:** `packages/skills/src/library/craft`
+- **Owner path:** `packages/skills/src/craft`
 - **Provides:** `skills.craft.interface`
 - **Requires:** `bot-runtime.action-executor`, `skill-runtime.context-builder`
 - **Owns state:** none
@@ -2963,7 +2963,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.smelt` — Smelt
 
 - **Responsibility:** Smelt input items in a reachable furnace with fuel accounting.
-- **Owner path:** `packages/skills/src/library/smelt`
+- **Owner path:** `packages/skills/src/smelt`
 - **Provides:** `skills.smelt.interface`
 - **Requires:** `bot-runtime.action-executor`, `skills.navigate`
 - **Owns state:** none
@@ -2983,7 +2983,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.eat` — Eat
 
 - **Responsibility:** Consume the best available food when hunger or health requires it.
-- **Owner path:** `packages/skills/src/library/eat`
+- **Owner path:** `packages/skills/src/eat`
 - **Provides:** `skills.eat.interface`
 - **Requires:** `bot-runtime.action-executor`
 - **Owns state:** none
@@ -3003,7 +3003,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.deposit` — Deposit
 
 - **Responsibility:** Deposit selected inventory into a reserved container.
-- **Owner path:** `packages/skills/src/library/deposit`
+- **Owner path:** `packages/skills/src/deposit`
 - **Provides:** `skills.deposit.interface`
 - **Requires:** `bot-runtime.action-executor`, `world.container-memory`
 - **Owns state:** none
@@ -3023,7 +3023,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.withdraw` — Withdraw
 
 - **Responsibility:** Withdraw requested materials from a reserved container.
-- **Owner path:** `packages/skills/src/library/withdraw`
+- **Owner path:** `packages/skills/src/withdraw`
 - **Provides:** `skills.withdraw.interface`
 - **Requires:** `bot-runtime.action-executor`, `world.container-memory`
 - **Owns state:** none
@@ -3043,7 +3043,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.sleep` — Sleep
 
 - **Responsibility:** Reach and use a bed safely when night or threat requires it.
-- **Owner path:** `packages/skills/src/library/sleep`
+- **Owner path:** `packages/skills/src/sleep`
 - **Provides:** `skills.sleep.interface`
 - **Requires:** `bot-runtime.action-executor`, `skills.navigate`
 - **Owns state:** none
@@ -3063,7 +3063,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.flee-defend` — Flee or Defend
 
 - **Responsibility:** Flee, kite, or defend against hostile mobs according to role and risk.
-- **Owner path:** `packages/skills/src/library/flee-defend`
+- **Owner path:** `packages/skills/src/flee-defend`
 - **Provides:** `skills.flee-defend.interface`
 - **Requires:** `bot-runtime.action-executor`, `skills.navigate`, `safety.mob-threat-evaluator`
 - **Owns state:** none
@@ -3083,7 +3083,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.explore` — Explore
 
 - **Responsibility:** Explore unknown territory while avoiding protected and claimed areas.
-- **Owner path:** `packages/skills/src/library/explore`
+- **Owner path:** `packages/skills/src/explore`
 - **Provides:** `skills.explore.interface`
 - **Requires:** `skills.navigate`, `world.spatial-query-engine`
 - **Owns state:** none
@@ -3103,7 +3103,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.bridge` — Bridge
 
 - **Responsibility:** Place a safe bridge across a gap or obstacle without violating safety rules.
-- **Owner path:** `packages/skills/src/library/bridge`
+- **Owner path:** `packages/skills/src/bridge`
 - **Provides:** `skills.bridge.interface`
 - **Requires:** `building.block-executor`, `skills.navigate`
 - **Owns state:** none
@@ -3123,7 +3123,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.clear` — Clear
 
 - **Responsibility:** Remove permitted blocks from a work package after grant and safety validation.
-- **Owner path:** `packages/skills/src/library/clear`
+- **Owner path:** `packages/skills/src/clear`
 - **Provides:** `skills.clear.interface`
 - **Requires:** `building.block-executor`, `safety.action-veto-gate`
 - **Owns state:** none
@@ -3143,7 +3143,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.place-build` — Place Build
 
 - **Responsibility:** Place blueprint blocks for a work package in support-first order.
-- **Owner path:** `packages/skills/src/library/place-build`
+- **Owner path:** `packages/skills/src/place-build`
 - **Provides:** `skills.place-build.interface`
 - **Requires:** `building.block-executor`, `skill-runtime.context-builder`
 - **Owns state:** none
@@ -3163,7 +3163,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.schematic-build` — Schematic Build
 
 - **Responsibility:** Execute a schematic-backed blueprint with diffing and partitioning.
-- **Owner path:** `packages/skills/src/library/schematic-build`
+- **Owner path:** `packages/skills/src/schematic-build`
 - **Provides:** `skills.schematic-build.interface`
 - **Requires:** `building.build-order-planner`, `building.block-executor`, `building.work-package-partitioner`
 - **Owns state:** none
@@ -3183,7 +3183,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.repair` — Repair
 
 - **Responsibility:** Repair a structure by diffing intended blueprint against observed blocks.
-- **Owner path:** `packages/skills/src/library/repair`
+- **Owner path:** `packages/skills/src/repair`
 - **Provides:** `skills.repair.interface`
 - **Requires:** `building.schematic-diff`, `building.block-executor`
 - **Owns state:** none
@@ -3203,7 +3203,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.harvest-farm` — Harvest Farm
 
 - **Responsibility:** Harvest mature crops from an assigned farm plot.
-- **Owner path:** `packages/skills/src/library/harvest-farm`
+- **Owner path:** `packages/skills/src/harvest-farm`
 - **Provides:** `skills.harvest-farm.interface`
 - **Requires:** `skills.navigate`, `bot-runtime.action-executor`, `sip.farm-store`
 - **Owns state:** none
@@ -3223,7 +3223,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.plant-farm` — Plant Farm
 
 - **Responsibility:** Plant seeds and maintain water and crop state on an assigned plot.
-- **Owner path:** `packages/skills/src/library/plant-farm`
+- **Owner path:** `packages/skills/src/plant-farm`
 - **Provides:** `skills.plant-farm.interface`
 - **Requires:** `skills.navigate`, `bot-runtime.action-executor`, `sip.farm-store`
 - **Owns state:** none
@@ -3243,7 +3243,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `skills.shared-utilities` — Skill Shared Utilities
 
 - **Responsibility:** Provide target selection, inventory math, reach checks, and progress helpers.
-- **Owner path:** `packages/skills/src/library/shared-utilities`
+- **Owner path:** `packages/skills/src/shared-utilities`
 - **Provides:** `skills.shared-utilities.interface`
 - **Requires:** `skill-runtime.context-builder`, `world.spatial-query-engine`
 - **Owns state:** none
@@ -3980,7 +3980,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ## Autonomy and Safety
 
 - **ID:** `sys.safety`
-- **Owner package:** `packages/brains/src/safety`
+- **Owner package:** `packages/safety/src`
 - **Milestone:** 4
 - **Source refs:** `main.md#11-autonomy-loop-and-safety`
 - **Allowed cross-system dependencies:** `sys.transport`
@@ -3997,25 +3997,25 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 | ID | Component | Responsibility | Owner path | Milestone |
 |---|---|---|---|---:|
-| `safety.hazard-evaluator` | Hazard Evaluator | Detect lava, void, fall, and drowning risk from the current world snapshot. | `packages/brains/src/safety/hazard-evaluator` | 4 |
-| `safety.mob-threat-evaluator` | Mob Threat Evaluator | Detect hostile mobs, threat distance, and escape options. | `packages/brains/src/safety/mob-threat-evaluator` | 4 |
-| `safety.hunger-evaluator` | Hunger Evaluator | Detect critical hunger and food availability from the bot snapshot. | `packages/brains/src/safety/hunger-evaluator` | 4 |
-| `safety.stuck-timeout-evaluator` | Stuck and Timeout Evaluator | Detect stuck movement, path timeout, and unreachable targets. | `packages/brains/src/safety/stuck-timeout-evaluator` | 4 |
-| `safety.inventory-evaluator` | Inventory Evaluator | Detect full inventory or missing required tools and materials. | `packages/brains/src/safety/inventory-evaluator` | 4 |
-| `safety.claim-loss-evaluator` | Claim Loss Evaluator | Detect lost or expired claims and stop work that no longer owns its resource. | `packages/brains/src/safety/claim-loss-evaluator` | 4 |
-| `safety.protected-bbox-rule` | Protected BBox Rule | Reject actions inside protected, no-build, or active work-package bounding boxes. | `packages/brains/src/safety/protected-bbox-rule` | 4 |
-| `safety.active-bot-support-rule` | Active Bot Support Rule | Reject breaking blocks that support or occupy an online bot. | `packages/brains/src/safety/active-bot-support-rule` | 4 |
-| `safety.material-ban-rule` | Material Ban Rule | Reject fire, lava, TNT, and other banned materials unless explicitly enabled. | `packages/brains/src/safety/material-ban-rule` | 4 |
-| `safety.safety-policy-engine` | Safety Policy Engine | Evaluate protected bboxes, support rules, active-bot exclusion, and material bans. | `packages/brains/src/safety/safety-policy-engine` | 4 |
-| `safety.action-veto-gate` | Action Veto Gate | Reject any action that fails guardian, safety policy, claim, or grant validation. | `packages/brains/src/safety/action-veto-gate` | 4 |
-| `safety.recovery-ladder` | Recovery Ladder | Escalate from local retry to Laya alternative, planner replan, safe mode, then emergency stop. | `packages/brains/src/safety/recovery-ladder` | 4 |
-| `safety.emergency-stop-controller` | Emergency Stop Controller | Stop a bot or the fleet safely and require explicit resume. | `packages/brains/src/safety/emergency-stop-controller` | 4 |
-| `safety.incident-journal` | Incident Journal | Record safety incidents, vetoes, and recovery escalation with actor context. | `packages/brains/src/safety/incident-journal` | 4 |
+| `safety.hazard-evaluator` | Hazard Evaluator | Detect lava, void, fall, and drowning risk from the current world snapshot. | `packages/safety/src/hazard-evaluator` | 4 |
+| `safety.mob-threat-evaluator` | Mob Threat Evaluator | Detect hostile mobs, threat distance, and escape options. | `packages/safety/src/mob-threat-evaluator` | 4 |
+| `safety.hunger-evaluator` | Hunger Evaluator | Detect critical hunger and food availability from the bot snapshot. | `packages/safety/src/hunger-evaluator` | 4 |
+| `safety.stuck-timeout-evaluator` | Stuck and Timeout Evaluator | Detect stuck movement, path timeout, and unreachable targets. | `packages/safety/src/stuck-evaluator` | 4 |
+| `safety.inventory-evaluator` | Inventory Evaluator | Detect full inventory or missing required tools and materials. | `packages/safety/src/inventory-evaluator` | 4 |
+| `safety.claim-loss-evaluator` | Claim Loss Evaluator | Detect lost or expired claims and stop work that no longer owns its resource. | `packages/safety/src/claim-loss-evaluator` | 4 |
+| `safety.protected-bbox-rule` | Protected BBox Rule | Reject actions inside protected, no-build, or active work-package bounding boxes. | `packages/safety/src/rules` | 4 |
+| `safety.active-bot-support-rule` | Active Bot Support Rule | Reject breaking blocks that support or occupy an online bot. | `packages/safety/src/rules` | 4 |
+| `safety.material-ban-rule` | Material Ban Rule | Reject fire, lava, TNT, and other banned materials unless explicitly enabled. | `packages/safety/src/rules` | 4 |
+| `safety.safety-policy-engine` | Safety Policy Engine | Evaluate protected bboxes, support rules, active-bot exclusion, and material bans. | `packages/safety/src/safety-policy-engine` | 4 |
+| `safety.action-veto-gate` | Action Veto Gate | Reject any action that fails guardian, safety policy, claim, or grant validation. | `packages/safety/src/action-veto-gate` | 4 |
+| `safety.recovery-ladder` | Recovery Ladder | Escalate from local retry to Laya alternative, planner replan, safe mode, then emergency stop. | `packages/safety/src/recovery-ladder` | 4 |
+| `safety.emergency-stop-controller` | Emergency Stop Controller | Stop a bot or the fleet safely and require explicit resume. | `packages/safety/src/emergency-stop-controller` | 4 |
+| `safety.incident-journal` | Incident Journal | Record safety incidents, vetoes, and recovery escalation with actor context. | `packages/safety/src/incident-journal` | 4 |
 
 ### `safety.hazard-evaluator` — Hazard Evaluator
 
 - **Responsibility:** Detect lava, void, fall, and drowning risk from the current world snapshot.
-- **Owner path:** `packages/brains/src/safety/hazard-evaluator`
+- **Owner path:** `packages/safety/src/hazard-evaluator`
 - **Provides:** `safety.hazard-evaluator.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -4035,7 +4035,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.mob-threat-evaluator` — Mob Threat Evaluator
 
 - **Responsibility:** Detect hostile mobs, threat distance, and escape options.
-- **Owner path:** `packages/brains/src/safety/mob-threat-evaluator`
+- **Owner path:** `packages/safety/src/mob-threat-evaluator`
 - **Provides:** `safety.mob-threat-evaluator.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -4055,7 +4055,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.hunger-evaluator` — Hunger Evaluator
 
 - **Responsibility:** Detect critical hunger and food availability from the bot snapshot.
-- **Owner path:** `packages/brains/src/safety/hunger-evaluator`
+- **Owner path:** `packages/safety/src/hunger-evaluator`
 - **Provides:** `safety.hunger-evaluator.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -4075,7 +4075,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.stuck-timeout-evaluator` — Stuck and Timeout Evaluator
 
 - **Responsibility:** Detect stuck movement, path timeout, and unreachable targets.
-- **Owner path:** `packages/brains/src/safety/stuck-timeout-evaluator`
+- **Owner path:** `packages/safety/src/stuck-evaluator`
 - **Provides:** `safety.stuck-timeout-evaluator.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -4095,7 +4095,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.inventory-evaluator` — Inventory Evaluator
 
 - **Responsibility:** Detect full inventory or missing required tools and materials.
-- **Owner path:** `packages/brains/src/safety/inventory-evaluator`
+- **Owner path:** `packages/safety/src/inventory-evaluator`
 - **Provides:** `safety.inventory-evaluator.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -4115,7 +4115,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.claim-loss-evaluator` — Claim Loss Evaluator
 
 - **Responsibility:** Detect lost or expired claims and stop work that no longer owns its resource.
-- **Owner path:** `packages/brains/src/safety/claim-loss-evaluator`
+- **Owner path:** `packages/safety/src/claim-loss-evaluator`
 - **Provides:** `safety.claim-loss-evaluator.interface`
 - **Requires:** `claims.claim-repository`
 - **Owns state:** none
@@ -4134,7 +4134,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.protected-bbox-rule` — Protected BBox Rule
 
 - **Responsibility:** Reject actions inside protected, no-build, or active work-package bounding boxes.
-- **Owner path:** `packages/brains/src/safety/protected-bbox-rule`
+- **Owner path:** `packages/safety/src/rules`
 - **Provides:** `safety.protected-bbox-rule.interface`
 - **Requires:** `sip.rules-store`, `claims.claim-repository`
 - **Owns state:** none
@@ -4154,7 +4154,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.active-bot-support-rule` — Active Bot Support Rule
 
 - **Responsibility:** Reject breaking blocks that support or occupy an online bot.
-- **Owner path:** `packages/brains/src/safety/active-bot-support-rule`
+- **Owner path:** `packages/safety/src/rules`
 - **Provides:** `safety.active-bot-support-rule.interface`
 - **Requires:** `world.spatial-query-engine`, `claims.claim-repository`
 - **Owns state:** none
@@ -4173,7 +4173,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.material-ban-rule` — Material Ban Rule
 
 - **Responsibility:** Reject fire, lava, TNT, and other banned materials unless explicitly enabled.
-- **Owner path:** `packages/brains/src/safety/material-ban-rule`
+- **Owner path:** `packages/safety/src/rules`
 - **Provides:** `safety.material-ban-rule.interface`
 - **Requires:** none
 - **Owns state:** none
@@ -4192,7 +4192,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.safety-policy-engine` — Safety Policy Engine
 
 - **Responsibility:** Evaluate protected bboxes, support rules, active-bot exclusion, and material bans.
-- **Owner path:** `packages/brains/src/safety/safety-policy-engine`
+- **Owner path:** `packages/safety/src/safety-policy-engine`
 - **Provides:** `safety.safety-policy-engine.interface`
 - **Requires:** `safety.protected-bbox-rule`, `safety.active-bot-support-rule`, `safety.material-ban-rule`
 - **Owns state:** none
@@ -4212,7 +4212,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.action-veto-gate` — Action Veto Gate
 
 - **Responsibility:** Reject any action that fails guardian, safety policy, claim, or grant validation.
-- **Owner path:** `packages/brains/src/safety/action-veto-gate`
+- **Owner path:** `packages/safety/src/action-veto-gate`
 - **Provides:** `safety.action-veto-gate.interface`
 - **Requires:** `safety.safety-policy-engine`, `brains.reflex-guardian-loop`
 - **Owns state:** none
@@ -4232,7 +4232,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.recovery-ladder` — Recovery Ladder
 
 - **Responsibility:** Escalate from local retry to Laya alternative, planner replan, safe mode, then emergency stop.
-- **Owner path:** `packages/brains/src/safety/recovery-ladder`
+- **Owner path:** `packages/safety/src/recovery-ladder`
 - **Provides:** `safety.recovery-ladder.interface`
 - **Requires:** `transport.event-stream`, `core.command-router`
 - **Owns state:** none
@@ -4252,7 +4252,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.emergency-stop-controller` — Emergency Stop Controller
 
 - **Responsibility:** Stop a bot or the fleet safely and require explicit resume.
-- **Owner path:** `packages/brains/src/safety/emergency-stop-controller`
+- **Owner path:** `packages/safety/src/emergency-stop-controller`
 - **Provides:** `safety.emergency-stop-controller.interface`
 - **Requires:** `transport.event-stream`, `core.command-router`
 - **Owns state:** none
@@ -4272,7 +4272,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 ### `safety.incident-journal` — Incident Journal
 
 - **Responsibility:** Record safety incidents, vetoes, and recovery escalation with actor context.
-- **Owner path:** `packages/brains/src/safety/incident-journal`
+- **Owner path:** `packages/safety/src/incident-journal`
 - **Provides:** `safety.incident-journal.interface`
 - **Requires:** `memory.event-log-writer`
 - **Owns state:** none

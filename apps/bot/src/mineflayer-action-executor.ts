@@ -5,6 +5,7 @@ import {
     type ActionRequest,
     attempt,
     attemptAsync,
+    type ContainerSlot,
     type LoggerPort,
     type Result,
     type Vec3 as CoreVec3,
@@ -19,13 +20,44 @@ interface ActiveAction {
     outcome: ActionOutcome | null;
 }
 
+interface ContainerItem {
+    name: string;
+    count: number;
+}
+
+interface OpenContainer {
+    slots: Array<ContainerItem | null>;
+    inventoryStart: number;
+    close: () => Promise<void>;
+}
+
+const FURNACE_SLOTS: Record<ContainerSlot, number> = {
+    input: 0,
+    fuel: 1,
+    output: 2,
+};
+
+const DEFAULT_ACTION_TIMEOUT_MILLISECONDS = 20_000;
+const CONTAINER_MOVE_TIMEOUT_MILLISECONDS = 10_000;
+
 export class MineflayerActionExecutor implements ActionDispatchPort {
     private active: ActiveAction | null = null;
+    private lastFailureValue: ActionFailure | null = null;
+    private lastFailureTime: string | null = null;
 
     constructor(
         private readonly bot: Bot,
         private readonly logger: LoggerPort,
+        private readonly timeoutMilliseconds = DEFAULT_ACTION_TIMEOUT_MILLISECONDS,
     ) {}
+
+    get lastFailure(): ActionFailure | null {
+        return this.lastFailureValue;
+    }
+
+    get lastFailureAt(): string | null {
+        return this.lastFailureTime;
+    }
 
     install(): Result<void, string> {
         const [, error] = attempt(() => {
@@ -58,9 +90,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (this.active === null || this.active.id !== handleId) {
             return [null, `unknown action handle ${handleId}`];
         }
-        this.bot.pathfinder.stop();
-        this.bot.stopDigging();
-        this.bot.clearControlStates();
+        this.stopMovement();
         this.active = null;
         return [undefined, null];
     }
@@ -69,10 +99,13 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         const [outcome, failure] = await this.execute(request);
         if (this.active?.id !== handleId) return;
         if (outcome !== null) {
+            this.lastFailureValue = null;
+            this.lastFailureTime = null;
             this.active.outcome = outcome;
             return;
         }
         if (failure !== null) {
+            this.recordFailure(failure);
             this.active.outcome = {
                 request,
                 status: 'failed',
@@ -101,9 +134,14 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
             case 'break-block':
                 return this.breakBlock(request.position, request.expectedBlockId);
             case 'place-block':
-                return this.placeBlock(request.position, request.itemName);
+                return this.placeBlock(
+                    request.position,
+                    request.itemName,
+                    request.reference,
+                    request.face,
+                );
             case 'use-block':
-                return this.useBlock(request.position);
+                return this.useBlock(request.position, request.itemName);
             case 'attack':
                 return this.attack(request.entityId, request.entityName);
             case 'equip':
@@ -113,7 +151,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
             case 'craft':
                 return this.craft(request.itemName, request.count);
             case 'collect-drops':
-                return this.collectDrops(request.radius);
+                return this.collectDrops(request.radius, request.itemName);
             case 'transfer':
                 return this.transfer(request);
             case 'wait':
@@ -133,6 +171,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 this.bot.pathfinder.goto(
                     new goals.GoalNear(position.x, position.y, position.z, range),
                 ),
+                this.timeoutMilliseconds,
             ),
         );
         if (error) return [null, this.describe(error)];
@@ -161,33 +200,64 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (expectedBlockId !== undefined && block.name !== expectedBlockId) {
             return [null, `expected ${expectedBlockId}, found ${block.name}`];
         }
+        const [, toolError] = await this.equipBestTool(block);
+        if (toolError) return [null, toolError];
         const [, error] = await attemptAsync(() => this.bot.dig(block));
         if (error) return [null, this.describe(error)];
         return [undefined, null];
     }
 
-    private async placeBlock(position: CoreVec3, itemName: string): Promise<Result<void, string>> {
+    private async equipBestTool(block: {
+        harvestTools?: Record<number, boolean> | null;
+    }): Promise<Result<void, string>> {
+        const tools = this.bot.inventory
+            .items()
+            .filter((item) => block.harvestTools?.[item.type] === true);
+        const tool = tools[0];
+        if (tool === undefined) return [undefined, null];
+        const [, equipError] = await attemptAsync(() => this.bot.equip(tool, 'hand'));
+        if (equipError) return [null, this.describe(equipError)];
+        return [undefined, null];
+    }
+
+    private async placeBlock(
+        position: CoreVec3,
+        itemName: string,
+        referencePosition?: CoreVec3,
+        face?: CoreVec3,
+    ): Promise<Result<void, string>> {
         const item = this.findItem(itemName);
         if (item === null) return [null, `missing item ${itemName}`];
-        const [, approachError] = await this.ensureNear(position, 3);
+        const referencePoint = referencePosition ?? { ...position, y: position.y - 1 };
+        const [, approachError] = await this.ensureNear(referencePoint, 3);
         if (approachError) return [null, approachError];
-        const reference = this.bot.blockAt(this.vector({ ...position, y: position.y - 1 }));
+        const reference = this.bot.blockAt(this.vector(referencePoint));
         if (reference === null) return [null, 'placement reference is missing'];
         const [, equipError] = await this.equip(itemName, 'hand');
         if (equipError) return [null, equipError];
+        const faceVector = face ?? { x: 0, y: 1, z: 0 };
         const [, placeError] = await attemptAsync(() =>
-            this.bot.placeBlock(reference, new Vec3(0, 1, 0)),
+            this.withTimeout(
+                this.bot.placeBlock(reference, new Vec3(faceVector.x, faceVector.y, faceVector.z)),
+                this.timeoutMilliseconds,
+            ),
         );
         if (placeError) return [null, this.describe(placeError)];
         return [undefined, null];
     }
 
-    private async useBlock(position: CoreVec3): Promise<Result<void, string>> {
+    private async useBlock(position: CoreVec3, itemName?: string): Promise<Result<void, string>> {
+        if (itemName !== undefined) {
+            const [, equipError] = await this.equip(itemName, 'hand');
+            if (equipError) return [null, equipError];
+        }
         const [, approachError] = await this.ensureNear(position, 3);
         if (approachError) return [null, approachError];
         const block = this.bot.blockAt(this.vector(position));
         if (block === null) return [null, 'target block is missing'];
-        const [, error] = await attemptAsync(() => this.bot.activateBlock(block));
+        const [, error] = await attemptAsync(() =>
+            this.withTimeout(this.bot.activateBlock(block), this.timeoutMilliseconds),
+        );
         if (error) return [null, this.describe(error)];
         return [undefined, null];
     }
@@ -244,15 +314,18 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         return [undefined, null];
     }
 
-    private async collectDrops(radius: number): Promise<Result<void, string>> {
-        const drop = this.nearestDrop(radius);
-        if (drop === null) return [undefined, null];
-        const [, error] = await this.moveTo(
-            { x: drop.position.x, y: drop.position.y, z: drop.position.z },
-            1,
-        );
-        if (error) return [null, error];
-        return this.delay(750);
+    private async collectDrops(radius: number, itemName?: string): Promise<Result<void, string>> {
+        for (let attempt = 0; attempt < 16; attempt += 1) {
+            const drop = this.nearestDrop(radius, itemName);
+            if (drop === null) return [undefined, null];
+            const [, error] = await this.moveTo(
+                { x: drop.position.x, y: drop.position.y, z: drop.position.z },
+                1,
+            );
+            if (error) return [null, error];
+            await this.delay(300);
+        }
+        return [undefined, null];
     }
 
     private async transfer(request: {
@@ -260,6 +333,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         container: CoreVec3;
         itemName: string;
         count: number;
+        slot?: ContainerSlot;
     }): Promise<Result<void, string>> {
         const [, approachError] = await this.ensureNear(request.container, 3);
         if (approachError) return [null, approachError];
@@ -267,19 +341,97 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (block === null) return [null, 'container is missing'];
         const itemType = this.bot.registry.itemsByName[request.itemName];
         if (itemType === undefined) return [null, `unknown item ${request.itemName}`];
-        const [container, openError] = await attemptAsync(() => this.bot.openContainer(block));
-        if (openError || container === null) {
+        const [opened, openError] = await attemptAsync(() => this.bot.openContainer(block));
+        if (openError || opened === null) {
             return [null, this.describe(openError ?? 'container returned null')];
         }
-        const [, transferError] = await attemptAsync(() =>
-            request.direction === 'deposit'
-                ? container.deposit(itemType.id, null, request.count)
-                : container.withdraw(itemType.id, null, request.count),
-        );
-        const [, closeError] = await attemptAsync(() => container.close());
+        const container: OpenContainer = opened;
+        const slot = request.slot;
+        const [transferError] =
+            slot === undefined
+                ? await attemptAsync(() =>
+                      request.direction === 'deposit'
+                          ? opened.deposit(itemType.id, null, request.count)
+                          : opened.withdraw(itemType.id, null, request.count),
+                  )
+                : await this.moveContainerItem(container, {
+                      direction: request.direction,
+                      itemName: request.itemName,
+                      slot,
+                  });
+        const [, closeError] = await attemptAsync(() => opened.close());
         if (transferError) return [null, this.describe(transferError)];
         if (closeError) return [null, this.describe(closeError)];
         return [undefined, null];
+    }
+
+    private async moveContainerItem(
+        container: OpenContainer,
+        request: {
+            direction: 'deposit' | 'withdraw';
+            itemName: string;
+            slot: ContainerSlot;
+        },
+    ): Promise<Result<void, string>> {
+        const containerSlot = FURNACE_SLOTS[request.slot];
+        if (request.direction === 'deposit') {
+            if (request.slot === 'output') {
+                return [null, 'cannot deposit into the output slot'];
+            }
+            const occupied = container.slots[containerSlot];
+            if (occupied !== null && occupied !== undefined && occupied.name !== request.itemName) {
+                return [null, `${request.slot} slot is occupied by ${occupied.name}`];
+            }
+            const sourceSlot = this.firstSlot(container, (item) => item.name === request.itemName);
+            if (sourceSlot === null) return [null, `missing item ${request.itemName}`];
+            return this.moveSlot(sourceSlot, containerSlot);
+        }
+        const source = container.slots[containerSlot];
+        if (source === null || source === undefined) {
+            return [null, `${request.slot} slot is empty`];
+        }
+        if (source.name !== request.itemName) {
+            return [null, `${request.slot} slot contains ${source.name}`];
+        }
+        const destinationSlot = this.firstEmptyInventorySlot(container);
+        if (destinationSlot === null) return [null, 'inventory is full'];
+        return this.moveSlot(containerSlot, destinationSlot);
+    }
+
+    private async moveSlot(
+        sourceSlot: number,
+        destinationSlot: number,
+    ): Promise<Result<void, string>> {
+        const [, error] = await attemptAsync(() =>
+            this.withTimeout(
+                this.bot.moveSlotItem(sourceSlot, destinationSlot),
+                CONTAINER_MOVE_TIMEOUT_MILLISECONDS,
+            ),
+        );
+        if (error) return [null, this.describe(error)];
+        return [undefined, null];
+    }
+
+    private firstSlot(
+        container: OpenContainer,
+        predicate: (item: ContainerItem) => boolean,
+    ): number | null {
+        const index = container.slots.findIndex(
+            (item, slot) =>
+                slot >= container.inventoryStart &&
+                item !== null &&
+                item !== undefined &&
+                predicate(item),
+        );
+        return index === -1 ? null : index;
+    }
+
+    private firstEmptyInventorySlot(container: OpenContainer): number | null {
+        const index = container.slots.findIndex(
+            (item, slot) =>
+                slot >= container.inventoryStart && (item === null || item === undefined),
+        );
+        return index === -1 ? null : index;
     }
 
     private async delay(milliseconds: number): Promise<Result<void, string>> {
@@ -287,13 +439,37 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         return [undefined, null];
     }
 
-    private async withTimeout<T>(operation: Promise<T>, milliseconds = 20_000): Promise<T> {
-        return Promise.race([
-            operation,
-            new Promise<T>((_, reject) =>
-                setTimeout(() => reject(new Error('action timed out')), milliseconds),
-            ),
-        ]);
+    private withTimeout<T>(
+        operation: Promise<T>,
+        milliseconds = this.timeoutMilliseconds,
+    ): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                this.stopMovement();
+                reject(new Error(`action timed out after ${milliseconds}ms`));
+            }, milliseconds);
+            operation.then(
+                (value) => {
+                    clearTimeout(timer);
+                    resolve(value);
+                },
+                (error: unknown) => {
+                    clearTimeout(timer);
+                    reject(error);
+                },
+            );
+        });
+    }
+
+    private stopMovement(): void {
+        attempt(() => this.bot.pathfinder.stop());
+        attempt(() => this.bot.stopDigging());
+        attempt(() => this.bot.clearControlStates());
+    }
+
+    private recordFailure(failure: ActionFailure): void {
+        this.lastFailureValue = failure;
+        this.lastFailureTime = new Date().toISOString();
     }
 
     private findItem(itemName: string) {
@@ -309,9 +485,13 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         );
     }
 
-    private nearestDrop(radius: number) {
+    private nearestDrop(radius: number, itemName?: string) {
         const drops = Object.values(this.bot.entities)
             .filter((entity) => entity.name === 'item')
+            .filter((entity) => {
+                if (itemName === undefined) return true;
+                return this.droppedItemName(entity) === itemName;
+            })
             .map((entity) => ({
                 entity,
                 distance: this.bot.entity.position.distanceTo(entity.position),
@@ -321,6 +501,13 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         return drops.reduce((nearest, current) =>
             current.distance < nearest.distance ? current : nearest,
         ).entity;
+    }
+
+    private droppedItemName(entity: {
+        getDroppedItem?: () => { name: string } | null;
+    }): string | null {
+        if (typeof entity.getDroppedItem !== 'function') return null;
+        return entity.getDroppedItem()?.name ?? null;
     }
 
     private findCraftingTable() {
@@ -335,19 +522,36 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
 
     private failureFor(request: ActionRequest, message: string): ActionFailure {
         const lowercase = message.toLowerCase();
-        if (lowercase.includes('no path') || lowercase.includes('timed out')) {
-            return { class: 'no-path', message };
+        return { class: this.failureClassFor(request, lowercase), message };
+    }
+
+    private failureClassFor(request: ActionRequest, lowercase: string): ActionFailure['class'] {
+        if (lowercase.includes('timed out') || lowercase.includes('timeout')) {
+            return 'timeout';
         }
-        if (lowercase.includes('missing item') || lowercase.includes('no recipe')) {
-            return { class: 'missing-item', message };
+        if (lowercase.includes('no path')) return 'no-path';
+        if (
+            lowercase.includes('missing item') ||
+            lowercase.includes('no recipe') ||
+            lowercase.includes('unknown item')
+        ) {
+            return 'missing-item';
         }
-        if (lowercase.includes('target') || lowercase.includes('missing')) {
-            return { class: 'target-missing', message };
+        if (
+            lowercase.includes('tool') ||
+            lowercase.includes('harvest') ||
+            lowercase.includes('cannot dig') ||
+            lowercase.includes("can't dig")
+        ) {
+            return 'missing-tool';
         }
         if (request.kind === 'attack' && lowercase.includes('entity')) {
-            return { class: 'target-missing', message };
+            return 'target-missing';
         }
-        return { class: 'execution-failed', message };
+        if (lowercase.includes('target') || lowercase.includes('missing')) {
+            return 'target-missing';
+        }
+        return 'execution-failed';
     }
 
     private describe(error: unknown): string {

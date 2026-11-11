@@ -6,11 +6,19 @@ export interface Vec3 {
     z: number;
 }
 
+export type ContainerSlot = 'input' | 'fuel' | 'output';
+
 export type ActionRequest =
     | { kind: 'move-to'; position: Vec3; range?: number }
     | { kind: 'follow-path'; waypoints: readonly Vec3[]; range?: number }
     | { kind: 'break-block'; position: Vec3; expectedBlockId?: string }
-    | { kind: 'place-block'; position: Vec3; itemName: string }
+    | {
+          kind: 'place-block';
+          position: Vec3;
+          itemName: string;
+          reference?: Vec3;
+          face?: Vec3;
+      }
     | { kind: 'use-block'; position: Vec3; itemName?: string }
     | { kind: 'attack'; entityId?: number; entityName?: string }
     | { kind: 'equip'; itemName: string; destination?: 'hand' | 'off-hand' }
@@ -23,6 +31,7 @@ export type ActionRequest =
           container: Vec3;
           itemName: string;
           count: number;
+          slot?: ContainerSlot;
       }
     | { kind: 'wait'; milliseconds: number };
 

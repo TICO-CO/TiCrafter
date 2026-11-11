@@ -2,6 +2,11 @@ import { z as zod } from 'zod';
 
 export const PROTOCOL_VERSION = 1;
 
+export const BOT_SKILL_START = 'bot.skill.start';
+export const BOT_SKILL_CANCEL = 'bot.skill.cancel';
+export const BOT_SKILL_RESUME = 'bot.skill.resume';
+export const BOT_SAFETY_RESUME = 'bot.safety.resume';
+
 export const envelopeSchema = zod.object({
     v: zod.literal(PROTOCOL_VERSION),
     id: zod.string().min(1),
@@ -147,6 +152,95 @@ export const landmarkCandidateSchema = zod.object({
     }),
 });
 
+const skillVec3Schema = zod.object({
+    x: zod.number(),
+    y: zod.number(),
+    z: zod.number(),
+});
+
+const skillBBoxSchema = zod.object({
+    min: skillVec3Schema,
+    max: skillVec3Schema,
+});
+
+const skillBuildTargetSchema = zod.object({
+    position: skillVec3Schema,
+    itemName: zod.string().min(1),
+    expectedBlockId: zod.string().min(1).optional(),
+});
+
+const skillGrantSchema = zod.object({
+    id: zod.string().min(1),
+    expiresAt: zod.string().min(1).optional(),
+});
+
+const skillSchematicRefSchema = zod.object({
+    id: zod.string().min(1),
+    anchor: skillVec3Schema,
+    revision: zod.number().optional(),
+    rotation: zod.number().optional(),
+});
+
+const skillFarmPlotSchema = zod.object({
+    id: zod.string().min(1),
+    bbox: skillBBoxSchema,
+    cropBlockIds: zod.array(zod.string().min(1)).optional(),
+    seedItem: zod.string().min(1).optional(),
+});
+
+export const skillInputSchema = zod.object({
+    target: skillVec3Schema.optional(),
+    waypoints: zod.array(skillVec3Schema).optional(),
+    itemName: zod.string().min(1).optional(),
+    count: zod.number().optional(),
+    radius: zod.number().optional(),
+    range: zod.number().optional(),
+    threshold: zod.number().optional(),
+    container: skillVec3Schema.optional(),
+    taskId: zod.string().min(1).optional(),
+    blocks: zod.array(skillBuildTargetSchema).optional(),
+    blockIds: zod.array(zod.string().min(1)).optional(),
+    bbox: skillBBoxSchema.optional(),
+    material: zod.string().min(1).optional(),
+    direction: skillVec3Schema.optional(),
+    end: skillVec3Schema.optional(),
+    width: zod.number().optional(),
+    maxLength: zod.number().optional(),
+    furnace: skillVec3Schema.optional(),
+    fuelItem: zod.string().min(1).optional(),
+    outputItem: zod.string().min(1).optional(),
+    bed: skillVec3Schema.optional(),
+    center: skillVec3Schema.optional(),
+    maxSteps: zod.number().optional(),
+    seedItem: zod.string().min(1).optional(),
+    maintainWater: zod.boolean().optional(),
+    plot: skillFarmPlotSchema.optional(),
+    plotId: zod.string().min(1).optional(),
+    schematic: skillSchematicRefSchema.optional(),
+    grant: skillGrantSchema.optional(),
+});
+
+export const botSkillStartSchema = zod.object({
+    skillId: zod.string().min(1),
+    input: skillInputSchema,
+    taskId: zod.string().min(1).optional(),
+});
+
+export const botSkillCancelSchema = zod.object({
+    skillId: zod.string().min(1).optional(),
+    taskId: zod.string().min(1).optional(),
+    reason: zod.string().min(1).optional(),
+});
+
+export const botSkillResumeSchema = zod.object({
+    skillId: zod.string().min(1),
+    taskId: zod.string().min(1).optional(),
+});
+
+export const botSafetyResumeSchema = zod.object({
+    reason: zod.string().min(1).optional(),
+});
+
 export type SessionHello = zod.infer<typeof sessionHelloSchema>;
 export type SessionHelloResponse = zod.infer<typeof sessionHelloResponseSchema>;
 export type CoordinatorStatusResponse = zod.infer<typeof coordinatorStatusResponseSchema>;
@@ -156,3 +250,7 @@ export type SkillProgress = zod.infer<typeof skillProgressSchema>;
 export type ChunkSnapshotMessage = zod.infer<typeof chunkSnapshotSchema>;
 export type LandmarkCandidateMessage = zod.infer<typeof landmarkCandidateSchema>;
 export type BlockUpdateMessage = zod.infer<typeof blockUpdateSchema>;
+export type BotSkillStartMessage = zod.infer<typeof botSkillStartSchema>;
+export type BotSkillCancelMessage = zod.infer<typeof botSkillCancelSchema>;
+export type BotSkillResumeMessage = zod.infer<typeof botSkillResumeSchema>;
+export type BotSafetyResumeMessage = zod.infer<typeof botSafetyResumeSchema>;

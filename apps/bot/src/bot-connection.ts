@@ -2,6 +2,15 @@ import type { GuardianReport } from '@ticrafter/brains';
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
+    BOT_SAFETY_RESUME,
+    BOT_SKILL_CANCEL,
+    BOT_SKILL_RESUME,
+    BOT_SKILL_START,
+    botSafetyResumeSchema,
+    botSkillCancelSchema,
+    botSkillResumeSchema,
+    botSkillStartSchema,
+    type Envelope,
     EventStream,
     type LoggerPort,
     type MessageSchemaRegistry,
@@ -10,7 +19,13 @@ import {
     type TicrafterConfig,
 } from '@ticrafter/core';
 import { BlockUpdateListener, PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
-import type { SkillProgressSink } from '@ticrafter/skills';
+import { type EmergencyStopController } from '@ticrafter/safety';
+import {
+    MemoryCheckpointStore,
+    type SkillCheckpointStore,
+    type SkillInput,
+    type SkillProgressSink,
+} from '@ticrafter/skills';
 import { type Bot, createBot } from 'mineflayer';
 
 import { ActionExecutor } from './action-executor.js';
@@ -33,6 +48,8 @@ export interface BotConnectionOptions {
     url: string;
     registry: MessageSchemaRegistry;
     logger: LoggerPort;
+    checkpointStore?: SkillCheckpointStore;
+    emergencyStop?: EmergencyStopController;
 }
 
 interface BlockLike {
@@ -49,6 +66,7 @@ export class BotConnection {
     private perception: PerceptionHost | null = null;
     private guardian: GuardianHook | null = null;
     private skills: SkillHost | null = null;
+    private unsubscribeInbound: (() => void) | null = null;
     private autonomyStarted = false;
     private lastReflexAt = 0;
 
@@ -103,6 +121,15 @@ export class BotConnection {
             bot,
             world,
             () => this.skills?.activeSkillId ?? null,
+            {
+                botNames: this.options.config.botNames,
+                allowDestructiveMaterials: false,
+                failureSource: () => {
+                    const failure = actionPort.lastFailure;
+                    const at = actionPort.lastFailureAt;
+                    return failure === null || at === null ? null : { class: failure.class, at };
+                },
+            },
         );
         this.guardian = new GuardianHook({
             source: safetySource,
@@ -112,6 +139,23 @@ export class BotConnection {
                 Math.floor(1000 / this.options.config.safety.guardianHz),
             ),
             onCritical: (report) => this.handleCritical(report),
+            emergencyStop: this.options.emergencyStop,
+            incidentSink: {
+                record: (incident) => {
+                    const [, sendError] = transport.sendEvent('bot.event', {
+                        botId: this.options.botId,
+                        event: 'safety.incident',
+                        at: incident.at,
+                        data: incident,
+                    });
+                    if (sendError) {
+                        this.options.logger.debug(
+                            { error: sendError.type },
+                            'safety incident send failed',
+                        );
+                    }
+                },
+            },
         });
         const actionExecutor = new ActionExecutor(this.guardian, actionPort, this.options.logger);
         const progressSink: SkillProgressSink = {
@@ -126,11 +170,15 @@ export class BotConnection {
             progressSink,
             logger: this.options.logger,
             tickMilliseconds: this.options.config.skills.tickMilliseconds,
+            checkpointStore: this.options.checkpointStore ?? new MemoryCheckpointStore(),
         });
         if (skillsError) {
             this.options.logger.error({ error: skillsError }, 'skill host creation failed');
         } else {
             this.skills = skills;
+            this.unsubscribeInbound = transport.onMessage((envelope) =>
+                this.handleCommand(envelope),
+            );
         }
 
         const blockUpdates = new BlockUpdateListener();
@@ -161,6 +209,8 @@ export class BotConnection {
 
         clearInterval(heartbeat);
         this.stopAutonomy();
+        this.unsubscribeInbound?.();
+        this.unsubscribeInbound = null;
         this.perception?.stop();
         this.perception = null;
         bridge.detachAll();
@@ -174,6 +224,8 @@ export class BotConnection {
 
     close(): void {
         this.stopAutonomy();
+        this.unsubscribeInbound?.();
+        this.unsubscribeInbound = null;
         this.perception?.stop();
         this.perception = null;
         const [, quitError] = attempt(() => this.bot?.quit());
@@ -210,27 +262,177 @@ export class BotConnection {
         this.autonomyStarted = false;
     }
 
+    private handleCommand(envelope: Envelope): void {
+        if (envelope.kind !== 'request') return;
+        if (envelope.type === BOT_SKILL_START) {
+            this.handleSkillStart(envelope.payload);
+            return;
+        }
+        if (envelope.type === BOT_SKILL_CANCEL) {
+            this.handleSkillCancel(envelope.payload);
+            return;
+        }
+        if (envelope.type === BOT_SKILL_RESUME) {
+            this.handleSkillResume(envelope.payload);
+            return;
+        }
+        if (envelope.type === BOT_SAFETY_RESUME) {
+            this.handleSafetyResume(envelope.payload);
+        }
+    }
+
+    private handleSkillStart(payload: unknown): void {
+        const parsed = botSkillStartSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid skill start command',
+            );
+            return;
+        }
+        if (this.skills === null) {
+            this.options.logger.warn('skill host is not available');
+            return;
+        }
+        const input: SkillInput =
+            parsed.data.taskId === undefined
+                ? parsed.data.input
+                : { ...parsed.data.input, taskId: parsed.data.taskId };
+        const [step, startError] = this.skills.run(parsed.data.skillId, input);
+        if (startError) {
+            this.options.logger.warn(
+                { error: startError, skillId: parsed.data.skillId },
+                'skill start command failed',
+            );
+            return;
+        }
+        this.options.logger.info(
+            { skillId: parsed.data.skillId, status: step?.status },
+            'skill started',
+        );
+    }
+
+    private handleSkillCancel(payload: unknown): void {
+        const parsed = botSkillCancelSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid skill cancel command',
+            );
+            return;
+        }
+        if (this.skills === null) {
+            this.options.logger.warn('skill host is not available');
+            return;
+        }
+        if (
+            parsed.data.skillId !== undefined &&
+            parsed.data.skillId !== this.skills.activeSkillId
+        ) {
+            this.options.logger.warn(
+                { skillId: parsed.data.skillId, active: this.skills.activeSkillId },
+                'skill cancel ignored',
+            );
+            return;
+        }
+        if (
+            parsed.data.taskId !== undefined &&
+            this.skills.activeTaskId !== null &&
+            parsed.data.taskId !== this.skills.activeTaskId
+        ) {
+            this.options.logger.warn(
+                { taskId: parsed.data.taskId, active: this.skills.activeTaskId },
+                'skill cancel ignored',
+            );
+            return;
+        }
+        const [step, cancelError] = this.skills.cancel(
+            parsed.data.reason ?? 'coordinator cancelled skill',
+        );
+        if (cancelError) {
+            this.options.logger.warn({ error: cancelError }, 'skill cancel command failed');
+            return;
+        }
+        this.options.logger.info({ status: step?.status }, 'skill cancelled');
+    }
+
+    private handleSkillResume(payload: unknown): void {
+        const parsed = botSkillResumeSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid skill resume command',
+            );
+            return;
+        }
+        if (this.skills === null) {
+            this.options.logger.warn('skill host is not available');
+            return;
+        }
+        const [step, resumeError] = this.skills.resume(
+            parsed.data.skillId,
+            parsed.data.taskId ?? 'default',
+        );
+        if (resumeError) {
+            this.options.logger.warn(
+                { error: resumeError, skillId: parsed.data.skillId },
+                'skill resume command failed',
+            );
+            return;
+        }
+        this.options.logger.info(
+            { skillId: parsed.data.skillId, status: step?.status },
+            'skill resumed',
+        );
+    }
+
+    private handleSafetyResume(payload: unknown): void {
+        const parsed = botSafetyResumeSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid safety resume command',
+            );
+            return;
+        }
+        if (this.guardian === null) {
+            this.options.logger.warn('guardian is not available');
+            return;
+        }
+        this.guardian.resumeSafety();
+        this.options.logger.info({ reason: parsed.data.reason }, 'safety resumed');
+    }
+
     private handleCritical(report: GuardianReport): void {
         if (this.skills === null) return;
         if (report.emergencyStop) {
             this.skills.preempt('guardian emergency stop');
             return;
         }
-        if (Date.now() - this.lastReflexAt < 2000) return;
-        this.lastReflexAt = Date.now();
         const hunger = report.signals.some((signal) => signal.code === 'hunger.low');
         const threat = report.signals.some((signal) => signal.code === 'mob.threat');
-        if (hunger && this.skills.activeSkillId !== 'eat') {
-            this.skills.preempt('hunger critical');
-            const [, error] = this.skills.run('eat', {});
-            if (error) this.options.logger.warn({ error }, 'reflex eat failed');
+        if (hunger || threat) {
+            if (Date.now() - this.lastReflexAt < 2000) return;
+            this.lastReflexAt = Date.now();
+            if (hunger && this.skills.activeSkillId !== 'eat') {
+                this.skills.preempt('hunger critical');
+                const [, error] = this.skills.run('eat', {});
+                if (error) this.options.logger.warn({ error }, 'reflex eat failed');
+                return;
+            }
+            if (threat && this.skills.activeSkillId !== 'flee-defend') {
+                this.skills.preempt('threat critical');
+                const [, error] = this.skills.run('flee-defend', {});
+                if (error) this.options.logger.warn({ error }, 'reflex flee failed');
+            }
             return;
         }
-        if (threat && this.skills.activeSkillId !== 'flee-defend') {
-            this.skills.preempt('threat critical');
-            const [, error] = this.skills.run('flee-defend', {});
-            if (error) this.options.logger.warn({ error }, 'reflex flee failed');
+        if (report.safeMode) {
+            this.skills.preempt('guardian safe mode');
+            return;
         }
+        const critical = report.signals.some((signal) => signal.severity === 'critical');
+        if (critical) this.skills.preempt('guardian critical hazard');
     }
 
     private forwardBlockUpdate(

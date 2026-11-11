@@ -117,6 +117,6 @@ export class ActiveBotSupportRule implements SafetyRule {
         if (Math.floor(activeBotPosition.x) !== blockPosition.x) return false;
         if (Math.floor(activeBotPosition.z) !== blockPosition.z) return false;
         const verticalDistance = Math.floor(activeBotPosition.y) - blockPosition.y;
-        return verticalDistance === 1 || verticalDistance === 2;
+        return verticalDistance >= -1 && verticalDistance <= 2;
     }
 }

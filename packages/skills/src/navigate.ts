@@ -18,6 +18,10 @@ export class NavigateSkill implements Skill {
         return [true, null];
     }
 
+    plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        return [input, null];
+    }
+
     start(context: SkillContext, input: SkillInput): Result<SkillStep, string> {
         if (input.target === undefined) return [null, 'navigate requires a target'];
         const range = input.range ?? 1;

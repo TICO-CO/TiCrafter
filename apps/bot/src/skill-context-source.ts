@@ -26,17 +26,23 @@ export class BotSkillContextSource implements SkillContextSource {
     constructor(
         private readonly bot: Bot,
         private readonly world: WorldCacheAdapter,
+        private readonly taskId?: string,
     ) {}
 
     read(): Result<Omit<SkillContext, 'lastAction'>, string> {
         const position = this.position();
+        const timeOfDay = this.timeOfDay();
+        const isSleeping = this.isSleeping();
         return [
             {
                 botId: `bot.${this.bot.username.toLowerCase()}`,
+                ...(this.taskId === undefined ? {} : { taskId: this.taskId }),
                 at: new Date().toISOString(),
                 position,
                 health: Number(this.bot.health ?? 0),
                 food: Number(this.bot.food ?? 0),
+                ...(timeOfDay === undefined ? {} : { timeOfDay }),
+                ...(isSleeping === undefined ? {} : { isSleeping }),
                 inventory: this.bot.inventory.items().map((item) => ({
                     name: item.name,
                     count: item.count,
@@ -46,6 +52,15 @@ export class BotSkillContextSource implements SkillContextSource {
             },
             null,
         ];
+    }
+
+    private timeOfDay(): number | undefined {
+        const timeOfDay = this.bot.time?.timeOfDay;
+        return typeof timeOfDay === 'number' ? timeOfDay : undefined;
+    }
+
+    private isSleeping(): boolean | undefined {
+        return typeof this.bot.isSleeping === 'boolean' ? this.bot.isSleeping : undefined;
     }
 
     private position(): Vec3 {

@@ -8,6 +8,6 @@ export class PreemptionHandler {
 
     preempt(context: SkillContext, reason: string): Result<SkillStep | null, string> {
         if (this.lifecycle.activeSkillId === null) return [null, null];
-        return this.lifecycle.cancel(context, reason);
+        return this.lifecycle.preempt(context, reason);
     }
 }

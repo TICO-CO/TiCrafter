@@ -9,7 +9,21 @@ import type { Bot } from 'mineflayer';
 
 import type { WorldCacheAdapter } from './world-cache.js';
 
-const MOVEMENT_SKILLS = new Set(['navigate', 'follow-path', 'flee-defend']);
+const MOVEMENT_SKILLS = new Set([
+    'navigate',
+    'follow-path',
+    'flee-defend',
+    'explore',
+    'bridge',
+    'place-build',
+    'repair',
+    'clear',
+    'harvest-farm',
+    'plant-farm',
+    'smelt',
+    'deposit',
+    'withdraw',
+]);
 
 const HOSTILE_MOBS = new Set([
     'blaze',
@@ -29,8 +43,22 @@ const HOSTILE_MOBS = new Set([
     'zombie_villager',
 ]);
 
+const UNREACHABLE_FAILURE_CLASSES = new Set(['no-path', 'timeout']);
+const INVENTORY_TOTAL_SLOTS = 36;
+const FALLING_THRESHOLD = 1.5;
+const STUCK_MOVEMENT_THRESHOLD = 0.05;
+
+export interface SafetySnapshotSourceOptions {
+    botNames?: readonly string[];
+    allowDestructiveMaterials?: boolean;
+    failureSource?: () => { class: string; at: string } | null;
+}
+
 class BotSafetyWorld implements SafetyWorldView {
-    constructor(private readonly world: WorldCacheAdapter) {}
+    constructor(
+        private readonly world: WorldCacheAdapter,
+        private readonly activeBotsProvider: () => readonly SafetyActiveBot[],
+    ) {}
 
     blockAt(position: Vec3): string | null {
         return this.world.blockAt(position);
@@ -41,7 +69,7 @@ class BotSafetyWorld implements SafetyWorldView {
     }
 
     activeBots(): readonly SafetyActiveBot[] {
-        return [];
+        return this.activeBotsProvider();
     }
 
     claimFor(botId: string): SafetyClaim | null {
@@ -59,6 +87,7 @@ export class SafetySnapshotSource {
         private readonly bot: Bot,
         private readonly worldCache: WorldCacheAdapter,
         private readonly activeSkillId: () => string | null,
+        private readonly options: SafetySnapshotSourceOptions = {},
     ) {}
 
     read(): Result<SafetySnapshot, string> {
@@ -67,7 +96,8 @@ export class SafetySnapshotSource {
         this.trackMovement(position, now);
         const skillId = this.activeSkillId();
         const inventory = this.bot.inventory.items();
-        this.world ??= new BotSafetyWorld(this.worldCache);
+        const fallDistance = this.fallDistance();
+        this.world ??= new BotSafetyWorld(this.worldCache, () => this.detectActiveBots());
         return [
             {
                 botId: `bot.${this.bot.username.toLowerCase()}`,
@@ -77,15 +107,17 @@ export class SafetySnapshotSource {
                 food: Number(this.bot.food ?? 0),
                 oxygen: Number(this.bot.oxygenLevel ?? 20),
                 onGround: this.bot.entity?.onGround ?? false,
+                ...(fallDistance === null ? {} : { fallDistance }),
+                falling: fallDistance !== null && fallDistance > FALLING_THRESHOLD,
                 stuckMilliseconds: this.stuckMilliseconds(skillId, now),
-                targetUnreachableMilliseconds: 0,
+                targetUnreachableMilliseconds: this.targetUnreachableMilliseconds(now),
                 inventory: inventory.map((item) => ({ name: item.name, count: item.count })),
                 inventoryUsedSlots: inventory.length,
-                inventoryTotalSlots: this.bot.inventory.slots.length,
+                inventoryTotalSlots: INVENTORY_TOTAL_SLOTS,
                 nearestHostileDistance: this.nearestHostileDistance(position),
                 activeSkillId: skillId,
                 claimTrackingEnabled: false,
-                allowDestructiveMaterials: false,
+                allowDestructiveMaterials: this.options.allowDestructiveMaterials ?? false,
                 world: this.world,
             },
             null,
@@ -98,7 +130,10 @@ export class SafetySnapshotSource {
     }
 
     private trackMovement(position: Vec3, now: number): void {
-        if (this.lastPosition !== null && this.distance(this.lastPosition, position) > 0.05) {
+        if (
+            this.lastPosition !== null &&
+            this.distance(this.lastPosition, position) > STUCK_MOVEMENT_THRESHOLD
+        ) {
             this.lastMovementAt = now;
         }
         this.lastPosition = position;
@@ -113,6 +148,46 @@ export class SafetySnapshotSource {
         if (this.lastActiveSkillId !== skillId) this.lastMovementAt = now;
         this.lastActiveSkillId = skillId;
         return now - this.lastMovementAt;
+    }
+
+    private targetUnreachableMilliseconds(now: number): number {
+        const failure = this.options.failureSource?.() ?? null;
+        if (failure === null || !UNREACHABLE_FAILURE_CLASSES.has(failure.class)) return 0;
+        const failedAt = Date.parse(failure.at);
+        if (!Number.isFinite(failedAt)) return 0;
+        return Math.max(0, now - failedAt);
+    }
+
+    private fallDistance(): number | null {
+        const value = (this.bot.entity as { fallDistance?: unknown } | null | undefined)
+            ?.fallDistance;
+        if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+        return value;
+    }
+
+    private detectActiveBots(): readonly SafetyActiveBot[] {
+        const configured = new Set((this.options.botNames ?? []).map((name) => name.toLowerCase()));
+        if (configured.size === 0) return [];
+        const self = this.bot.username.toLowerCase();
+        return Object.entries(this.bot.players ?? {}).flatMap(([name, player]) => {
+            const botId = name.toLowerCase();
+            if (botId === self || !configured.has(botId)) return [];
+            const position = player.entity?.position;
+            if (position === undefined) return [];
+            if (
+                !Number.isFinite(position.x) ||
+                !Number.isFinite(position.y) ||
+                !Number.isFinite(position.z)
+            ) {
+                return [];
+            }
+            return [
+                {
+                    botId: `bot.${botId}`,
+                    position: { x: position.x, y: position.y, z: position.z },
+                },
+            ];
+        });
     }
 
     private nearestHostileDistance(position: Vec3): number | null {

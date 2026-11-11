@@ -358,6 +358,7 @@ packages/skills/         skill implementations
 packages/building/       Blueprint IR, templates, schematic adapter, executor,
                          work packages, scaffold, rollback
 packages/brains/         reflex, affordances, deterministic policy, Laya client
+packages/safety/         deterministic safety evaluators, veto gate, recovery ladder
 packages/planning/       planner client, prompt builders, validators, task DAG
 packages/memory/         repositories, migrations, changelog
 packages/eval/           scenario runner, metrics, replay, contention tests

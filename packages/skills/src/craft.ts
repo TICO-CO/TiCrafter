@@ -19,6 +19,10 @@ export class CraftSkill implements Skill {
         return [true, null];
     }
 
+    plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        return [input, null];
+    }
+
     start(context: SkillContext, input: SkillInput): Result<SkillStep, string> {
         if (input.itemName === undefined) return [null, 'craft requires an item name'];
         const run: SkillRun = {

@@ -30,8 +30,12 @@ export class DeterministicPolicy {
         if (affordance.skillId === 'flee-defend') score += this.threatScore(state);
         if (affordance.skillId === 'eat') score += Math.max(0, 20 - state.food) * 2;
         if (affordance.skillId === 'deposit') score += state.inventoryUsedRatio * 20;
-        if (state.health < 8) score += 50;
+        if (state.health < 8 && this.isSurvivalSkill(affordance.skillId)) score += 1000;
         return score;
+    }
+
+    private isSurvivalSkill(skillId: string): boolean {
+        return skillId === 'flee-defend' || skillId === 'eat';
     }
 
     private threatScore(state: PolicyState): number {

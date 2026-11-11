@@ -20,6 +20,10 @@ export class FollowPathSkill implements Skill {
         return [true, null];
     }
 
+    plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        return [input, null];
+    }
+
     start(context: SkillContext, input: SkillInput): Result<SkillStep, string> {
         if (input.waypoints === undefined || input.waypoints.length === 0) {
             return [null, 'follow-path requires waypoints'];

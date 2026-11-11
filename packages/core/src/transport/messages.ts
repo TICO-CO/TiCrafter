@@ -10,8 +10,16 @@ import {
 import type { TransportFailure } from './failures.js';
 import {
     blockUpdateSchema,
+    BOT_SAFETY_RESUME,
+    BOT_SKILL_CANCEL,
+    BOT_SKILL_RESUME,
+    BOT_SKILL_START,
     botEventSchema,
     botHeartbeatSchema,
+    botSafetyResumeSchema,
+    botSkillCancelSchema,
+    botSkillResumeSchema,
+    botSkillStartSchema,
     chunkSnapshotSchema,
     coordinatorErrorSchema,
     coordinatorPingResponseSchema,
@@ -82,7 +90,11 @@ export class MessageSchemaRegistry {
             .register(CHUNK_SNAPSHOT_EVENT, chunkSnapshotSchema)
             .register(LANDMARK_CANDIDATE_EVENT, landmarkCandidateSchema)
             .register(BLOCK_UPDATE_EVENT, blockUpdateSchema)
-            .register(SKILL_PROGRESS_EVENT, skillProgressSchema);
+            .register(SKILL_PROGRESS_EVENT, skillProgressSchema)
+            .register(BOT_SKILL_START, botSkillStartSchema)
+            .register(BOT_SKILL_CANCEL, botSkillCancelSchema)
+            .register(BOT_SKILL_RESUME, botSkillResumeSchema)
+            .register(BOT_SAFETY_RESUME, botSafetyResumeSchema);
     }
 
     private static describe(error: unknown): string {

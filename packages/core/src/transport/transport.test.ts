@@ -11,6 +11,7 @@ import {
 import { FlowController } from './flow-control.js';
 import { MessageSchemaRegistry, ProtocolEnvelope } from './messages.js';
 import { RequestCorrelator } from './request-correlator.js';
+import { BOT_SAFETY_RESUME, BOT_SKILL_CANCEL, BOT_SKILL_START } from './schemas.js';
 
 describe('transport', () => {
     const registry = MessageSchemaRegistry.withDefaults();
@@ -96,6 +97,58 @@ describe('transport', () => {
         expect(decodedChunk?.type).toBe(CHUNK_SNAPSHOT_EVENT);
         expect(decodedLandmark?.type).toBe(LANDMARK_CANDIDATE_EVENT);
         expect(decodedBlockUpdate?.type).toBe(BLOCK_UPDATE_EVENT);
+    });
+
+    it('round-trips skill commands', () => {
+        const start = ProtocolEnvelope.create('request', BOT_SKILL_START, {
+            skillId: 'navigate',
+            input: { target: { x: 1, y: 64, z: 2 }, range: 2 },
+            taskId: 'task-1',
+        });
+        const cancel = ProtocolEnvelope.create('request', BOT_SKILL_CANCEL, {
+            skillId: 'navigate',
+            reason: 'coordinator cancelled',
+        });
+        const [encodedStart, startError] = codec.encode(start);
+        const [encodedCancel, cancelError] = codec.encode(cancel);
+        expect(startError).toBeNull();
+        expect(cancelError).toBeNull();
+        if (encodedStart === null || encodedCancel === null) return;
+        const [decodedStart, startDecodeError] = codec.decode(encodedStart);
+        const [decodedCancel, cancelDecodeError] = codec.decode(encodedCancel);
+        expect(startDecodeError).toBeNull();
+        expect(cancelDecodeError).toBeNull();
+        expect(decodedStart?.type).toBe(BOT_SKILL_START);
+        expect(decodedCancel?.type).toBe(BOT_SKILL_CANCEL);
+    });
+
+    it('rejects malformed skill commands', () => {
+        const missingSkill = ProtocolEnvelope.create('request', BOT_SKILL_START, {
+            input: {},
+        });
+        const invalidInput = ProtocolEnvelope.create('request', BOT_SKILL_START, {
+            skillId: 'navigate',
+            input: { target: { x: 'far' } },
+        });
+        const [encodedMissing, missingError] = codec.encode(missingSkill);
+        const [encodedInvalid, invalidError] = codec.encode(invalidInput);
+        expect(encodedMissing).toBeNull();
+        expect(encodedInvalid).toBeNull();
+        expect(missingError).toMatchObject({ type: 'INVALID_PAYLOAD' });
+        expect(invalidError).toMatchObject({ type: 'INVALID_PAYLOAD' });
+    });
+
+    it('round-trips a safety resume command', () => {
+        const resume = ProtocolEnvelope.create('request', BOT_SAFETY_RESUME, {
+            reason: 'operator cleared emergency stop',
+        });
+        const [encoded, encodeError] = codec.encode(resume);
+        expect(encodeError).toBeNull();
+        if (encoded === null) return;
+        const [decoded, decodeError] = codec.decode(encoded);
+        expect(decodeError).toBeNull();
+        expect(decoded?.type).toBe(BOT_SAFETY_RESUME);
+        expect(decoded?.payload).toEqual({ reason: 'operator cleared emergency stop' });
     });
 
     it('authenticates known bot names', () => {

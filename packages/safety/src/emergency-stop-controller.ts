@@ -9,6 +9,10 @@ export class EmergencyStopController {
         this.reason = null;
     }
 
+    resume(): void {
+        this.clear();
+    }
+
     get stopped(): boolean {
         return this.reason !== null;
     }

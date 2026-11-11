@@ -18,6 +18,10 @@ export class MineSkill implements Skill {
         return [true, null];
     }
 
+    plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        return [input, null];
+    }
+
     start(context: SkillContext, input: SkillInput): Result<SkillStep, string> {
         if (input.target === undefined) return [null, 'mine requires a target'];
         const blockId = context.world.blockAt(input.target);

@@ -5,8 +5,10 @@ import {
     MemoryCheckpointStore,
     PreemptionHandler,
     ProgressReporter,
+    RestoreValidator,
     SkillCatalog,
     type SkillCheckpointStore,
+    type SkillContext,
     SkillContextBuilder,
     type SkillContextSource,
     type SkillInput,
@@ -30,31 +32,37 @@ export class SkillHost {
     private readonly lifecycle: SkillLifecycleExecutor;
     private readonly scheduler: TickScheduler;
     private readonly preemption: PreemptionHandler;
+    private readonly checkpoints: CheckpointManager;
+    private currentTaskId: string | null = null;
 
     private constructor(
         private readonly options: SkillHostOptions,
         lifecycle: SkillLifecycleExecutor,
+        checkpoints: CheckpointManager,
     ) {
         this.builder = new SkillContextBuilder(options.source);
         this.lifecycle = lifecycle;
         this.scheduler = new TickScheduler(options.tickMilliseconds);
         this.preemption = new PreemptionHandler(lifecycle);
+        this.checkpoints = checkpoints;
     }
 
     static create(options: SkillHostOptions): Result<SkillHost, string> {
         const [registry, registryError] = SkillCatalog.createRegistry();
         if (registryError) return [null, registryError];
         if (registry === null) return [null, 'skill registry returned null'];
+        const checkpoints = new CheckpointManager(
+            options.checkpointStore ?? new MemoryCheckpointStore(),
+        );
         const lifecycle = new SkillLifecycleExecutor({
             registry,
             dispatch: options.dispatch,
             effects: new EffectsEmitter(),
             reporter: new ProgressReporter(options.progressSink),
-            checkpoints: new CheckpointManager(
-                options.checkpointStore ?? new MemoryCheckpointStore(),
-            ),
+            checkpoints,
+            restoreValidator: new RestoreValidator(),
         });
-        return [new SkillHost(options, lifecycle), null];
+        return [new SkillHost(options, lifecycle, checkpoints), null];
     }
 
     start(): Result<void, string> {
@@ -62,33 +70,71 @@ export class SkillHost {
     }
 
     stop(): void {
+        const [, cancelError] = this.cancel('skill host stopped');
+        if (cancelError) this.options.logger.warn({ error: cancelError }, 'skill stop failed');
         this.scheduler.stop();
     }
 
     run(skillId: string, input: SkillInput): Result<SkillStep, string> {
-        const [context, contextError] = this.builder.build(null);
+        const taskId = input.taskId;
+        const [context, contextError] = this.builder.build(null, taskId);
         if (contextError) return [null, contextError];
         if (context === null) return [null, 'skill context returned null'];
-        return this.lifecycle.start(skillId, input, context);
+        const [step, startError] = this.lifecycle.start(skillId, input, context);
+        if (startError) return [null, startError];
+        this.currentTaskId = taskId ?? null;
+        return [step, null];
     }
 
-    preempt(reason: string): void {
-        const [context, contextError] = this.builder.build(null);
-        if (contextError || context === null) {
+    resume(skillId: string, taskId = 'default'): Result<SkillStep, string> {
+        const [context, contextError] = this.builder.build(null, taskId);
+        if (contextError) return [null, contextError];
+        if (context === null) return [null, 'skill context returned null'];
+        const [checkpoint, loadError] = this.checkpoints.load(context.botId, taskId, skillId);
+        if (loadError) return [null, loadError];
+        if (checkpoint === null) return [null, `no checkpoint for ${skillId}`];
+        const [step, resumeError] = this.lifecycle.resume(skillId, checkpoint, context);
+        if (resumeError) return [null, resumeError];
+        this.currentTaskId = taskId;
+        return [step, null];
+    }
+
+    cancel(reason: string): Result<SkillStep | null, string> {
+        const [context, contextError] = this.buildContext();
+        if (contextError) return [null, contextError];
+        if (context === null) return [null, 'skill context returned null'];
+        return this.lifecycle.cancel(context, reason);
+    }
+
+    preempt(reason: string): Result<SkillStep | null, string> {
+        const [context, contextError] = this.buildContext();
+        if (contextError) {
             this.options.logger.warn({ error: contextError }, 'skill preemption failed');
-            return;
+            return [null, contextError];
         }
-        const [, preemptError] = this.preemption.preempt(context, reason);
-        if (preemptError)
+        if (context === null) return [null, 'skill context returned null'];
+        const [step, preemptError] = this.preemption.preempt(context, reason);
+        if (preemptError) {
             this.options.logger.warn({ error: preemptError }, 'skill preemption failed');
+            return [null, preemptError];
+        }
+        return [step, null];
     }
 
     get activeSkillId(): string | null {
         return this.lifecycle.activeSkillId;
     }
 
+    get activeTaskId(): string | null {
+        return this.currentTaskId;
+    }
+
+    private buildContext(): Result<SkillContext, string> {
+        return this.builder.build(null, this.currentTaskId ?? undefined);
+    }
+
     private tick(): void {
-        const [context, contextError] = this.builder.build(null);
+        const [context, contextError] = this.buildContext();
         if (contextError) {
             this.options.logger.warn({ error: contextError }, 'skill context failed');
             return;

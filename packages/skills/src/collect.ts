@@ -17,6 +17,10 @@ export class CollectSkill implements Skill {
         return [true, null];
     }
 
+    plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        return [input, null];
+    }
+
     start(context: SkillContext, input: SkillInput): Result<SkillStep, string> {
         const run: SkillRun = {
             skillId: this.id,

@@ -134,13 +134,17 @@ export class SkillSharedUtilities {
         };
     }
 
-    static cancelled(run: SkillRun, reason: string): SkillStep {
+    static cancelled(
+        run: SkillRun,
+        reason: string,
+        failureClass: SkillFailureClass = 'cancelled',
+    ): SkillStep {
         return {
             run,
             status: 'cancelled',
             action: null,
             progress: { done: 0, total: 1, label: reason },
-            failure: { class: 'cancelled', message: reason },
+            failure: { class: failureClass, message: reason },
         };
     }
 
@@ -174,6 +178,7 @@ export class SkillSharedUtilities {
     static checkpoint(context: SkillContext, run: SkillRun): SkillCheckpoint {
         return {
             botId: context.botId,
+            taskId: context.taskId ?? 'default',
             skillId: run.skillId,
             state: run.state,
             updatedAt: context.at,
