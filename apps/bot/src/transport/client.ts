@@ -35,9 +35,18 @@ export class BotTransportClient {
 
         this.socket = socket;
         return new Promise((resolve) => {
-            socket.once('open', () => resolve([undefined, null]));
-            socket.once('error', (error) => {
-                resolve([null, { type: 'CONNECT_FAILED', message: error.message }]);
+            let settled = false;
+            const settle = (result: Result<void, TransportFailure>): void => {
+                if (settled) return;
+                settled = true;
+                resolve(result);
+            };
+
+            socket.once('open', () => settle([undefined, null]));
+            socket.on('error', (error) => {
+                const failure = this.connectFailure(error);
+                this.correlator.rejectAll(failure);
+                settle([null, failure]);
             });
             socket.on('close', () => {
                 this.correlator.rejectAll({
@@ -145,6 +154,11 @@ export class BotTransportClient {
     }
 
     private describe(error: unknown): string {
-        return error instanceof Error ? error.message : String(error);
+        if (error instanceof Error) return error.message;
+        if (typeof error === 'object' && error !== null) {
+            const message = Reflect.get(error, 'message');
+            if (typeof message === 'string' && message.length > 0) return message;
+        }
+        return String(error);
     }
 }
