@@ -31,7 +31,12 @@ describe('skill catalog', () => {
     it('registers every v1 skill', () => {
         const [registry, registryError] = SkillCatalog.createRegistry();
         expect(registryError).toBeNull();
-        expect(registry?.list().map((skill) => skill.id).sort()).toEqual([...EXPECTED_SKILLS]);
+        expect(
+            registry
+                ?.list()
+                .map((skill) => skill.id)
+                .sort(),
+        ).toEqual([...EXPECTED_SKILLS]);
     });
 
     it('rejects duplicate and malformed skills', () => {

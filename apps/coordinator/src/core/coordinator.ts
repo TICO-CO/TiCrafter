@@ -6,6 +6,7 @@ import {
     type TransportFailure,
 } from '@ticrafter/core';
 
+import type { SipTransactionalCommitter } from '../sip/index.js';
 import type { TransportServer } from '../transport/index.js';
 import type { BotProcessSupervisor } from './bot-process-supervisor.js';
 import type { CoordinatorDatabase } from './epoch.js';
@@ -26,6 +27,7 @@ export interface CoordinatorOptions {
     scheduler: Scheduler;
     recovery: RestartRecovery;
     supervisor: BotProcessSupervisor | null;
+    sip: SipTransactionalCommitter;
 }
 
 export class Coordinator {
@@ -83,6 +85,10 @@ export class Coordinator {
 
     get database(): CoordinatorDatabase {
         return this.options.database;
+    }
+
+    get sip(): SipTransactionalCommitter {
+        return this.options.sip;
     }
 
     private runRecovery(): void {

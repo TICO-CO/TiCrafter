@@ -93,6 +93,7 @@ function guardianLoop(
     evaluators: readonly SafetyEvaluator[],
     source: { read(): Result<SafetySnapshot, string> },
     incidents: SafetyIncident[],
+    now: () => number = () => Date.now(),
 ) {
     const emergencyStop = new EmergencyStopController();
     const journal = new IncidentJournal({ record: (incident) => incidents.push(incident) });
@@ -102,7 +103,7 @@ function guardianLoop(
         journal,
         new RecoveryLadder(),
         source,
-        { intervalMilliseconds: 50 },
+        { intervalMilliseconds: 50, now },
     );
     return { loop, emergencyStop };
 }
@@ -234,6 +235,8 @@ describe('reflex guardian loop', () => {
     });
 
     it('marks safe mode in the guardian report', () => {
+        const baseTime = Date.parse('2026-11-10T12:00:00.000Z');
+        let currentTime = baseTime;
         const incidents: SafetyIncident[] = [];
         const evaluator: SafetyEvaluator = {
             evaluate: () => [
@@ -246,10 +249,14 @@ describe('reflex guardian loop', () => {
                 read: () => [snapshot(), null],
             },
             incidents,
+            () => currentTime,
         );
         loop.tick();
+        currentTime = baseTime + 5_000;
         loop.tick();
+        currentTime = baseTime + 10_000;
         loop.tick();
+        currentTime = baseTime + 15_000;
         const [report, error] = loop.tick();
         expect(error).toBeNull();
         expect(report?.recovery.kind).toBe('safe-mode');

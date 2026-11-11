@@ -22,6 +22,7 @@ export interface GuardianReport {
 
 export interface ReflexGuardianOptions {
     intervalMilliseconds: number;
+    now?: () => number;
     onReport?: (report: GuardianReport) => void;
     onError?: (error: string) => void;
 }
@@ -55,7 +56,8 @@ export class ReflexGuardianLoop {
             return this.failClosed(`safety evaluator failed: ${evaluatorError}`, snapshot);
         }
         if (signals === null) return this.failClosed('safety evaluator returned null', snapshot);
-        const recovery = this.recoveryLadder.next(signals);
+        const now = this.options.now?.() ?? Date.now();
+        const recovery = this.recoveryLadder.next(signals, now);
         this.recordCriticalIncidents(snapshot, signals, recovery);
         return [
             {

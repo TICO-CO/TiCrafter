@@ -13,6 +13,7 @@ import {
     SessionHandshake,
     SessionManager,
 } from './core/index.js';
+import { SipTransactionalCommitter } from './sip/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
@@ -31,6 +32,7 @@ export class CoordinatorComposition {
         const registry = MessageSchemaRegistry.withDefaults();
         const events = new EventLogWriter(options.database);
         const worldModel = new CoordinatorWorldModel(options.database, options.logger);
+        const sip = new SipTransactionalCommitter(options.database);
         let messageRouter: MessageRouter | null = null;
         const transport = new TransportServer({
             host: options.config.transport.host,
@@ -140,6 +142,7 @@ export class CoordinatorComposition {
             scheduler,
             recovery,
             supervisor,
+            sip,
         });
     }
 }
