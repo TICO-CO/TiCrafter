@@ -1,3 +1,4 @@
+import { SafetySignals } from './signals.js';
 import type { SafetyEvaluator, SafetySignal, SafetySnapshot } from './types.js';
 
 export class MobThreatEvaluator implements SafetyEvaluator {
@@ -5,10 +6,10 @@ export class MobThreatEvaluator implements SafetyEvaluator {
         const distance = snapshot.nearestHostileDistance;
         if (distance === null) return [];
         if (distance <= 4) {
-            return [{ code: 'mob.threat', severity: 'critical', message: 'hostile mob adjacent' }];
+            return [SafetySignals.mobAdjacent()];
         }
         if (distance <= 8) {
-            return [{ code: 'mob.threat', severity: 'warning', message: 'hostile mob nearby' }];
+            return [SafetySignals.mobNearby()];
         }
         return [];
     }

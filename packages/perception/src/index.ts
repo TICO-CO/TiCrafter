@@ -1,6 +1,7 @@
 export * from './block-update-listener.js';
 export * from './chunk-snapshot-encoder.js';
 export * from './detector-pipeline.js';
+export * from './failures.js';
 export * from './farm-detector.js';
 export * from './house-detector.js';
 export * from './landmark-candidate-emitter.js';

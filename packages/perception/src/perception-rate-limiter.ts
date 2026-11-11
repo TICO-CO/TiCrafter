@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { PerceptionFailures } from './failures.js';
 import type { PerceptionFailure } from './types.js';
 
 export interface PerceptionRateLimitOptions {
@@ -27,11 +28,7 @@ export class PerceptionRateLimiter {
         if (!valid) {
             return [
                 null,
-                {
-                    type: 'INVALID_RATE_LIMIT_OPTIONS',
-                    tokensPerSecond: options.tokensPerSecond,
-                    burst: options.burst,
-                },
+                PerceptionFailures.invalidRateLimitOptions(options.tokensPerSecond, options.burst),
             ];
         }
         return [new PerceptionRateLimiter(options, clock), null];

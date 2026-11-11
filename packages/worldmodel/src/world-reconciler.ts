@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { SpatialQueryEngine } from './spatial-query-engine.js';
 import type { DeviationFinding, IntendedStructure, WorldFailure } from './types.js';
 
@@ -14,7 +15,7 @@ export class WorldReconciler {
             const [observed, queryError] = this.spatial.intersecting(structure.bbox);
             if (queryError) return [null, queryError];
             if (observed === null) {
-                return [null, { type: 'STORAGE_FAILED', message: 'spatial query returned null' }];
+                return [null, WorldFailures.storageFailed('spatial query returned null')];
             }
             if (observed.length === 0) {
                 findings.push({

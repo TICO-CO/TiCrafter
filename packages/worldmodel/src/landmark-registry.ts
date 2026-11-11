@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { Landmark, LandmarkCandidate, MergeResult, WorldFailure } from './types.js';
 
 export interface LandmarkStorePort {
@@ -47,7 +48,7 @@ export class LandmarkRegistry {
             return [null, resolveError];
         }
         if (result === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'merge returned null' }];
+            return [null, WorldFailures.storageFailed('merge returned null')];
         }
         const [, writeError] = this.store.save(result.landmark);
         if (writeError) {

@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import { ConfidenceDecay } from './confidence-decay.js';
+import { WorldFailures } from './failures.js';
 import { LandmarkComparison } from './landmark-comparison.js';
 import { MergeConflictArms } from './merge-conflict-arms.js';
 import type { Landmark, LandmarkCandidate, MergeResult, WorldFailure } from './types.js';
@@ -37,14 +38,14 @@ export class MergeConflictResolver {
             return [null, decayError];
         }
         if (decayedExisting === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+            return [null, WorldFailures.invalidTimestamp(observedAt)];
         }
         const ordering = LandmarkComparison.compareTimestamps(
             candidate.observedAt,
             existing.lastSeen,
         );
         if (ordering === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: candidate.observedAt }];
+            return [null, WorldFailures.invalidTimestamp(candidate.observedAt)];
         }
         if (ordering > 0) {
             return this.arms.replace(decayedExisting.landmark, incoming, observedAt);
@@ -71,14 +72,14 @@ export class MergeConflictResolver {
 
     private static validateConfidence(value: number): WorldFailure | null {
         if (!Number.isFinite(value) || value < 0 || value > 1) {
-            return { type: 'INVALID_CONFIDENCE', value };
+            return WorldFailures.invalidConfidence(value);
         }
         return null;
     }
 
     private static validateReliability(value: number): WorldFailure | null {
         if (!Number.isFinite(value) || value < 0 || value > 1) {
-            return { type: 'INVALID_RELIABILITY', value };
+            return WorldFailures.invalidReliability(value);
         }
         return null;
     }

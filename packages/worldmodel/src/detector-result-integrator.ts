@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { LandmarkRegistry } from './landmark-registry.js';
 import type { PlanTagging } from './plan-tagging.js';
 import type {
@@ -21,7 +22,7 @@ export class DetectorResultIntegrator {
         const [landmarkId, idError] = this.landmarkId(tagged);
         if (idError) return [null, idError];
         if (landmarkId === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'landmark id missing' }];
+            return [null, WorldFailures.storageFailed('landmark id missing')];
         }
         return this.registry.upsert({ ...tagged, id: landmarkId }, tagged.observedAt);
     }
@@ -30,7 +31,7 @@ export class DetectorResultIntegrator {
         const [existing, listError] = this.registry.list();
         if (listError) return [null, listError];
         if (existing === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'landmark list returned null' }];
+            return [null, WorldFailures.landmarkListUnavailable()];
         }
         const match = existing.find((landmark) =>
             DetectorResultIntegrator.matches(landmark, candidate),

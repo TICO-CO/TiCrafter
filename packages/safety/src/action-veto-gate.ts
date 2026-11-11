@@ -4,6 +4,7 @@ import { ClaimLossEvaluator } from './claim-loss-evaluator.js';
 import { EmergencyStopController } from './emergency-stop-controller.js';
 import { RecoveryLadder } from './recovery-ladder.js';
 import { SafetyPolicyEngine } from './safety-policy-engine.js';
+import { SafetyReasons, SafetySignals } from './signals.js';
 import type {
     RecoveryStep,
     SafetyDecision,
@@ -53,11 +54,11 @@ export class ActionVetoGate {
         if (this.emergencyStop.stopped) {
             return {
                 allowed: false,
-                reason: this.emergencyStop.stopReason ?? 'emergency stop active',
+                reason: this.emergencyStop.stopReason ?? SafetyReasons.emergencyStopActive,
                 signals,
                 recovery: {
                     kind: 'emergency-stop',
-                    reason: this.emergencyStop.stopReason ?? 'emergency stop active',
+                    reason: this.emergencyStop.stopReason ?? SafetyReasons.emergencyStopActive,
                 },
             };
         }
@@ -75,11 +76,11 @@ export class ActionVetoGate {
         if (this.recovery.safeModeActive && !this.isRecoveryAction(request)) {
             return {
                 allowed: false,
-                reason: this.recovery.currentSafeModeReason ?? 'safe mode active',
+                reason: this.recovery.currentSafeModeReason ?? SafetyReasons.safeModeActive,
                 signals,
                 recovery: {
                     kind: 'safe-mode',
-                    reason: this.recovery.currentSafeModeReason ?? 'safe mode active',
+                    reason: this.recovery.currentSafeModeReason ?? SafetyReasons.safeModeActive,
                 },
             };
         }
@@ -102,11 +103,7 @@ export class ActionVetoGate {
         const signals: SafetySignal[] = [...this.claimLoss.evaluate(snapshot)];
         for (const evaluator of this.evaluators) signals.push(...evaluator.evaluate(snapshot));
         if (this.emergencyStop.stopped) {
-            signals.push({
-                code: 'emergency-stop',
-                severity: 'critical',
-                message: this.emergencyStop.stopReason ?? 'emergency stop active',
-            });
+            signals.push(SafetySignals.emergencyStop(this.emergencyStop.stopReason));
         }
         return this.deduplicate(signals);
     }
@@ -124,10 +121,10 @@ export class ActionVetoGate {
         if (this.recovery.safeModeActive) {
             return {
                 kind: 'safe-mode',
-                reason: this.recovery.currentSafeModeReason ?? 'safe mode active',
+                reason: this.recovery.currentSafeModeReason ?? SafetyReasons.safeModeActive,
             };
         }
-        return { kind: 'retry-local', reason: 'no safety signal' };
+        return { kind: 'retry-local', reason: SafetyReasons.noSafetySignal };
     }
 
     private isRecoveryAction(request: ActionRequest): boolean {

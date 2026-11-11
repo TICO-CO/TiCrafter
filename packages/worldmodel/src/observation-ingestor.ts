@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import type { ChunkStorePort } from './chunk-version-store.js';
+import { WorldFailures } from './failures.js';
 import type {
     BlockUpdateObservation,
     ChunkBlockObservation,
@@ -58,7 +59,7 @@ export class ObservationIngestor {
             expectedChunk.z !== update.chunk.z ||
             !ObservationIngestor.isPosition(update.block.position)
         ) {
-            return [null, { type: 'INVALID_BLOCK_POSITION', position: update.block.position }];
+            return [null, WorldFailures.invalidBlockPosition(update.block.position)];
         }
         const [existing, readError] = this.chunks.get(update.chunk);
         if (readError) return [null, readError];

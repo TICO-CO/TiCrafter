@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { LandmarkStorePort } from './landmark-registry.js';
 import type {
     BlockPosition,
@@ -67,7 +68,7 @@ export class SpatialQueryEngine {
             return [null, listError];
         }
         if (landmarks === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'landmark list returned null' }];
+            return [null, WorldFailures.landmarkListUnavailable()];
         }
         const matches = landmarks.filter((landmark) => type === null || landmark.type === type);
         let best: NearestLandmark | null = null;
@@ -89,7 +90,7 @@ export class SpatialQueryEngine {
             return [null, listError];
         }
         if (landmarks === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'landmark list returned null' }];
+            return [null, WorldFailures.landmarkListUnavailable()];
         }
         return [
             landmarks.filter(
@@ -103,7 +104,7 @@ export class SpatialQueryEngine {
 
     blockAt(position: BlockPosition): Result<ChunkBlockObservation | null, WorldFailure> {
         if (this.ports.occupancy === undefined) {
-            return [null, { type: 'QUERY_UNAVAILABLE', query: 'blockAt' }];
+            return [null, WorldFailures.queryUnavailable('blockAt')];
         }
         return this.ports.occupancy.blockAt(position);
     }
@@ -115,7 +116,7 @@ export class SpatialQueryEngine {
         const [landmarks, listError] = this.store.list();
         if (listError) return [null, listError];
         if (landmarks === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'landmark list returned null' }];
+            return [null, WorldFailures.landmarkListUnavailable()];
         }
         const landmark = landmarks.find(
             (candidate) =>
@@ -138,7 +139,7 @@ export class SpatialQueryEngine {
 
     insideBase(position: BlockPosition): Result<boolean, WorldFailure> {
         if (this.ports.baseZones === undefined) {
-            return [null, { type: 'QUERY_UNAVAILABLE', query: 'insideBase' }];
+            return [null, WorldFailures.queryUnavailable('insideBase')];
         }
         return this.ports.baseZones.insideBase(position);
     }
@@ -148,21 +149,21 @@ export class SpatialQueryEngine {
         to: BlockPosition,
     ): Result<readonly BlockPosition[] | null, WorldFailure> {
         if (this.ports.pathGraph === undefined) {
-            return [null, { type: 'QUERY_UNAVAILABLE', query: 'route' }];
+            return [null, WorldFailures.queryUnavailable('route')];
         }
         return this.ports.pathGraph.route(from, to);
     }
 
     isProtected(position: BlockPosition): Result<boolean, WorldFailure> {
         if (this.ports.protection === undefined) {
-            return [null, { type: 'QUERY_UNAVAILABLE', query: 'isProtected' }];
+            return [null, WorldFailures.queryUnavailable('isProtected')];
         }
         return this.ports.protection.isProtected(position);
     }
 
     whoOwns(bbox: BoundingBox): Result<readonly string[], WorldFailure> {
         if (this.ports.ownership === undefined) {
-            return [null, { type: 'QUERY_UNAVAILABLE', query: 'whoOwns' }];
+            return [null, WorldFailures.queryUnavailable('whoOwns')];
         }
         return this.ports.ownership.whoOwns(bbox);
     }

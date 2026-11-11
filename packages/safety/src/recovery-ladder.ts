@@ -1,3 +1,4 @@
+import { SafetyReasons } from './signals.js';
 import type { RecoveryStep, RecoveryStepKind, SafetySignal } from './types.js';
 
 const ESCALATION_STEPS: readonly RecoveryStepKind[] = [
@@ -21,7 +22,7 @@ export class RecoveryLadder {
     next(signals: readonly SafetySignal[], now = Date.now()): RecoveryStep {
         if (signals.length === 0) {
             this.reset();
-            return { kind: 'retry-local', reason: 'no safety signal' };
+            return { kind: 'retry-local', reason: SafetyReasons.noSafetySignal };
         }
         const requiredLevel = this.requiredLevel(signals);
         if (!this.active) {

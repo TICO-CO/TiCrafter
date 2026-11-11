@@ -1,6 +1,7 @@
 import { attempt, type Result } from '@ticrafter/core';
 import { type LandmarkRecord, WorldStore } from '@ticrafter/memory';
 
+import { WorldFailures } from './failures.js';
 import type { LandmarkStorePort } from './landmark-registry.js';
 import type {
     BoundingBox,
@@ -17,7 +18,7 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
     get(id: string): Result<Landmark | null, WorldFailure> {
         const [record, readError] = this.store.getLandmark(id);
         if (readError) {
-            return [null, SqliteLandmarkStore.storageFailure(readError.message)];
+            return [null, WorldFailures.storageFailed(readError.message)];
         }
         if (record === null) {
             return [null, null];
@@ -28,10 +29,10 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
     list(): Result<readonly Landmark[], WorldFailure> {
         const [records, readError] = this.store.listLandmarks();
         if (readError) {
-            return [null, SqliteLandmarkStore.storageFailure(readError.message)];
+            return [null, WorldFailures.storageFailed(readError.message)];
         }
         if (records === null) {
-            return [null, SqliteLandmarkStore.storageFailure('landmark list returned null')];
+            return [null, WorldFailures.landmarkListUnavailable()];
         }
         const landmarks: Landmark[] = [];
         for (const record of records) {
@@ -49,7 +50,7 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
     save(landmark: Landmark): Result<void, WorldFailure> {
         const [, writeError] = this.store.saveLandmark(SqliteLandmarkStore.toRecord(landmark));
         if (writeError) {
-            return [null, SqliteLandmarkStore.storageFailure(writeError.message)];
+            return [null, WorldFailures.storageFailed(writeError.message)];
         }
         return [undefined, null];
     }
@@ -57,17 +58,14 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
     private toLandmark(record: LandmarkRecord): Result<Landmark, WorldFailure> {
         const type = SqliteLandmarkStore.landmarkType(record.type);
         if (type === null) {
-            return [
-                null,
-                SqliteLandmarkStore.storageFailure(`unknown landmark type ${record.type}`),
-            ];
+            return [null, WorldFailures.storageFailed(`unknown landmark type ${record.type}`)];
         }
         const [bbox, bboxError] = SqliteLandmarkStore.parse<BoundingBox>(record.bboxJson);
         if (bboxError) {
             return [null, bboxError];
         }
         if (bbox === null) {
-            return [null, SqliteLandmarkStore.storageFailure('bbox is missing')];
+            return [null, WorldFailures.storageFailed('bbox is missing')];
         }
         const [anchors, anchorsError] = SqliteLandmarkStore.parse<LandmarkAnchor[]>(
             record.anchorsJson,
@@ -76,7 +74,7 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
             return [null, anchorsError];
         }
         if (anchors === null || !Array.isArray(anchors)) {
-            return [null, SqliteLandmarkStore.storageFailure('anchors must be an array')];
+            return [null, WorldFailures.storageFailed('anchors must be an array')];
         }
         const [evidence, evidenceError] = SqliteLandmarkStore.parse<LandmarkEvidence[]>(
             record.evidenceJson,
@@ -85,7 +83,7 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
             return [null, evidenceError];
         }
         if (evidence === null || !Array.isArray(evidence)) {
-            return [null, SqliteLandmarkStore.storageFailure('evidence must be an array')];
+            return [null, WorldFailures.storageFailed('evidence must be an array')];
         }
         return [
             {
@@ -124,7 +122,7 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
     private static parse<T>(value: string): Result<T, WorldFailure> {
         const [parsed, parseError] = attempt(() => JSON.parse(value) as T);
         if (parseError) {
-            return [null, SqliteLandmarkStore.storageFailure('invalid stored landmark JSON')];
+            return [null, WorldFailures.storageFailed('invalid stored landmark JSON')];
         }
         return [parsed, null];
     }
@@ -144,9 +142,5 @@ export class SqliteLandmarkStore implements LandmarkStorePort {
             default:
                 return null;
         }
-    }
-
-    private static storageFailure(message: string): WorldFailure {
-        return { type: 'STORAGE_FAILED', message };
     }
 }

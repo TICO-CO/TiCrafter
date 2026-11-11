@@ -9,5 +9,6 @@ export * from './mob-threat-evaluator.js';
 export * from './recovery-ladder.js';
 export * from './rules.js';
 export * from './safety-policy-engine.js';
+export * from './signals.js';
 export * from './stuck-evaluator.js';
 export * from './types.js';

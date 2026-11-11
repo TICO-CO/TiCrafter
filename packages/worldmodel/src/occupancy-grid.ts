@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import type { ChunkStorePort } from './chunk-version-store.js';
+import { WorldFailures } from './failures.js';
 import type { BlockPosition, ChunkBlockObservation, WorldFailure } from './types.js';
 
 export class SparseOccupancyGrid {
@@ -12,7 +13,7 @@ export class SparseOccupancyGrid {
         const [loaded, loadError] = this.ensureLoaded();
         if (loadError) return [null, loadError];
         if (loaded === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'occupancy grid returned null' }];
+            return [null, WorldFailures.storageFailed('occupancy grid returned null')];
         }
         return [loaded.get(SparseOccupancyGrid.key(position)) ?? null, null];
     }
@@ -38,7 +39,7 @@ export class SparseOccupancyGrid {
         const [chunks, listError] = this.chunks.list();
         if (listError) return [null, listError];
         if (chunks === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'chunk list returned null' }];
+            return [null, WorldFailures.storageFailed('chunk list returned null')];
         }
         const blocks = new Map<string, ChunkBlockObservation>();
         chunks.forEach((chunk) => {

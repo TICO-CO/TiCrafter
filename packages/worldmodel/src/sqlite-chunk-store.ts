@@ -2,6 +2,7 @@ import { attempt, type Result } from '@ticrafter/core';
 import { type ChunkRecord, WorldStore } from '@ticrafter/memory';
 
 import type { ChunkStorePort } from './chunk-version-store.js';
+import { WorldFailures } from './failures.js';
 import type { ChunkBlockObservation, ChunkCoordinate, StoredChunk, WorldFailure } from './types.js';
 
 interface ChunkPayload {
@@ -15,7 +16,7 @@ export class SqliteChunkStore implements ChunkStorePort {
     get(chunk: ChunkCoordinate): Result<StoredChunk | null, WorldFailure> {
         const [record, readError] = this.store.getChunk(chunk.x, chunk.z);
         if (readError) {
-            return [null, SqliteChunkStore.storageFailure(readError.message)];
+            return [null, WorldFailures.storageFailed(readError.message)];
         }
         if (record === null) {
             return [null, null];
@@ -26,10 +27,10 @@ export class SqliteChunkStore implements ChunkStorePort {
     list(): Result<readonly StoredChunk[], WorldFailure> {
         const [records, readError] = this.store.listChunks();
         if (readError) {
-            return [null, SqliteChunkStore.storageFailure(readError.message)];
+            return [null, WorldFailures.storageFailed(readError.message)];
         }
         if (records === null) {
-            return [null, SqliteChunkStore.storageFailure('chunk list returned null')];
+            return [null, WorldFailures.storageFailed('chunk list returned null')];
         }
         const chunks: StoredChunk[] = [];
         for (const record of records) {
@@ -47,7 +48,7 @@ export class SqliteChunkStore implements ChunkStorePort {
     save(chunk: StoredChunk): Result<void, WorldFailure> {
         const [, writeError] = this.store.saveChunk(SqliteChunkStore.toRecord(chunk));
         if (writeError) {
-            return [null, SqliteChunkStore.storageFailure(writeError.message)];
+            return [null, WorldFailures.storageFailed(writeError.message)];
         }
         return [undefined, null];
     }
@@ -55,10 +56,10 @@ export class SqliteChunkStore implements ChunkStorePort {
     private toChunk(record: ChunkRecord): Result<StoredChunk, WorldFailure> {
         const [payload, parseError] = attempt(() => JSON.parse(record.payloadJson) as ChunkPayload);
         if (parseError) {
-            return [null, SqliteChunkStore.storageFailure('invalid stored chunk JSON')];
+            return [null, WorldFailures.storageFailed('invalid stored chunk JSON')];
         }
         if (payload === null || !Array.isArray(payload.blocks)) {
-            return [null, SqliteChunkStore.storageFailure('chunk blocks must be an array')];
+            return [null, WorldFailures.storageFailed('chunk blocks must be an array')];
         }
         return [
             {
@@ -82,9 +83,5 @@ export class SqliteChunkStore implements ChunkStorePort {
             }),
             updatedAt: chunk.observedAt,
         };
-    }
-
-    private static storageFailure(message: string): WorldFailure {
-        return { type: 'STORAGE_FAILED', message };
     }
 }

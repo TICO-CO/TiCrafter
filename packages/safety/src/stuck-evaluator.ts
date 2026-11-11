@@ -1,27 +1,16 @@
+import { SafetySignals } from './signals.js';
 import type { SafetyEvaluator, SafetySignal, SafetySnapshot } from './types.js';
 
 export class StuckTimeoutEvaluator implements SafetyEvaluator {
     evaluate(snapshot: SafetySnapshot): readonly SafetySignal[] {
         const signals: SafetySignal[] = [];
         if (snapshot.stuckMilliseconds >= 15_000) {
-            signals.push({
-                code: 'movement.stuck',
-                severity: 'critical',
-                message: 'movement stuck for 15s',
-            });
+            signals.push(SafetySignals.movementStuck15s());
         } else if (snapshot.stuckMilliseconds >= 5_000) {
-            signals.push({
-                code: 'movement.stuck',
-                severity: 'warning',
-                message: 'movement stuck for 5s',
-            });
+            signals.push(SafetySignals.movementStuck5s());
         }
         if (snapshot.targetUnreachableMilliseconds >= 10_000) {
-            signals.push({
-                code: 'movement.unreachable',
-                severity: 'warning',
-                message: 'target unreachable for 10s',
-            });
+            signals.push(SafetySignals.targetUnreachable10s());
         }
         return signals;
     }

@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import { ConfidenceDecay, type DecayedLandmark } from './confidence-decay.js';
+import { WorldFailures } from './failures.js';
 import { LandmarkComparison } from './landmark-comparison.js';
 import type { Landmark, MergeResult, WorldFailure } from './types.js';
 
@@ -13,7 +14,7 @@ export class MergeConflictArms {
             return [null, decayError];
         }
         if (decayed === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+            return [null, WorldFailures.invalidTimestamp(observedAt)];
         }
         return [
             {
@@ -35,7 +36,7 @@ export class MergeConflictArms {
             return [null, decayError];
         }
         if (decayed === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+            return [null, WorldFailures.invalidTimestamp(observedAt)];
         }
         const conflicting = !LandmarkComparison.sameGeometry(existing, incoming);
         return [
@@ -89,7 +90,7 @@ export class MergeConflictArms {
             return [null, decayError];
         }
         if (decayed === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+            return [null, WorldFailures.invalidTimestamp(observedAt)];
         }
         return [
             {

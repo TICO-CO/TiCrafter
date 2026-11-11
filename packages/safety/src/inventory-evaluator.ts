@@ -1,3 +1,4 @@
+import { SafetySignals } from './signals.js';
 import type { SafetyEvaluator, SafetySignal, SafetySnapshot } from './types.js';
 
 export class InventoryEvaluator implements SafetyEvaluator {
@@ -5,12 +6,10 @@ export class InventoryEvaluator implements SafetyEvaluator {
         if (snapshot.inventoryTotalSlots <= 0) return [];
         const usedRatio = snapshot.inventoryUsedSlots / snapshot.inventoryTotalSlots;
         if (usedRatio < 0.9) return [];
-        return [
-            {
-                code: 'inventory.full',
-                severity: usedRatio >= 0.98 ? 'critical' : 'warning',
-                message: `inventory ${Math.round(usedRatio * 100)}% full`,
-            },
-        ];
+        const percent = Math.round(usedRatio * 100);
+        if (usedRatio >= 0.98) {
+            return [SafetySignals.inventoryFullCritical(percent)];
+        }
+        return [SafetySignals.inventoryFullWarning(percent)];
     }
 }

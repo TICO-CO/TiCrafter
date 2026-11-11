@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { PerceptionFailures } from './failures.js';
 import type { ChunkCoordinate, PerceptionFailure, VoxelBlock, VoxelPosition } from './types.js';
 
 export interface BlockUpdate {
@@ -24,13 +25,13 @@ export class BlockUpdateListener {
         observedAt: string,
     ): Result<BlockUpdateObservation, PerceptionFailure> {
         if (!BlockUpdateListener.isPosition(update.position)) {
-            return [null, { type: 'INVALID_BLOCK_POSITION', position: update.position }];
+            return [null, PerceptionFailures.invalidBlockPosition(update.position)];
         }
         if (update.blockId.length === 0) {
-            return [null, { type: 'INVALID_BLOCK_ID', value: update.blockId }];
+            return [null, PerceptionFailures.invalidBlockId(update.blockId)];
         }
         if (Number.isNaN(Date.parse(observedAt))) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+            return [null, PerceptionFailures.invalidTimestamp(observedAt)];
         }
         return [
             {

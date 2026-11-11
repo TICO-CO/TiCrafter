@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import { ConfidenceDecay, type DecayedLandmark } from './confidence-decay.js';
+import { WorldFailures } from './failures.js';
 import type { LandmarkStorePort } from './landmark-registry.js';
 import type { WorldFailure } from './types.js';
 
@@ -16,7 +17,7 @@ export class LandmarkDecayService {
             return [null, listError];
         }
         if (landmarks === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'landmark list returned null' }];
+            return [null, WorldFailures.landmarkListUnavailable()];
         }
         const results: DecayedLandmark[] = [];
         for (const landmark of landmarks) {

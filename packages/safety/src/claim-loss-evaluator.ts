@@ -1,3 +1,4 @@
+import { SafetySignals } from './signals.js';
 import type { SafetyEvaluator, SafetySignal, SafetySnapshot } from './types.js';
 
 export class ClaimLossEvaluator implements SafetyEvaluator {
@@ -5,30 +6,18 @@ export class ClaimLossEvaluator implements SafetyEvaluator {
         if (!snapshot.claimTrackingEnabled || snapshot.activeSkillId === null) return [];
         const claim = snapshot.world.claimFor(snapshot.botId);
         if (claim === null || typeof claim.expiresAt !== 'string') {
-            return [{ code: 'claim.lost', severity: 'critical', message: 'active claim missing' }];
+            return [SafetySignals.claimMissing()];
         }
         const expiresAt = Date.parse(claim.expiresAt);
         if (!Number.isFinite(expiresAt)) {
-            return [
-                {
-                    code: 'claim.lost',
-                    severity: 'critical',
-                    message: 'active claim has invalid expiry',
-                },
-            ];
+            return [SafetySignals.claimInvalidExpiry()];
         }
         const evaluatedAt = Date.parse(snapshot.at);
         if (!Number.isFinite(evaluatedAt)) {
-            return [
-                {
-                    code: 'claim.lost',
-                    severity: 'critical',
-                    message: 'claim evaluation time is invalid',
-                },
-            ];
+            return [SafetySignals.claimEvaluationTimeInvalid()];
         }
         if (expiresAt <= evaluatedAt) {
-            return [{ code: 'claim.lost', severity: 'critical', message: 'active claim expired' }];
+            return [SafetySignals.claimExpired()];
         }
         return [];
     }

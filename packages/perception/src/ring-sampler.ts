@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { PerceptionFailures } from './failures.js';
 import type { PerceptionRateLimiter } from './perception-rate-limiter.js';
 import type {
     ChunkCoordinate,
@@ -41,7 +42,7 @@ export class RingSampler {
             options.ringRadius < 16 ||
             options.ringRadius > 64
         ) {
-            return [null, { type: 'INVALID_RING_RADIUS', value: options.ringRadius }];
+            return [null, PerceptionFailures.invalidRingRadius(options.ringRadius)];
         }
         return [new RingSampler(options.ringRadius, rateLimiter), null];
     }
@@ -54,7 +55,7 @@ export class RingSampler {
     sample(request: RingSampleRequest): Result<readonly ChunkSnapshotInput[], PerceptionFailure> {
         const { position } = request;
         if (!RingSampler.isPosition(position)) {
-            return [null, { type: 'INVALID_BLOCK_POSITION', position }];
+            return [null, PerceptionFailures.invalidBlockPosition(position)];
         }
         const chunks = RingSampler.rankedChunks(request.loadedChunks, position, this.ringRadius);
         const sampled: ChunkSnapshotInput[] = [];

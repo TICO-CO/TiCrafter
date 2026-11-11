@@ -1,5 +1,6 @@
 import { type ActionRequest, assertNever, type Vec3 } from '@ticrafter/core';
 
+import { SafetySignals } from './signals.js';
 import type { RecoveryStep, SafetySignal, SafetySnapshot } from './types.js';
 
 export interface SafetyRuleResult {
@@ -26,11 +27,7 @@ export class MaterialBanRule implements SafetyRule {
         const material = this.materialFor(snapshot, request);
         if (material === null || !BANNED_MATERIALS.has(material)) return null;
         return {
-            signal: {
-                code: 'action.material-ban',
-                severity: 'critical',
-                message: `banned material ${material}`,
-            },
+            signal: SafetySignals.materialBan(material),
             recovery: { kind: 'safe-mode', reason: `banned material ${material}` },
         };
     }
@@ -64,11 +61,7 @@ export class ProtectedBboxRule implements SafetyRule {
         const position = this.destructivePosition(request);
         if (position === null || !snapshot.world.isProtected(position)) return null;
         return {
-            signal: {
-                code: 'action.protected-region',
-                severity: 'critical',
-                message: 'destructive action inside protected region',
-            },
+            signal: SafetySignals.protectedRegion(),
             recovery: { kind: 'safe-mode', reason: 'protected region' },
         };
     }
@@ -104,11 +97,7 @@ export class ActiveBotSupportRule implements SafetyRule {
             .some((activeBot) => this.supports(activeBot.position, request.position));
         if (!supported) return null;
         return {
-            signal: {
-                code: 'action.active-bot-support',
-                severity: 'critical',
-                message: 'block supports an online bot',
-            },
+            signal: SafetySignals.activeBotSupport(),
             recovery: { kind: 'safe-mode', reason: 'active bot support' },
         };
     }

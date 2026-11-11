@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { Landmark, WorldFailure } from './types.js';
 
 export interface ConfidenceDecayOptions {
@@ -22,12 +23,12 @@ export class ConfidenceDecay {
         }
         const nowMilliseconds = ConfidenceDecay.parseTimestamp(observedAt);
         if (nowMilliseconds === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+            return [null, WorldFailures.invalidTimestamp(observedAt)];
         }
         const confidenceTimestamp = landmark.confidenceUpdatedAt ?? landmark.lastSeen;
         const confidenceUpdatedAtMilliseconds = ConfidenceDecay.parseTimestamp(confidenceTimestamp);
         if (confidenceUpdatedAtMilliseconds === null) {
-            return [null, { type: 'INVALID_TIMESTAMP', value: confidenceTimestamp }];
+            return [null, WorldFailures.invalidTimestamp(confidenceTimestamp)];
         }
 
         const elapsedMilliseconds = Math.max(0, nowMilliseconds - confidenceUpdatedAtMilliseconds);
@@ -60,11 +61,7 @@ export class ConfidenceDecay {
         if (validHalfLife && validThreshold) {
             return null;
         }
-        return {
-            type: 'INVALID_DECAY_OPTIONS',
-            halfLifeMilliseconds,
-            verificationThreshold,
-        };
+        return WorldFailures.invalidDecayOptions(halfLifeMilliseconds, verificationThreshold);
     }
 
     private static parseTimestamp(value: string): number | null {

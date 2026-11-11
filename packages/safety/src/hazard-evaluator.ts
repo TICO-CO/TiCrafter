@@ -1,5 +1,6 @@
 import type { Vec3 } from '@ticrafter/core';
 
+import { SafetySignals } from './signals.js';
 import type { SafetyEvaluator, SafetySignal, SafetySnapshot } from './types.js';
 
 const LAVA_BLOCKS = new Set(['lava', 'flowing_lava']);
@@ -22,23 +23,19 @@ export class HazardEvaluator implements SafetyEvaluator {
         });
         const signals: SafetySignal[] = [];
         if (this.hasAny(feet, below, LAVA_BLOCKS)) {
-            signals.push({ code: 'hazard.lava', severity: 'critical', message: 'lava nearby' });
+            signals.push(SafetySignals.hazardLava());
         }
         if (this.hasAny(feet, below, FIRE_BLOCKS)) {
-            signals.push({ code: 'hazard.fire', severity: 'critical', message: 'fire nearby' });
+            signals.push(SafetySignals.hazardFire());
         }
         if (this.hasAny(head, feet, WATER_BLOCKS) && snapshot.oxygen <= 4) {
-            signals.push({
-                code: 'hazard.drowning',
-                severity: 'critical',
-                message: 'oxygen low underwater',
-            });
+            signals.push(SafetySignals.hazardDrowning());
         }
         if (snapshot.position.y < -60) {
-            signals.push({ code: 'hazard.void', severity: 'critical', message: 'below void line' });
+            signals.push(SafetySignals.hazardVoid());
         }
         if (this.isFalling(snapshot)) {
-            signals.push({ code: 'hazard.fall', severity: 'critical', message: 'dangerous fall' });
+            signals.push(SafetySignals.hazardFall());
         }
         return signals;
     }

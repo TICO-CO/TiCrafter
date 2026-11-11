@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { PerceptionFailures } from './failures.js';
 import type { ChunkSnapshot, ChunkSnapshotInput, PerceptionFailure, VoxelBlock } from './types.js';
 
 const airBlockIds = new Set(['air', 'cave_air', 'void_air']);
@@ -7,7 +8,7 @@ const airBlockIds = new Set(['air', 'cave_air', 'void_air']);
 export class ChunkSnapshotEncoder {
     encode(input: ChunkSnapshotInput): Result<ChunkSnapshot, PerceptionFailure> {
         if (!Number.isInteger(input.version) || input.version < 0) {
-            return [null, { type: 'INVALID_VERSION', value: input.version }];
+            return [null, PerceptionFailures.invalidVersion(input.version)];
         }
         const blocksByPosition = new Map<string, VoxelBlock>();
         for (const block of input.blocks) {
@@ -34,17 +35,13 @@ export class ChunkSnapshotEncoder {
     ): PerceptionFailure | null {
         const { x, y, z } = block.position;
         if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(z)) {
-            return { type: 'INVALID_BLOCK_POSITION', position: block.position };
+            return PerceptionFailures.invalidBlockPosition(block.position);
         }
         const minX = input.chunk.x * 16;
         const minZ = input.chunk.z * 16;
         const insideChunk = x >= minX && x < minX + 16 && z >= minZ && z < minZ + 16;
         if (!insideChunk) {
-            return {
-                type: 'BLOCK_OUTSIDE_CHUNK',
-                position: block.position,
-                chunk: input.chunk,
-            };
+            return PerceptionFailures.blockOutsideChunk(block.position, input.chunk);
         }
         return null;
     }

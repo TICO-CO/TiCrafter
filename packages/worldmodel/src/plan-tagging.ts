@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { BoundingBox, LandmarkCandidate, PlanTag, WorldFailure } from './types.js';
 
 export class PlanTagging {
@@ -8,7 +9,7 @@ export class PlanTagging {
 
     replace(tags: readonly PlanTag[], revision: number): Result<void, WorldFailure> {
         if (!Number.isInteger(revision) || revision < 0) {
-            return [null, { type: 'INVALID_PLAN_TAG_REVISION', value: revision }];
+            return [null, WorldFailures.invalidPlanTagRevision(revision)];
         }
         if (revision < this.revision) return [undefined, null];
         this.tags = [...tags].sort((left, right) => right.revision - left.revision);

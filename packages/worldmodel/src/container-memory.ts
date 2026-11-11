@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { WorldFailures } from './failures.js';
 import type { BlockPosition, ContainerObservation, ContainerRole, WorldFailure } from './types.js';
 
 export interface ContainerObservationStorePort {
@@ -36,7 +37,7 @@ export class ContainerMemory {
         if (existing !== null) {
             const ordering = ContainerMemory.compare(observation.observedAt, existing.observedAt);
             if (ordering === null) {
-                return [null, { type: 'INVALID_TIMESTAMP', value: observation.observedAt }];
+                return [null, WorldFailures.invalidTimestamp(observation.observedAt)];
             }
             if (ordering < 0) return [existing, null];
         }
@@ -49,7 +50,7 @@ export class ContainerMemory {
         const [observations, listError] = this.store.list();
         if (listError) return [null, listError];
         if (observations === null) {
-            return [null, { type: 'STORAGE_FAILED', message: 'container list returned null' }];
+            return [null, WorldFailures.containerListUnavailable()];
         }
         return [
             observations.find((observation) =>
@@ -65,26 +66,23 @@ export class ContainerMemory {
 
     private static validate(observation: ContainerObservation): WorldFailure | null {
         if (observation.id.length === 0) {
-            return { type: 'INVALID_CONTAINER_OBSERVATION', message: 'container id is empty' };
+            return WorldFailures.invalidContainerObservation('container id is empty');
         }
         if (!ContainerMemory.isPosition(observation.position)) {
-            return { type: 'INVALID_CONTAINER_OBSERVATION', message: 'container position invalid' };
+            return WorldFailures.invalidContainerObservation('container position invalid');
         }
         if (!ContainerMemory.isRole(observation.role)) {
-            return { type: 'INVALID_CONTAINER_ROLE', value: observation.role };
+            return WorldFailures.invalidContainerRole(observation.role);
         }
         if (
             !Number.isFinite(observation.confidence) ||
             observation.confidence < 0 ||
             observation.confidence > 1
         ) {
-            return {
-                type: 'INVALID_CONTAINER_OBSERVATION',
-                message: 'container confidence invalid',
-            };
+            return WorldFailures.invalidContainerObservation('container confidence invalid');
         }
         if (!Number.isFinite(Date.parse(observation.observedAt))) {
-            return { type: 'INVALID_TIMESTAMP', value: observation.observedAt };
+            return WorldFailures.invalidTimestamp(observation.observedAt);
         }
         if (observation.contents !== null) {
             const invalidItem = observation.contents.find(
@@ -92,10 +90,7 @@ export class ContainerMemory {
                     item.itemId.length === 0 || !Number.isInteger(item.count) || item.count < 0,
             );
             if (invalidItem !== undefined) {
-                return {
-                    type: 'INVALID_CONTAINER_OBSERVATION',
-                    message: 'container contents invalid',
-                };
+                return WorldFailures.invalidContainerObservation('container contents invalid');
             }
         }
         return null;

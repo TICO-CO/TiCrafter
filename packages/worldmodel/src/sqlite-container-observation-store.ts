@@ -2,6 +2,7 @@ import { attempt, type Result } from '@ticrafter/core';
 import { type ContainerObservationRecord, WorldStore } from '@ticrafter/memory';
 
 import type { ContainerObservationStorePort } from './container-memory.js';
+import { WorldFailures } from './failures.js';
 import type {
     BlockPosition,
     ContainerItemSnapshot,
@@ -16,7 +17,7 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
     get(id: string): Result<ContainerObservation | null, WorldFailure> {
         const [record, readError] = this.store.getContainerObservation(id);
         if (readError) {
-            return [null, SqliteContainerObservationStore.storageFailure(readError.message)];
+            return [null, WorldFailures.storageFailed(readError.message)];
         }
         if (record === null) return [null, null];
         return this.toObservation(record);
@@ -25,13 +26,10 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
     list(): Result<readonly ContainerObservation[], WorldFailure> {
         const [records, readError] = this.store.listContainerObservations();
         if (readError) {
-            return [null, SqliteContainerObservationStore.storageFailure(readError.message)];
+            return [null, WorldFailures.storageFailed(readError.message)];
         }
         if (records === null) {
-            return [
-                null,
-                SqliteContainerObservationStore.storageFailure('container list returned null'),
-            ];
+            return [null, WorldFailures.containerListUnavailable()];
         }
         const observations: ContainerObservation[] = [];
         for (const record of records) {
@@ -54,7 +52,7 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
             updatedAt: observation.observedAt,
         });
         if (writeError) {
-            return [null, SqliteContainerObservationStore.storageFailure(writeError.message)];
+            return [null, WorldFailures.storageFailed(writeError.message)];
         }
         return [undefined, null];
     }
@@ -67,14 +65,11 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
         );
         if (positionError) return [null, positionError];
         if (position === null || !SqliteContainerObservationStore.isPosition(position)) {
-            return [
-                null,
-                SqliteContainerObservationStore.storageFailure('invalid container position'),
-            ];
+            return [null, WorldFailures.storageFailed('invalid container position')];
         }
         const role = SqliteContainerObservationStore.role(record.role);
         if (role === null) {
-            return [null, { type: 'INVALID_CONTAINER_ROLE', value: record.role }];
+            return [null, WorldFailures.invalidContainerRole(record.role)];
         }
         const [contents, contentsError] = SqliteContainerObservationStore.contents(
             record.contentsJson,
@@ -101,10 +96,7 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
             SqliteContainerObservationStore.parse<ContainerItemSnapshot[]>(value);
         if (parseError) return [null, parseError];
         if (parsed === null || !Array.isArray(parsed)) {
-            return [
-                null,
-                SqliteContainerObservationStore.storageFailure('container contents invalid'),
-            ];
+            return [null, WorldFailures.storageFailed('container contents invalid')];
         }
         return [parsed, null];
     }
@@ -112,7 +104,7 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
     private static parse<T>(value: string): Result<T, WorldFailure> {
         const [parsed, parseError] = attempt(() => JSON.parse(value) as T);
         if (parseError) {
-            return [null, SqliteContainerObservationStore.storageFailure('invalid stored JSON')];
+            return [null, WorldFailures.storageFailed('invalid stored JSON')];
         }
         return [parsed, null];
     }
@@ -135,9 +127,5 @@ export class SqliteContainerObservationStore implements ContainerObservationStor
             Number.isInteger(position.y) &&
             Number.isInteger(position.z)
         );
-    }
-
-    private static storageFailure(message: string): WorldFailure {
-        return { type: 'STORAGE_FAILED', message };
     }
 }

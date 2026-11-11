@@ -2,6 +2,7 @@ export * from './chunk-version-store.js';
 export * from './confidence-decay.js';
 export * from './container-memory.js';
 export * from './detector-result-integrator.js';
+export * from './failures.js';
 export * from './landmark-decay-service.js';
 export * from './landmark-registry.js';
 export * from './merge-conflict-resolver.js';
