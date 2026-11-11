@@ -7,6 +7,7 @@ export * from './path-graph-store.js';
 export * from './revision-manager.js';
 export * from './road-store.js';
 export * from './rules-store.js';
+export * from './sip-fixtures.js';
 export * from './snapshot-codec.js';
 export * from './spatial-overlap-validator.js';
 export * from './structure-store.js';

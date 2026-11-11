@@ -4,13 +4,21 @@ import {
     type Envelope,
     type LoggerPort,
     ProtocolEnvelope,
+    type Result,
     SessionAuthenticator,
     type TransportFailure,
 } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
 
+import type { BotFailure, BotProfile, BotResumePlan } from '../bots/index.js';
 import type { ClientConnection, TransportServer } from '../transport/index.js';
 import type { SessionManager } from './session-manager.js';
+
+export interface SessionBotRegistry {
+    authenticate(botId: string, username: string, now: string): Result<BotProfile, BotFailure>;
+    markOnline(botId: string, now: string): Result<BotProfile, BotFailure>;
+    resume(botId: string, now: string): Result<BotResumePlan, BotFailure>;
+}
 
 export interface SessionHandshakeOptions {
     epoch: number;
@@ -19,6 +27,7 @@ export interface SessionHandshakeOptions {
     events: EventLogWriter;
     transport: TransportServer;
     logger: LoggerPort;
+    bots: SessionBotRegistry;
 }
 
 export class SessionHandshake {
@@ -41,10 +50,43 @@ export class SessionHandshake {
     }
 
     private accept(connection: ClientConnection, request: Envelope, bot: AuthenticatedBot): void {
+        const now = new Date().toISOString();
+        const [profile, profileError] = this.options.bots.authenticate(bot.botId, bot.name, now);
+        if (profileError || profile === null) {
+            this.reject(
+                connection,
+                request,
+                profileError ? this.botFailureMessage(profileError) : 'profile unavailable',
+            );
+            return;
+        }
         if (connection.botId) this.options.sessions.remove(connection.botId);
         connection.botId = bot.botId;
         connection.name = bot.name;
-        const now = new Date().toISOString();
+        const [, presenceError] = this.options.bots.markOnline(bot.botId, now);
+        if (presenceError) {
+            this.options.logger.warn(
+                { botId: bot.botId, error: this.botFailureMessage(presenceError) },
+                'bot presence update failed',
+            );
+        }
+        const [resumePlan, resumeError] = this.options.bots.resume(bot.botId, now);
+        if (resumeError) {
+            this.options.logger.warn(
+                { botId: bot.botId, error: this.botFailureMessage(resumeError) },
+                'bot resume failed',
+            );
+        } else if (resumePlan !== null) {
+            this.options.logger.info(
+                {
+                    botId: bot.botId,
+                    taskId: resumePlan.profile.currentTaskId,
+                    claims: resumePlan.claims.length,
+                    grants: resumePlan.grants.length,
+                },
+                'bot resume prepared',
+            );
+        }
         this.options.sessions.add({
             botId: bot.botId,
             name: bot.name,
@@ -109,6 +151,10 @@ export class SessionHandshake {
     }
 
     private failureMessage(failure: TransportFailure): string {
+        return 'message' in failure ? failure.message : failure.type;
+    }
+
+    private botFailureMessage(failure: BotFailure): string {
         return 'message' in failure ? failure.message : failure.type;
     }
 

@@ -7,6 +7,7 @@ import {
 } from '@ticrafter/core';
 
 import type { ClaimService } from '../claims/index.js';
+import type { GrantService } from '../grants/index.js';
 import type { SipTransactionalCommitter } from '../sip/index.js';
 import type { TaskBoard } from '../tasks/index.js';
 import type { TransportServer } from '../transport/index.js';
@@ -32,6 +33,7 @@ export interface CoordinatorOptions {
     sip: SipTransactionalCommitter;
     tasks: TaskBoard;
     claims: ClaimService;
+    grants: GrantService;
 }
 
 export class Coordinator {
@@ -101,6 +103,10 @@ export class Coordinator {
 
     get claims(): ClaimService {
         return this.options.claims;
+    }
+
+    get grants(): GrantService {
+        return this.options.grants;
     }
 
     private runRecovery(): void {

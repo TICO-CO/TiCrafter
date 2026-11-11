@@ -7,6 +7,7 @@ export interface RecoveryReport {
     claims: number;
     grants: number;
     tasks: number;
+    bots: number;
 }
 
 export class RestartRecovery {
@@ -24,7 +25,15 @@ export class RestartRecovery {
                 .run(now, now).changes;
             const grants = this.database
                 .prepare(
-                    "UPDATE edit_grants SET status = 'expired' WHERE expires_at < ? AND status IN ('issued', 'active')",
+                    `UPDATE edit_grants SET status = 'expired', fencing_token = fencing_token + 1,
+                        updated_at = ?
+                     WHERE expires_at < ? AND status = 'active'`,
+                )
+                .run(now, now).changes;
+            const bots = this.database
+                .prepare(
+                    `UPDATE bots SET status = 'offline', updated_at = ?
+                     WHERE status = 'online'`,
                 )
                 .run(now).changes;
             const tasks = this.database
@@ -41,7 +50,12 @@ export class RestartRecovery {
                        )`,
                 )
                 .run(now, now, now).changes;
-            return { claims: Number(claims), grants: Number(grants), tasks: Number(tasks) };
+            return {
+                claims: Number(claims),
+                grants: Number(grants),
+                tasks: Number(tasks),
+                bots: Number(bots),
+            };
         });
     }
 }

@@ -78,4 +78,24 @@ export const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_claims_resource_status ON claims(resource_type, status);
     `,
     },
+    {
+        version: 7,
+        name: 'grants-bot-profiles',
+        sql: `
+      ALTER TABLE bots ADD COLUMN status TEXT NOT NULL DEFAULT 'offline';
+      ALTER TABLE bots ADD COLUMN last_seen TEXT NOT NULL DEFAULT '';
+      ALTER TABLE bots ADD COLUMN bot_index INTEGER NOT NULL DEFAULT -1;
+      CREATE INDEX IF NOT EXISTS idx_bots_status ON bots(status);
+      ALTER TABLE edit_grants ADD COLUMN bbox_json TEXT NOT NULL DEFAULT '{}';
+      ALTER TABLE edit_grants ADD COLUMN allowed_ops_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE edit_grants ADD COLUMN material_constraints_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE edit_grants ADD COLUMN intent TEXT NOT NULL DEFAULT '';
+      ALTER TABLE edit_grants ADD COLUMN fencing_token INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE edit_grants ADD COLUMN epoch INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE edit_grants ADD COLUMN granted_by TEXT NOT NULL DEFAULT 'coordinator';
+      ALTER TABLE edit_grants ADD COLUMN task_id TEXT;
+      ALTER TABLE edit_grants ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+      CREATE INDEX IF NOT EXISTS idx_edit_grants_structure_status ON edit_grants(structure_id, status);
+    `,
+    },
 ];

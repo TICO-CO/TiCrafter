@@ -29,6 +29,7 @@ export interface MessageRouterOptions {
     onChunkSnapshot?: (payload: ChunkSnapshotMessage) => void;
     onLandmarkCandidate?: (payload: LandmarkCandidateMessage) => void;
     onBlockUpdate?: (payload: BlockUpdateMessage) => void;
+    onSessionClosed?: (botId: string) => void;
 }
 
 export class MessageRouter {
@@ -109,6 +110,7 @@ export class MessageRouter {
 
     handleClose(connection: ClientConnection): void {
         if (!connection.botId) return;
+        this.options.onSessionClosed?.(connection.botId);
         const [, logError] = this.options.events.append({
             botId: connection.botId,
             type: 'session.left',

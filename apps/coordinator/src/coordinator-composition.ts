@@ -1,7 +1,14 @@
 import { type LoggerPort, MessageSchemaRegistry, type TicrafterConfig } from '@ticrafter/core';
-import { EventLogWriter, TransactionManager } from '@ticrafter/memory';
+import { EventLogWriter, SqliteSkillCheckpointStore, TransactionManager } from '@ticrafter/memory';
 
-import { ClaimService } from './claims/index.js';
+import {
+    BotDeltaSyncPlanner,
+    BotIdentityAuthenticator,
+    BotPresenceTracker,
+    BotProfileStore,
+    BotResumeOrchestrator,
+} from './bots/index.js';
+import { ClaimRepository, ClaimService } from './claims/index.js';
 import {
     BotProcessSupervisor,
     CommandRouter,
@@ -14,8 +21,9 @@ import {
     SessionHandshake,
     SessionManager,
 } from './core/index.js';
+import { EditGrantRepository, GrantService } from './grants/index.js';
 import { SipTransactionalCommitter } from './sip/index.js';
-import { TaskBoard } from './tasks/index.js';
+import { TaskBoard, TaskRepository } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
@@ -34,8 +42,12 @@ export class CoordinatorComposition {
         const registry = MessageSchemaRegistry.withDefaults();
         const events = new EventLogWriter(options.database);
         const worldModel = new CoordinatorWorldModel(options.database, options.logger);
-        const sip = new SipTransactionalCommitter(options.database);
         const transactions = new TransactionManager(options.database);
+        const claimRepository = new ClaimRepository(options.database);
+        let grants: GrantService | null = null;
+        const sip = new SipTransactionalCommitter(options.database, (commit) =>
+            grants?.handleSipCommit(commit),
+        );
         let claims: ClaimService | null = null;
         const tasks = new TaskBoard({
             database: options.database,
@@ -56,6 +68,40 @@ export class CoordinatorComposition {
             },
             epoch: options.epoch,
         });
+        grants = new GrantService({
+            database: options.database,
+            transactions,
+            sip: { load: () => sip.loadSnapshot() },
+            claims: { listActive: () => claimRepository.listActive() },
+            presence: { isOnline: (botId) => sessions.get(botId) !== undefined },
+            epoch: options.epoch,
+        });
+        const taskRepository = new TaskRepository(options.database);
+        const grantRepository = new EditGrantRepository(options.database);
+        const botStore = new BotProfileStore(options.database);
+        const botPresence = new BotPresenceTracker(botStore);
+        const botIdentity = new BotIdentityAuthenticator(botStore, options.config.botNames);
+        const botDelta = new BotDeltaSyncPlanner(botStore, {
+            tasks: taskRepository,
+            grants: grantRepository,
+            sip: {
+                revision: () => {
+                    const [snapshot, snapshotError] = sip.loadSnapshot();
+                    if (snapshotError) return [null, snapshotError];
+                    return [snapshot?.revision ?? 0, null];
+                },
+            },
+        });
+        const botResume = new BotResumeOrchestrator(
+            botStore,
+            {
+                claims: claimRepository,
+                tasks: taskRepository,
+                grants: grantRepository,
+                checkpoints: new SqliteSkillCheckpointStore(options.database),
+            },
+            botDelta,
+        );
         let messageRouter: MessageRouter | null = null;
         const transport = new TransportServer({
             host: options.config.transport.host,
@@ -78,6 +124,12 @@ export class CoordinatorComposition {
             events,
             transport,
             logger: options.logger,
+            bots: {
+                authenticate: (botId, username, now) =>
+                    botIdentity.authenticate(botId, username, now),
+                markOnline: (botId, now) => botPresence.markOnline(botId, now),
+                resume: (botId, now) => botResume.resume(botId, now),
+            },
         });
         messageRouter = new MessageRouter({
             sessions,
@@ -112,6 +164,15 @@ export class CoordinatorComposition {
                     );
                 }
             },
+            onSessionClosed: (botId) => {
+                const [, presenceError] = botPresence.markOffline(botId);
+                if (presenceError) {
+                    options.logger.warn(
+                        { botId, error: presenceError },
+                        'bot offline presence update failed',
+                    );
+                }
+            },
         });
         const ops = new OpsServer({
             host: options.config.ops.host,
@@ -133,6 +194,7 @@ export class CoordinatorComposition {
                 const staleSessions = sessions.pruneStale(15_000);
                 if (staleSessions.length) {
                     options.logger.warn({ staleSessions }, 'pruned stale sessions');
+                    staleSessions.forEach((botId) => botPresence.markOffline(botId));
                 }
                 if (claims !== null) {
                     const [reaped, reapError] = claims.reapExpired();
@@ -140,6 +202,14 @@ export class CoordinatorComposition {
                         options.logger.warn({ error: reapError }, 'claim lease reaping failed');
                     } else if (reaped !== null && reaped.length > 0) {
                         options.logger.info({ reaped: reaped.length }, 'claim leases expired');
+                    }
+                }
+                if (grants !== null) {
+                    const [expired, expiryError] = grants.expire();
+                    if (expiryError) {
+                        options.logger.warn({ error: expiryError }, 'grant expiry failed');
+                    } else if (expired !== null && expired.length > 0) {
+                        options.logger.info({ expired: expired.length }, 'edit grants expired');
                     }
                 }
                 const now = Date.now();
@@ -176,6 +246,7 @@ export class CoordinatorComposition {
             sip,
             tasks,
             claims,
+            grants,
         });
     }
 }

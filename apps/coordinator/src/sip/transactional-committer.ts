@@ -31,10 +31,17 @@ export class SipTransactionalCommitter {
     private readonly pathGraph = new PathGraphStore();
     private readonly rules = new RulesStore();
 
-    constructor(database: CoordinatorDatabase) {
+    constructor(
+        database: CoordinatorDatabase,
+        private readonly onCommitted?: (commit: SipCommit) => void,
+    ) {
         this.repository = new SipSnapshotRepository(database);
         this.transactions = new TransactionManager(database);
         this.revisions = new SipRevisionManager(this.repository);
+    }
+
+    loadSnapshot(): Result<SipSnapshot, StorageFailure> {
+        return this.repository.load();
     }
 
     commit(
@@ -79,6 +86,7 @@ export class SipTransactionalCommitter {
         };
         const [, persistError] = this.persist(commit);
         if (persistError) return [null, persistError];
+        this.onCommitted?.(commit);
         return [commit, null];
     }
 
