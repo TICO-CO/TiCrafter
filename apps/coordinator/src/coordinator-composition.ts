@@ -11,6 +11,7 @@ import {
     BlockChangelogWriter,
     EpisodeStore,
     EventLogWriter,
+    RetentionPruner,
     SqlitePlannerPlanStore,
     SqliteSkillCheckpointStore,
     TransactionManager,
@@ -42,6 +43,7 @@ import {
 } from './bots/index.js';
 import { ClaimRepository, ClaimService } from './claims/index.js';
 import {
+    BackpressureController,
     BotProcessSupervisor,
     CommandRouter,
     Coordinator,
@@ -76,7 +78,7 @@ import {
     CoordinatorTaskProposalPort,
     PlannerRuntime,
 } from './planner/index.js';
-import { SipTransactionalCommitter } from './sip/index.js';
+import { SipReconciliationEngine, SipTransactionalCommitter } from './sip/index.js';
 import { TaskBoard, TaskCommandHandler, TaskRepository } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
@@ -106,6 +108,37 @@ export class CoordinatorComposition {
             grants?.handleSipCommit(commit);
             plannerRuntime?.noteConflict(`SIP revision ${commit.revision} committed`);
         });
+        const retention = new RetentionPruner(options.database);
+        const reconciliation = new SipReconciliationEngine(
+            {
+                loadSnapshot: () => {
+                    const [snapshot, loadError] = sip.loadSnapshot();
+                    if (loadError) return [null, CoordinatorComposition.describeFailure(loadError)];
+                    return [snapshot, null];
+                },
+            },
+            {
+                reconcile: (intended) => worldModel.reconcile(intended),
+                intersecting: (bbox) => {
+                    const [landmarks, queryError] = worldModel.intersecting(bbox);
+                    if (queryError) {
+                        return [null, CoordinatorComposition.describeFailure(queryError)];
+                    }
+                    return [landmarks, null];
+                },
+            },
+            {
+                commit: (input) => {
+                    const [commit, commitError] = sip.commit(input);
+                    if (commitError) {
+                        return [null, CoordinatorComposition.describeFailure(commitError)];
+                    }
+                    if (commit === null) return [null, 'SIP commit returned null'];
+                    return [commit.revision, null];
+                },
+            },
+            events,
+        );
         let claims: ClaimService | null = null;
         const tasks = new TaskBoard({
             database: options.database,
@@ -203,6 +236,7 @@ export class CoordinatorComposition {
             logger: options.logger,
             loader: new DecisionModelLoader(),
         });
+        const backpressure = new BackpressureController();
         const decisionTrace = new DecisionTraceRecorder(
             events,
             options.config.training.traceEnabled,
@@ -364,6 +398,9 @@ export class CoordinatorComposition {
             },
         });
         let lastDecayAt = Date.now();
+        let lastBackpressureLevel = backpressure.current().level;
+        let lastReconcileAt = Date.now();
+        let lastRetentionAt = Date.now();
         const scheduler = new Scheduler({
             intervalMs: 5000,
             logger: options.logger,
@@ -397,6 +434,48 @@ export class CoordinatorComposition {
                         options.logger.warn({ error: decayError }, 'landmark decay failed');
                     }
                 }
+                if (now - lastReconcileAt >= 60_000) {
+                    lastReconcileAt = now;
+                    const [, reconcileError] = reconciliation.run();
+                    if (reconcileError) {
+                        options.logger.warn({ error: reconcileError }, 'SIP reconciliation failed');
+                    }
+                }
+                if (now - lastRetentionAt >= 86_400_000) {
+                    lastRetentionAt = now;
+                    const [, pruneError] = retention.prune(30);
+                    if (pruneError) {
+                        options.logger.warn({ error: pruneError }, 'retention pruning failed');
+                    }
+                }
+                const decisionStatus = decision.status();
+                const pressure = backpressure.evaluate({
+                    decisionP95Milliseconds: decisionStatus.latency.p95,
+                    decisionSamples: decisionStatus.latency.samples,
+                });
+                decision.setRateScale(pressure.rateScale);
+                if (pressure.level !== lastBackpressureLevel) {
+                    lastBackpressureLevel = pressure.level;
+                    const [, auditError] = events.append({
+                        type: 'core.backpressure',
+                        actor: 'coordinator',
+                        payload: pressure,
+                    });
+                    if (auditError) {
+                        options.logger.warn(
+                            { error: auditError.type },
+                            'backpressure audit write failed',
+                        );
+                    }
+                    options.logger.info(
+                        {
+                            level: pressure.level,
+                            rateScale: pressure.rateScale,
+                            reasons: pressure.reasons,
+                        },
+                        'backpressure state changed',
+                    );
+                }
                 plannerRuntime?.tick();
             },
         });
@@ -420,6 +499,22 @@ export class CoordinatorComposition {
             ops,
             scheduler,
             recovery,
+            reconcile: () => {
+                const [report, reconcileError] = reconciliation.run();
+                if (reconcileError) return [null, reconcileError];
+                if (report !== null) {
+                    options.logger.info(
+                        {
+                            revision: report.revision,
+                            structures: report.structures,
+                            findings: report.findings.length,
+                            progressChanges: report.progressChanges.length,
+                        },
+                        'startup SIP reconciliation complete',
+                    );
+                }
+                return [undefined, null];
+            },
             supervisor,
             sip,
             tasks,
@@ -427,6 +522,14 @@ export class CoordinatorComposition {
             grants,
             decision,
         });
+    }
+
+    private static describeFailure(failure: unknown): string {
+        if (failure instanceof Error) return failure.message;
+        if (typeof failure !== 'object' || failure === null) return String(failure);
+        if ('message' in failure && typeof failure.message === 'string') return failure.message;
+        if ('type' in failure && typeof failure.type === 'string') return failure.type;
+        return JSON.stringify(failure);
     }
 
     private static buildPlannerRuntime(options: {

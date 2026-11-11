@@ -19,7 +19,15 @@ export class ArchitectureGuard {
     }
 
     validate(): ArchitectureGuardResult {
-        const result = spawnSync('bun', ['tools/architecture/validate-graph.mjs'], {
+        return this.run('tools/architecture/validate-graph.mjs');
+    }
+
+    validateComponents(): ArchitectureGuardResult {
+        return this.run('tools/architecture/check-component-paths.mjs');
+    }
+
+    private run(script: string): ArchitectureGuardResult {
+        const result = spawnSync('bun', [script], {
             cwd: this.repositoryRoot,
             encoding: 'utf8',
         });

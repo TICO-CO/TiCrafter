@@ -39,7 +39,7 @@ const defaultConfig: Record<string, unknown> = {
         maxContextCharacters: 48000,
     },
     logging: { level: 'info' },
-    safety: { guardianHz: 20 },
+    safety: { guardianHz: 20, interactionReach: 4.5, actionsPerSecond: 10 },
     skills: { tickMilliseconds: 250 },
     training: { traceEnabled: false },
 };

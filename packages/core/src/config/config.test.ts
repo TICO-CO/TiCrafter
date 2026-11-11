@@ -5,6 +5,7 @@ import { EnvOverlay } from './env-overlay.js';
 import { EnvParser } from './env-parser.js';
 import { HardwareProbe, type SystemInfo } from './hardware-probe.js';
 import { DeepMerge } from './merge.js';
+import { ProfileResolver } from './profile-resolver.js';
 import { ConfigSchemaValidator } from './schema.js';
 
 describe('config', () => {
@@ -30,6 +31,26 @@ describe('config', () => {
         expect(config.hardwareProfile).toBe('home-full');
         expect(config.botCount).toBe(8);
         expect(config.laya.threads).toBe(8);
+    });
+
+    it('resolves the profile name from environment before defaults', () => {
+        expect(ProfileResolver.profileName({ hardwareProfile: 'home-min' }, {})).toBe('home-min');
+        expect(
+            ProfileResolver.profileName(
+                { hardwareProfile: 'home-min' },
+                { HARDWARE_PROFILE: 'home-full' },
+            ),
+        ).toBe('home-full');
+    });
+
+    it('rejects incomplete merged profiles', () => {
+        const [config, configError] = ProfileResolver.resolve(
+            { hardwareProfile: 'home-min' },
+            { hardwareProfile: 'home-full' },
+            {},
+        );
+        expect(config).toBeNull();
+        expect(configError).not.toBeNull();
     });
 
     it('applies env overrides after profiles', () => {

@@ -7,5 +7,6 @@ export * from './hardware-probe.js';
 export * from './laya-runtime-resolver.js';
 export * from './merge.js';
 export * from './name-pool-validator.js';
+export * from './profile-resolver.js';
 export * from './schema.js';
 export * from './secrets-loader.js';

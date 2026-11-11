@@ -14,6 +14,8 @@ import type { Bot } from 'mineflayer';
 import { goals, Movements, pathfinder } from 'mineflayer-pathfinder';
 import { Vec3 } from 'vec3';
 
+import { ReachRateGuard } from './reach-rate-guard.js';
+
 interface ActiveAction {
     id: string;
     request: ActionRequest;
@@ -49,6 +51,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         private readonly bot: Bot,
         private readonly logger: LoggerPort,
         private readonly timeoutMilliseconds = DEFAULT_ACTION_TIMEOUT_MILLISECONDS,
+        private readonly reachRateGuard: ReachRateGuard | null = null,
     ) {}
 
     get lastFailure(): ActionFailure | null {
@@ -165,6 +168,13 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         return this.moveTo(position, range);
     }
 
+    private enforceGuard(target: CoreVec3 | null): Result<void, string> {
+        if (this.reachRateGuard === null) return [undefined, null];
+        const [, guardError] = this.reachRateGuard.evaluate(this.bot.entity.position, target);
+        if (guardError) return [null, ReachRateGuard.describe(guardError)];
+        return [undefined, null];
+    }
+
     private async moveTo(position: CoreVec3, range: number): Promise<Result<void, string>> {
         const [, error] = await attemptAsync(() =>
             this.withTimeout(
@@ -195,6 +205,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     ): Promise<Result<void, string>> {
         const [, approachError] = await this.ensureNear(position, 3);
         if (approachError) return [null, approachError];
+        const [, guardError] = this.enforceGuard(position);
+        if (guardError) return [null, guardError];
         const block = this.bot.blockAt(this.vector(position));
         if (block === null || block.name === 'air') return [null, 'target block is missing'];
         if (expectedBlockId !== undefined && block.name !== expectedBlockId) {
@@ -231,6 +243,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         const referencePoint = referencePosition ?? { ...position, y: position.y - 1 };
         const [, approachError] = await this.ensureNear(referencePoint, 3);
         if (approachError) return [null, approachError];
+        const [, guardError] = this.enforceGuard(position);
+        if (guardError) return [null, guardError];
         const reference = this.bot.blockAt(this.vector(referencePoint));
         if (reference === null) return [null, 'placement reference is missing'];
         const [, equipError] = await this.equip(itemName, 'hand');
@@ -253,6 +267,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         }
         const [, approachError] = await this.ensureNear(position, 3);
         if (approachError) return [null, approachError];
+        const [, guardError] = this.enforceGuard(position);
+        if (guardError) return [null, guardError];
         const block = this.bot.blockAt(this.vector(position));
         if (block === null) return [null, 'target block is missing'];
         const [, error] = await attemptAsync(() =>
@@ -268,6 +284,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     ): Promise<Result<void, string>> {
         const entity = this.findEntity(entityId, entityName);
         if (entity === null) return [null, 'hostile entity is missing'];
+        const [, guardError] = this.enforceGuard(entity.position);
+        if (guardError) return [null, guardError];
         this.bot.attack(entity);
         return [undefined, null];
     }
@@ -303,6 +321,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 3,
             );
             if (approachError) return [null, approachError];
+            const [, guardError] = this.enforceGuard(table.position);
+            if (guardError) return [null, guardError];
         }
         const recipes = this.bot.recipesFor(itemType.id, null, count, table);
         const recipe = recipes[0];
@@ -337,6 +357,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     }): Promise<Result<void, string>> {
         const [, approachError] = await this.ensureNear(request.container, 3);
         if (approachError) return [null, approachError];
+        const [, guardError] = this.enforceGuard(request.container);
+        if (guardError) return [null, guardError];
         const block = this.bot.blockAt(this.vector(request.container));
         if (block === null) return [null, 'container is missing'];
         const itemType = this.bot.registry.itemsByName[request.itemName];

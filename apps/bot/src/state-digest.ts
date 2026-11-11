@@ -1,23 +1,7 @@
 import type { BotHeartbeat } from '@ticrafter/core';
 import type { Bot } from 'mineflayer';
 
-const HOSTILE_MOBS = new Set([
-    'blaze',
-    'creeper',
-    'drowned',
-    'enderman',
-    'husk',
-    'phantom',
-    'pillager',
-    'skeleton',
-    'slime',
-    'spider',
-    'stray',
-    'witch',
-    'wither_skeleton',
-    'zombie',
-    'zombie_villager',
-]);
+import { HostileScanner } from './hostile-scanner.js';
 
 export class StateDigest {
     static collect(bot: Bot, currentSkill: string | null = null): BotHeartbeat['digest'] {
@@ -39,7 +23,7 @@ export class StateDigest {
 
     private static hazards(bot: Bot, position: { x: number; y: number; z: number }): string[] {
         return Object.values(bot.entities)
-            .filter((entity) => entity.name !== undefined && HOSTILE_MOBS.has(entity.name))
+            .filter((entity) => HostileScanner.isHostile(entity.name))
             .filter(
                 (entity) =>
                     Math.sqrt(

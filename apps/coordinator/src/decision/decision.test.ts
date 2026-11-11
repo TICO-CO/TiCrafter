@@ -168,6 +168,14 @@ describe('Decision queue and rates', () => {
         expect(limiter.allow('bot.three', 30)[1]?.type).toBe('RATE_LIMITED');
         expect(limiter.allow('bot.one', 1100)[1]).toBeNull();
     });
+
+    it('scales the fleet rate under backpressure', () => {
+        const limiter = new DecisionRateLimiter(4, 1);
+        limiter.setRateScale(0.5);
+        expect(limiter.allow('bot.one', 0)[1]).toBeNull();
+        expect(limiter.allow('bot.two', 10)[1]).toBeNull();
+        expect(limiter.allow('bot.three', 20)[1]?.type).toBe('RATE_LIMITED');
+    });
 });
 
 describe('Decision parsing and calibration', () => {

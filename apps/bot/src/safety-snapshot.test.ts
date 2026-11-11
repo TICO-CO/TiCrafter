@@ -26,6 +26,12 @@ interface FakePlayer {
     entity: { position: { x: number; y: number; z: number } } | null;
 }
 
+interface FakeEntity {
+    id: number;
+    name: string;
+    position: { x: number; y: number; z: number };
+}
+
 interface FakeBotState {
     bot: Bot;
     entity: {
@@ -34,6 +40,7 @@ interface FakeBotState {
         fallDistance?: number;
     };
     players: Record<string, FakePlayer>;
+    entities: Record<string, FakeEntity>;
     inventorySlots: unknown[];
 }
 
@@ -43,12 +50,13 @@ function createBot(): FakeBotState {
         onGround: true,
     };
     const players: Record<string, FakePlayer> = {};
+    const entities: Record<string, FakeEntity> = {};
     const inventorySlots = new Array<unknown>(46).fill(null);
     const bot = {
         username: 'TiBot1',
         entity,
         players,
-        entities: {},
+        entities,
         health: 20,
         food: 20,
         oxygenLevel: 20,
@@ -61,6 +69,7 @@ function createBot(): FakeBotState {
         bot: bot as unknown as Bot,
         entity,
         players,
+        entities,
         inventorySlots,
     };
 }
@@ -90,6 +99,30 @@ describe('safety snapshot source', () => {
 
         expect(snapshot.world.activeBots()).toEqual([
             { botId: 'bot.tibot2', position: { x: 5, y: 64, z: 1 } },
+        ]);
+    });
+
+    it('reads hostile attack geometry from entities', () => {
+        const state = createBot();
+        state.entities['7'] = {
+            id: 7,
+            name: 'skeleton',
+            position: { x: 14, y: 64, z: 0 },
+        };
+        const source = new SafetySnapshotSource(state.bot, worldCache, () => null);
+
+        const snapshot = readSnapshot(source);
+
+        expect(snapshot.hostiles).toEqual([
+            {
+                entityId: 7,
+                name: 'skeleton',
+                position: { x: 14, y: 64, z: 0 },
+                distance: 14,
+                ranged: true,
+                attackRange: 15,
+                hasLineOfSight: true,
+            },
         ]);
     });
 

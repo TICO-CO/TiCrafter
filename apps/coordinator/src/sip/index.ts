@@ -4,6 +4,8 @@ export * from './farm-store.js';
 export * from './geometry.js';
 export * from './mutation-proposer.js';
 export * from './path-graph-store.js';
+export * from './reconciliation-engine.js';
+export * from './reconciliation-types.js';
 export * from './revision-manager.js';
 export * from './road-store.js';
 export * from './rules-store.js';

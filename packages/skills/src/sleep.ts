@@ -1,4 +1,4 @@
-import type { Result, Vec3 } from '@ticrafter/core';
+import { MobThreatRules, type Result, type Vec3 } from '@ticrafter/core';
 
 import type {
     Skill,
@@ -13,7 +13,6 @@ import { SkillSharedUtilities } from './utilities.js';
 const SLEEP_TIMEOUT_MILLISECONDS = 60_000;
 const SLEEP_WAIT_MILLISECONDS = 1_000;
 const SLEEP_RANGE = 2;
-const HOSTILE_DANGER_DISTANCE = 8;
 const BED_BLOCK_NAMES = ['*_bed'];
 
 export class SleepSkill implements Skill {
@@ -117,10 +116,7 @@ export class SleepSkill implements Skill {
     }
 
     private isThreatened(context: SkillContext): boolean {
-        return (
-            context.nearestHostile !== null &&
-            context.nearestHostile.distance < HOSTILE_DANGER_DISTANCE
-        );
+        return context.hostiles.some((hostile) => MobThreatRules.isCritical(hostile));
     }
 
     private moveStep(context: SkillContext, run: SkillRun, bed: Vec3): Result<SkillStep, string> {

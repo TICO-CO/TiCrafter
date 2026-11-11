@@ -44,6 +44,7 @@ import { GuardianHook } from './guardian.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
 import { MineflayerPerceptionSource } from './perception-source.js';
+import { ReachRateGuard } from './reach-rate-guard.js';
 import { SafetySnapshotSource } from './safety-snapshot.js';
 import { BotSkillContextSource } from './skill-context-source.js';
 import { SkillHost } from './skill-host.js';
@@ -127,7 +128,15 @@ export class BotConnection {
         this.bot = bot;
         const world = new WorldCacheAdapter(bot);
         this.world = world;
-        const actionPort = new MineflayerActionExecutor(bot, this.options.logger);
+        const actionPort = new MineflayerActionExecutor(
+            bot,
+            this.options.logger,
+            undefined,
+            new ReachRateGuard({
+                maximumReach: this.options.config.safety.interactionReach,
+                actionsPerSecond: this.options.config.safety.actionsPerSecond,
+            }),
+        );
         const [, installError] = actionPort.install();
         if (installError) {
             this.options.logger.warn({ error: installError }, 'pathfinder install failed');

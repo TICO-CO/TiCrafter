@@ -128,6 +128,10 @@ export class DecisionService {
         return this.metrics;
     }
 
+    setRateScale(scale: number): void {
+        this.rateLimiter.setRateScale(scale);
+    }
+
     status(): DecisionServiceStatus {
         const latency = this.metrics.snapshot();
         return {

@@ -30,6 +30,7 @@ export interface CoordinatorOptions {
     ops: OpsApi;
     scheduler: Scheduler;
     recovery: RestartRecovery;
+    reconcile: () => Result<void, string>;
     supervisor: BotProcessSupervisor | null;
     sip: SipTransactionalCommitter;
     tasks: TaskBoard;
@@ -50,9 +51,13 @@ export class Coordinator {
         if (opsError) return [null, this.opsFailureMessage(opsError)];
         if (opsStarted === null) return [null, 'ops server start returned null'];
 
+        const [, recoveryError] = this.runRecovery();
+        if (recoveryError) return [null, recoveryError];
+        const [, reconcileError] = this.options.reconcile();
+        if (reconcileError) return [null, reconcileError];
+
         this.options.scheduler.start();
         this.options.supervisor?.spawnAll();
-        this.runRecovery();
 
         this.options.logger.info(
             { host: this.options.config.transport.host, port: this.options.config.transport.port },
@@ -112,16 +117,11 @@ export class Coordinator {
         return this.options.grants;
     }
 
-    private runRecovery(): void {
+    private runRecovery(): Result<void, string> {
         const [report, recoveryError] = this.options.recovery.run();
-        if (recoveryError) {
-            this.options.logger.warn(
-                { error: this.describe(recoveryError) },
-                'restart recovery failed',
-            );
-            return;
-        }
+        if (recoveryError) return [null, this.describe(recoveryError)];
         if (report) this.options.logger.info(report, 'restart recovery complete');
+        return [undefined, null];
     }
 
     private failureMessage(failure: TransportFailure): string {
@@ -143,6 +143,10 @@ export class Coordinator {
     }
 
     private describe(error: unknown): string {
-        return error instanceof Error ? error.message : String(error);
+        if (error instanceof Error) return error.message;
+        if (typeof error !== 'object' || error === null) return String(error);
+        if ('message' in error && typeof error.message === 'string') return error.message;
+        if ('type' in error && typeof error.type === 'string') return error.type;
+        return JSON.stringify(error);
     }
 }

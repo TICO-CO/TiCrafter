@@ -137,7 +137,7 @@ const SNAPSHOT: SafetySnapshot = {
     inventory: [],
     inventoryUsedSlots: 0,
     inventoryTotalSlots: 36,
-    nearestHostileDistance: null,
+    hostiles: [],
     activeSkillId: null,
     claimTrackingEnabled: true,
     allowDestructiveMaterials: false,

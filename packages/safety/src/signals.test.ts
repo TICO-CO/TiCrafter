@@ -52,6 +52,16 @@ describe('SafetySignals', () => {
             severity: 'warning',
             message: 'hostile mob nearby',
         });
+        expect(SafetySignals.mobRangedInRange('skeleton')).toEqual({
+            code: 'mob.threat',
+            severity: 'critical',
+            message: 'ranged skeleton in attack range',
+        });
+        expect(SafetySignals.mobRangedNearby('pillager')).toEqual({
+            code: 'mob.threat',
+            severity: 'warning',
+            message: 'ranged pillager nearby',
+        });
     });
 
     it('creates movement and inventory signals', () => {

@@ -20,6 +20,7 @@ Do not edit generated Markdown. Edit `graph.json`, then regenerate.
 bun run bootstrap
 bun run bootstrap:check
 bun tools/architecture/validate-graph.mjs
+bun tools/architecture/check-component-paths.mjs
 bun tools/architecture/render-graphs.mjs
 ```
 
@@ -42,6 +43,9 @@ bun tools/architecture/render-graphs.mjs
 - runtime systems depending on `sys.toolchain`
 
 `render-graphs.mjs` is deterministic. Re-running it with the same `graph.json` produces identical output.
+
+`check-component-paths.mjs` resolves every component `plannedPath` to a source file.
+Intentional aliases are declared in the tool; an unlisted missing path fails the check.
 
 ## Editing workflow
 

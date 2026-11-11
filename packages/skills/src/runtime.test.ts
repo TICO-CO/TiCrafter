@@ -139,6 +139,7 @@ function context(overrides: Partial<SkillContext> = {}): SkillContext {
         food: 20,
         inventory: [{ name: 'bread', count: 2 }],
         world: new FakeWorld(),
+        hostiles: [],
         nearestHostile: null,
         lastAction: null,
         ...overrides,

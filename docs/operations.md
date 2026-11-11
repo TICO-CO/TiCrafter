@@ -47,11 +47,37 @@ On coordinator start:
   authorization with `STALE_EPOCH`;
 - bots marked online are reset to offline;
 - tasks whose lease or claim expired are requeued;
-- valid leases remain recoverable while the bot reconnects.
+- valid leases remain recoverable while the bot reconnects;
+- SIP reconciliation runs before the scheduler starts and before bot processes are spawned.
+
+If recovery or startup reconciliation fails, the coordinator closes instead of accepting work.
+The scheduler then runs SIP reconciliation every 60 seconds and retention pruning daily.
 
 On bot reconnect, the session response carries the prior task, lease token,
 checkpoint, and SIP revision. The bot restores the task and resumes the skill
 checkpoint before claiming new work.
+
+## SIP reconciliation
+
+Reconciliation compares observed landmarks with SIP structure work packages.
+It updates progress only when observed coverage is higher than the stored value.
+It never lowers progress from a missing observation and never changes structure
+lifecycle status. Findings and progress changes are recorded as `sip.reconciliation`
+audit events.
+
+## Backpressure
+
+The coordinator samples decision p95 latency every scheduler tick. After two
+consecutive samples above `250ms`, fleet decision rate is throttled to 50%.
+It returns to normal after three consecutive samples below 80% of the budget.
+Backpressure changes are recorded as `core.backpressure` audit events. The
+confidence gate is unchanged.
+
+## Reach and action rate
+
+Bots reject physical actions outside `safety.interactionReach` and actions that
+exceed `safety.actionsPerSecond`. Both values come from config; defaults are
+`4.5` blocks and `10` actions per second.
 
 ## Soak testing
 

@@ -1,9 +1,8 @@
 import { attempt, type Result } from '../kernel/index.js';
-import { EnvOverlay } from './env-overlay.js';
 import { EnvParser } from './env-parser.js';
 import type { ConfigFailure } from './failures.js';
-import { DeepMerge } from './merge.js';
-import { ConfigSchemaValidator, type TicrafterConfig } from './schema.js';
+import { ProfileResolver } from './profile-resolver.js';
+import type { TicrafterConfig } from './schema.js';
 
 export interface ConfigSource {
     readEnvironmentFile(): Result<string, ConfigFailure>;
@@ -37,7 +36,7 @@ export class ConfigLoader {
         if (defaultsParseError) return [null, defaultsParseError];
         if (defaults === null) return [null, this.invalid('default.json returned null')];
 
-        const profileName = environment.HARDWARE_PROFILE ?? String(defaults.hardwareProfile ?? '');
+        const profileName = ProfileResolver.profileName(defaults, environment);
         const [profileText, profileError] = this.options.source.readProfile(profileName);
         if (profileError) return [null, profileError];
         if (profileText === null) return [null, this.invalid('profile returned null')];
@@ -49,12 +48,7 @@ export class ConfigLoader {
         if (profileParseError) return [null, profileParseError];
         if (profile === null) return [null, this.invalid('profile returned null')];
 
-        const merged = DeepMerge.merge<Record<string, unknown>>(
-            defaults,
-            profile,
-            EnvOverlay.apply(environment),
-        );
-        return ConfigSchemaValidator.validate(merged);
+        return ProfileResolver.resolve(defaults, profile, environment);
     }
 
     private parseJson(text: string, path: string): Result<Record<string, unknown>, ConfigFailure> {

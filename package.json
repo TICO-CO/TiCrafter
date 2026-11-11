@@ -20,6 +20,7 @@
         "bootstrap:python": "bun tools/bootstrap/bootstrap.mjs --no-server",
         "bootstrap:server": "bun tools/bootstrap/bootstrap.mjs --no-python",
         "validate:graph": "bun tools/architecture/validate-graph.mjs",
+        "validate:components": "bun tools/architecture/check-component-paths.mjs",
         "render:graphs": "bun tools/architecture/render-graphs.mjs",
         "render:svg": "bun tools/architecture/render-svg.mjs",
         "server:start": "bun tools/bootstrap/minecraft-server.mjs start",

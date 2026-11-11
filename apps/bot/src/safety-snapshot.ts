@@ -7,6 +7,7 @@ import type {
 } from '@ticrafter/safety';
 import type { Bot } from 'mineflayer';
 
+import { HostileScanner } from './hostile-scanner.js';
 import type { WorldCacheAdapter } from './world-cache.js';
 
 const MOVEMENT_SKILLS = new Set([
@@ -23,24 +24,6 @@ const MOVEMENT_SKILLS = new Set([
     'smelt',
     'deposit',
     'withdraw',
-]);
-
-const HOSTILE_MOBS = new Set([
-    'blaze',
-    'creeper',
-    'drowned',
-    'enderman',
-    'husk',
-    'phantom',
-    'pillager',
-    'skeleton',
-    'slime',
-    'spider',
-    'stray',
-    'witch',
-    'wither_skeleton',
-    'zombie',
-    'zombie_villager',
 ]);
 
 const UNREACHABLE_FAILURE_CLASSES = new Set(['no-path', 'timeout']);
@@ -82,13 +65,16 @@ export class SafetySnapshotSource {
     private lastPosition: Vec3 | null = null;
     private lastMovementAt = Date.now();
     private lastActiveSkillId: string | null = null;
+    private readonly hostileScanner: HostileScanner;
 
     constructor(
         private readonly bot: Bot,
         private readonly worldCache: WorldCacheAdapter,
         private readonly activeSkillId: () => string | null,
         private readonly options: SafetySnapshotSourceOptions = {},
-    ) {}
+    ) {
+        this.hostileScanner = new HostileScanner(bot, worldCache);
+    }
 
     read(): Result<SafetySnapshot, string> {
         const position = this.position();
@@ -114,7 +100,7 @@ export class SafetySnapshotSource {
                 inventory: inventory.map((item) => ({ name: item.name, count: item.count })),
                 inventoryUsedSlots: inventory.length,
                 inventoryTotalSlots: INVENTORY_TOTAL_SLOTS,
-                nearestHostileDistance: this.nearestHostileDistance(position),
+                hostiles: this.hostileScanner.scan(position),
                 activeSkillId: skillId,
                 claimTrackingEnabled: false,
                 allowDestructiveMaterials: this.options.allowDestructiveMaterials ?? false,
@@ -188,20 +174,6 @@ export class SafetySnapshotSource {
                 },
             ];
         });
-    }
-
-    private nearestHostileDistance(position: Vec3): number | null {
-        const distances = Object.values(this.bot.entities)
-            .filter((entity) => entity.name !== undefined && HOSTILE_MOBS.has(entity.name))
-            .map((entity) =>
-                this.distance(position, {
-                    x: entity.position.x,
-                    y: entity.position.y,
-                    z: entity.position.z,
-                }),
-            );
-        if (distances.length === 0) return null;
-        return distances.reduce((nearest, current) => Math.min(nearest, current));
     }
 
     private distance(left: Vec3, right: Vec3): number {

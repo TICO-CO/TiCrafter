@@ -58,7 +58,9 @@
         "level": "info"
     },
     "safety": {
-        "guardianHz": 20
+        "guardianHz": 20,
+        "interactionReach": 4.5,
+        "actionsPerSecond": 10
     },
     "skills": {
         "tickMilliseconds": 250

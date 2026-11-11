@@ -1,4 +1,10 @@
-import type { ActionOutcome, ActionRequest, Result, Vec3 } from '@ticrafter/core';
+import type {
+    ActionOutcome,
+    ActionRequest,
+    HostileThreatObservation,
+    Result,
+    Vec3,
+} from '@ticrafter/core';
 
 export type SkillStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -25,11 +31,8 @@ export interface SkillInventoryItem {
     count: number;
 }
 
-export interface SkillHostile {
+export interface SkillHostile extends HostileThreatObservation {
     entityId?: number;
-    name: string;
-    position: Vec3;
-    distance: number;
 }
 
 export interface SkillBBox {
@@ -130,6 +133,7 @@ export interface SkillContext {
     isSleeping?: boolean;
     inventory: readonly SkillInventoryItem[];
     world: SkillWorldView;
+    hostiles: readonly SkillHostile[];
     nearestHostile: SkillHostile | null;
     services?: SkillServices;
     lastAction: ActionOutcome | null;

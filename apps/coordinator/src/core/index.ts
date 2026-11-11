@@ -1,3 +1,4 @@
+export * from './backpressure-controller.js';
 export * from './bot-process-supervisor.js';
 export * from './command-router.js';
 export * from './coordinator.js';

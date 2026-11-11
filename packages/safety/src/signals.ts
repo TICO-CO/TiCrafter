@@ -47,6 +47,22 @@ export class SafetySignals {
         return { code: 'mob.threat', severity: 'warning', message: 'hostile mob nearby' };
     }
 
+    static mobRangedInRange(name: string): SafetySignal {
+        return {
+            code: 'mob.threat',
+            severity: 'critical',
+            message: `ranged ${name} in attack range`,
+        };
+    }
+
+    static mobRangedNearby(name: string): SafetySignal {
+        return {
+            code: 'mob.threat',
+            severity: 'warning',
+            message: `ranged ${name} nearby`,
+        };
+    }
+
     static movementStuck15s(): SafetySignal {
         return {
             code: 'movement.stuck',

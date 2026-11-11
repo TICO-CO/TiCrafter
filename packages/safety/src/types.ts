@@ -1,4 +1,4 @@
-import type { ActionRequest, Vec3 } from '@ticrafter/core';
+import type { ActionRequest, HostileThreatObservation, Vec3 } from '@ticrafter/core';
 
 export type SafetySeverity = 'info' | 'warning' | 'critical';
 
@@ -42,6 +42,8 @@ export interface SafetyWorldView {
     claimFor(botId: string): SafetyClaim | null;
 }
 
+export type SafetyHostile = HostileThreatObservation;
+
 export interface SafetyInventoryItem {
     name: string;
     count: number;
@@ -62,7 +64,7 @@ export interface SafetySnapshot {
     inventory: readonly SafetyInventoryItem[];
     inventoryUsedSlots: number;
     inventoryTotalSlots: number;
-    nearestHostileDistance: number | null;
+    hostiles: readonly SafetyHostile[];
     activeSkillId: string | null;
     claimTrackingEnabled: boolean;
     allowDestructiveMaterials: boolean;

@@ -33,6 +33,7 @@ class FakeSource implements SkillContextSource {
                 isSleeping: false,
                 inventory: [],
                 world: new FakeWorld(),
+                hostiles: [],
                 nearestHostile: null,
             },
             null,

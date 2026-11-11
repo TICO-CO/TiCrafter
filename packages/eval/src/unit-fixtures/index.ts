@@ -128,7 +128,7 @@ export class EvalFixtures {
             inventory: [],
             inventoryUsedSlots: 0,
             inventoryTotalSlots: 36,
-            nearestHostileDistance: null,
+            hostiles: [],
             activeSkillId: null,
             claimTrackingEnabled: false,
             allowDestructiveMaterials: false,

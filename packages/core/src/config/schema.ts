@@ -69,6 +69,8 @@ export const configSchema = zod
         }),
         safety: zod.object({
             guardianHz: zod.number().int().min(1).max(100),
+            interactionReach: zod.number().positive(),
+            actionsPerSecond: zod.number().positive(),
         }),
         skills: zod.object({
             tickMilliseconds: zod.number().int().min(200).max(500),

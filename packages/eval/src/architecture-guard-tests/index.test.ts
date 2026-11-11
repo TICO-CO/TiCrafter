@@ -8,4 +8,10 @@ describe('architecture guard tests', () => {
         expect(result.ok).toBe(true);
         expect(result.stderr).toBe('');
     });
+
+    it('resolves every component owner path', () => {
+        const result = ArchitectureGuard.atRepositoryRoot().validateComponents();
+        expect(result.ok).toBe(true);
+        expect(result.stderr).toBe('');
+    });
 });

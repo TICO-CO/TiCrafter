@@ -67,6 +67,7 @@ function context(world: SkillWorldView, lastAction: ActionOutcome | null = null)
         food: 20,
         inventory: [],
         world,
+        hostiles: [],
         nearestHostile: null,
         lastAction,
     };

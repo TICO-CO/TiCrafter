@@ -41,6 +41,7 @@ function context(overrides: Partial<SkillContext> = {}): SkillContext {
         food: 20,
         inventory: [{ name: 'bread', count: 2 }],
         world: new FakeWorld(),
+        hostiles: [],
         nearestHostile: null,
         lastAction: null,
         ...overrides,
@@ -701,15 +702,18 @@ describe('WithdrawSkill', () => {
 });
 
 describe('FleeDefendSkill', () => {
-    it('attacks a distant hostile and completes', () => {
+    it('attacks a nearby hostile and completes', () => {
         const skill = new FleeDefendSkill();
         const hostile = {
             entityId: 42,
             name: 'zombie',
             position: { x: 5, y: 64, z: 0 },
-            distance: 10,
+            distance: 6,
+            ranged: false,
+            attackRange: 3,
+            hasLineOfSight: true,
         };
-        const state = context({ nearestHostile: hostile });
+        const state = context({ hostiles: [hostile], nearestHostile: hostile });
         const [allowed, canRunError] = skill.canRun(state, {});
         expect(canRunError).toBeNull();
         expect(allowed).toBe(true);
@@ -733,13 +737,18 @@ describe('FleeDefendSkill', () => {
 
     it('flees when health is low', () => {
         const skill = new FleeDefendSkill();
+        const hostile = {
+            name: 'zombie',
+            position: { x: 5, y: 64, z: 0 },
+            distance: 6,
+            ranged: false,
+            attackRange: 3,
+            hasLineOfSight: true,
+        };
         const state = context({
             health: 7,
-            nearestHostile: {
-                name: 'zombie',
-                position: { x: 5, y: 64, z: 0 },
-                distance: 10,
-            },
+            hostiles: [hostile],
+            nearestHostile: hostile,
         });
         const [fleeing, fleeError] = skill.start(state, {});
         expect(fleeError).toBeNull();
@@ -748,6 +757,43 @@ describe('FleeDefendSkill', () => {
             position: { x: -10, y: 64, z: 0 },
             range: 1,
         });
+    });
+
+    it('flees from a ranged hostile with line of sight', () => {
+        const skill = new FleeDefendSkill();
+        const hostile = {
+            entityId: 43,
+            name: 'skeleton',
+            position: { x: 14, y: 64, z: 0 },
+            distance: 14,
+            ranged: true,
+            attackRange: 15,
+            hasLineOfSight: true,
+        };
+        const state = context({ hostiles: [hostile], nearestHostile: hostile });
+        const [fleeing, fleeError] = skill.start(state, {});
+        expect(fleeError).toBeNull();
+        expect(fleeing?.action).toEqual({
+            kind: 'move-to',
+            position: { x: -19, y: 64, z: 0 },
+            range: 1,
+        });
+    });
+
+    it('does not chase hostiles outside the threat envelope', () => {
+        const skill = new FleeDefendSkill();
+        const hostile = {
+            name: 'zombie',
+            position: { x: 20, y: 64, z: 0 },
+            distance: 20,
+            ranged: false,
+            attackRange: 3,
+            hasLineOfSight: false,
+        };
+        const state = context({ hostiles: [hostile], nearestHostile: hostile });
+        const [allowed, canRunError] = skill.canRun(state, {});
+        expect(canRunError).toBeNull();
+        expect(allowed).toBe(false);
     });
 
     it('finishes when no threat remains and rejects missing hostiles', () => {

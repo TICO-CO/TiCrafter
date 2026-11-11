@@ -10,6 +10,7 @@ import { InventoryEvaluator } from './inventory-evaluator.js';
 import { MobThreatEvaluator } from './mob-threat-evaluator.js';
 import { RecoveryLadder } from './recovery-ladder.js';
 import { SafetyPolicyEngine } from './safety-policy-engine.js';
+import { SafetySignals } from './signals.js';
 import { StuckTimeoutEvaluator } from './stuck-evaluator.js';
 import type {
     SafetyClaim,
@@ -60,7 +61,7 @@ function snapshot(
         inventory: [{ name: 'bread', count: 2 }],
         inventoryUsedSlots: 1,
         inventoryTotalSlots: 36,
-        nearestHostileDistance: null,
+        hostiles: [],
         activeSkillId: null,
         claimTrackingEnabled: false,
         allowDestructiveMaterials: false,
@@ -84,7 +85,16 @@ describe('safety evaluators', () => {
         const world = new FakeWorld();
         world.blocks.set('0,63,0', 'lava');
         const state = snapshot(world, {
-            nearestHostileDistance: 2,
+            hostiles: [
+                {
+                    name: 'zombie',
+                    position: { x: 2, y: 64, z: 0 },
+                    distance: 2,
+                    ranged: false,
+                    attackRange: 3,
+                    hasLineOfSight: true,
+                },
+            ],
             food: 2,
             stuckMilliseconds: 16_000,
             inventoryUsedSlots: 36,
@@ -103,6 +113,65 @@ describe('safety evaluators', () => {
             'movement.stuck',
             'inventory.full',
         ]);
+    });
+
+    it('flags ranged hostiles with line of sight as critical', () => {
+        const skeleton = {
+            name: 'skeleton',
+            position: { x: 14, y: 64, z: 0 },
+            distance: 14,
+            ranged: true,
+            attackRange: 15,
+            hasLineOfSight: true,
+        };
+        const [signal] = evaluate(
+            new MobThreatEvaluator(),
+            snapshot(undefined, { hostiles: [skeleton] }),
+        );
+
+        expect(signal).toEqual(SafetySignals.mobRangedInRange('skeleton'));
+    });
+
+    it('warns about occluded ranged hostiles without treating them as immediate threats', () => {
+        const skeleton = {
+            name: 'skeleton',
+            position: { x: 14, y: 64, z: 0 },
+            distance: 14,
+            ranged: true,
+            attackRange: 15,
+            hasLineOfSight: false,
+        };
+        const [signal] = evaluate(
+            new MobThreatEvaluator(),
+            snapshot(undefined, { hostiles: [skeleton] }),
+        );
+
+        expect(signal).toEqual(SafetySignals.mobRangedNearby('skeleton'));
+    });
+
+    it('prefers a ranged critical threat over a nearer melee warning', () => {
+        const zombie = {
+            name: 'zombie',
+            position: { x: 7, y: 64, z: 0 },
+            distance: 7,
+            ranged: false,
+            attackRange: 3,
+            hasLineOfSight: true,
+        };
+        const skeleton = {
+            name: 'skeleton',
+            position: { x: 14, y: 64, z: 0 },
+            distance: 14,
+            ranged: true,
+            attackRange: 15,
+            hasLineOfSight: true,
+        };
+        const [signal] = evaluate(
+            new MobThreatEvaluator(),
+            snapshot(undefined, { hostiles: [zombie, skeleton] }),
+        );
+
+        expect(signal).toEqual(SafetySignals.mobRangedInRange('skeleton'));
     });
 
     for (const { food, expected } of [
@@ -241,7 +310,19 @@ describe('action veto gate', () => {
         {
             name: 'mob',
             evaluator: new MobThreatEvaluator(),
-            state: () => snapshot(undefined, { nearestHostileDistance: 2 }),
+            state: () =>
+                snapshot(undefined, {
+                    hostiles: [
+                        {
+                            name: 'zombie',
+                            position: { x: 2, y: 64, z: 0 },
+                            distance: 2,
+                            ranged: false,
+                            attackRange: 3,
+                            hasLineOfSight: true,
+                        },
+                    ],
+                }),
         },
         {
             name: 'stuck',

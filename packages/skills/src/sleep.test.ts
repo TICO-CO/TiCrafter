@@ -77,6 +77,7 @@ function context(overrides: Partial<SkillContext> = {}): SkillContext {
         timeOfDay: 13_000,
         inventory: [],
         world: new FakeWorld({ x: 0, y: 64, z: 3 }),
+        hostiles: [],
         nearestHostile: null,
         lastAction: null,
         ...overrides,
@@ -127,14 +128,30 @@ describe('sleep skill', () => {
         const skill = new SleepSkill();
         const daytime = skill.canRun(context({ timeOfDay: 6_000 }), {});
         expect(daytime).toEqual([false, null]);
+        const zombie = {
+            name: 'zombie',
+            position: { x: 1, y: 64, z: 0 },
+            distance: 4,
+            ranged: false,
+            attackRange: 3,
+            hasLineOfSight: true,
+        };
+        const unsafe = skill.canRun(context({ hostiles: [zombie], nearestHostile: zombie }), {});
+        expect(unsafe).toEqual([false, null]);
+    });
+
+    it('rejects ranged hostiles with line of sight in canRun', () => {
+        const skill = new SleepSkill();
+        const skeleton = {
+            name: 'skeleton',
+            position: { x: 14, y: 64, z: 0 },
+            distance: 14,
+            ranged: true,
+            attackRange: 15,
+            hasLineOfSight: true,
+        };
         const unsafe = skill.canRun(
-            context({
-                nearestHostile: {
-                    name: 'zombie',
-                    position: { x: 1, y: 64, z: 0 },
-                    distance: 4,
-                },
-            }),
+            context({ hostiles: [skeleton], nearestHostile: skeleton }),
             {},
         );
         expect(unsafe).toEqual([false, null]);

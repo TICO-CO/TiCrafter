@@ -86,6 +86,7 @@ function context(
         food: 20,
         inventory,
         world,
+        hostiles: [],
         nearestHostile: null,
         lastAction,
         ...(services === undefined ? {} : { services }),

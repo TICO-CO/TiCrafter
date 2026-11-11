@@ -261,6 +261,64 @@ return validateAppConfig(withEnv);
   (gitignore-style `group` cannot express "except `index.js`").
   Reference facade: `packages/events/storage/index.ts`.
 
+## 13. Centralize discriminated-union payloads [NORMATIVE]
+
+Failure unions, safety signals, and similar discriminated unions must not be
+constructed with inline discriminant literals at callsites. A repeated
+`type:` or `code:` literal drifts, duplicates messages, and hides the domain
+decision inside control flow.
+
+Use one pure static factory namespace per union and package. Reference
+implementations:
+
+- `WorldFailures` in `packages/worldmodel/src/failures.ts`
+- `PerceptionFailures` in `packages/perception/src/failures.ts`
+- `SafetySignals` and `SafetyReasons` in `packages/safety/src/signals.ts`
+
+Forbidden:
+
+```ts
+return [null, { type: 'INVALID_TIMESTAMP', value: observedAt }];
+
+signals.push({
+    code: 'hazard.drowning',
+    severity: 'critical',
+    message: 'oxygen low underwater',
+});
+```
+
+Required:
+
+```ts
+return [null, WorldFailures.invalidTimestamp(observedAt)];
+
+signals.push(SafetySignals.hazardDrowning());
+```
+
+Rules:
+
+- The factory owns the discriminant, fixed severity values, default reasons,
+  and repeated message strings. Callsites pass only dynamic data.
+- Name factory methods after the domain condition (`invalidTimestamp`,
+  `hazardDrowning`), not after the discriminant (`create('INVALID_TIMESTAMP')`).
+- Do not introduce a generic `createFailure(type, payload)` helper. It moves
+  the literal to the callsite instead of removing it and defeats exhaustiveness.
+- Colocate the factory with the union it constructs and export it through the
+  package `index.ts`. Static-only namespaces are sanctioned when they hold no
+  state and no dependencies (§3).
+- Put repeated strings such as `'emergency stop active'` in a named constant
+  class (`SafetyReasons`), not in multiple callsites.
+- Add colocated factory tests asserting the exact `type`/`code`, severity, and
+  message payloads.
+- A new union variant requires a union arm, a factory method, and a factory
+  test in the same change.
+- Inline discriminant literals are allowed only in the union declaration and
+  its factory.
+
+This section is about sum types, not state machines. Safety signals and
+failures are payloads emitted by guards; `RecoveryLadder` is the actual state
+machine. Do not turn failure construction into a generic transition engine.
+
 ## TiCrafter mapping and exceptions
 
 The rules above are preserved verbatim. This appendix maps foreign references to

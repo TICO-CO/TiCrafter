@@ -4,6 +4,7 @@ import type { Bot } from 'mineflayer';
 import { Vec3 } from 'vec3';
 
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
+import { ReachRateGuard } from './reach-rate-guard.js';
 
 interface FakeItem {
     name: string;
@@ -148,6 +149,29 @@ describe('mineflayer action executor', () => {
         expect(state.placedReference?.x).toBe(4);
         expect(state.placedReference?.z).toBe(0);
         expect(state.placedFace?.x).toBe(1);
+    });
+
+    it('rejects physical actions beyond reach', async () => {
+        const state = createFakeBot();
+        const executor = new MineflayerActionExecutor(
+            state.bot,
+            logger,
+            undefined,
+            new ReachRateGuard({
+                maximumReach: 1,
+                actionsPerSecond: 100,
+                clock: () => 1_000,
+            }),
+        );
+        const [handle] = executor.dispatch({
+            kind: 'use-block',
+            position: { x: 4, y: 64, z: 5 },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('failed');
+        expect(outcome?.message?.includes('exceeds reach')).toBe(true);
     });
 
     it('equips items before using blocks', async () => {
