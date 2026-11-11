@@ -35,6 +35,23 @@ export const configSchema = zod
             executionProviders: zod.array(executionProvider).min(1),
             threads: zod.number().int().min(1),
         }),
+        decision: zod.object({
+            enabled: zod.boolean(),
+            timeoutMilliseconds: zod.number().int().min(1),
+            minConfidence: zod.number().min(0).max(1),
+            maxQueueDepth: zod.number().int().min(1),
+            fleetRatePerSecond: zod.number().positive(),
+            botRatePerSecond: zod.number().positive(),
+            maxInputTokens: zod.number().int().min(1),
+            modelRevision: zod.string().min(1),
+            cacheDirectory: zod.string().min(1),
+            modelDirectory: zod.string(),
+            providerTemperatures: zod.object({
+                nextAction: zod.number().positive(),
+                danger: zod.number().positive(),
+                shouldContinue: zod.number().positive(),
+            }),
+        }),
         planner: zod.object({
             enabled: zod.boolean(),
             baseUrl: zod.string(),

@@ -21,6 +21,7 @@ import {
     SessionHandshake,
     SessionManager,
 } from './core/index.js';
+import { DecisionCommandAdapter, DecisionModelLoader, DecisionService } from './decision/index.js';
 import { EditGrantRepository, GrantService } from './grants/index.js';
 import { SipTransactionalCommitter } from './sip/index.js';
 import { TaskBoard, TaskRepository } from './tasks/index.js';
@@ -117,6 +118,12 @@ export class CoordinatorComposition {
             transport,
             logger: options.logger,
         });
+        const decision = new DecisionService({
+            config: options.config,
+            logger: options.logger,
+            loader: new DecisionModelLoader(),
+        });
+        const decisionAdapter = new DecisionCommandAdapter(decision, transport, options.logger);
         const handshake = new SessionHandshake({
             epoch: options.epoch,
             botNames: options.config.botNames,
@@ -163,6 +170,9 @@ export class CoordinatorComposition {
                         'block update ingestion failed',
                     );
                 }
+            },
+            onDecisionRequest: (connection, payload, envelope) => {
+                void decisionAdapter.handle(connection, payload, envelope);
             },
             onSessionClosed: (botId) => {
                 const [, presenceError] = botPresence.markOffline(botId);
@@ -247,6 +257,7 @@ export class CoordinatorComposition {
             tasks,
             claims,
             grants,
+            decision,
         });
     }
 }

@@ -4,6 +4,8 @@ import { attempt, type Result } from '../kernel/index.js';
 import {
     BLOCK_UPDATE_EVENT,
     CHUNK_SNAPSHOT_EVENT,
+    DECISION_REQUEST,
+    DECISION_RESPONSE,
     LANDMARK_CANDIDATE_EVENT,
     SKILL_PROGRESS_EVENT,
 } from './event-types.js';
@@ -26,6 +28,8 @@ import {
     coordinatorPingSchema,
     coordinatorStatusResponseSchema,
     coordinatorStatusSchema,
+    decisionRequestSchema,
+    decisionResponseSchema,
     type Envelope,
     envelopeSchema,
     landmarkCandidateSchema,
@@ -94,7 +98,9 @@ export class MessageSchemaRegistry {
             .register(BOT_SKILL_START, botSkillStartSchema)
             .register(BOT_SKILL_CANCEL, botSkillCancelSchema)
             .register(BOT_SKILL_RESUME, botSkillResumeSchema)
-            .register(BOT_SAFETY_RESUME, botSafetyResumeSchema);
+            .register(BOT_SAFETY_RESUME, botSafetyResumeSchema)
+            .register(DECISION_REQUEST, decisionRequestSchema)
+            .register(DECISION_RESPONSE, decisionResponseSchema);
     }
 
     private static describe(error: unknown): string {

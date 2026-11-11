@@ -7,6 +7,7 @@ import {
 } from '@ticrafter/core';
 
 import type { ClaimService } from '../claims/index.js';
+import type { DecisionService } from '../decision/index.js';
 import type { GrantService } from '../grants/index.js';
 import type { SipTransactionalCommitter } from '../sip/index.js';
 import type { TaskBoard } from '../tasks/index.js';
@@ -34,6 +35,7 @@ export interface CoordinatorOptions {
     tasks: TaskBoard;
     claims: ClaimService;
     grants: GrantService;
+    decision: DecisionService;
 }
 
 export class Coordinator {
@@ -70,6 +72,7 @@ export class Coordinator {
             );
         }
         await this.options.ops.close();
+        await this.options.decision.close();
         const [, closeError] = attempt(() => this.options.database.close());
         if (closeError) {
             this.options.logger.warn({ error: this.describe(closeError) }, 'database close failed');

@@ -6,6 +6,8 @@ import { DeltaSync } from './delta-sync.js';
 import {
     BLOCK_UPDATE_EVENT,
     CHUNK_SNAPSHOT_EVENT,
+    DECISION_REQUEST,
+    DECISION_RESPONSE,
     LANDMARK_CANDIDATE_EVENT,
 } from './event-types.js';
 import { FlowController } from './flow-control.js';
@@ -40,6 +42,44 @@ describe('transport', () => {
         const [encoded, encodeError] = codec.encode(envelope);
         expect(encoded).toBeNull();
         expect(encodeError).toMatchObject({ type: 'INVALID_PAYLOAD' });
+    });
+
+    it('round-trips decision requests and responses', () => {
+        const decisionRequest = {
+            botId: 'bot.alpha',
+            at: '2026-11-11T12:00:00.000Z',
+            digest: {
+                health: 20,
+                food: 18,
+                position: { x: 0, y: 64, z: 0 },
+                inventoryCount: 1,
+            },
+            affordances: [{ id: 'mine:0', skillId: 'mine', label: 'Mine stone', priority: 1 }],
+        };
+        const decisionResponse = {
+            botId: 'bot.alpha',
+            at: '2026-11-11T12:00:00.000Z',
+            choiceId: 'mine:0',
+            probabilities: { 'mine:0': 0.9 },
+            answerConfidence: 0.9,
+            danger: false,
+            shouldContinue: true,
+            latencyMilliseconds: 12,
+            source: 'laya',
+        };
+        const requestEnvelope = ProtocolEnvelope.create(
+            'request',
+            DECISION_REQUEST,
+            decisionRequest,
+        );
+        const responseEnvelope = ProtocolEnvelope.create(
+            'response',
+            DECISION_RESPONSE,
+            decisionResponse,
+            { replyTo: requestEnvelope.id },
+        );
+        expect(codec.encode(requestEnvelope)[1]).toBeNull();
+        expect(codec.encode(responseEnvelope)[1]).toBeNull();
     });
 
     it('round-trips perception events', () => {

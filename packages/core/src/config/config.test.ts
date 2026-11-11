@@ -16,6 +16,8 @@ describe('config', () => {
         expect(config.botCount).toBe(4);
         expect(config.perception.ringRadius).toBe(32);
         expect(config.laya.executionProviders).toEqual(['cpu']);
+        expect(config.decision.enabled).toBe(true);
+        expect(config.decision.minConfidence).toBe(0.6);
     });
 
     it('loads the home-full profile from env', () => {

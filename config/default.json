@@ -25,6 +25,23 @@
         "executionProviders": ["cpu"],
         "threads": 3
     },
+    "decision": {
+        "enabled": true,
+        "timeoutMilliseconds": 1200,
+        "minConfidence": 0.6,
+        "maxQueueDepth": 64,
+        "fleetRatePerSecond": 4,
+        "botRatePerSecond": 1,
+        "maxInputTokens": 600,
+        "modelRevision": "d42786bdff8a7550316339c5fbf8f46caa83ea1b",
+        "cacheDirectory": "models/laya",
+        "modelDirectory": "",
+        "providerTemperatures": {
+            "nextAction": 1,
+            "danger": 1,
+            "shouldContinue": 1
+        }
+    },
     "planner": {
         "enabled": false,
         "baseUrl": "",

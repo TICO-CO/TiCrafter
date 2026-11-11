@@ -5,6 +5,9 @@ import {
     CHUNK_SNAPSHOT_EVENT,
     type ChunkSnapshotMessage,
     chunkSnapshotSchema,
+    DECISION_REQUEST,
+    type DecisionRequest,
+    decisionRequestSchema,
     type Envelope,
     LANDMARK_CANDIDATE_EVENT,
     type LandmarkCandidateMessage,
@@ -29,6 +32,11 @@ export interface MessageRouterOptions {
     onChunkSnapshot?: (payload: ChunkSnapshotMessage) => void;
     onLandmarkCandidate?: (payload: LandmarkCandidateMessage) => void;
     onBlockUpdate?: (payload: BlockUpdateMessage) => void;
+    onDecisionRequest?: (
+        connection: ClientConnection,
+        payload: DecisionRequest,
+        envelope: Envelope,
+    ) => void;
     onSessionClosed?: (botId: string) => void;
 }
 
@@ -95,6 +103,16 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onBlockUpdate?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === DECISION_REQUEST) {
+            const parsed = decisionRequestSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid decision request');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onDecisionRequest?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request') {
