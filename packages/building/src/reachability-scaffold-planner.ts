@@ -25,12 +25,14 @@ export interface ReachabilityOptions {
     maxReach?: number;
     scaffoldMaterial?: string;
     reservedKeys?: ReadonlySet<string>;
+    maxScaffoldHeight?: number;
 }
 
 export class ReachabilityScaffoldPlanner {
     private readonly maxReach: number;
     private readonly scaffoldMaterial: string;
     private readonly reservedKeys: ReadonlySet<string>;
+    private readonly maxScaffoldHeight: number;
 
     constructor(
         private readonly world: WorldBlockQueryPort,
@@ -39,6 +41,7 @@ export class ReachabilityScaffoldPlanner {
         this.maxReach = options.maxReach ?? 4.5;
         this.scaffoldMaterial = options.scaffoldMaterial ?? 'dirt';
         this.reservedKeys = options.reservedKeys ?? new Set();
+        this.maxScaffoldHeight = Math.max(1, options.maxScaffoldHeight ?? 16);
     }
 
     plan(
@@ -98,21 +101,35 @@ export class ReachabilityScaffoldPlanner {
         });
         if (headError) return [null, headError];
         if (head !== null && !BlueprintIr.isAir(head.name)) return [null, null];
-        if (this.reservedKeys.has(BlueprintIr.positionKey(supportPosition))) return [null, null];
-        const [support, supportError] = this.world.blockAt(supportPosition);
-        if (supportError) return [null, supportError];
-        if (support !== null && !BlueprintIr.isAir(support.name)) {
-            return [{ block, standingPosition: candidate, direct: false, scaffold: [] }, null];
-        }
+        const [scaffold, scaffoldError] = this.supportStack(supportPosition, candidate.y);
+        if (scaffoldError) return [null, scaffoldError];
+        if (scaffold === null) return [null, null];
         return [
             {
                 block,
                 standingPosition: candidate,
                 direct: false,
-                scaffold: [{ position: supportPosition, stateName: this.scaffoldMaterial }],
+                scaffold,
             },
             null,
         ];
+    }
+
+    private supportStack(
+        supportPosition: Vec3,
+        standingY: number,
+    ): Result<readonly ScaffoldBlock[] | null, BuildingFailure> {
+        const scaffold: ScaffoldBlock[] = [];
+        const lowestY = standingY - this.maxScaffoldHeight;
+        for (let y = supportPosition.y; y >= lowestY; y -= 1) {
+            const position = { x: supportPosition.x, y, z: supportPosition.z };
+            if (this.reservedKeys.has(BlueprintIr.positionKey(position))) return [scaffold, null];
+            const [state, stateError] = this.world.blockAt(position);
+            if (stateError) return [null, stateError];
+            if (state !== null && !BlueprintIr.isAir(state.name)) return [scaffold, null];
+            scaffold.push({ position, stateName: this.scaffoldMaterial });
+        }
+        return [null, null];
     }
 
     private candidates(target: Vec3): readonly Vec3[] {

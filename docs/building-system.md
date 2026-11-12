@@ -7,8 +7,8 @@ procurement planning and execution, verified execution wiring, exact blueprint
 and construction-plan fetch, coordinator-owned package and procurement tasks,
 per-package claims with task-heartbeat renewal, helper grants, safety snapshots
 with active grant and other-project claim context, post-update coordinator
-verification, repair, renovation, and rollback. Full acceptance validation
-remains.
+verification, repair, renovation, and rollback. Automated fake-world acceptance
+coverage exists for the single-bot build path; live-server signoff remains.
 
 `docs/architecture/graph.json` tracks the implemented module paths.
 
@@ -154,7 +154,8 @@ Gaps:
 - Safety snapshots include active task claims, helper grant regions, and other
   projects' active claim regions. SIP protected and no-build zones remain
   coordinator-owned and are not pushed into bot snapshots.
-- Full single-bot acceptance validation remains.
+- Automated single-bot acceptance validation uses a fake world and the real
+  building and skill code. Live-server signoff remains separate.
 - Agency build projects already carry project focus; project completion now
   clears focus through the project update event.
 
@@ -424,8 +425,8 @@ The construction planner must understand:
 - reachable standing space
 - temporary scaffold placement and inverse cleanup
 
-The dependency graph covers these rules. Runtime execution wiring is the
-remaining integration step.
+The dependency graph covers these rules. Construction execution consumes the
+ordered changes through the verified block pipeline.
 
 ### 10.3 Work packages
 
@@ -703,6 +704,14 @@ The first implementation milestone is complete when one bot can:
 10. produce a complete audit trail
 11. pass protected-zone and active-bot safety checks
 
+The fake-world acceptance suite drives the real composer, site planner,
+foundation planner, construction planner, work packages, procurement planner,
+`BlockExecutor`, `ConstructionSource`, `BuildingExecutionService`, and
+`ConstructionSkill`. It covers arbitrary composition, uneven terrain
+foundations, supported scaffold stacks and top-down cleanup, idempotent retry,
+checkpoint restore, missing materials, rollback, audit attribution, and safety
+vetoes. Live-server signoff remains a separate integration step.
+
 Multi-bot construction is not part of this gate.
 
 ## 16. Multi-bot future
@@ -751,9 +760,10 @@ Evaluation scenarios:
 - `simulated-material-shortage`
 - `simulated-multi-bot`
 
-The `simulated-*` scenarios run in the milestone 16 behavior validation harness
-against a fake world with the real building and skill code. They are not part of
-the building milestone itself.
+The fake-world acceptance suite exercises `arbitrary-house`, `uneven-terrain`,
+and `scaffold-tower` with the real building and skill code without a Minecraft
+server. The `simulated-*` scenarios run in the milestone 16 behavior validation
+harness and are not part of the building milestone itself.
 
 ## 18. Migration and compatibility
 
@@ -795,7 +805,8 @@ Planned order:
 
 Steps 1–5 are implemented for the single-structure and helper-package path,
 including repair, renovation, rollback, safety claim context, and task-seeded
-material procurement execution. Full acceptance validation remains.
+material procurement execution. The fake-world single-bot acceptance suite
+covers the building gate; live-server signoff remains.
 
 The single-bot acceptance gate lands after step 5.
 

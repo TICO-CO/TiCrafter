@@ -113,17 +113,20 @@ export class ConstructionSource implements SkillConstructionSource {
         plan: ConstructionPlan,
         input: SkillInput,
     ): SkillConstructionOperation[] {
-        return plan.scaffolds.map((scaffold) =>
-            this.operation(
-                'break',
-                {
-                    position: scaffold.position,
-                    itemName: scaffold.stateName,
-                    expectedBlockId: scaffold.stateName,
-                },
-                input,
-            ),
-        );
+        return [...plan.scaffolds]
+            .sort((left, right) => right.position.y - left.position.y)
+            .map((scaffold) =>
+                this.operation(
+                    'break',
+                    {
+                        position: scaffold.position,
+                        itemName: scaffold.stateName,
+                        expectedBlockId: scaffold.stateName,
+                    },
+                    input,
+                    'cleanup',
+                ),
+            );
     }
 
     private appendChange(
@@ -135,10 +138,15 @@ export class ConstructionSource implements SkillConstructionSource {
         const actual = this.options.world.blockStateAt(target.position);
         if (change.kind === 'place' && actual !== null && !this.matches(target, actual)) {
             operations.push(
-                this.operation('break', this.breakTarget(target.position, actual), input),
+                this.operation(
+                    'break',
+                    this.breakTarget(target.position, actual),
+                    input,
+                    change.phase,
+                ),
             );
         }
-        operations.push(this.operation(change.kind, target, input));
+        operations.push(this.operation(change.kind, target, input, change.phase));
         return operations;
     }
 
@@ -173,10 +181,12 @@ export class ConstructionSource implements SkillConstructionSource {
         kind: 'place' | 'break',
         target: SkillBuildTarget,
         input: SkillInput,
+        phase?: SkillConstructionPhase,
     ): SkillConstructionOperation {
         return {
             kind,
             target,
+            ...(phase === undefined ? {} : { phase }),
             ...(input.claimId === undefined ? {} : { claimId: input.claimId }),
             ...(input.grant === undefined ? {} : { grantId: input.grant.id, grant: input.grant }),
             ...(input.grant?.fencingToken === undefined
@@ -188,6 +198,7 @@ export class ConstructionSource implements SkillConstructionSource {
                 ? {}
                 : { blueprintRevision: input.blueprintRevision }),
             ...(input.planId === undefined ? {} : { planId: input.planId }),
+            ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
             ...(input.fencingToken === undefined ? {} : { fencingToken: input.fencingToken }),
         };
     }

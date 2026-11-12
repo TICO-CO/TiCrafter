@@ -30,7 +30,28 @@ class FlatWorld implements WorldBlockQueryPort {
     }
 }
 
-const openPlanner = (): {
+class UnevenWorld implements WorldBlockQueryPort {
+    blockAt(position: Vec3): Result<WorldBlockState | null, never> {
+        return [position.y <= (position.x <= 0 ? 63 : 71) ? { name: 'stone' } : null, null];
+    }
+
+    blocksInBox(bounds: { min: Vec3; max: Vec3 }): Result<readonly PositionedWorldBlock[], never> {
+        const blocks: PositionedWorldBlock[] = [];
+        for (let x = bounds.min.x; x <= bounds.max.x; x += 1) {
+            for (let z = bounds.min.z; z <= bounds.max.z; z += 1) {
+                const height = x <= 0 ? 63 : 71;
+                for (let y = bounds.min.y; y <= Math.min(bounds.max.y, height); y += 1) {
+                    blocks.push({ name: 'stone', position: { x, y, z } });
+                }
+            }
+        }
+        return [blocks, null];
+    }
+}
+
+const openPlanner = (
+    world: WorldBlockQueryPort = new FlatWorld(),
+): {
     planner: ProjectConstructionPlanner;
     plans: ConstructionPlanDocumentService;
 } | null => {
@@ -48,7 +69,7 @@ const openPlanner = (): {
     });
     return {
         planner: new ProjectConstructionPlanner({
-            world: new FlatWorld(),
+            world,
             blueprints,
             plans,
             maxStructureBlocks: 4000,
@@ -83,6 +104,23 @@ describe('ProjectConstructionPlanner', () => {
             ),
         ).toBe(true);
         expect(opened.plans.get('plan.structure.project.project-1', 1)[0]?.hash).toHaveLength(64);
+    });
+
+    it('selects a nearby flat site when the requested anchor is too steep', () => {
+        const opened = openPlanner(new UnevenWorld());
+        if (opened === null) return;
+        const [result, error] = opened.planner.prepare({
+            projectId: 'project-uneven',
+            structureId: 'structure.project.project-uneven',
+            botId: 'bot.one',
+            kind: 'home',
+            anchor: { x: 0, y: 64, z: 0 },
+            bbox: { min: { x: 0, y: 64, z: 0 }, max: { x: 4, y: 68, z: 4 } },
+        });
+        expect(error).toBeNull();
+        expect(result).not.toBeNull();
+        expect(result?.plan.plan.site.anchor.x).not.toBe(0);
+        expect(result?.plan.plan.foundation.changes).toHaveLength(0);
     });
 
     it('rejects an unobserved site as retryable', () => {

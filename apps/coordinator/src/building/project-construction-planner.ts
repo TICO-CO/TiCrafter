@@ -41,6 +41,7 @@ export interface ProjectConstructionPlannerOptions {
     plans: ConstructionPlanDocumentService;
     maxStructureBlocks: number;
     maxWorkPackageBlocks: number;
+    siteCandidateRadius?: number;
 }
 
 export class ProjectConstructionPlanner {
@@ -98,7 +99,7 @@ export class ProjectConstructionPlanner {
             input.anchor,
             {
                 requestedAnchor: input.anchor,
-                candidateRadius: 0,
+                candidateRadius: this.options.siteCandidateRadius ?? 4,
                 maximumSlope: 3,
                 connection: 'none',
             },

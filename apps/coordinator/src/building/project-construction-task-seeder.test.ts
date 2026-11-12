@@ -155,4 +155,49 @@ describe('ProjectConstructionTaskSeeder', () => {
         expect(walls?.payload.claimId).toBe('claim-1');
         expect(wallsProcurement?.payload.claimId).toBe(undefined);
     });
+
+    it('seeds a cleanup task after scaffolded packages without procurement', () => {
+        const { board, seeder } = fresh();
+        const scaffoldedPlan: ConstructionPlanDocument = {
+            ...plan,
+            plan: {
+                ...plan.plan,
+                scaffolds: [
+                    {
+                        position: { x: 0, y: 65, z: 0 },
+                        stateName: 'dirt',
+                        targetKeys: ['0,65,0'],
+                        removalPhase: 'scaffold-removal',
+                    },
+                ],
+            },
+        };
+        const [taskIds, error] = seeder.seed({
+            projectId: 'project-scaffold',
+            structureId: 'structure-scaffold',
+            title: 'Scaffolded home',
+            botId: 'bot.one',
+            ownerBotId: 'bot.one',
+            collaboration: 'private',
+            blueprint,
+            plan: scaffoldedPlan,
+            claims: [],
+        });
+        expect(error).toBeNull();
+        expect(taskIds).toEqual([
+            'task.project.project-scaffold.procurement.0',
+            'task.project.project-scaffold.package.0',
+            'task.project.project-scaffold.procurement.1',
+            'task.project.project-scaffold.package.1',
+            'task.project.project-scaffold.package.2',
+        ]);
+        const cleanup = board.get('task.project.project-scaffold.package.2')[0];
+        expect(cleanup?.payload.skillId).toBe('construction');
+        expect(cleanup?.payload.workPackageId).toBe('plan.structure-1:cleanup');
+        expect(cleanup?.dependencies).toEqual([
+            'task.project.project-scaffold.package.0',
+            'task.project.project-scaffold.package.1',
+        ]);
+        expect(board.get('task.project.project-scaffold.procurement.2')[0]).toBeNull();
+    });
 });

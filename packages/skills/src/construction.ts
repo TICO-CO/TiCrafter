@@ -30,6 +30,9 @@ interface ConstructionState {
     applied: string[];
     skipped: string[];
     grant: SkillGrant | null;
+    structureId: string | null;
+    claimId: string | null;
+    fencingToken: number | null;
 }
 
 export class ConstructionSkill implements Skill {
@@ -85,7 +88,7 @@ export class ConstructionSkill implements Skill {
         }
         const run: SkillRun = {
             skillId: this.id,
-            state: this.stateFor(plan, input.grant ?? null),
+            state: this.stateFor(plan, input.grant ?? null, input),
         };
         return [this.advance(context, run), null];
     }
@@ -180,6 +183,9 @@ export class ConstructionSkill implements Skill {
                     planRevision: state.planRevision,
                     workPackageId: state.workPackageId,
                     grant: state.grant,
+                    ...(state.structureId === null ? {} : { structureId: state.structureId }),
+                    ...(state.claimId === null ? {} : { claimId: state.claimId }),
+                    ...(state.fencingToken === null ? {} : { fencingToken: state.fencingToken }),
                 },
                 updatedAt: context.at,
             },
@@ -210,6 +216,12 @@ export class ConstructionSkill implements Skill {
         ) {
             return [null, 'construction checkpoint grant is invalid'];
         }
+        const structureId = SkillSharedUtilities.readString(checkpoint.state.structureId);
+        const claimId = SkillSharedUtilities.readString(checkpoint.state.claimId);
+        const fencingToken =
+            typeof checkpoint.state.fencingToken === 'number'
+                ? checkpoint.state.fencingToken
+                : undefined;
         const input: SkillInput = {
             blueprintId,
             blueprintRevision,
@@ -218,12 +230,15 @@ export class ConstructionSkill implements Skill {
             workPackageId,
             ...(grant === null ? {} : { grant }),
             ...(checkpoint.taskId.length === 0 ? {} : { taskId: checkpoint.taskId }),
+            ...(structureId === null ? {} : { structureId }),
+            ...(claimId === null ? {} : { claimId }),
+            ...(fencingToken === undefined ? {} : { fencingToken }),
         };
         const planResult = this.resolvePlan(context, input);
         if (planResult[1] !== null) return [null, planResult[1]];
         const plan = planResult[0];
         if (plan === null) return [null, 'construction plan returned null'];
-        return [{ skillId: this.id, state: this.stateFor(plan, grant) }, null];
+        return [{ skillId: this.id, state: this.stateFor(plan, grant, input) }, null];
     }
 
     private resolvePlan(
@@ -319,6 +334,7 @@ export class ConstructionSkill implements Skill {
     private stateFor(
         plan: SkillConstructionPlan,
         grant: SkillGrant | null,
+        input: SkillInput = {},
     ): Record<string, unknown> {
         return {
             blueprintId: plan.blueprintId,
@@ -334,6 +350,9 @@ export class ConstructionSkill implements Skill {
             applied: [],
             skipped: [],
             grant,
+            ...(input.structureId === undefined ? {} : { structureId: input.structureId }),
+            ...(input.claimId === undefined ? {} : { claimId: input.claimId }),
+            ...(input.fencingToken === undefined ? {} : { fencingToken: input.fencingToken }),
         };
     }
 
@@ -348,6 +367,10 @@ export class ConstructionSkill implements Skill {
         const applied = Blueprint.readKeys(run.state.applied);
         const skipped = Blueprint.readKeys(run.state.skipped);
         const grant = this.readGrant(run.state.grant);
+        const structureId = SkillSharedUtilities.readString(run.state.structureId);
+        const claimId = SkillSharedUtilities.readString(run.state.claimId);
+        const fencingToken =
+            typeof run.state.fencingToken === 'number' ? run.state.fencingToken : null;
         const cursor = run.state.cursor;
         if (
             blueprintId === null ||
@@ -386,6 +409,9 @@ export class ConstructionSkill implements Skill {
             applied,
             skipped,
             grant,
+            structureId,
+            claimId,
+            fencingToken,
         };
     }
 

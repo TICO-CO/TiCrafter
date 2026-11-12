@@ -129,13 +129,34 @@ describe('ReachabilityScaffoldPlanner', () => {
         expect(plan?.steps[0]?.scaffold).toHaveLength(0);
     });
 
-    it('plans a scaffold when support is missing', () => {
-        const planner = new ReachabilityScaffoldPlanner(new ReachabilityWorld());
+    it('plans a supported scaffold stack when support is missing', () => {
+        const world = new ReachabilityWorld({ '1,-4,0': 'stone' });
+        const planner = new ReachabilityScaffoldPlanner(world);
         const [plan, planError] = planner.plan(blocks, { x: 10, y: 0, z: 10 });
 
         expect(planError).toBeNull();
         expect(plan?.steps[0]?.scaffold).toEqual([
             { position: { x: 1, y: -1, z: 0 }, stateName: 'dirt' },
+            { position: { x: 1, y: -2, z: 0 }, stateName: 'dirt' },
+            { position: { x: 1, y: -3, z: 0 }, stateName: 'dirt' },
+        ]);
+    });
+
+    it('plans a tall scaffold stack down to existing ground', () => {
+        const tallTarget: BlueprintBlock = {
+            x: 0,
+            y: 6,
+            z: 0,
+            state: { name: 'oak_planks' },
+            priority: 1,
+        };
+        const world = new ReachabilityWorld({ '1,-1,0': 'stone' });
+        const planner = new ReachabilityScaffoldPlanner(world);
+        const [plan, planError] = planner.plan([tallTarget], { x: 10, y: 0, z: 10 });
+
+        expect(planError).toBeNull();
+        expect(plan?.steps[0]?.scaffold.map((block) => block.position.y)).toEqual([
+            5, 4, 3, 2, 1, 0,
         ]);
     });
 
