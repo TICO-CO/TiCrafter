@@ -44,6 +44,7 @@ import {
     BotProfileStore,
     BotResumeOrchestrator,
 } from './bots/index.js';
+import { BlueprintDocumentRepository, BlueprintDocumentService } from './building/index.js';
 import { ClaimRepository, ClaimService } from './claims/index.js';
 import {
     BackpressureController,
@@ -243,6 +244,9 @@ export class CoordinatorComposition {
         const agencyStore = new AgencyStateStore(options.database);
         const agentEpisodes = new AgentEpisodeRepository(options.database);
         const projectRepository = new PersonalProjectRepository(options.database);
+        const blueprintDocuments = new BlueprintDocumentService({
+            documents: new BlueprintDocumentRepository(options.database),
+        });
         const projectService = new PersonalProjectService({
             projects: projectRepository,
             claims: {
@@ -386,6 +390,7 @@ export class CoordinatorComposition {
                     before: before ?? undefined,
                     after: payload.block,
                     createdAt: payload.observedAt,
+                    ...(payload.attribution ?? {}),
                 });
                 if (changelogError) {
                     options.logger.warn(
@@ -682,6 +687,7 @@ export class CoordinatorComposition {
             claims,
             grants,
             decision,
+            blueprints: blueprintDocuments,
         });
     }
 

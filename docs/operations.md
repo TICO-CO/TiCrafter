@@ -156,6 +156,35 @@ Autonomy soak fails on long idle drift above 20%, goal churn above the configure
 limit, missing need-satisfaction evidence, claim conflicts between personal
 homes, or a bot that stops pursuing goals before the run ends.
 
+## Behavior validation (milestone 16)
+
+The behavior validation harness is the final milestone. It runs after the
+implementation milestones and exists to validate them; it does not change
+runtime behavior. One scenario definition drives both a simulated run and a live
+run.
+
+```sh
+bun tools/eval/run.mjs scenario personal-homes --mode simulate
+bun tools/eval/run.mjs scenario personal-homes --mode live --accept-eula
+bun tools/eval/run.mjs inspect data/eval/personal-homes --bot bot.tibot1
+bun tools/eval/run.mjs check data/eval/personal-homes --scenario personal-homes
+```
+
+`scenario --mode simulate` uses a fake world, inventory, and clock while running
+the real agency, planning, skill, and building code. It does not start a
+Minecraft server or connect mineflayer bots. `--mode live` reuses the same
+scenario and assertions against the repo-provisioned server.
+
+`inspect` prints a per-bot decision timeline instead of raw events. It shows goal
+choices, planner or Laya advice, skill outcomes, building progress, claim
+conflicts, idle periods, and need trends. Filters include `--bot`, `--since`,
+`--type`, and `--json`.
+
+`check` applies the scenario assertions to an existing data directory and exits
+non-zero on failure. Reports fail on assertion failures, duplicate block writes,
+missing goal or need evidence, build mismatches, or missing expected decision
+events.
+
 ## Failure classes
 
 Skill failures map to task retry classes:

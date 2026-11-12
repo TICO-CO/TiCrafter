@@ -306,11 +306,36 @@ export const chunkSnapshotSchema = zod.object({
     blocks: zod.array(voxelBlockSchema),
 });
 
+export const blockUpdateAttributionSchema = zod.object({
+    structureId: zod.string().min(1).optional(),
+    blueprintId: zod.string().min(1).optional(),
+    blueprintRevision: zod.number().int().nonnegative().optional(),
+    workPackageId: zod.string().min(1).optional(),
+    planId: zod.string().min(1).optional(),
+    fencingToken: zod.number().int().nonnegative().optional(),
+    phase: zod
+        .enum([
+            'site-clear',
+            'foundation',
+            'walls',
+            'floors',
+            'roof',
+            'openings',
+            'access',
+            'interior',
+            'decoration',
+            'scaffold-removal',
+            'cleanup',
+        ])
+        .optional(),
+});
+
 export const blockUpdateSchema = zod.object({
     botId: zod.string().min(1),
     chunk: zod.object({ x: zod.number().int(), z: zod.number().int() }),
     observedAt: zod.string().min(1),
     block: voxelBlockSchema,
+    attribution: blockUpdateAttributionSchema.optional(),
 });
 
 export const landmarkCandidateSchema = zod.object({
@@ -590,6 +615,7 @@ export type SkillProgress = zod.infer<typeof skillProgressSchema>;
 export type ChunkSnapshotMessage = zod.infer<typeof chunkSnapshotSchema>;
 export type LandmarkCandidateMessage = zod.infer<typeof landmarkCandidateSchema>;
 export type BlockUpdateMessage = zod.infer<typeof blockUpdateSchema>;
+export type BlockUpdateAttribution = zod.infer<typeof blockUpdateAttributionSchema>;
 export type BotSkillStartMessage = zod.infer<typeof botSkillStartSchema>;
 export type BotSkillCancelMessage = zod.infer<typeof botSkillCancelSchema>;
 export type BotSkillResumeMessage = zod.infer<typeof botSkillResumeSchema>;

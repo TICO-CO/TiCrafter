@@ -1,6 +1,7 @@
 import type { Result, Vec3 } from '@ticrafter/core';
 
 import type { BlockChange } from './block-verifier.js';
+import type { ConstructionPhase } from './blueprint-document.js';
 import type { BlueprintBlock, BlueprintBlockState } from './blueprint-ir.js';
 import type { BuildingFailure } from './failures.js';
 import type { WorldBlockState } from './schematic-diff.js';
@@ -13,6 +14,12 @@ export interface BlockChangeRecord {
     grantId?: string;
     claimId?: string;
     planId?: string;
+    structureId?: string;
+    blueprintId?: string;
+    blueprintRevision?: number;
+    workPackageId?: string;
+    fencingToken?: number;
+    phase?: ConstructionPhase;
     createdAt?: string;
 }
 
@@ -68,6 +75,14 @@ export class RollbackJournal {
             ...(change.grantId === undefined ? {} : { grantId: change.grantId }),
             ...(change.claimId === undefined ? {} : { claimId: change.claimId }),
             ...(change.planId === undefined ? {} : { planId: change.planId }),
+            ...(change.structureId === undefined ? {} : { structureId: change.structureId }),
+            ...(change.blueprintId === undefined ? {} : { blueprintId: change.blueprintId }),
+            ...(change.blueprintRevision === undefined
+                ? {}
+                : { blueprintRevision: change.blueprintRevision }),
+            ...(change.workPackageId === undefined ? {} : { workPackageId: change.workPackageId }),
+            ...(change.fencingToken === undefined ? {} : { fencingToken: change.fencingToken }),
+            ...(change.phase === undefined ? {} : { phase: change.phase }),
             createdAt: new Date().toISOString(),
         };
         const [id, writeError] = this.writer.append(record);

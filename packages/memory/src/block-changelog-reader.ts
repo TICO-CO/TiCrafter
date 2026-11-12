@@ -18,8 +18,21 @@ interface BlockChangeRow {
     after_json: string | null;
     grant_id: string | null;
     claim_id: string | null;
+    structure_id: string | null;
+    blueprint_id: string | null;
+    blueprint_revision: number | null;
+    work_package_id: string | null;
+    plan_id: string | null;
+    fencing_token: number | null;
+    phase: string | null;
     created_at: string;
 }
+
+const columns = `
+    id, bot_id, x, y, z, before_json, after_json, grant_id, claim_id,
+    structure_id, blueprint_id, blueprint_revision, work_package_id,
+    plan_id, fencing_token, phase, created_at
+`;
 
 export class BlockChangelogReader {
     constructor(private readonly database: Database) {}
@@ -28,7 +41,7 @@ export class BlockChangelogReader {
         const [changes, error] = attempt(() => {
             const rows = this.database
                 .prepare(
-                    `SELECT id, bot_id, x, y, z, before_json, after_json, grant_id, claim_id, created_at
+                    `SELECT ${columns}
                      FROM block_changelog WHERE id > ? ORDER BY id ASC LIMIT ?`,
                 )
                 .all(id, limit) as BlockChangeRow[];
@@ -47,7 +60,7 @@ export class BlockChangelogReader {
         const [changes, error] = attempt(() => {
             const rows = this.database
                 .prepare(
-                    `SELECT id, bot_id, x, y, z, before_json, after_json, grant_id, claim_id, created_at
+                    `SELECT ${columns}
                      FROM block_changelog WHERE bot_id = ? ORDER BY id ASC LIMIT ?`,
                 )
                 .all(botId, limit) as BlockChangeRow[];
@@ -71,6 +84,15 @@ export class BlockChangelogReader {
             ...(row.after_json === null ? {} : { after: JSON.parse(row.after_json) as unknown }),
             ...(row.grant_id === null ? {} : { grantId: row.grant_id }),
             ...(row.claim_id === null ? {} : { claimId: row.claim_id }),
+            ...(row.structure_id === null ? {} : { structureId: row.structure_id }),
+            ...(row.blueprint_id === null ? {} : { blueprintId: row.blueprint_id }),
+            ...(row.blueprint_revision === null
+                ? {}
+                : { blueprintRevision: row.blueprint_revision }),
+            ...(row.work_package_id === null ? {} : { workPackageId: row.work_package_id }),
+            ...(row.plan_id === null ? {} : { planId: row.plan_id }),
+            ...(row.fencing_token === null ? {} : { fencingToken: row.fencing_token }),
+            ...(row.phase === null ? {} : { phase: row.phase }),
             createdAt: row.created_at,
         };
     }

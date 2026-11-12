@@ -14,6 +14,12 @@ This directory is the implementation contract for TiCrafter. It turns `main.md` 
 
 Do not edit generated Markdown. Edit `graph.json`, then regenerate.
 
+Milestone 16 validation components (`eval.simulation-harness`,
+`eval.trace-inspector`, and `eval.behavior-assertions`) are documented in
+`main.md` now but are added to `graph.json` only when their implementation
+starts. This keeps the graph aligned with existing source paths until the final
+milestone begins.
+
 ## Commands
 
 ```sh

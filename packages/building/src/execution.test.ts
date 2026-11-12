@@ -174,12 +174,28 @@ describe('RollbackJournal', () => {
             kind: 'replace',
             botId: 'bot.builder',
             target: { ...TARGET, state: { name: 'oak_planks' } },
+            structureId: 'structure.home',
+            blueprintId: 'blueprint.home',
+            blueprintRevision: 3,
+            workPackageId: 'package.home.walls',
+            planId: 'plan.home',
+            fencingToken: 7,
+            phase: 'walls',
         };
         const [entry, journalError] = journal.record(change, { name: 'stone' });
 
         expect(journalError).toBeNull();
         expect(entry?.id).toBe('1');
         expect(writer.records).toHaveLength(1);
+        expect(writer.records[0]).toMatchObject({
+            structureId: 'structure.home',
+            blueprintId: 'blueprint.home',
+            blueprintRevision: 3,
+            workPackageId: 'package.home.walls',
+            planId: 'plan.home',
+            fencingToken: 7,
+            phase: 'walls',
+        });
         const operations = journal.planRollback();
         expect(operations).toHaveLength(2);
         expect(operations[0]?.kind).toBe('break');

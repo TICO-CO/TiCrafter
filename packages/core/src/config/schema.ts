@@ -73,6 +73,11 @@ export const configSchema = zod
             needDecayPerMinute: zod.number().min(0).max(1),
             committedGoalBonus: zod.number().min(0).max(1),
         }),
+        building: zod.object({
+            maxStructureBlocks: zod.number().int().positive(),
+            maxWorkPackageBlocks: zod.number().int().positive(),
+            allowRawBlockBlueprints: zod.boolean(),
+        }),
         logging: zod.object({
             level: zod.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']),
         }),
@@ -115,6 +120,13 @@ export const configSchema = zod
                 code: 'custom',
                 path: ['planner', 'apiKey'],
                 message: 'planner apiKey is required when enabled',
+            });
+        }
+        if (config.building.maxWorkPackageBlocks > config.building.maxStructureBlocks) {
+            context.addIssue({
+                code: 'custom',
+                path: ['building', 'maxWorkPackageBlocks'],
+                message: 'maxWorkPackageBlocks must not exceed maxStructureBlocks',
             });
         }
     });

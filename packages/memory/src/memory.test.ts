@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
 import {
+    BlockChangelogReader,
+    BlockChangelogWriter,
     EventLogWriter,
     MigrationRunner,
     SchemaVersionRegistry,
@@ -24,15 +26,15 @@ describe('memory', () => {
         const migrationRunner = new MigrationRunner(database);
         const [firstVersion, firstError] = migrationRunner.run();
         expect(firstError).toBeNull();
-        expect(firstVersion).toBe(10);
+        expect(firstVersion).toBe(11);
 
         const [secondVersion, secondError] = migrationRunner.run();
         expect(secondError).toBeNull();
-        expect(secondVersion).toBe(10);
+        expect(secondVersion).toBe(11);
 
         const [currentVersion, currentError] = new SchemaVersionRegistry(database).current();
         expect(currentError).toBeNull();
-        expect(currentVersion).toBe(10);
+        expect(currentVersion).toBe(11);
 
         const tables = (
             database.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{
@@ -53,8 +55,61 @@ describe('memory', () => {
                 'agent_state',
                 'agent_episodes',
                 'personal_projects',
+                'blueprint_documents',
             ]),
         );
+        database.close();
+    });
+
+    it('round-trips block changelog attribution', () => {
+        const [database, openError] = TestDatabase.openTemporary();
+        expect(openError).toBeNull();
+        if (database === null) return;
+
+        const [, migrationError] = new MigrationRunner(database).run();
+        expect(migrationError).toBeNull();
+
+        const writer = new BlockChangelogWriter(database);
+        const [id, writeError] = writer.append({
+            botId: 'bot.one',
+            position: { x: 1, y: 64, z: 2 },
+            before: { name: 'stone' },
+            after: { name: 'oak_planks' },
+            grantId: 'grant.one',
+            claimId: 'claim.one',
+            structureId: 'structure.home',
+            blueprintId: 'blueprint.home',
+            blueprintRevision: 4,
+            workPackageId: 'package.walls',
+            planId: 'plan.home',
+            fencingToken: 9,
+            phase: 'walls',
+            createdAt: '2026-11-12T12:00:00.000Z',
+        });
+        expect(writeError).toBeNull();
+        expect(id).toBe(1);
+
+        const [changes, readError] = new BlockChangelogReader(database).listAfter(0);
+        expect(readError).toBeNull();
+        expect(changes).toEqual([
+            {
+                id: 1,
+                botId: 'bot.one',
+                position: { x: 1, y: 64, z: 2 },
+                before: { name: 'stone' },
+                after: { name: 'oak_planks' },
+                grantId: 'grant.one',
+                claimId: 'claim.one',
+                structureId: 'structure.home',
+                blueprintId: 'blueprint.home',
+                blueprintRevision: 4,
+                workPackageId: 'package.walls',
+                planId: 'plan.home',
+                fencingToken: 9,
+                phase: 'walls',
+                createdAt: '2026-11-12T12:00:00.000Z',
+            },
+        ]);
         database.close();
     });
 

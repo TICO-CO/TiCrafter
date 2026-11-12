@@ -4,5 +4,9 @@
     "laya": {
         "executionProviders": ["cpu"],
         "threads": 3
+    },
+    "building": {
+        "maxStructureBlocks": 4000,
+        "maxWorkPackageBlocks": 128
     }
 }

@@ -412,11 +412,12 @@ packages/brains/         reflex, affordances, deterministic policy, Laya client
 packages/safety/         deterministic safety evaluators, veto gate, recovery ladder
 packages/planning/       planner client, prompt builders, validators, task DAG
 packages/memory/         repositories, migrations, changelog
-packages/eval/           scenario runner, metrics, replay, contention tests
+packages/eval/           scenario runner, metrics, replay, contention tests,
+                         offline behavior simulator, trace inspector (milestone 16)
 tools/bootstrap/         dependency and app provisioning, local server control
 tools/architecture/      graph validator, renderers, SVG renderer
 tools/laya-train/        dev-only Python: labeling, fine-tune, ONNX export
-config/                  default.json, .env.example,
+config/                  default.json, .env.example, scenarios/<id>.json,
                          profiles/home-min.json, profiles/home-full.json
 package.json             workspace root, pinned deps, bootstrap scripts
 bun.lock        committed lockfile
@@ -467,6 +468,23 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
     - `planner-advisory`: a planner project is accepted or deferred by local utility.
 - Metrics: task success, goal success, goal abandonment, time, deaths, blocks/min, claim contention, duplicate work, idle time, self-initiated goals, need satisfaction, social interactions, chat rate, Laya accuracy/ECE, planner calls/tokens/cost.
 - Soak test: 2+ hours on both profiles — 4 bots on `home-min`, 8 bots on `home-full`; no memory growth, no deadlocks, claims stable.
+- Offline behavior validation (milestone 16, after all implementation milestones):
+    - One scenario definition drives both `--mode simulate` and `--mode live`.
+    - Simulated mode uses a fake world, inventory, and clock while running the real
+      agency, planning, skill, and building code; no Minecraft server or mineflayer
+      connection is required.
+    - Live mode reuses the same scenario definitions and assertions against the
+      repo-provisioned server.
+    - Declarative checks cover goal sequence, need satisfaction, idle fraction,
+      planner accept/defer/decline, duplicate block writes, build completion, and
+      restart resume.
+    - Reports render a per-bot decision timeline with goal choices, planner or Laya
+      advice, skill outcomes, and building progress instead of raw events.
+    - Commands:
+      `bun tools/eval/run.mjs scenario <id> --mode simulate`,
+      `bun tools/eval/run.mjs scenario <id> --mode live`,
+      `bun tools/eval/run.mjs inspect <data-dir>`,
+      `bun tools/eval/run.mjs check <data-dir> --scenario <id>`.
 
 ## 16. Milestones
 
@@ -485,10 +503,13 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 13. **Homes and job market**: personal homes, storage, projects, bot-facing claims, opt-in job offers with accept/decline.
 14. **Social village**: chat, relationships, sharing, cooperation, body language, social goals.
 15. **Player-like validation**: autonomy scenarios, 2-hour soak, Laya goal-choice calibration, v2 acceptance.
+16. **Behavior validation harness**: offline simulator for agency, planning, and building; shared simulate/live scenario spec; declarative assertions; trace inspector; CI run without a server. This is intentionally last, after milestones 1–15. It validates those implementations and changes no runtime behavior.
 
 **v1 done when:** 8 bots run unattended on `home-full` for 2 hours (4 bots on `home-min` with the same guarantees), maintain one consistent SIP, build/repair farms/houses/roads cooperatively, detect and reuse existing infrastructure, never overwrite active work without a valid grant, and resume their roles/tasks correctly after stop/restart.
 
 **v2 done when:** bots run with the planner disabled and no seed jobs, pursue self-generated goals, build personal homes, maintain routines, decline unsuitable jobs, chat and cooperate, and resume needs, intentions, homes, and relationships after stop/restart without long idle drift or goal thrash.
+
+**Harness done when:** behavior scenarios pass in simulated mode without a Minecraft server, live mode runs the same scenarios and assertions, failed checks produce readable evidence, and the trace inspector explains goal, planner, skill, and building decisions without manual log reading.
 
 ## 17. Risks and mitigations
 
@@ -498,6 +519,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - **VRAM contention** → WebGPU shares 8GB with the desktop; cap session memory, monitor, fall back to CPU.
 - **home-min CPU bottleneck** → 4 bots default; 8 bots only as an overload test; stagger heartbeats.
 - **home-min RAM headroom** → host already has ~9GB used; check free memory before starting the fleet.
+- **Fake-world drift** → keep agency, planning, skill, and building code real in the simulation harness; fake only world, inventory, clock, and transport ports. Keep live mode for physics and integration signoff.
 - **onnxruntime-node/Laya version mismatch** → Laya pins `^1.22.0`; WebGPU may require a newer validated override.
 - **Multi-bot conflicts** → SIP revisions, atomic claims, leases + fencing tokens, idempotent placement, edit grants.
 - **Coordinator single point of failure** → restart + lease expiry + SQLite recovery + coordinator epoch; distributed mode deferred.
@@ -696,6 +718,8 @@ Safety and abuse:
 ## 22. Player-like acceptance
 
 v2 acceptance is measured with the planner disabled and `config/seed-tasks.json` empty.
+
+Acceptance scenarios run in `--mode simulate` first for fast feedback. `--mode live` is the final integration signoff; both modes use the same scenario definitions and assertions.
 
 Required behavior:
 

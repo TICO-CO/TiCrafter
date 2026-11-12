@@ -6,6 +6,7 @@ import {
     type TransportFailure,
 } from '@ticrafter/core';
 
+import type { BlueprintDocumentService } from '../building/index.js';
 import type { ClaimService } from '../claims/index.js';
 import type { DecisionService } from '../decision/index.js';
 import type { GrantService } from '../grants/index.js';
@@ -37,6 +38,7 @@ export interface CoordinatorOptions {
     claims: ClaimService;
     grants: GrantService;
     decision: DecisionService;
+    blueprints: BlueprintDocumentService;
 }
 
 export class Coordinator {
@@ -115,6 +117,10 @@ export class Coordinator {
 
     get grants(): GrantService {
         return this.options.grants;
+    }
+
+    get blueprints(): BlueprintDocumentService {
+        return this.options.blueprints;
     }
 
     private runRecovery(): Result<void, string> {

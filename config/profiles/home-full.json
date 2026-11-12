@@ -4,5 +4,9 @@
     "laya": {
         "executionProviders": ["webgpu", "cpu"],
         "threads": 8
+    },
+    "building": {
+        "maxStructureBlocks": 12000,
+        "maxWorkPackageBlocks": 256
     }
 }

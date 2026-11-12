@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import type { ConstructionPhase } from './blueprint-document.js';
 import { type BlueprintBlock, type BlueprintBlockState, BlueprintIr } from './blueprint-ir.js';
 import type { BuildingFailure } from './failures.js';
 import type { WorldBlockQueryPort, WorldBlockState } from './schematic-diff.js';
@@ -13,6 +14,12 @@ export interface BlockChange {
     claimId?: string;
     grantId?: string;
     planId?: string;
+    structureId?: string;
+    blueprintId?: string;
+    blueprintRevision?: number;
+    workPackageId?: string;
+    fencingToken?: number;
+    phase?: ConstructionPhase;
 }
 
 export interface BlockVerification {

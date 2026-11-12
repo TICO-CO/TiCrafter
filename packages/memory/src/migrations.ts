@@ -172,4 +172,29 @@ export const migrations: Migration[] = [
         ON personal_projects(structure_id);
     `,
     },
+    {
+        version: 11,
+        name: 'building-blueprints',
+        sql: `
+      CREATE TABLE IF NOT EXISTS blueprint_documents (
+        id TEXT NOT NULL,
+        revision INTEGER NOT NULL,
+        hash TEXT NOT NULL,
+        source TEXT NOT NULL,
+        blueprint_json TEXT NOT NULL,
+        provenance_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (id, revision)
+      );
+      CREATE INDEX IF NOT EXISTS idx_blueprint_documents_hash
+        ON blueprint_documents(hash);
+      ALTER TABLE block_changelog ADD COLUMN structure_id TEXT;
+      ALTER TABLE block_changelog ADD COLUMN blueprint_id TEXT;
+      ALTER TABLE block_changelog ADD COLUMN blueprint_revision INTEGER;
+      ALTER TABLE block_changelog ADD COLUMN work_package_id TEXT;
+      ALTER TABLE block_changelog ADD COLUMN plan_id TEXT;
+      ALTER TABLE block_changelog ADD COLUMN fencing_token INTEGER;
+      ALTER TABLE block_changelog ADD COLUMN phase TEXT;
+    `,
+    },
 ];

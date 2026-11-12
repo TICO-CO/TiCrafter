@@ -630,6 +630,14 @@ Evaluation scenarios:
 - `personal-homes`
 - `observe-and-repair`
 - multi-bot scenarios after the single-bot gate
+- `simulated-build`
+- `simulated-repair`
+- `simulated-material-shortage`
+- `simulated-multi-bot`
+
+The `simulated-*` scenarios run in the milestone 16 behavior validation harness
+against a fake world with the real building and skill code. They are not part of
+the building milestone itself.
 
 ## 18. Migration and compatibility
 
@@ -640,6 +648,8 @@ Evaluation scenarios:
 - Add blueprint storage and changelog migrations with the implementation.
 - Update `docs/architecture/graph.json` and regenerate architecture docs only
   when the modules exist.
+- Add the milestone 16 validation components to `graph.json` only when the
+  behavior harness implementation starts.
 - Update `docs/operations.md` when building endpoints and metrics exist.
 
 ## 19. Implementation sequence

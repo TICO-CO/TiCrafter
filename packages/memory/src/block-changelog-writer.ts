@@ -10,6 +10,13 @@ export interface BlockChange {
     after?: unknown;
     grantId?: string;
     claimId?: string;
+    structureId?: string;
+    blueprintId?: string;
+    blueprintRevision?: number;
+    workPackageId?: string;
+    planId?: string;
+    fencingToken?: number;
+    phase?: string;
     createdAt?: string;
 }
 
@@ -20,8 +27,11 @@ export class BlockChangelogWriter {
         const [id, error] = attempt(() => {
             const result = this.database
                 .prepare(
-                    `INSERT INTO block_changelog (bot_id, x, y, z, before_json, after_json, grant_id, claim_id, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    `INSERT INTO block_changelog (
+                        bot_id, x, y, z, before_json, after_json, grant_id, claim_id,
+                        structure_id, blueprint_id, blueprint_revision, work_package_id,
+                        plan_id, fencing_token, phase, created_at
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 )
                 .run(
                     change.botId,
@@ -32,6 +42,13 @@ export class BlockChangelogWriter {
                     change.after === undefined ? null : JSON.stringify(change.after),
                     change.grantId ?? null,
                     change.claimId ?? null,
+                    change.structureId ?? null,
+                    change.blueprintId ?? null,
+                    change.blueprintRevision ?? null,
+                    change.workPackageId ?? null,
+                    change.planId ?? null,
+                    change.fencingToken ?? null,
+                    change.phase ?? null,
                     change.createdAt ?? new Date().toISOString(),
                 );
             return Number(result.lastInsertRowid);

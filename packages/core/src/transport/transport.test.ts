@@ -154,6 +154,15 @@ describe('transport', () => {
             chunk: { x: 0, z: 0 },
             observedAt: '2026-11-10T12:00:00.000Z',
             block: { position, blockId: 'dirt', solid: true },
+            attribution: {
+                structureId: 'structure.home',
+                blueprintId: 'blueprint.home',
+                blueprintRevision: 2,
+                workPackageId: 'package.walls',
+                planId: 'plan.home',
+                fencingToken: 5,
+                phase: 'walls',
+            },
         });
         const [encodedChunk, chunkError] = codec.encode(chunkEnvelope);
         const [encodedLandmark, landmarkError] = codec.encode(landmarkEnvelope);
@@ -175,6 +184,17 @@ describe('transport', () => {
         expect(decodedChunk?.type).toBe(CHUNK_SNAPSHOT_EVENT);
         expect(decodedLandmark?.type).toBe(LANDMARK_CANDIDATE_EVENT);
         expect(decodedBlockUpdate?.type).toBe(BLOCK_UPDATE_EVENT);
+        expect(decodedBlockUpdate?.payload).toMatchObject({
+            attribution: {
+                structureId: 'structure.home',
+                blueprintId: 'blueprint.home',
+                blueprintRevision: 2,
+                workPackageId: 'package.walls',
+                planId: 'plan.home',
+                fencingToken: 5,
+                phase: 'walls',
+            },
+        });
     });
 
     it('round-trips skill commands', () => {

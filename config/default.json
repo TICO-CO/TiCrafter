@@ -66,6 +66,11 @@
         "needDecayPerMinute": 0.02,
         "committedGoalBonus": 0.15
     },
+    "building": {
+        "maxStructureBlocks": 4000,
+        "maxWorkPackageBlocks": 128,
+        "allowRawBlockBlueprints": false
+    },
     "safety": {
         "guardianHz": 20,
         "interactionReach": 4.5,

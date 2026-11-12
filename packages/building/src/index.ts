@@ -1,5 +1,6 @@
 export * from './block-executor.js';
 export * from './block-verifier.js';
+export * from './blueprint-document.js';
 export * from './blueprint-ir.js';
 export * from './blueprint-validator.js';
 export * from './build-order-planner.js';

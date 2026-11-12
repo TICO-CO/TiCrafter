@@ -48,6 +48,11 @@ const defaultConfig: Record<string, unknown> = {
         needDecayPerMinute: 0.02,
         committedGoalBonus: 0.15,
     },
+    building: {
+        maxStructureBlocks: 4000,
+        maxWorkPackageBlocks: 128,
+        allowRawBlockBlueprints: false,
+    },
     safety: { guardianHz: 20, interactionReach: 4.5, actionsPerSecond: 10 },
     skills: { tickMilliseconds: 250 },
     training: { traceEnabled: false },
@@ -58,11 +63,13 @@ const profiles: Record<string, Record<string, unknown>> = {
         hardwareProfile: 'home-min',
         botCount: 4,
         laya: { executionProviders: ['cpu'], threads: 3 },
+        building: { maxStructureBlocks: 4000, maxWorkPackageBlocks: 128 },
     },
     'home-full': {
         hardwareProfile: 'home-full',
         botCount: 8,
         laya: { executionProviders: ['webgpu', 'cpu'], threads: 8 },
+        building: { maxStructureBlocks: 12000, maxWorkPackageBlocks: 256 },
     },
 };
 

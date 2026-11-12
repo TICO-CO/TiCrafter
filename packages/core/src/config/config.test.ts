@@ -22,6 +22,9 @@ describe('config', () => {
         expect(config.planner.model).toBe('Muse Spark 1.3 Contributor');
         expect(config.planner.maxRepairAttempts).toBe(2);
         expect(config.planner.reserveTasksPerBot).toBe(1);
+        expect(config.building.maxStructureBlocks).toBe(4000);
+        expect(config.building.maxWorkPackageBlocks).toBe(128);
+        expect(config.building.allowRawBlockBlueprints).toBe(false);
         expect(config.training.traceEnabled).toBe(false);
     });
 
@@ -32,6 +35,8 @@ describe('config', () => {
         expect(config.hardwareProfile).toBe('home-full');
         expect(config.botCount).toBe(8);
         expect(config.laya.threads).toBe(8);
+        expect(config.building.maxStructureBlocks).toBe(12000);
+        expect(config.building.maxWorkPackageBlocks).toBe(256);
     });
 
     it('resolves the profile name from environment before defaults', () => {
@@ -104,6 +109,22 @@ describe('config', () => {
         const [validated, validationError] = ConfigSchemaValidator.validate({
             ...baseConfig,
             planner: { ...baseConfig.planner, enabled: true, baseUrl: '', apiKey: '' },
+        });
+        expect(validated).toBeNull();
+        expect(validationError).not.toBeNull();
+    });
+
+    it('rejects a work package larger than its structure limit', () => {
+        const [baseConfig, baseError] = ConfigFixture.load();
+        expect(baseError).toBeNull();
+        if (baseConfig === null) return;
+        const [validated, validationError] = ConfigSchemaValidator.validate({
+            ...baseConfig,
+            building: {
+                ...baseConfig.building,
+                maxStructureBlocks: 100,
+                maxWorkPackageBlocks: 101,
+            },
         });
         expect(validated).toBeNull();
         expect(validationError).not.toBeNull();
