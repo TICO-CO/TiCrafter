@@ -133,6 +133,7 @@ interface WorkingMemory {
         at: string;
         revision: number;
     } | null;
+    strategicIntent?: StrategicIntent | null;
 }
 ```
 
@@ -151,8 +152,10 @@ Implementation:
 - `packages/agency/src/working-memory.ts` owns the bounded model and revision.
 - `agent_state` stores working memory as an optional JSON field. Missing fields
   restore to an empty memory; malformed fields fail closed.
-- The revision increments on every focus, commitment, interruption, and
-  experience change.
+- `strategicIntent` is optional in persisted JSON for backward compatibility;
+  missing or null restores to null.
+- The revision increments on every focus, commitment, interruption, experience,
+  strategic-intent, and tactical-decision change.
 - Project focus survives project sub-work tasks. Survival and other interruption
   goals may temporarily take focus; completing or abandoning them restores the
   project focus.
