@@ -1,11 +1,11 @@
 # TiCrafter Building System
 
-Status: design proposal. No implementation exists yet.
+Status: implementation in progress. Steps 1–3 exist: blueprint storage and
+composer, terrain site planning, foundation planning, dependency ordering,
+scaffolding, phase-aware packages, and material procurement planning.
+Execution wiring and coordinator lifecycle remain.
 
-The building refactor is the next implementation step after this document is
-accepted. `docs/architecture/graph.json` is intentionally unchanged for now:
-`check-component-paths` requires every planned component to resolve to a real
-source file, so graph updates land with the modules.
+`docs/architecture/graph.json` tracks the implemented module paths.
 
 ## 1. Purpose
 
@@ -60,17 +60,36 @@ Current pieces:
 
 - `packages/building/src/blueprint-ir.ts`: blueprint blocks, materials,
   bounds, rotation, translation, and work-package types.
+- `packages/building/src/blueprint-document.ts`: document revisions, hashes,
+  sources, provenance, and construction phases.
+- `packages/building/src/blueprint-composer.ts`: deterministic brief-to-
+  blueprint composition with layout, shell, roof, openings, and interior.
+- `packages/building/src/blueprint-source-resolver.ts`: template, composed,
+  schematic, observed, and gated raw-block sources.
 - `packages/building/src/template-*.ts`: seven fixed templates.
 - `packages/building/src/schematic-parser.ts`: `.schem` parsing.
+- `packages/building/src/site-planner.ts`: terrain, slope, hazard, protection,
+  access, and candidate scoring.
+- `packages/building/src/foundation-planner.ts`: fill, cut, clearance, and
+  foundation materials.
+- `packages/building/src/construction-dependency-graph.ts`: support-aware,
+  attachment-aware, multi-block-aware dependency ordering.
+- `packages/building/src/construction-plan-planner.ts`: site, foundation,
+  blueprint, scaffold, and package integration.
+- `packages/building/src/work-package-planner.ts`: phase-aware package
+  partitioning with dependency-stack merging.
+- `packages/building/src/material-procurement-planner.ts`: shortages,
+  crafting, gathering, and container reservations.
 - `packages/building/src/block-executor.ts`: verified, journaled, rate-limited
   block execution.
-- `packages/building/src/build-order-planner.ts`: support-first ordering.
+- `packages/building/src/build-order-planner.ts`: compatibility wrapper around
+  support-first ordering.
 - `packages/building/src/work-package-partitioner.ts`: layer, slice, quadrant,
   and single-package partitioning.
 - `packages/building/src/material-preflight.ts`: inventory and container
   material coverage.
-- `packages/building/src/reachability-scaffold-planner.ts`: simple reachability
-  and scaffold planning.
+- `packages/building/src/reachability-scaffold-planner.ts`: reachability and
+  scaffold planning with reserved blueprint positions.
 - `packages/building/src/rollback-journal.ts`: before/after records and inverse
   operations.
 - `packages/skills/src/blueprint.ts`: direct multi-target placement skill.
@@ -81,10 +100,8 @@ Gaps:
 
 - The runtime uses direct placement, not `BlockExecutor`, so journaling,
   verification, rollback, and scaffold handling are largely unused.
-- Templates are whole buildings. There is no room, roof, facade, or interior
-  composition.
-- There is no site planner, foundation planner, or terrain adaptation.
-- The planner can validate blueprints but cannot apply them.
+- The planner can validate and store blueprints but cannot yet drive the
+  construction plan through the bot execution service.
 - SIP structures store `blueprintRef` without a stored blueprint payload.
 - Work packages are not created from blueprints or claimed by bots.
 - Claims and grants are not wired into bot safety snapshots.
@@ -337,15 +354,16 @@ foundation blocks are construction-plan changes.
 
 1. site clear
 2. foundation
-3. load-bearing walls, bottom-up
-4. floors and ceilings
-5. roof
-6. doors and windows
-7. stairs, ladders, and access
-8. interior and furnishing
-9. lighting and decoration
-10. scaffold removal
-11. cleanup and drop collection
+3. scaffold placement
+4. load-bearing walls, bottom-up
+5. floors and ceilings
+6. roof
+7. doors and windows
+8. stairs, ladders, and access
+9. interior and furnishing
+10. lighting and decoration
+11. scaffold removal
+12. cleanup and drop collection
 
 ### 10.2 Dependency rules
 
@@ -360,7 +378,8 @@ The construction planner must understand:
 - reachable standing space
 - temporary scaffold placement and inverse cleanup
 
-The existing support-only ordering is insufficient for arbitrary designs.
+The dependency graph covers these rules. Runtime execution wiring is the
+remaining integration step.
 
 ### 10.3 Work packages
 
@@ -694,6 +713,8 @@ Planned order:
 6. agency project focus and player-like behavior, including project task seeding
 7. multi-bot coordination
 8. architecture graph update, generated docs, ops runbook, and evaluation
+
+Steps 1–3 are implemented. Step 4 is next.
 
 The single-bot acceptance gate lands after step 5.
 

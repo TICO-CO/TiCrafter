@@ -8,79 +8,79 @@ n31["Global Scheduler"]
 n32["Restart Recovery Orchestrator"]
 n75["Backpressure Controller"]
 n33["Bot Process Supervisor"]
-n135["Fencing Token Authority (Claims and Leases)"]
-n136["Flow Control (Transport and Protocol)"]
-n137["Atomic Claim Acquirer (Claims and Leases)"]
-n138["Grant Issuer (Edit Grants and Collaboration)"]
-n139["SIP Transactional Committer (Shared Infrastructure Plan)"]
-n140["Atomic Task Claimer (Task Board)"]
-n141["Message Schema Registry (Transport and Protocol)"]
-n142["Transaction Manager (Memory and Persistence)"]
-n143["Lease Reaper (Claims and Leases)"]
-n144["Retention Pruner (Memory and Persistence)"]
+n149["Fencing Token Authority (Claims and Leases)"]
+n150["Flow Control (Transport and Protocol)"]
+n151["Atomic Claim Acquirer (Claims and Leases)"]
+n152["Grant Issuer (Edit Grants and Collaboration)"]
+n153["SIP Transactional Committer (Shared Infrastructure Plan)"]
+n154["Atomic Task Claimer (Task Board)"]
+n155["Message Schema Registry (Transport and Protocol)"]
+n156["Transaction Manager (Memory and Persistence)"]
+n157["Lease Reaper (Claims and Leases)"]
+n158["Retention Pruner (Memory and Persistence)"]
 n43["Planner Trigger Evaluator (Cloud Planner Advisor)"]
-n145["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
-n146["Config Schema Validator (Config and Profiles)"]
-n147["Environment Parser (Config and Profiles)"]
-n148["Migration Runner (Memory and Persistence)"]
-n149["WebSocket Codec (Transport and Protocol)"]
-n150["Resume Orchestrator (Bot Registry and Profiles)"]
-n151["Grant Expiry (Edit Grants and Collaboration)"]
-n152["Profile Resolver (Config and Profiles)"]
-n153["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n154["Presence Tracker (Bot Registry and Profiles)"]
+n159["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
+n160["Config Schema Validator (Config and Profiles)"]
+n161["Environment Parser (Config and Profiles)"]
+n162["Migration Runner (Memory and Persistence)"]
+n163["WebSocket Codec (Transport and Protocol)"]
+n164["Resume Orchestrator (Bot Registry and Profiles)"]
+n165["Grant Expiry (Edit Grants and Collaboration)"]
+n166["Profile Resolver (Config and Profiles)"]
+n167["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n168["Presence Tracker (Bot Registry and Profiles)"]
 n65["Emergency Stop Controller (Autonomy and Safety)"]
 n64["Recovery Ladder (Autonomy and Safety)"]
 n54["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
-n54 -->|depends_on| n146
-n150 -->|delegates_to| n145
-n137 -->|depends_on| n142
-n135 -->|depends_on| n30
-n135 -->|depends_on| n142
-n146 -->|depends_on| n147
-n152 -->|depends_on| n146
-n75 -->|depends_on| n136
-n29 -->|controls| n137
-n29 -->|controls| n138
-n29 -->|controls| n139
-n29 -->|controls| n140
-n29 -->|depends_on| n141
-n30 -->|controls| n135
-n30 -->|depends_on| n142
-n31 -->|delegates_to| n143
+n54 -->|depends_on| n160
+n164 -->|delegates_to| n159
+n151 -->|depends_on| n156
+n149 -->|depends_on| n30
+n149 -->|depends_on| n156
+n160 -->|depends_on| n161
+n166 -->|depends_on| n160
+n75 -->|depends_on| n150
+n29 -->|controls| n151
+n29 -->|controls| n152
+n29 -->|controls| n153
+n29 -->|controls| n154
+n29 -->|depends_on| n155
+n30 -->|controls| n149
+n30 -->|depends_on| n156
+n31 -->|delegates_to| n157
 n31 -->|depends_on| n30
-n31 -->|delegates_to| n144
+n31 -->|delegates_to| n158
 n31 -->|delegates_to| n43
-n31 -->|delegates_to| n145
-n72 -->|depends_on| n146
-n72 -->|depends_on| n147
+n31 -->|delegates_to| n159
+n72 -->|depends_on| n160
+n72 -->|depends_on| n161
 n72 -->|depends_on| n32
 n72 -->|depends_on| n73
-n72 -->|depends_on| n148
-n72 -->|depends_on| n149
-n32 -->|depends_on| n150
-n32 -->|delegates_to| n143
-n32 -->|delegates_to| n151
-n32 -->|depends_on| n142
-n32 -->|depends_on| n145
-n73 -->|depends_on| n152
+n72 -->|depends_on| n162
+n72 -->|depends_on| n163
+n32 -->|depends_on| n164
+n32 -->|delegates_to| n157
+n32 -->|delegates_to| n165
+n32 -->|depends_on| n156
+n32 -->|depends_on| n159
+n73 -->|depends_on| n166
 n73 -->|depends_on| n31
-n74 -->|depends_on| n153
-n74 -->|publishes| n154
-n74 -->|depends_on| n149
-n144 -->|depends_on| n142
+n74 -->|depends_on| n167
+n74 -->|publishes| n168
+n74 -->|depends_on| n163
+n158 -->|depends_on| n156
 n65 -->|controls| n29
 n64 -->|proposes_to| n29
 n64 -->|proposes_to| n43
 n64 -->|controls| n65
-n145 -->|depends_on| n139
-n139 -->|depends_on| n142
-n140 -->|depends_on| n142
-n149 -->|depends_on| n141
+n159 -->|depends_on| n153
+n153 -->|depends_on| n156
+n154 -->|depends_on| n156
+n163 -->|depends_on| n155
 n33 -->|controls| n54
 n33 -->|depends_on| n30
 n32 -->|depends_on| n33
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n72,n73,n74,n29,n30,n31,n32,n75,n33 internal;
-class n135,n136,n137,n138,n139,n140,n141,n142,n143,n144,n43,n145,n146,n147,n148,n149,n150,n151,n152,n153,n154,n65,n64,n54 external;
+class n149,n150,n151,n152,n153,n154,n155,n156,n157,n158,n43,n159,n160,n161,n162,n163,n164,n165,n166,n167,n168,n65,n64,n54 external;

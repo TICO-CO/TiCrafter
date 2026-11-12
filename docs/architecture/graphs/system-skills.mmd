@@ -1,33 +1,33 @@
 flowchart LR
-n239["Navigate"]
-n186["Follow Path"]
-n241["Mine"]
-n242["Collect"]
-n238["Craft"]
-n243["Smelt"]
-n244["Eat"]
-n220["Deposit"]
-n223["Withdraw"]
-n245["Sleep"]
-n246["Flee or Defend"]
-n221["Explore"]
-n247["Bridge"]
-n248["Clear"]
-n240["Place Build"]
-n249["Schematic Build"]
-n250["Repair"]
-n187["Harvest Farm"]
-n188["Plant Farm"]
-n222["Skill Shared Utilities"]
+n253["Navigate"]
+n200["Follow Path"]
+n255["Mine"]
+n256["Collect"]
+n252["Craft"]
+n257["Smelt"]
+n258["Eat"]
+n234["Deposit"]
+n237["Withdraw"]
+n259["Sleep"]
+n260["Flee or Defend"]
+n235["Explore"]
+n261["Bridge"]
+n262["Clear"]
+n254["Place Build"]
+n263["Schematic Build"]
+n264["Repair"]
+n201["Harvest Farm"]
+n202["Plant Farm"]
+n236["Skill Shared Utilities"]
 n53["Block Executor (Building)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n52["Skill Context Builder (Skill Runtime)"]
-n182["Container Memory (World Model and Landmarks)"]
-n183["Spatial Query Engine (World Model and Landmarks)"]
-n117["Mob Threat Evaluator (Autonomy and Safety)"]
-n171["Path Graph Store (Shared Infrastructure Plan)"]
-n169["Farm Store (Shared Infrastructure Plan)"]
+n196["Container Memory (World Model and Landmarks)"]
+n197["Spatial Query Engine (World Model and Landmarks)"]
+n131["Mob Threat Evaluator (Autonomy and Safety)"]
+n185["Path Graph Store (Shared Infrastructure Plan)"]
+n183["Farm Store (Shared Infrastructure Plan)"]
 n82["Skill Contract (Skill Runtime)"]
 n103["Schematic Diff (Building)"]
 n105["Build Order Planner (Building)"]
@@ -36,56 +36,56 @@ n57 -->|depends_on| n63
 n53 -->|depends_on| n57
 n53 -->|depends_on| n63
 n105 -->|depends_on| n104
-n103 -->|reads| n183
+n103 -->|reads| n197
 n63 -->|validates| n57
 n63 -->|validates| n53
-n52 -->|reads| n183
-n247 -->|depends_on| n53
-n247 -->|depends_on| n239
-n248 -->|depends_on| n53
-n248 -->|depends_on| n63
-n242 -->|depends_on| n57
-n242 -->|depends_on| n241
-n242 -->|depends_on| n239
-n238 -->|depends_on| n57
-n238 -->|depends_on| n52
-n220 -->|depends_on| n57
-n220 -->|depends_on| n182
-n244 -->|depends_on| n57
-n221 -->|depends_on| n239
-n221 -->|depends_on| n183
-n246 -->|depends_on| n57
-n246 -->|depends_on| n117
-n246 -->|depends_on| n239
-n186 -->|depends_on| n171
-n186 -->|depends_on| n239
-n187 -->|depends_on| n57
-n187 -->|depends_on| n169
-n187 -->|depends_on| n239
-n241 -->|depends_on| n57
-n241 -->|depends_on| n239
-n239 -->|depends_on| n57
-n239 -->|depends_on| n82
-n240 -->|depends_on| n53
-n240 -->|depends_on| n52
-n188 -->|depends_on| n57
-n188 -->|depends_on| n169
-n188 -->|depends_on| n239
-n250 -->|depends_on| n53
-n250 -->|depends_on| n103
-n249 -->|depends_on| n53
-n249 -->|depends_on| n105
-n249 -->|depends_on| n104
-n222 -->|depends_on| n52
-n222 -->|depends_on| n183
-n245 -->|depends_on| n57
-n245 -->|depends_on| n239
-n243 -->|depends_on| n57
-n243 -->|depends_on| n239
-n223 -->|depends_on| n57
-n223 -->|depends_on| n182
-n183 -->|reads| n171
+n52 -->|reads| n197
+n261 -->|depends_on| n53
+n261 -->|depends_on| n253
+n262 -->|depends_on| n53
+n262 -->|depends_on| n63
+n256 -->|depends_on| n57
+n256 -->|depends_on| n255
+n256 -->|depends_on| n253
+n252 -->|depends_on| n57
+n252 -->|depends_on| n52
+n234 -->|depends_on| n57
+n234 -->|depends_on| n196
+n258 -->|depends_on| n57
+n235 -->|depends_on| n253
+n235 -->|depends_on| n197
+n260 -->|depends_on| n57
+n260 -->|depends_on| n131
+n260 -->|depends_on| n253
+n200 -->|depends_on| n185
+n200 -->|depends_on| n253
+n201 -->|depends_on| n57
+n201 -->|depends_on| n183
+n201 -->|depends_on| n253
+n255 -->|depends_on| n57
+n255 -->|depends_on| n253
+n253 -->|depends_on| n57
+n253 -->|depends_on| n82
+n254 -->|depends_on| n53
+n254 -->|depends_on| n52
+n202 -->|depends_on| n57
+n202 -->|depends_on| n183
+n202 -->|depends_on| n253
+n264 -->|depends_on| n53
+n264 -->|depends_on| n103
+n263 -->|depends_on| n53
+n263 -->|depends_on| n105
+n263 -->|depends_on| n104
+n236 -->|depends_on| n52
+n236 -->|depends_on| n197
+n259 -->|depends_on| n57
+n259 -->|depends_on| n253
+n257 -->|depends_on| n57
+n257 -->|depends_on| n253
+n237 -->|depends_on| n57
+n237 -->|depends_on| n196
+n197 -->|reads| n185
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n239,n186,n241,n242,n238,n243,n244,n220,n223,n245,n246,n221,n247,n248,n240,n249,n250,n187,n188,n222 internal;
-class n53,n63,n57,n52,n182,n183,n117,n171,n169,n82,n103,n105,n104 external;
+class n253,n200,n255,n256,n252,n257,n258,n234,n237,n259,n260,n235,n261,n262,n254,n263,n264,n201,n202,n236 internal;
+class n53,n63,n57,n52,n196,n197,n131,n185,n183,n82,n103,n105,n104 external;

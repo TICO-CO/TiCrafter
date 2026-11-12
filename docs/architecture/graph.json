@@ -3545,6 +3545,255 @@
                     "invariants": [
                         "Every destructive change records block before/after, actor, grantId, planId, and timestamp and is rollback-capable."
                     ]
+                },
+                {
+                    "id": "building.construction-types",
+                    "name": "Construction Plan Types",
+                    "responsibility": "Define site, foundation, dependency, scaffold, procurement, and construction-plan contracts.",
+                    "plannedPath": "packages/building/src/construction-types",
+                    "provides": ["building.construction-types.interface"],
+                    "requires": ["building.blueprint-ir"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_construction_types_errors_total",
+                        "building_construction_types_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.blueprint-document",
+                    "name": "Blueprint Document",
+                    "responsibility": "Version, hash, source, and persist blueprint documents with provenance and construction phases.",
+                    "plannedPath": "packages/building/src/blueprint-document",
+                    "provides": ["building.blueprint-document.interface"],
+                    "requires": ["building.blueprint-ir"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_blueprint_document_errors_total",
+                        "building_blueprint_document_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.seeded-random",
+                    "name": "Seeded Random",
+                    "responsibility": "Provide deterministic random values for identical briefs and seeds.",
+                    "plannedPath": "packages/building/src/seeded-random",
+                    "provides": ["building.seeded-random.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_seeded_random_errors_total",
+                        "building_seeded_random_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.style-palette",
+                    "name": "Style Palette",
+                    "responsibility": "Resolve style profiles into deterministic structure, floor, roof, accent, and glass palettes.",
+                    "plannedPath": "packages/building/src/style-palette",
+                    "provides": ["building.style-palette.interface"],
+                    "requires": ["building.blueprint-ir"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_style_palette_errors_total",
+                        "building_style_palette_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.motif-library",
+                    "name": "Motif Library",
+                    "responsibility": "Provide reusable door, window, stair, bed, storage, lighting, farm, and roof motifs.",
+                    "plannedPath": "packages/building/src/motif-library",
+                    "provides": ["building.motif-library.interface"],
+                    "requires": ["building.blueprint-ir"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_motif_library_errors_total",
+                        "building_motif_library_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.blueprint-composer",
+                    "name": "Blueprint Composer",
+                    "responsibility": "Compose a compact building brief into a validated, deterministic, functional blueprint.",
+                    "plannedPath": "packages/building/src/blueprint-composer",
+                    "provides": ["building.blueprint-composer.interface"],
+                    "requires": [
+                        "building.blueprint-document",
+                        "building.blueprint-validator",
+                        "building.style-palette",
+                        "building.motif-library",
+                        "building.seeded-random"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_blueprint_composer_errors_total",
+                        "building_blueprint_composer_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.observed-blueprint",
+                    "name": "Observed Blueprint",
+                    "responsibility": "Capture existing structures into blueprints for repair, renovation, and imitation.",
+                    "plannedPath": "packages/building/src/observed-blueprint",
+                    "provides": ["building.observed-blueprint.interface"],
+                    "requires": ["building.blueprint-ir", "world.spatial-query-engine"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_observed_blueprint_errors_total",
+                        "building_observed_blueprint_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.blueprint-source-resolver",
+                    "name": "Blueprint Source Resolver",
+                    "responsibility": "Resolve template, composed, schematic, observed, and gated raw-block blueprint sources.",
+                    "plannedPath": "packages/building/src/blueprint-source-resolver",
+                    "provides": ["building.blueprint-source-resolver.interface"],
+                    "requires": [
+                        "building.blueprint-composer",
+                        "building.template-instantiator",
+                        "building.schematic-parser",
+                        "building.observed-blueprint"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_blueprint_source_resolver_errors_total",
+                        "building_blueprint_source_resolver_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.site-planner",
+                    "name": "Site Planner",
+                    "responsibility": "Select a deterministic site, reject hazards and protected zones, and adapt access and foundation needs.",
+                    "plannedPath": "packages/building/src/site-planner",
+                    "provides": ["building.site-planner.interface"],
+                    "requires": [
+                        "building.blueprint-ir",
+                        "building.construction-types",
+                        "world.spatial-query-engine"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_site_planner_errors_total",
+                        "building_site_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.validator"
+                },
+                {
+                    "id": "building.foundation-planner",
+                    "name": "Foundation Planner",
+                    "responsibility": "Plan foundation fills, cuts, clearance, and foundation materials without mutating the canonical blueprint.",
+                    "plannedPath": "packages/building/src/foundation-planner",
+                    "provides": ["building.foundation-planner.interface"],
+                    "requires": [
+                        "building.blueprint-ir",
+                        "building.construction-types",
+                        "building.site-planner"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_foundation_planner_errors_total",
+                        "building_foundation_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.construction-dependency-graph",
+                    "name": "Construction Dependency Graph",
+                    "responsibility": "Order construction changes by support, attachments, multi-block objects, phases, and explicit dependencies.",
+                    "plannedPath": "packages/building/src/construction-dependency-graph",
+                    "provides": ["building.construction-dependency-graph.interface"],
+                    "requires": ["building.blueprint-ir", "building.construction-types"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_construction_dependency_graph_errors_total",
+                        "building_construction_dependency_graph_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.validator"
+                },
+                {
+                    "id": "building.work-package-planner",
+                    "name": "Work Package Planner",
+                    "responsibility": "Partition ordered construction changes into phase-aware packages without splitting dependency stacks.",
+                    "plannedPath": "packages/building/src/work-package-planner",
+                    "provides": ["building.work-package-planner.interface"],
+                    "requires": ["building.blueprint-ir", "building.construction-types"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_work_package_planner_errors_total",
+                        "building_work_package_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.construction-plan-planner",
+                    "name": "Construction Plan Planner",
+                    "responsibility": "Combine site, foundation, blueprint, scaffold, and package planning into one ordered construction plan.",
+                    "plannedPath": "packages/building/src/construction-plan-planner",
+                    "provides": ["building.construction-plan-planner.interface"],
+                    "requires": [
+                        "building.construction-types",
+                        "building.foundation-planner",
+                        "building.construction-dependency-graph",
+                        "building.work-package-planner",
+                        "building.reachability-scaffold-planner"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_construction_plan_planner_errors_total",
+                        "building_construction_plan_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.material-procurement-planner",
+                    "name": "Material Procurement Planner",
+                    "responsibility": "Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures.",
+                    "plannedPath": "packages/building/src/material-procurement-planner",
+                    "provides": ["building.material-procurement-planner.interface"],
+                    "requires": ["building.blueprint-ir", "building.material-preflight"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_material_procurement_planner_errors_total",
+                        "building_material_procurement_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.validator"
                 }
             ]
         },
@@ -12442,6 +12691,227 @@
             "criticality": "hard",
             "failureBehavior": "Reject the persistence request and keep the prior committed snapshot.",
             "notes": "Persisted agency state uses the pure agency snapshot contract."
+        },
+        {
+            "id": "rel.0533",
+            "from": "building.construction-types",
+            "to": "building.blueprint-ir",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.blueprint-ir",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Construction Plan Types depends on building.blueprint-ir.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0534",
+            "from": "building.blueprint-document",
+            "to": "building.blueprint-ir",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.blueprint-ir",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Document depends on building.blueprint-ir.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0535",
+            "from": "building.blueprint-composer",
+            "to": "building.blueprint-document",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Blueprint Document",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Composer depends on Blueprint Document.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0536",
+            "from": "building.blueprint-composer",
+            "to": "building.seeded-random",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Seeded Random",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Composer depends on Seeded Random.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0537",
+            "from": "building.blueprint-composer",
+            "to": "building.style-palette",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Style Palette",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Composer depends on Style Palette.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0538",
+            "from": "building.blueprint-composer",
+            "to": "building.motif-library",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Motif Library",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Composer depends on Motif Library.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0539",
+            "from": "building.blueprint-source-resolver",
+            "to": "building.blueprint-composer",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Blueprint Composer",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Source Resolver depends on Blueprint Composer.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0540",
+            "from": "building.blueprint-source-resolver",
+            "to": "building.observed-blueprint",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Observed Blueprint",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Blueprint Source Resolver depends on Observed Blueprint.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0541",
+            "from": "building.foundation-planner",
+            "to": "building.site-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Site Planner",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Foundation Planner depends on Site Planner.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0542",
+            "from": "building.construction-dependency-graph",
+            "to": "building.construction-types",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Construction Plan Types",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Construction Dependency Graph depends on Construction Plan Types.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0543",
+            "from": "building.work-package-planner",
+            "to": "building.construction-types",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Construction Plan Types",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Work Package Planner depends on Construction Plan Types.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0544",
+            "from": "building.construction-plan-planner",
+            "to": "building.foundation-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Foundation Planner",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Construction Plan Planner depends on Foundation Planner.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0545",
+            "from": "building.construction-plan-planner",
+            "to": "building.construction-dependency-graph",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Construction Dependency Graph",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Construction Plan Planner depends on Construction Dependency Graph.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0546",
+            "from": "building.construction-plan-planner",
+            "to": "building.work-package-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Work Package Planner",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Construction Plan Planner depends on Work Package Planner.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0547",
+            "from": "building.construction-plan-planner",
+            "to": "building.material-procurement-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Material Procurement Planner",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Construction Plan Planner depends on Material Procurement Planner.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0548",
+            "from": "building.material-procurement-planner",
+            "to": "building.material-preflight",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.material-preflight",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Material Procurement Planner depends on building.material-preflight.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0549",
+            "from": "building.site-planner",
+            "to": "building.construction-types",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Construction Plan Types",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Site Planner depends on Construction Plan Types.",
+            "explicit": false
         }
     ]
 }

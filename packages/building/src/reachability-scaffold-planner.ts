@@ -24,11 +24,13 @@ export interface ReachabilityPlan {
 export interface ReachabilityOptions {
     maxReach?: number;
     scaffoldMaterial?: string;
+    reservedKeys?: ReadonlySet<string>;
 }
 
 export class ReachabilityScaffoldPlanner {
     private readonly maxReach: number;
     private readonly scaffoldMaterial: string;
+    private readonly reservedKeys: ReadonlySet<string>;
 
     constructor(
         private readonly world: WorldBlockQueryPort,
@@ -36,6 +38,7 @@ export class ReachabilityScaffoldPlanner {
     ) {
         this.maxReach = options.maxReach ?? 4.5;
         this.scaffoldMaterial = options.scaffoldMaterial ?? 'dirt';
+        this.reservedKeys = options.reservedKeys ?? new Set();
     }
 
     plan(
@@ -77,6 +80,13 @@ export class ReachabilityScaffoldPlanner {
         block: BlueprintBlock,
         candidate: Vec3,
     ): Result<ReachabilityStep | null, BuildingFailure> {
+        if (this.reservedKeys.has(BlueprintIr.positionKey(candidate))) return [null, null];
+        const headKey = BlueprintIr.positionKey({
+            x: candidate.x,
+            y: candidate.y + 1,
+            z: candidate.z,
+        });
+        if (this.reservedKeys.has(headKey)) return [null, null];
         const supportPosition = { x: candidate.x, y: candidate.y - 1, z: candidate.z };
         const [foot, footError] = this.world.blockAt(candidate);
         if (footError) return [null, footError];
@@ -88,6 +98,7 @@ export class ReachabilityScaffoldPlanner {
         });
         if (headError) return [null, headError];
         if (head !== null && !BlueprintIr.isAir(head.name)) return [null, null];
+        if (this.reservedKeys.has(BlueprintIr.positionKey(supportPosition))) return [null, null];
         const [support, supportError] = this.world.blockAt(supportPosition);
         if (supportError) return [null, supportError];
         if (support !== null && !BlueprintIr.isAir(support.name)) {

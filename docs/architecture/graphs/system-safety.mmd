@@ -1,77 +1,77 @@
 flowchart LR
-n116["Hazard Evaluator"]
-n117["Mob Threat Evaluator"]
-n118["Hunger Evaluator"]
-n119["Stuck and Timeout Evaluator"]
-n120["Inventory Evaluator"]
-n121["Claim Loss Evaluator"]
-n122["Protected BBox Rule"]
-n123["Active Bot Support Rule"]
-n124["Material Ban Rule"]
-n125["Safety Policy Engine"]
+n130["Hazard Evaluator"]
+n131["Mob Threat Evaluator"]
+n132["Hunger Evaluator"]
+n133["Stuck and Timeout Evaluator"]
+n134["Inventory Evaluator"]
+n135["Claim Loss Evaluator"]
+n136["Protected BBox Rule"]
+n137["Active Bot Support Rule"]
+n138["Material Ban Rule"]
+n139["Safety Policy Engine"]
 n63["Action Veto Gate"]
 n64["Recovery Ladder"]
 n65["Emergency Stop Controller"]
-n126["Incident Journal"]
+n140["Incident Journal"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n58["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
 n53["Block Executor (Building)"]
 n68["Fleet Emergency Stop (Ops and Observability)"]
 n69["Reflex Guardian Loop (Brains)"]
-n201["Claim Repository (Claims and Leases)"]
-n183["Spatial Query Engine (World Model and Landmarks)"]
+n215["Claim Repository (Claims and Leases)"]
+n197["Spatial Query Engine (World Model and Landmarks)"]
 n29["Command Router (Coordinator Runtime)"]
-n156["Event Stream (Transport and Protocol)"]
-n200["Event Log Writer (Memory and Persistence)"]
-n172["Rules Store (Shared Infrastructure Plan)"]
+n170["Event Stream (Transport and Protocol)"]
+n214["Event Log Writer (Memory and Persistence)"]
+n186["Rules Store (Shared Infrastructure Plan)"]
 n43["Planner Trigger Evaluator (Cloud Planner Advisor)"]
 n90["Skill Preemption Handler (Skill Runtime)"]
-n248["Clear (Skill Library)"]
-n246["Flee or Defend (Skill Library)"]
+n262["Clear (Skill Library)"]
+n260["Flee or Defend (Skill Library)"]
 n57 -->|depends_on| n63
 n58 -->|depends_on| n63
 n58 -->|delegates_to| n69
 n53 -->|depends_on| n57
 n53 -->|depends_on| n63
 n68 -->|controls| n65
-n68 -->|depends_on| n156
+n68 -->|depends_on| n170
 n63 -->|validates| n57
 n63 -->|validates| n53
 n63 -->|reads| n69
-n63 -->|depends_on| n125
-n123 -->|reads| n201
-n123 -->|reads| n183
-n121 -->|reads| n201
+n63 -->|depends_on| n139
+n137 -->|reads| n215
+n137 -->|reads| n197
+n135 -->|reads| n215
 n65 -->|controls| n57
 n65 -->|controls| n29
-n65 -->|depends_on| n156
+n65 -->|depends_on| n170
 n69 -->|controls| n63
-n69 -->|depends_on| n121
-n69 -->|depends_on| n116
-n69 -->|depends_on| n118
-n69 -->|depends_on| n120
-n69 -->|depends_on| n117
-n69 -->|depends_on| n119
-n126 -->|writes| n200
-n122 -->|reads| n201
-n122 -->|reads| n172
+n69 -->|depends_on| n135
+n69 -->|depends_on| n130
+n69 -->|depends_on| n132
+n69 -->|depends_on| n134
+n69 -->|depends_on| n131
+n69 -->|depends_on| n133
+n140 -->|writes| n214
+n136 -->|reads| n215
+n136 -->|reads| n186
 n64 -->|proposes_to| n29
 n64 -->|proposes_to| n43
 n64 -->|controls| n65
-n64 -->|depends_on| n156
-n125 -->|reads| n201
-n125 -->|depends_on| n123
-n125 -->|depends_on| n124
-n125 -->|depends_on| n122
-n125 -->|reads| n172
-n125 -->|reads| n183
+n64 -->|depends_on| n170
+n139 -->|reads| n215
+n139 -->|depends_on| n137
+n139 -->|depends_on| n138
+n139 -->|depends_on| n136
+n139 -->|reads| n186
+n139 -->|reads| n197
 n90 -->|reads| n63
-n248 -->|depends_on| n53
-n248 -->|depends_on| n63
-n246 -->|depends_on| n57
-n246 -->|depends_on| n117
-n68 -->|writes| n200
+n262 -->|depends_on| n53
+n262 -->|depends_on| n63
+n260 -->|depends_on| n57
+n260 -->|depends_on| n131
+n68 -->|writes| n214
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n116,n117,n118,n119,n120,n121,n122,n123,n124,n125,n63,n64,n65,n126 internal;
-class n57,n58,n53,n68,n69,n201,n183,n29,n156,n200,n172,n43,n90,n248,n246 external;
+class n130,n131,n132,n133,n134,n135,n136,n137,n138,n139,n63,n64,n65,n140 internal;
+class n57,n58,n53,n68,n69,n215,n197,n29,n170,n214,n186,n43,n90,n262,n260 external;

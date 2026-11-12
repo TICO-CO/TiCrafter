@@ -20,21 +20,35 @@ n53["Block Executor"]
 n108["Material Preflight"]
 n109["Container Refill Adapter"]
 n110["Rollback Journal"]
+n111["Construction Plan Types"]
+n112["Blueprint Document"]
+n113["Seeded Random"]
+n114["Style Palette"]
+n115["Motif Library"]
+n116["Blueprint Composer"]
+n117["Observed Blueprint"]
+n118["Blueprint Source Resolver"]
+n119["Site Planner"]
+n120["Foundation Planner"]
+n121["Construction Dependency Graph"]
+n122["Work Package Planner"]
+n123["Construction Plan Planner"]
+n124["Material Procurement Planner"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n183["Spatial Query Engine (World Model and Landmarks)"]
-n172["Rules Store (Shared Infrastructure Plan)"]
-n182["Container Memory (World Model and Landmarks)"]
+n197["Spatial Query Engine (World Model and Landmarks)"]
+n186["Rules Store (Shared Infrastructure Plan)"]
+n196["Container Memory (World Model and Landmarks)"]
 n52["Skill Context Builder (Skill Runtime)"]
 n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n251["Block Changelog Writer (Memory and Persistence)"]
-n167["Structure Store (Shared Infrastructure Plan)"]
-n156["Event Stream (Transport and Protocol)"]
-n247["Bridge (Skill Library)"]
-n248["Clear (Skill Library)"]
-n240["Place Build (Skill Library)"]
-n250["Repair (Skill Library)"]
-n249["Schematic Build (Skill Library)"]
+n265["Block Changelog Writer (Memory and Persistence)"]
+n181["Structure Store (Shared Infrastructure Plan)"]
+n170["Event Stream (Transport and Protocol)"]
+n261["Bridge (Skill Library)"]
+n262["Clear (Skill Library)"]
+n254["Place Build (Skill Library)"]
+n264["Repair (Skill Library)"]
+n263["Schematic Build (Skill Library)"]
 n57 -->|depends_on| n63
 n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
@@ -42,24 +56,24 @@ n53 -->|depends_on| n107
 n53 -->|depends_on| n110
 n53 -->|depends_on| n63
 n107 -->|depends_on| n91
-n107 -->|reads| n183
+n107 -->|reads| n197
 n92 -->|depends_on| n91
-n92 -->|depends_on| n172
+n92 -->|depends_on| n186
 n105 -->|depends_on| n91
 n105 -->|depends_on| n104
 n109 -->|depends_on| n57
-n109 -->|writes| n182
+n109 -->|writes| n196
 n108 -->|depends_on| n91
 n108 -->|reads| n52
-n108 -->|reads| n182
+n108 -->|reads| n196
 n106 -->|reads| n56
 n106 -->|depends_on| n105
-n106 -->|reads| n183
-n110 -->|writes| n251
-n110 -->|reads| n167
-n110 -->|subscribes| n156
+n106 -->|reads| n197
+n110 -->|writes| n265
+n110 -->|reads| n181
+n110 -->|subscribes| n170
 n103 -->|depends_on| n91
-n103 -->|reads| n183
+n103 -->|reads| n197
 n102 -->|depends_on| n91
 n98 -->|depends_on| n91
 n96 -->|depends_on| n91
@@ -72,22 +86,39 @@ n99 -->|depends_on| n91
 n97 -->|depends_on| n91
 n100 -->|depends_on| n91
 n104 -->|depends_on| n91
-n104 -->|reads| n167
+n104 -->|reads| n181
 n63 -->|validates| n57
 n63 -->|validates| n53
 n52 -->|reads| n56
-n52 -->|reads| n183
-n247 -->|depends_on| n53
-n248 -->|depends_on| n53
-n248 -->|depends_on| n63
-n240 -->|depends_on| n53
-n240 -->|depends_on| n52
-n250 -->|depends_on| n53
-n250 -->|depends_on| n103
-n249 -->|depends_on| n53
-n249 -->|depends_on| n105
-n249 -->|depends_on| n104
+n52 -->|reads| n197
+n261 -->|depends_on| n53
+n262 -->|depends_on| n53
+n262 -->|depends_on| n63
+n254 -->|depends_on| n53
+n254 -->|depends_on| n52
+n264 -->|depends_on| n53
+n264 -->|depends_on| n103
+n263 -->|depends_on| n53
+n263 -->|depends_on| n105
+n263 -->|depends_on| n104
+n111 -->|depends_on| n91
+n112 -->|depends_on| n91
+n116 -->|depends_on| n112
+n116 -->|depends_on| n113
+n116 -->|depends_on| n114
+n116 -->|depends_on| n115
+n118 -->|depends_on| n116
+n118 -->|depends_on| n117
+n120 -->|depends_on| n119
+n121 -->|depends_on| n111
+n122 -->|depends_on| n111
+n123 -->|depends_on| n120
+n123 -->|depends_on| n121
+n123 -->|depends_on| n122
+n123 -->|depends_on| n124
+n124 -->|depends_on| n108
+n119 -->|depends_on| n111
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n91,n92,n93,n94,n95,n96,n97,n98,n99,n100,n101,n102,n103,n104,n105,n106,n107,n53,n108,n109,n110 internal;
-class n57,n63,n183,n172,n182,n52,n56,n251,n167,n156,n247,n248,n240,n250,n249 external;
+class n91,n92,n93,n94,n95,n96,n97,n98,n99,n100,n101,n102,n103,n104,n105,n106,n107,n53,n108,n109,n110,n111,n112,n113,n114,n115,n116,n117,n118,n119,n120,n121,n122,n123,n124 internal;
+class n57,n63,n197,n186,n196,n52,n56,n265,n181,n170,n261,n262,n254,n264,n263 external;

@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 255  
-**Relations:** 532  
+**Components:** 269  
+**Relations:** 549  
 **Externals:** 5
 
 ## Reading this catalog
@@ -31,7 +31,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 12 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
 | `sys.skills` | [Skill Library](#skill-library) | 20 | `packages/skills/src` | 4 |
-| `sys.building` | [Building](#building) | 21 | `packages/building/src` | 6 |
+| `sys.building` | [Building](#building) | 35 | `packages/building/src` | 6 |
 | `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 14 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
@@ -3376,6 +3376,20 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `building.material-preflight` | Material Preflight | Check inventory and containers for required materials before starting a package. | `packages/building/src/material-preflight` | 6 |
 | `building.container-refill-adapter` | Container Refill Adapter | Withdraw missing materials and deposit surplus through deterministic skills. | `packages/building/src/container-refill-adapter` | 6 |
 | `building.rollback-journal` | Rollback Journal | Journal every block before/after image for reversible changes. | `packages/building/src/rollback-journal` | 6 |
+| `building.construction-types` | Construction Plan Types | Define site, foundation, dependency, scaffold, procurement, and construction-plan contracts. | `packages/building/src/construction-types` | 6 |
+| `building.blueprint-document` | Blueprint Document | Version, hash, source, and persist blueprint documents with provenance and construction phases. | `packages/building/src/blueprint-document` | 6 |
+| `building.seeded-random` | Seeded Random | Provide deterministic random values for identical briefs and seeds. | `packages/building/src/seeded-random` | 6 |
+| `building.style-palette` | Style Palette | Resolve style profiles into deterministic structure, floor, roof, accent, and glass palettes. | `packages/building/src/style-palette` | 6 |
+| `building.motif-library` | Motif Library | Provide reusable door, window, stair, bed, storage, lighting, farm, and roof motifs. | `packages/building/src/motif-library` | 6 |
+| `building.blueprint-composer` | Blueprint Composer | Compose a compact building brief into a validated, deterministic, functional blueprint. | `packages/building/src/blueprint-composer` | 6 |
+| `building.observed-blueprint` | Observed Blueprint | Capture existing structures into blueprints for repair, renovation, and imitation. | `packages/building/src/observed-blueprint` | 6 |
+| `building.blueprint-source-resolver` | Blueprint Source Resolver | Resolve template, composed, schematic, observed, and gated raw-block blueprint sources. | `packages/building/src/blueprint-source-resolver` | 6 |
+| `building.site-planner` | Site Planner | Select a deterministic site, reject hazards and protected zones, and adapt access and foundation needs. | `packages/building/src/site-planner` | 6 |
+| `building.foundation-planner` | Foundation Planner | Plan foundation fills, cuts, clearance, and foundation materials without mutating the canonical blueprint. | `packages/building/src/foundation-planner` | 6 |
+| `building.construction-dependency-graph` | Construction Dependency Graph | Order construction changes by support, attachments, multi-block objects, phases, and explicit dependencies. | `packages/building/src/construction-dependency-graph` | 6 |
+| `building.work-package-planner` | Work Package Planner | Partition ordered construction changes into phase-aware packages without splitting dependency stacks. | `packages/building/src/work-package-planner` | 6 |
+| `building.construction-plan-planner` | Construction Plan Planner | Combine site, foundation, blueprint, scaffold, and package planning into one ordered construction plan. | `packages/building/src/construction-plan-planner` | 6 |
+| `building.material-procurement-planner` | Material Procurement Planner | Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures. | `packages/building/src/material-procurement-planner` | 6 |
 
 ### `building.blueprint-ir` — Blueprint IR
 
@@ -3794,6 +3808,286 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `building_rollback_journal_errors_total`
   - `building_rollback_journal_latency_ms`
+
+### `building.construction-types` — Construction Plan Types
+
+- **Responsibility:** Define site, foundation, dependency, scaffold, procurement, and construction-plan contracts.
+- **Owner path:** `packages/building/src/construction-types`
+- **Provides:** `building.construction-types.interface`
+- **Requires:** `building.blueprint-ir`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_construction_types_errors_total`
+  - `building_construction_types_latency_ms`
+
+### `building.blueprint-document` — Blueprint Document
+
+- **Responsibility:** Version, hash, source, and persist blueprint documents with provenance and construction phases.
+- **Owner path:** `packages/building/src/blueprint-document`
+- **Provides:** `building.blueprint-document.interface`
+- **Requires:** `building.blueprint-ir`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_blueprint_document_errors_total`
+  - `building_blueprint_document_latency_ms`
+
+### `building.seeded-random` — Seeded Random
+
+- **Responsibility:** Provide deterministic random values for identical briefs and seeds.
+- **Owner path:** `packages/building/src/seeded-random`
+- **Provides:** `building.seeded-random.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_seeded_random_errors_total`
+  - `building_seeded_random_latency_ms`
+
+### `building.style-palette` — Style Palette
+
+- **Responsibility:** Resolve style profiles into deterministic structure, floor, roof, accent, and glass palettes.
+- **Owner path:** `packages/building/src/style-palette`
+- **Provides:** `building.style-palette.interface`
+- **Requires:** `building.blueprint-ir`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_style_palette_errors_total`
+  - `building_style_palette_latency_ms`
+
+### `building.motif-library` — Motif Library
+
+- **Responsibility:** Provide reusable door, window, stair, bed, storage, lighting, farm, and roof motifs.
+- **Owner path:** `packages/building/src/motif-library`
+- **Provides:** `building.motif-library.interface`
+- **Requires:** `building.blueprint-ir`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_motif_library_errors_total`
+  - `building_motif_library_latency_ms`
+
+### `building.blueprint-composer` — Blueprint Composer
+
+- **Responsibility:** Compose a compact building brief into a validated, deterministic, functional blueprint.
+- **Owner path:** `packages/building/src/blueprint-composer`
+- **Provides:** `building.blueprint-composer.interface`
+- **Requires:** `building.blueprint-document`, `building.blueprint-validator`, `building.style-palette`, `building.motif-library`, `building.seeded-random`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_blueprint_composer_errors_total`
+  - `building_blueprint_composer_latency_ms`
+
+### `building.observed-blueprint` — Observed Blueprint
+
+- **Responsibility:** Capture existing structures into blueprints for repair, renovation, and imitation.
+- **Owner path:** `packages/building/src/observed-blueprint`
+- **Provides:** `building.observed-blueprint.interface`
+- **Requires:** `building.blueprint-ir`, `world.spatial-query-engine`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_observed_blueprint_errors_total`
+  - `building_observed_blueprint_latency_ms`
+
+### `building.blueprint-source-resolver` — Blueprint Source Resolver
+
+- **Responsibility:** Resolve template, composed, schematic, observed, and gated raw-block blueprint sources.
+- **Owner path:** `packages/building/src/blueprint-source-resolver`
+- **Provides:** `building.blueprint-source-resolver.interface`
+- **Requires:** `building.blueprint-composer`, `building.template-instantiator`, `building.schematic-parser`, `building.observed-blueprint`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_blueprint_source_resolver_errors_total`
+  - `building_blueprint_source_resolver_latency_ms`
+
+### `building.site-planner` — Site Planner
+
+- **Responsibility:** Select a deterministic site, reject hazards and protected zones, and adapt access and foundation needs.
+- **Owner path:** `packages/building/src/site-planner`
+- **Provides:** `building.site-planner.interface`
+- **Requires:** `building.blueprint-ir`, `building.construction-types`, `world.spatial-query-engine`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
+- **Failure modes:**
+  - Unknown rule or malformed input: reject closed with an actionable reason.
+- **Tests:**
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
+- **Metrics:**
+  - `building_site_planner_errors_total`
+  - `building_site_planner_latency_ms`
+
+### `building.foundation-planner` — Foundation Planner
+
+- **Responsibility:** Plan foundation fills, cuts, clearance, and foundation materials without mutating the canonical blueprint.
+- **Owner path:** `packages/building/src/foundation-planner`
+- **Provides:** `building.foundation-planner.interface`
+- **Requires:** `building.blueprint-ir`, `building.construction-types`, `building.site-planner`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_foundation_planner_errors_total`
+  - `building_foundation_planner_latency_ms`
+
+### `building.construction-dependency-graph` — Construction Dependency Graph
+
+- **Responsibility:** Order construction changes by support, attachments, multi-block objects, phases, and explicit dependencies.
+- **Owner path:** `packages/building/src/construction-dependency-graph`
+- **Provides:** `building.construction-dependency-graph.interface`
+- **Requires:** `building.blueprint-ir`, `building.construction-types`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
+- **Failure modes:**
+  - Unknown rule or malformed input: reject closed with an actionable reason.
+- **Tests:**
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
+- **Metrics:**
+  - `building_construction_dependency_graph_errors_total`
+  - `building_construction_dependency_graph_latency_ms`
+
+### `building.work-package-planner` — Work Package Planner
+
+- **Responsibility:** Partition ordered construction changes into phase-aware packages without splitting dependency stacks.
+- **Owner path:** `packages/building/src/work-package-planner`
+- **Provides:** `building.work-package-planner.interface`
+- **Requires:** `building.blueprint-ir`, `building.construction-types`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_work_package_planner_errors_total`
+  - `building_work_package_planner_latency_ms`
+
+### `building.construction-plan-planner` — Construction Plan Planner
+
+- **Responsibility:** Combine site, foundation, blueprint, scaffold, and package planning into one ordered construction plan.
+- **Owner path:** `packages/building/src/construction-plan-planner`
+- **Provides:** `building.construction-plan-planner.interface`
+- **Requires:** `building.construction-types`, `building.foundation-planner`, `building.construction-dependency-graph`, `building.work-package-planner`, `building.reachability-scaffold-planner`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_construction_plan_planner_errors_total`
+  - `building_construction_plan_planner_latency_ms`
+
+### `building.material-procurement-planner` — Material Procurement Planner
+
+- **Responsibility:** Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures.
+- **Owner path:** `packages/building/src/material-procurement-planner`
+- **Provides:** `building.material-procurement-planner.interface`
+- **Requires:** `building.blueprint-ir`, `building.material-preflight`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Validation is pure and deterministic; the same input yields the same verdict.
+  - Invalid input is rejected with a typed reason and causes no partial mutation.
+- **Failure modes:**
+  - Unknown rule or malformed input: reject closed with an actionable reason.
+- **Tests:**
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
+- **Metrics:**
+  - `building_material_procurement_planner_errors_total`
+  - `building_material_procurement_planner_latency_ms`
 
 ---
 

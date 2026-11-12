@@ -83,6 +83,7 @@ export interface PlannerBlueprintRequest {
 export type ConstructionPhase =
     | 'site-clear'
     | 'foundation'
+    | 'scaffold'
     | 'walls'
     | 'floors'
     | 'roof'

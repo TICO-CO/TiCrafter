@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 532  
+**Relations:** 549  
 **State owners:** 23  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 22 |
-| `depends_on` | 350 |
+| `depends_on` | 367 |
 | `observes` | 8 |
 | `persists_to` | 2 |
 | `proposes_to` | 7 |
@@ -642,6 +642,23 @@ None.
 | `rel.0084` | `building.template-watchtower` | `depends_on` | `building.blueprint-ir` | `in-process` | sync | hard | depends on payload for Blueprint IR | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Watchtower Template depends on Blueprint IR. |
 | `rel.0085` | `building.work-package-partitioner` | `depends_on` | `building.blueprint-ir` | `in-process` | sync | hard | depends on payload for Blueprint IR | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Work Package Partitioner depends on Blueprint IR. |
 | `rel.0086` | `building.work-package-partitioner` | `reads` | `sip.structure-store` | `ws` | sync | hard | reads payload for Structure Store | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Work Package Partitioner reads Structure Store. |
+| `rel.0533` | `building.construction-types` | `depends_on` | `building.blueprint-ir` | `in-process` | sync | hard | depends on payload for building.blueprint-ir | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Plan Types depends on building.blueprint-ir. |
+| `rel.0534` | `building.blueprint-document` | `depends_on` | `building.blueprint-ir` | `in-process` | sync | hard | depends on payload for building.blueprint-ir | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Document depends on building.blueprint-ir. |
+| `rel.0535` | `building.blueprint-composer` | `depends_on` | `building.blueprint-document` | `in-process` | sync | hard | depends on payload for Blueprint Document | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Composer depends on Blueprint Document. |
+| `rel.0536` | `building.blueprint-composer` | `depends_on` | `building.seeded-random` | `in-process` | sync | hard | depends on payload for Seeded Random | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Composer depends on Seeded Random. |
+| `rel.0537` | `building.blueprint-composer` | `depends_on` | `building.style-palette` | `in-process` | sync | hard | depends on payload for Style Palette | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Composer depends on Style Palette. |
+| `rel.0538` | `building.blueprint-composer` | `depends_on` | `building.motif-library` | `in-process` | sync | hard | depends on payload for Motif Library | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Composer depends on Motif Library. |
+| `rel.0539` | `building.blueprint-source-resolver` | `depends_on` | `building.blueprint-composer` | `in-process` | sync | hard | depends on payload for Blueprint Composer | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Source Resolver depends on Blueprint Composer. |
+| `rel.0540` | `building.blueprint-source-resolver` | `depends_on` | `building.observed-blueprint` | `in-process` | sync | hard | depends on payload for Observed Blueprint | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Blueprint Source Resolver depends on Observed Blueprint. |
+| `rel.0541` | `building.foundation-planner` | `depends_on` | `building.site-planner` | `in-process` | sync | hard | depends on payload for Site Planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Foundation Planner depends on Site Planner. |
+| `rel.0542` | `building.construction-dependency-graph` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | depends on payload for Construction Plan Types | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Dependency Graph depends on Construction Plan Types. |
+| `rel.0543` | `building.work-package-planner` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | depends on payload for Construction Plan Types | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Work Package Planner depends on Construction Plan Types. |
+| `rel.0544` | `building.construction-plan-planner` | `depends_on` | `building.foundation-planner` | `in-process` | sync | hard | depends on payload for Foundation Planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Plan Planner depends on Foundation Planner. |
+| `rel.0545` | `building.construction-plan-planner` | `depends_on` | `building.construction-dependency-graph` | `in-process` | sync | hard | depends on payload for Construction Dependency Graph | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Plan Planner depends on Construction Dependency Graph. |
+| `rel.0546` | `building.construction-plan-planner` | `depends_on` | `building.work-package-planner` | `in-process` | sync | hard | depends on payload for Work Package Planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Plan Planner depends on Work Package Planner. |
+| `rel.0547` | `building.construction-plan-planner` | `depends_on` | `building.material-procurement-planner` | `in-process` | sync | hard | depends on payload for Material Procurement Planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Plan Planner depends on Material Procurement Planner. |
+| `rel.0548` | `building.material-procurement-planner` | `depends_on` | `building.material-preflight` | `in-process` | sync | hard | depends on payload for building.material-preflight | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Material Procurement Planner depends on building.material-preflight. |
+| `rel.0549` | `building.site-planner` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | depends on payload for Construction Plan Types | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Site Planner depends on Construction Plan Types. |
 
 ## Bot Runtime and Mineflayer Adapter relations
 

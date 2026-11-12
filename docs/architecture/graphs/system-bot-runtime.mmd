@@ -1,147 +1,147 @@
 flowchart LR
 n54["Connection Lifecycle"]
-n111["Join and Auth"]
+n125["Join and Auth"]
 n55["Mineflayer Event Bridge"]
 n56["World Cache Adapter"]
-n112["Reach and Rate Guard"]
+n126["Reach and Rate Guard"]
 n57["Action Executor"]
-n113["State Digest Collector"]
+n127["State Digest Collector"]
 n58["Guardian Hook"]
 n59["Skill Host"]
-n114["Perception Host"]
+n128["Perception Host"]
 n60["Agent Loop"]
 n61["Chat Adapter"]
-n115["Agency State Adapter"]
+n129["Agency State Adapter"]
 n62["Reconnect Supervisor"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n134["Affordance Enumerator (Brains)"]
-n146["Config Schema Validator (Config and Profiles)"]
+n148["Affordance Enumerator (Brains)"]
+n160["Config Schema Validator (Config and Profiles)"]
 n24(["Minecraft 1.20.1 LAN Server"])
 n70["Deterministic Policy (Brains)"]
-n164["Block Update Listener (Perception)"]
+n178["Block Update Listener (Perception)"]
 n69["Reflex Guardian Loop (Brains)"]
-n152["Profile Resolver (Config and Profiles)"]
-n231["Detector Pipeline (Perception)"]
-n224["Ring Sampler (Perception)"]
-n177["Delta Sync Planner (Bot Registry and Profiles)"]
-n158["Reconnect Supervisor (Transport and Protocol)"]
+n166["Profile Resolver (Config and Profiles)"]
+n245["Detector Pipeline (Perception)"]
+n238["Ring Sampler (Perception)"]
+n191["Delta Sync Planner (Bot Registry and Profiles)"]
+n172["Reconnect Supervisor (Transport and Protocol)"]
 n84["Skill Lifecycle Executor (Skill Runtime)"]
 n85["Skill Tick Scheduler (Skill Runtime)"]
-n156["Event Stream (Transport and Protocol)"]
+n170["Event Stream (Transport and Protocol)"]
 n52["Skill Context Builder (Skill Runtime)"]
 n53["Block Executor (Building)"]
 n109["Container Refill Adapter (Building)"]
 n106["Reachability and Scaffold Planner (Building)"]
 n67["Pause and Resume Controller (Ops and Observability)"]
 n65["Emergency Stop Controller (Autonomy and Safety)"]
-n242["Collect (Skill Library)"]
-n238["Craft (Skill Library)"]
-n220["Deposit (Skill Library)"]
-n244["Eat (Skill Library)"]
-n246["Flee or Defend (Skill Library)"]
-n187["Harvest Farm (Skill Library)"]
-n241["Mine (Skill Library)"]
-n239["Navigate (Skill Library)"]
-n188["Plant Farm (Skill Library)"]
-n245["Sleep (Skill Library)"]
-n243["Smelt (Skill Library)"]
-n223["Withdraw (Skill Library)"]
+n256["Collect (Skill Library)"]
+n252["Craft (Skill Library)"]
+n234["Deposit (Skill Library)"]
+n258["Eat (Skill Library)"]
+n260["Flee or Defend (Skill Library)"]
+n201["Harvest Farm (Skill Library)"]
+n255["Mine (Skill Library)"]
+n253["Navigate (Skill Library)"]
+n202["Plant Farm (Skill Library)"]
+n259["Sleep (Skill Library)"]
+n257["Smelt (Skill Library)"]
+n237["Withdraw (Skill Library)"]
 n33["Bot Process Supervisor (Coordinator Runtime)"]
-n252["Goal Arbiter (Agency)"]
-n253["Intention Manager (Agency)"]
-n213["Agency State (Agency)"]
+n266["Goal Arbiter (Agency)"]
+n267["Intention Manager (Agency)"]
+n227["Agency State (Agency)"]
 n71["Laya Client (Brains)"]
-n254["Social Engine (Agency)"]
-n210["Agency State Store (Bot Registry and Profiles)"]
-n255["Agent Episode Repository (Memory and Persistence)"]
+n268["Social Engine (Agency)"]
+n224["Agency State Store (Bot Registry and Profiles)"]
+n269["Agent Episode Repository (Memory and Persistence)"]
 n57 -->|depends_on| n54
-n57 -->|depends_on| n112
+n57 -->|depends_on| n126
 n57 -->|depends_on| n63
-n134 -->|depends_on| n56
-n134 -->|depends_on| n69
-n54 -->|depends_on| n146
+n148 -->|depends_on| n56
+n148 -->|depends_on| n69
+n54 -->|depends_on| n160
 n54 -->|depends_on| n24
-n70 -->|depends_on| n134
-n70 -->|depends_on| n113
-n70 -->|subscribes| n156
+n70 -->|depends_on| n148
+n70 -->|depends_on| n127
+n70 -->|subscribes| n170
 n55 -->|depends_on| n54
-n55 -->|delegates_to| n164
+n55 -->|delegates_to| n178
 n58 -->|depends_on| n63
 n58 -->|delegates_to| n69
-n111 -->|depends_on| n54
-n111 -->|depends_on| n152
-n114 -->|depends_on| n231
-n114 -->|depends_on| n224
-n112 -->|depends_on| n146
+n125 -->|depends_on| n54
+n125 -->|depends_on| n166
+n128 -->|depends_on| n245
+n128 -->|depends_on| n238
+n126 -->|depends_on| n160
 n62 -->|depends_on| n54
-n62 -->|delegates_to| n177
-n62 -->|depends_on| n158
+n62 -->|delegates_to| n191
+n62 -->|depends_on| n172
 n59 -->|depends_on| n84
 n59 -->|depends_on| n85
-n113 -->|depends_on| n54
-n113 -->|depends_on| n56
-n113 -->|publishes| n156
+n127 -->|depends_on| n54
+n127 -->|depends_on| n56
+n127 -->|publishes| n170
 n56 -->|depends_on| n55
-n56 -->|delegates_to| n224
+n56 -->|delegates_to| n238
 n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
 n53 -->|depends_on| n63
 n109 -->|depends_on| n57
 n106 -->|reads| n56
-n152 -->|depends_on| n146
+n166 -->|depends_on| n160
 n67 -->|controls| n59
-n67 -->|depends_on| n156
+n67 -->|depends_on| n170
 n63 -->|validates| n57
 n63 -->|validates| n53
 n63 -->|reads| n69
 n65 -->|controls| n57
-n65 -->|depends_on| n156
+n65 -->|depends_on| n170
 n69 -->|controls| n63
 n52 -->|reads| n56
 n84 -->|depends_on| n52
 n85 -->|reads| n69
 n85 -->|depends_on| n84
-n242 -->|depends_on| n57
-n242 -->|depends_on| n241
-n242 -->|depends_on| n239
-n238 -->|depends_on| n57
-n238 -->|depends_on| n52
-n220 -->|depends_on| n57
-n244 -->|depends_on| n57
-n246 -->|depends_on| n57
-n246 -->|depends_on| n239
-n187 -->|depends_on| n57
-n187 -->|depends_on| n239
-n241 -->|depends_on| n57
-n241 -->|depends_on| n239
-n239 -->|depends_on| n57
-n188 -->|depends_on| n57
-n188 -->|depends_on| n239
-n245 -->|depends_on| n57
-n245 -->|depends_on| n239
-n243 -->|depends_on| n57
-n243 -->|depends_on| n239
-n223 -->|depends_on| n57
+n256 -->|depends_on| n57
+n256 -->|depends_on| n255
+n256 -->|depends_on| n253
+n252 -->|depends_on| n57
+n252 -->|depends_on| n52
+n234 -->|depends_on| n57
+n258 -->|depends_on| n57
+n260 -->|depends_on| n57
+n260 -->|depends_on| n253
+n201 -->|depends_on| n57
+n201 -->|depends_on| n253
+n255 -->|depends_on| n57
+n255 -->|depends_on| n253
+n253 -->|depends_on| n57
+n202 -->|depends_on| n57
+n202 -->|depends_on| n253
+n259 -->|depends_on| n57
+n259 -->|depends_on| n253
+n257 -->|depends_on| n57
+n257 -->|depends_on| n253
+n237 -->|depends_on| n57
 n33 -->|controls| n54
-n71 -->|depends_on| n134
+n71 -->|depends_on| n148
 n71 -->|depends_on| n70
-n164 -->|publishes| n156
-n60 -->|depends_on| n252
-n60 -->|depends_on| n253
-n60 -->|depends_on| n213
+n178 -->|publishes| n170
+n60 -->|depends_on| n266
+n60 -->|depends_on| n267
+n60 -->|depends_on| n227
 n60 -->|delegates_to| n71
 n60 -->|delegates_to| n70
-n60 -->|depends_on| n113
+n60 -->|depends_on| n127
 n60 -->|delegates_to| n59
-n61 -->|depends_on| n254
-n61 -->|publishes| n156
-n115 -->|persists_to| n210
-n60 -->|persists_to| n255
-n253 -->|depends_on| n252
-n213 -->|depends_on| n253
-n254 -->|proposes_to| n61
-n210 -->|depends_on| n213
+n61 -->|depends_on| n268
+n61 -->|publishes| n170
+n129 -->|persists_to| n224
+n60 -->|persists_to| n269
+n267 -->|depends_on| n266
+n227 -->|depends_on| n267
+n268 -->|proposes_to| n61
+n224 -->|depends_on| n227
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n54,n111,n55,n56,n112,n57,n113,n58,n59,n114,n60,n61,n115,n62 internal;
-class n63,n134,n146,n70,n164,n69,n152,n231,n224,n177,n158,n84,n85,n156,n52,n53,n109,n106,n67,n65,n242,n238,n220,n244,n246,n187,n241,n239,n188,n245,n243,n223,n33,n252,n253,n213,n71,n254,n210,n255,n24 external;
+class n54,n125,n55,n56,n126,n57,n127,n58,n59,n128,n60,n61,n129,n62 internal;
+class n63,n148,n160,n70,n178,n69,n166,n245,n238,n191,n172,n84,n85,n170,n52,n53,n109,n106,n67,n65,n256,n252,n234,n258,n260,n201,n255,n253,n202,n259,n257,n237,n33,n266,n267,n227,n71,n268,n224,n269,n24 external;

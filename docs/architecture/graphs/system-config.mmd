@@ -1,17 +1,17 @@
 flowchart LR
-n147["Environment Parser"]
-n146["Config Schema Validator"]
-n152["Profile Resolver"]
-n234["Hardware Probe"]
-n162["Secrets Loader"]
-n212["Name Pool Validator"]
-n235["Laya Runtime Resolver"]
-n263["Fail Fast Handler"]
+n161["Environment Parser"]
+n160["Config Schema Validator"]
+n166["Profile Resolver"]
+n248["Hardware Probe"]
+n176["Secrets Loader"]
+n226["Name Pool Validator"]
+n249["Laya Runtime Resolver"]
+n277["Fail Fast Handler"]
 n54["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
-n111["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
-n112["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
-n153["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n211["Name Pool Allocator (Bot Registry and Profiles)"]
+n125["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
+n126["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
+n167["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n225["Name Pool Allocator (Bot Registry and Profiles)"]
 n27(["Host Hardware"])
 n72["Process Bootstrap (Coordinator Runtime)"]
 n73["Service Composition (Coordinator Runtime)"]
@@ -19,39 +19,39 @@ n39["Confidence Calibrator (Laya Decision Service)"]
 n35["Execution Provider Selector (Laya Decision Service)"]
 n34["Model Loader (Laya Decision Service)"]
 n77["Decision Rate Limiter (Laya Decision Service)"]
-n232["Perception Rate Limiter (Perception)"]
+n246["Perception Rate Limiter (Perception)"]
 n41["OpenAI-Compatible Client (Cloud Planner Advisor)"]
-n159["Transport Authentication (Transport and Protocol)"]
-n54 -->|depends_on| n146
-n111 -->|depends_on| n54
-n111 -->|depends_on| n152
-n112 -->|depends_on| n146
-n153 -->|depends_on| n162
-n211 -->|depends_on| n212
-n146 -->|depends_on| n147
-n263 -->|depends_on| n146
-n234 -->|depends_on| n152
-n234 -->|depends_on| n27
-n235 -->|depends_on| n234
-n235 -->|depends_on| n152
-n212 -->|depends_on| n146
-n152 -->|depends_on| n146
-n162 -->|depends_on| n147
-n72 -->|depends_on| n146
-n72 -->|depends_on| n147
+n173["Transport Authentication (Transport and Protocol)"]
+n54 -->|depends_on| n160
+n125 -->|depends_on| n54
+n125 -->|depends_on| n166
+n126 -->|depends_on| n160
+n167 -->|depends_on| n176
+n225 -->|depends_on| n226
+n160 -->|depends_on| n161
+n277 -->|depends_on| n160
+n248 -->|depends_on| n166
+n248 -->|depends_on| n27
+n249 -->|depends_on| n248
+n249 -->|depends_on| n166
+n226 -->|depends_on| n160
+n166 -->|depends_on| n160
+n176 -->|depends_on| n161
+n72 -->|depends_on| n160
+n72 -->|depends_on| n161
 n72 -->|depends_on| n73
-n73 -->|depends_on| n152
-n39 -->|depends_on| n146
-n35 -->|depends_on| n234
+n73 -->|depends_on| n166
+n39 -->|depends_on| n160
+n35 -->|depends_on| n248
 n35 -->|controls| n34
-n34 -->|depends_on| n235
-n77 -->|depends_on| n152
-n232 -->|depends_on| n152
-n41 -->|depends_on| n146
-n41 -->|depends_on| n162
-n159 -->|depends_on| n153
-n159 -->|depends_on| n162
+n34 -->|depends_on| n249
+n77 -->|depends_on| n166
+n246 -->|depends_on| n166
+n41 -->|depends_on| n160
+n41 -->|depends_on| n176
+n173 -->|depends_on| n167
+n173 -->|depends_on| n176
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n147,n146,n152,n234,n162,n212,n235,n263 internal;
-class n54,n111,n112,n153,n211,n72,n73,n39,n35,n34,n77,n232,n41,n159,n27 external;
+class n161,n160,n166,n248,n176,n226,n249,n277 internal;
+class n54,n125,n126,n167,n225,n72,n73,n39,n35,n34,n77,n246,n41,n173,n27 external;

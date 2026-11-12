@@ -27,6 +27,9 @@ export type BuildingFailure =
     | { type: 'UNSUPPORTED_SOURCE'; source: string }
     | { type: 'RAW_BLUEPRINTS_DISABLED' }
     | { type: 'OBSERVATION_FAILED'; message: string }
+    | { type: 'SITE_REJECTED'; message: string }
+    | { type: 'FOUNDATION_FAILED'; message: string }
+    | { type: 'INVALID_CONSTRUCTION_PLAN'; message: string }
     | { type: 'STRUCTURAL_FAILURE'; position: Vec3 };
 
 export class BuildingFailures {
@@ -44,6 +47,26 @@ export class BuildingFailures {
 
     static observationFailed(message: string): BuildingFailure {
         return { type: 'OBSERVATION_FAILED', message };
+    }
+
+    static invalidBlueprint(message: string): BuildingFailure {
+        return { type: 'INVALID_BLUEPRINT', message };
+    }
+
+    static worldQueryFailed(message: string): BuildingFailure {
+        return { type: 'WORLD_QUERY_FAILED', message };
+    }
+
+    static siteRejected(message: string): BuildingFailure {
+        return { type: 'SITE_REJECTED', message };
+    }
+
+    static foundationFailed(message: string): BuildingFailure {
+        return { type: 'FOUNDATION_FAILED', message };
+    }
+
+    static invalidConstructionPlan(message: string): BuildingFailure {
+        return { type: 'INVALID_CONSTRUCTION_PLAN', message };
     }
 
     static structuralFailure(position: Vec3): BuildingFailure {
@@ -68,6 +91,9 @@ export class BuildingFailures {
             case 'TEMPLATE_FAILED':
             case 'COMPOSE_FAILED':
             case 'OBSERVATION_FAILED':
+            case 'SITE_REJECTED':
+            case 'FOUNDATION_FAILED':
+            case 'INVALID_CONSTRUCTION_PLAN':
                 return failure.message;
             case 'INVALID_ROTATION':
                 return `invalid blueprint rotation ${failure.value}`;

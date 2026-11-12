@@ -9,61 +9,61 @@ n87["Skill Checkpoint Manager"]
 n88["Skill Restore Validator"]
 n89["Typed Effects Emitter"]
 n90["Skill Preemption Handler"]
-n134["Affordance Enumerator (Brains)"]
+n148["Affordance Enumerator (Brains)"]
 n59["Skill Host (Bot Runtime and Mineflayer Adapter)"]
 n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n150["Resume Orchestrator (Bot Registry and Profiles)"]
+n164["Resume Orchestrator (Bot Registry and Profiles)"]
 n108["Material Preflight (Building)"]
 n45["Planner Semantic Validator (Cloud Planner Advisor)"]
-n142["Transaction Manager (Memory and Persistence)"]
-n173["SIP Revision Manager (Shared Infrastructure Plan)"]
-n183["Spatial Query Engine (World Model and Landmarks)"]
-n156["Event Stream (Transport and Protocol)"]
+n156["Transaction Manager (Memory and Persistence)"]
+n187["SIP Revision Manager (Shared Infrastructure Plan)"]
+n197["Spatial Query Engine (World Model and Landmarks)"]
+n170["Event Stream (Transport and Protocol)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n130["Metrics Registry (Ops and Observability)"]
+n144["Metrics Registry (Ops and Observability)"]
 n69["Reflex Guardian Loop (Brains)"]
-n238["Craft (Skill Library)"]
-n239["Navigate (Skill Library)"]
-n240["Place Build (Skill Library)"]
-n222["Skill Shared Utilities (Skill Library)"]
-n134 -->|depends_on| n56
-n134 -->|depends_on| n69
-n134 -->|depends_on| n83
+n252["Craft (Skill Library)"]
+n253["Navigate (Skill Library)"]
+n254["Place Build (Skill Library)"]
+n236["Skill Shared Utilities (Skill Library)"]
+n148 -->|depends_on| n56
+n148 -->|depends_on| n69
+n148 -->|depends_on| n83
 n59 -->|depends_on| n84
 n59 -->|depends_on| n85
 n56 -->|delegates_to| n52
-n150 -->|reads| n87
+n164 -->|reads| n87
 n108 -->|reads| n52
 n45 -->|reads| n83
-n45 -->|reads| n183
+n45 -->|reads| n197
 n63 -->|reads| n69
 n69 -->|controls| n63
-n173 -->|depends_on| n142
-n87 -->|depends_on| n142
+n187 -->|depends_on| n156
+n87 -->|depends_on| n156
 n52 -->|reads| n56
-n52 -->|reads| n173
+n52 -->|reads| n187
 n52 -->|depends_on| n87
-n52 -->|reads| n183
-n89 -->|publishes| n156
+n52 -->|reads| n197
+n89 -->|publishes| n170
 n84 -->|depends_on| n52
 n84 -->|depends_on| n89
 n84 -->|depends_on| n82
 n84 -->|depends_on| n83
 n90 -->|reads| n63
 n90 -->|depends_on| n84
-n86 -->|observes| n130
-n86 -->|publishes| n156
+n86 -->|observes| n144
+n86 -->|publishes| n170
 n88 -->|depends_on| n87
-n88 -->|depends_on| n183
+n88 -->|depends_on| n197
 n83 -->|depends_on| n82
 n85 -->|reads| n69
 n85 -->|depends_on| n84
-n238 -->|depends_on| n52
-n239 -->|depends_on| n82
-n240 -->|depends_on| n52
-n222 -->|depends_on| n52
-n222 -->|depends_on| n183
+n252 -->|depends_on| n52
+n253 -->|depends_on| n82
+n254 -->|depends_on| n52
+n236 -->|depends_on| n52
+n236 -->|depends_on| n197
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n82,n83,n84,n85,n52,n86,n87,n88,n89,n90 internal;
-class n134,n59,n56,n150,n108,n45,n142,n173,n183,n156,n63,n130,n69,n238,n239,n240,n222 external;
+class n148,n59,n56,n164,n108,n45,n156,n187,n197,n170,n63,n144,n69,n252,n253,n254,n236 external;

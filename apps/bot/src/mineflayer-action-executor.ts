@@ -41,6 +41,11 @@ const FURNACE_SLOTS: Record<ContainerSlot, number> = {
 
 const DEFAULT_ACTION_TIMEOUT_MILLISECONDS = 20_000;
 const CONTAINER_MOVE_TIMEOUT_MILLISECONDS = 10_000;
+const LONG_DISTANCE_SPRINT_THRESHOLD = 24;
+
+type ShortcutCapablePathfinder = Bot['pathfinder'] & {
+    enablePathShortcut: boolean;
+};
 
 export class MineflayerActionExecutor implements ActionDispatchPort {
     private active: ActiveAction | null = null;
@@ -65,7 +70,10 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     install(): Result<void, string> {
         const [, error] = attempt(() => {
             this.bot.loadPlugin(pathfinder);
-            this.bot.pathfinder.setMovements(new Movements(this.bot));
+            const movements = new Movements(this.bot);
+            movements.allowSprinting = true;
+            movements.allowParkour = true;
+            this.bot.pathfinder.setMovements(movements);
         });
         if (error) return [null, this.describe(error)];
         return [undefined, null];
@@ -176,6 +184,9 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     }
 
     private async moveTo(position: CoreVec3, range: number): Promise<Result<void, string>> {
+        const pathfinder = this.bot.pathfinder as ShortcutCapablePathfinder;
+        const previousPathShortcut = pathfinder.enablePathShortcut;
+        pathfinder.enablePathShortcut = previousPathShortcut || this.isLongDistance(position);
         const [, error] = await attemptAsync(() =>
             this.withTimeout(
                 this.bot.pathfinder.goto(
@@ -184,8 +195,14 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 this.timeoutMilliseconds,
             ),
         );
+        pathfinder.enablePathShortcut = previousPathShortcut;
         if (error) return [null, this.describe(error)];
         return [undefined, null];
+    }
+
+    private isLongDistance(position: CoreVec3): boolean {
+        const distance = this.bot.entity.position.distanceTo(this.vector(position));
+        return distance > LONG_DISTANCE_SPRINT_THRESHOLD;
     }
 
     private async followPath(

@@ -6,6 +6,10 @@ import { Vec3 } from 'vec3';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { ReachRateGuard } from './reach-rate-guard.js';
 
+type ShortcutCapablePathfinder = Bot['pathfinder'] & {
+    enablePathShortcut: boolean;
+};
+
 interface FakeItem {
     name: string;
     count: number;
@@ -27,6 +31,7 @@ interface FakeBotState {
     activatedBlock: { name: string } | null;
     movedSlots: Array<[number, number]>;
     pathfinderStops: number;
+    pathShortcutValues: boolean[];
     controlClears: number;
     entities: Record<string, unknown>;
     container: FakeContainer;
@@ -48,6 +53,7 @@ function createFakeBot(): FakeBotState {
         activatedBlock: null,
         movedSlots: [],
         pathfinderStops: 0,
+        pathShortcutValues: [],
         controlClears: 0,
         entities: {},
         container: {
@@ -64,6 +70,23 @@ function createFakeBot(): FakeBotState {
         { name: 'coal', count: 8 },
         { name: 'iron_ingot', count: 2 },
     ];
+    let pathShortcutEnabled = false;
+    const pathfinder = {
+        get enablePathShortcut(): boolean {
+            return pathShortcutEnabled;
+        },
+        set enablePathShortcut(value: boolean) {
+            pathShortcutEnabled = value;
+        },
+        setMovements: () => undefined,
+        stop: () => {
+            state.pathfinderStops += 1;
+        },
+        goto: async () => {
+            state.pathShortcutValues.push(pathShortcutEnabled);
+            Object.keys(state.entities).forEach((key) => delete state.entities[key]);
+        },
+    };
     const bot = {
         entity: { position: new Vec3(4, 64, 0) },
         entities: state.entities,
@@ -77,15 +100,7 @@ function createFakeBot(): FakeBotState {
             },
             blocksByName: { crafting_table: { id: 5 } },
         },
-        pathfinder: {
-            setMovements: () => undefined,
-            stop: () => {
-                state.pathfinderStops += 1;
-            },
-            goto: async () => {
-                Object.keys(state.entities).forEach((key) => delete state.entities[key]);
-            },
-        },
+        pathfinder,
         loadPlugin: () => undefined,
         blockAt: (position: Vec3) => ({
             name: 'oak_planks',
@@ -251,12 +266,45 @@ describe('mineflayer action executor', () => {
         expect(state.movedSlots).toEqual([[2, 3]]);
     });
 
+    it('enables path shortcuts for long moves', async () => {
+        const state = createFakeBot();
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'move-to',
+            position: { x: 40, y: 64, z: 0 },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.pathShortcutValues).toEqual([true]);
+        expect((state.bot.pathfinder as ShortcutCapablePathfinder).enablePathShortcut).toBe(false);
+    });
+
+    it('keeps path shortcuts disabled for short moves', async () => {
+        const state = createFakeBot();
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'move-to',
+            position: { x: 12, y: 64, z: 0 },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.pathShortcutValues).toEqual([false]);
+        expect((state.bot.pathfinder as ShortcutCapablePathfinder).enablePathShortcut).toBe(false);
+    });
+
     it('stops movement when an action times out', async () => {
         const state = createFakeBot();
         const bot = state.bot as unknown as {
-            pathfinder: { goto: () => Promise<void> };
+            pathfinder: ShortcutCapablePathfinder & { goto: () => Promise<void> };
         };
-        bot.pathfinder.goto = () => new Promise<void>(() => undefined);
+        bot.pathfinder.goto = () => {
+            state.pathShortcutValues.push(bot.pathfinder.enablePathShortcut);
+            return new Promise<void>(() => undefined);
+        };
         const executor = new MineflayerActionExecutor(state.bot, logger, 10);
         const [handle] = executor.dispatch({
             kind: 'move-to',
@@ -269,6 +317,8 @@ describe('mineflayer action executor', () => {
         expect(outcome?.failure?.class).toBe('timeout');
         expect(state.pathfinderStops > 0).toBe(true);
         expect(state.controlClears > 0).toBe(true);
+        expect(state.pathShortcutValues).toEqual([true]);
+        expect(bot.pathfinder.enablePathShortcut).toBe(false);
         expect(executor.lastFailure?.class).toBe('timeout');
         expect(executor.lastFailureAt === null).toBe(false);
     });
