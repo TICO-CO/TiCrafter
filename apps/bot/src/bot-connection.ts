@@ -7,6 +7,7 @@ import {
     BLOCK_UPDATE_EVENT,
     BOT_AUTONOMY_PAUSE,
     BOT_AUTONOMY_RESUME,
+    BOT_PROJECT_PROPOSE,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
@@ -14,6 +15,7 @@ import {
     BOT_SKILL_START,
     botAutonomyPauseSchema,
     botAutonomyResumeSchema,
+    botProjectResponseSchema,
     botSafetyResumeSchema,
     botSafetyStopSchema,
     botSkillCancelSchema,
@@ -89,6 +91,9 @@ export class BotConnection {
     private autonomyStarted = false;
     private autonomyPausedReason: string | null = null;
     private pendingResume: SessionResume | null = null;
+    private homePosition: { x: number; y: number; z: number } | null = null;
+    private role: string | null = null;
+    private homeProjectRequested = false;
     private lastReflexAt = 0;
 
     constructor(private readonly options: BotConnectionOptions) {}
@@ -117,6 +122,8 @@ export class BotConnection {
             return [null, hello.reason ?? 'coordinator rejected session'];
         }
         this.pendingResume = hello.resume ?? null;
+        this.homePosition = BotConnection.homeAnchor(this.pendingResume);
+        this.role = this.pendingResume?.role ?? null;
         this.options.logger.info({ epoch: hello.epoch }, 'coordinator accepted session');
 
         const [bot, botError] = attempt<Bot>(() =>
@@ -322,7 +329,11 @@ export class BotConnection {
         const [runtime, runtimeError] = AgencyRuntime.create(
             {
                 botId: this.options.botId,
-                context: new AgencySnapshotSource({ bot, world }),
+                context: new AgencySnapshotSource({
+                    bot,
+                    world,
+                    home: () => this.homePosition,
+                }),
                 skills,
                 persistence,
                 logger: this.options.logger,
@@ -370,6 +381,7 @@ export class BotConnection {
                 minimumConfidence: this.options.config.decision.minConfidence,
                 policy: new DeterministicPolicy(),
             });
+            const agencyRuntime = this.agencyRuntime;
             const autonomy = new TaskAutonomy({
                 botId: this.options.botId,
                 transport: this.transport,
@@ -377,6 +389,15 @@ export class BotConnection {
                 skills: this.skills,
                 snapshot: { read: () => this.readTaskSnapshot() },
                 logger: this.options.logger,
+                jobMarket:
+                    agencyRuntime === null
+                        ? undefined
+                        : {
+                              context: () => ({
+                                  ...agencyRuntime.jobContext(),
+                                  role: this.role,
+                              }),
+                          },
                 canClaim: () =>
                     this.agencyRuntime?.hasActiveGoal !== true &&
                     this.skills?.activeSkillId === null,
@@ -386,6 +407,9 @@ export class BotConnection {
             autonomy.start();
             if (this.autonomyPausedReason !== null) autonomy.pause(this.autonomyPausedReason);
             this.agencyRuntime?.start();
+            if (this.options.config.agency.enabled && this.homePosition === null) {
+                void this.ensureHomeProject(this.transport);
+            }
         }
     }
 
@@ -438,6 +462,60 @@ export class BotConnection {
         this.guardian?.stop();
         this.skills?.stop();
         this.autonomyStarted = false;
+    }
+
+    private async ensureHomeProject(transport: BotTransportClient): Promise<void> {
+        if (this.homeProjectRequested || this.homePosition !== null || this.bot === null) return;
+        this.homeProjectRequested = true;
+        const position = this.bot.entity?.position;
+        if (position === undefined) return;
+        const anchor = {
+            x: Math.floor(position.x),
+            y: Math.floor(position.y),
+            z: Math.floor(position.z),
+        };
+        const bbox = {
+            min: anchor,
+            max: { x: anchor.x + 6, y: anchor.y + 3, z: anchor.z + 6 },
+        };
+        const [envelope, requestError] = await transport.request(BOT_PROJECT_PROPOSE, {
+            botId: this.options.botId,
+            title: `Home of ${this.options.name}`,
+            kind: 'home',
+            anchor,
+            bbox,
+            storagePosition: { x: anchor.x + 1, y: anchor.y + 1, z: anchor.z + 5 },
+        });
+        if (requestError || envelope === null) {
+            this.options.logger.warn({ error: requestError }, 'home project request failed');
+            return;
+        }
+        const parsed = botProjectResponseSchema.safeParse(envelope.payload);
+        if (!parsed.success || !parsed.data.ok || parsed.data.project === null) {
+            this.options.logger.info(
+                { reason: parsed.success ? parsed.data.reason : 'invalid response' },
+                'home project was not accepted',
+            );
+            return;
+        }
+        this.homePosition = parsed.data.project.anchor;
+        this.options.logger.info(
+            { projectId: parsed.data.project.id },
+            'personal home project created',
+        );
+    }
+
+    private static homeAnchor(
+        resume: SessionResume | null,
+    ): { x: number; y: number; z: number } | null {
+        if (resume?.projects === undefined) return null;
+        return (
+            resume.projects.find(
+                (project) =>
+                    project.kind === 'home' &&
+                    (project.status === 'proposed' || project.status === 'active'),
+            )?.anchor ?? null
+        );
     }
 
     private readTaskSnapshot(): TaskAutonomySnapshot {

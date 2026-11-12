@@ -3,6 +3,7 @@ export * from './goal-arbiter.js';
 export * from './goal-catalog.js';
 export * from './goal-generator.js';
 export * from './intention-manager.js';
+export * from './job-market-policy.js';
 export * from './needs-model.js';
 export * from './personality-model.js';
 export * from './routine-model.js';

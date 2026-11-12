@@ -24,15 +24,15 @@ describe('memory', () => {
         const migrationRunner = new MigrationRunner(database);
         const [firstVersion, firstError] = migrationRunner.run();
         expect(firstError).toBeNull();
-        expect(firstVersion).toBe(9);
+        expect(firstVersion).toBe(10);
 
         const [secondVersion, secondError] = migrationRunner.run();
         expect(secondError).toBeNull();
-        expect(secondVersion).toBe(9);
+        expect(secondVersion).toBe(10);
 
         const [currentVersion, currentError] = new SchemaVersionRegistry(database).current();
         expect(currentError).toBeNull();
-        expect(currentVersion).toBe(9);
+        expect(currentVersion).toBe(10);
 
         const tables = (
             database.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{
@@ -52,6 +52,7 @@ describe('memory', () => {
                 'planner_responses',
                 'agent_state',
                 'agent_episodes',
+                'personal_projects',
             ]),
         );
         database.close();

@@ -3,6 +3,7 @@ import type { StorageFailure } from '@ticrafter/memory';
 
 import type { ClaimRecord } from '../claims/index.js';
 import type { EditGrantRecord } from '../grants/index.js';
+import type { PersonalProjectRecord } from '../projects/index.js';
 import type { TaskRecord } from '../tasks/index.js';
 import type { AgencyStateRecord } from './agency-state-store.js';
 import type { BotDeltaSyncPlanner, BotStateDelta } from './delta-sync-planner.js';
@@ -10,6 +11,9 @@ import type { BotFailure, BotProfile, BotProfileStorePort } from './types.js';
 
 export interface BotResumePorts {
     agency: { load(botId: string): Result<AgencyStateRecord | null, StorageFailure> };
+    projects: {
+        listByBot(botId: string): Result<readonly PersonalProjectRecord[], StorageFailure>;
+    };
     claims: { listActive(): Result<readonly ClaimRecord[], StorageFailure> };
     tasks: {
         get(taskId: string): Result<TaskRecord | null, StorageFailure>;
@@ -27,6 +31,7 @@ export interface BotResumePlan {
     task: TaskRecord | null;
     claims: readonly ClaimRecord[];
     grants: readonly EditGrantRecord[];
+    projects: readonly PersonalProjectRecord[];
     checkpoint: unknown;
     delta: BotStateDelta;
 }
@@ -47,6 +52,11 @@ export class BotResumeOrchestrator {
         if (agencyError) return [null, { type: 'STORAGE', failure: agencyError }];
         const [task, taskError] = this.task(stored);
         if (taskError) return [null, taskError];
+        const [projects, projectError] = this.projects(botId);
+        if (projectError) return [null, projectError];
+        if (projects === null) {
+            return [null, { type: 'INVALID_PROFILE', message: 'projects missing' }];
+        }
         const [claims, claimError] = this.claims(botId);
         if (claimError) return [null, claimError];
         if (claims === null) {
@@ -76,6 +86,7 @@ export class BotResumeOrchestrator {
                 task,
                 claims,
                 grants,
+                projects,
                 checkpoint,
                 delta,
             },
@@ -102,6 +113,12 @@ export class BotResumeOrchestrator {
             )
             .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
         return [active[0] ?? null, null];
+    }
+
+    private projects(botId: string): Result<readonly PersonalProjectRecord[], BotFailure> {
+        const [projects, readError] = this.ports.projects.listByBot(botId);
+        if (readError) return [null, { type: 'STORAGE', failure: readError }];
+        return [projects, null];
     }
 
     private claims(botId: string): Result<readonly ClaimRecord[], BotFailure> {

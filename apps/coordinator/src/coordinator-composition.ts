@@ -85,8 +85,22 @@ import {
     PlannerRuntime,
     TaskIndependenceAuditor,
 } from './planner/index.js';
+import {
+    PersonalProjectRepository,
+    PersonalProjectService,
+    ProjectCommandHandler,
+    ProjectSipAdapter,
+} from './projects/index.js';
 import { SipReconciliationEngine, SipTransactionalCommitter } from './sip/index.js';
-import { TaskBoard, TaskCommandHandler, TaskLeaseReaper, TaskRepository } from './tasks/index.js';
+import {
+    CoordinatorJobOfferMarket,
+    JobCommandHandler,
+    JobOfferService,
+    TaskBoard,
+    TaskCommandHandler,
+    TaskLeaseReaper,
+    TaskRepository,
+} from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
@@ -167,7 +181,7 @@ export class CoordinatorComposition {
             tasks,
             logger: options.logger,
         });
-        claims = new ClaimService({
+        const claimService = new ClaimService({
             database: options.database,
             transactions,
             sessions: { isConnected: (botId) => sessions.get(botId) !== undefined },
@@ -176,6 +190,7 @@ export class CoordinatorComposition {
             },
             epoch: options.epoch,
         });
+        claims = claimService;
         grants = new GrantService({
             database: options.database,
             transactions,
@@ -227,10 +242,47 @@ export class CoordinatorComposition {
         });
         const agencyStore = new AgencyStateStore(options.database);
         const agentEpisodes = new AgentEpisodeRepository(options.database);
+        const projectRepository = new PersonalProjectRepository(options.database);
+        const projectService = new PersonalProjectService({
+            projects: projectRepository,
+            claims: {
+                acquire: (input, now) => {
+                    const [claim, claimError] = claimService.acquire(input, now);
+                    if (claimError) {
+                        return [null, CoordinatorComposition.describeFailure(claimError)];
+                    }
+                    if (claim === null) return [null, 'claim returned null'];
+                    return [{ id: claim.id, fencingToken: claim.fencingToken }, null];
+                },
+                release: (claimId, botId, fencingToken, now) => {
+                    const [, releaseError] = claimService.release(
+                        claimId,
+                        botId,
+                        fencingToken,
+                        now,
+                    );
+                    if (releaseError) {
+                        return [null, CoordinatorComposition.describeFailure(releaseError)];
+                    }
+                    return [undefined, null];
+                },
+            },
+            bots: botStore,
+            agency: agencyStore,
+            episodes: agentEpisodes,
+            events,
+            sip: new ProjectSipAdapter({
+                loadSnapshot: () => sip.loadSnapshot(),
+                commit: (input) => sip.commit(input),
+            }),
+            logger: options.logger,
+        });
+        const jobMarket = new JobOfferService(new CoordinatorJobOfferMarket(tasks, events));
         const botResume = new BotResumeOrchestrator(
             botStore,
             {
                 agency: agencyStore,
+                projects: projectRepository,
                 claims: claimRepository,
                 tasks: taskRepository,
                 grants: grantRepository,
@@ -272,6 +324,12 @@ export class CoordinatorComposition {
             decisionTrace,
         );
         const taskCommands = new TaskCommandHandler(tasks, transport, options.logger);
+        const projectCommands = new ProjectCommandHandler(
+            projectService,
+            transport,
+            options.logger,
+        );
+        const jobCommands = new JobCommandHandler(jobMarket, transport, options.logger);
         const handshake = new SessionHandshake({
             epoch: options.epoch,
             botNames: options.config.botNames,
@@ -371,6 +429,14 @@ export class CoordinatorComposition {
             onDecisionRequest: (connection, payload, envelope) => {
                 void decisionAdapter.handle(connection, payload, envelope);
             },
+            onProjectPropose: (connection, payload, envelope) =>
+                projectCommands.handlePropose(connection, payload, envelope),
+            onProjectAbandon: (connection, payload, envelope) =>
+                projectCommands.handleAbandon(connection, payload, envelope),
+            onJobOffers: (connection, payload, envelope) =>
+                jobCommands.handleOffers(connection, payload, envelope),
+            onJobDecide: (connection, payload, envelope) =>
+                jobCommands.handleDecide(connection, payload, envelope),
             onTaskClaim: (connection, payload, envelope) =>
                 taskCommands.handleClaim(connection, payload, envelope),
             onTaskRenew: (connection, payload, envelope) =>

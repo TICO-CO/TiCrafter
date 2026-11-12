@@ -111,13 +111,41 @@ const sessionResumeTaskSchema = zod.object({
     requiredRole: zod.enum(['builder', 'farmer', 'miner', 'scout', 'hauler', 'guard']).nullable(),
 });
 
+const projectPositionSchema = zod.object({
+    x: zod.number(),
+    y: zod.number(),
+    z: zod.number(),
+});
+
+const projectBboxSchema = zod.object({
+    min: projectPositionSchema,
+    max: projectPositionSchema,
+});
+
+const resumeProjectSchema = zod.object({
+    id: zod.string().min(1),
+    botId: zod.string().min(1),
+    title: zod.string().min(1),
+    kind: zod.enum(['home', 'storage', 'build']),
+    status: zod.enum(['proposed', 'active', 'completed', 'abandoned', 'failed']),
+    anchor: projectPositionSchema,
+    bbox: projectBboxSchema,
+    structureId: zod.string().min(1).nullable(),
+    storageId: zod.string().min(1).nullable(),
+});
+
 export const sessionResumeSchema = zod.object({
     task: sessionResumeTaskSchema.nullable(),
     fencingToken: zod.number().int().nonnegative().nullable(),
     leaseUntil: zod.string().nullable(),
     checkpoint: zod.unknown().nullable().optional(),
     sipRevision: zod.number().int().nonnegative(),
+    role: zod
+        .enum(['builder', 'farmer', 'miner', 'scout', 'hauler', 'guard'])
+        .nullable()
+        .optional(),
     agency: agencyStateSchema.nullable().optional(),
+    projects: zod.array(resumeProjectSchema).optional(),
 });
 
 export const sessionHelloResponseSchema = zod.object({
@@ -453,6 +481,98 @@ export const decisionResponseSchema = zod.object({
     reason: zod.string().optional(),
 });
 
+const projectClaimSchema = zod.object({
+    claimId: zod.string().min(1),
+    fencingToken: zod.number().int().nonnegative(),
+});
+
+export const botProjectProposeSchema = zod.object({
+    botId: zod.string().min(1),
+    title: zod.string().min(1),
+    kind: zod.enum(['home', 'storage', 'build']),
+    anchor: projectPositionSchema,
+    bbox: projectBboxSchema,
+    storagePosition: projectPositionSchema.nullable().optional(),
+});
+
+export const projectRecordSchema = zod.object({
+    id: zod.string().min(1),
+    botId: zod.string().min(1),
+    title: zod.string().min(1),
+    kind: zod.enum(['home', 'storage', 'build']),
+    status: zod.enum(['proposed', 'active', 'completed', 'abandoned', 'failed']),
+    anchor: projectPositionSchema,
+    bbox: projectBboxSchema,
+    claims: zod.array(projectClaimSchema),
+    structureId: zod.string().min(1).nullable(),
+    storageId: zod.string().min(1).nullable(),
+    reason: zod.string().nullable(),
+    createdAt: zod.string().min(1),
+    updatedAt: zod.string().min(1),
+});
+
+export const botProjectResponseSchema = zod.object({
+    ok: zod.boolean(),
+    project: projectRecordSchema.nullable(),
+    reason: zod.string().optional(),
+});
+
+export const botProjectAbandonSchema = zod.object({
+    botId: zod.string().min(1),
+    projectId: zod.string().min(1),
+    reason: zod.string().min(1),
+});
+
+export const botProjectAbandonResponseSchema = zod.object({
+    ok: zod.boolean(),
+    project: projectRecordSchema.nullable(),
+    reason: zod.string().optional(),
+});
+
+const jobOfferSchema = zod.object({
+    taskId: zod.string().min(1),
+    title: zod.string().min(1),
+    priority: zod.number(),
+    skillId: zod.string().min(1).nullable(),
+    target: projectPositionSchema.nullable(),
+    requiredRole: taskRoleSchema.nullable(),
+    distance: zod.number().nullable(),
+});
+
+export const botJobOffersSchema = zod.object({
+    botId: zod.string().min(1),
+    at: zod.string().min(1),
+    role: taskRoleSchema.nullable(),
+    position: projectPositionSchema.nullable(),
+    inventory: zod.array(taskInventoryItemSchema),
+});
+
+export const botJobOffersResponseSchema = zod.object({
+    ok: zod.boolean(),
+    offers: zod.array(jobOfferSchema),
+    reason: zod.string().optional(),
+});
+
+export const botJobDecideSchema = zod.object({
+    botId: zod.string().min(1),
+    taskId: zod.string().min(1),
+    decision: zod.enum(['accept', 'defer', 'decline']),
+    reason: zod.string().min(1),
+    role: taskRoleSchema.nullable(),
+    position: projectPositionSchema.nullable(),
+    inventory: zod.array(taskInventoryItemSchema),
+});
+
+export const botJobDecideResponseSchema = zod.object({
+    ok: zod.boolean(),
+    taskId: zod.string().min(1),
+    offer: jobOfferSchema.nullable(),
+    task: taskAssignmentSchema.nullable(),
+    fencingToken: zod.number().int().nonnegative().nullable(),
+    leaseUntil: zod.string().min(1).nullable(),
+    reason: zod.string().optional(),
+});
+
 export type AgencyTraitsPayload = zod.infer<typeof agencyTraitsSchema>;
 export type AgencyNeedsPayload = zod.infer<typeof agencyNeedsSchema>;
 export type AgencyIntentionPayload = zod.infer<typeof agencyIntentionSchema>;
@@ -486,3 +606,14 @@ export type BotTaskRenew = zod.infer<typeof botTaskRenewSchema>;
 export type BotTaskComplete = zod.infer<typeof botTaskCompleteSchema>;
 export type BotTaskFail = zod.infer<typeof botTaskFailSchema>;
 export type BotTaskResponse = zod.infer<typeof botTaskResponseSchema>;
+export type BotProjectPropose = zod.infer<typeof botProjectProposeSchema>;
+export type BotProjectResponse = zod.infer<typeof botProjectResponseSchema>;
+export type BotProjectAbandon = zod.infer<typeof botProjectAbandonSchema>;
+export type BotProjectAbandonResponse = zod.infer<typeof botProjectAbandonResponseSchema>;
+export type ProjectRecordPayload = zod.infer<typeof projectRecordSchema>;
+export type BotJobOffers = zod.infer<typeof botJobOffersSchema>;
+export type BotJobOffersResponse = zod.infer<typeof botJobOffersResponseSchema>;
+export type BotJobDecide = zod.infer<typeof botJobDecideSchema>;
+export type BotJobDecideResponse = zod.infer<typeof botJobDecideResponseSchema>;
+export type JobOfferPayload = zod.infer<typeof jobOfferSchema>;
+export type ResumeProject = zod.infer<typeof resumeProjectSchema>;

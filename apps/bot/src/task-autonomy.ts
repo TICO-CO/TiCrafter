@@ -1,10 +1,21 @@
+import {
+    type JobMarketChoice,
+    type JobMarketContext,
+    JobMarketPolicy,
+    type JobOfferView,
+} from '@ticrafter/agency';
 import type { Affordance, LayaDecision, PolicyState } from '@ticrafter/brains';
 import {
     attemptAsync,
+    BOT_JOB_DECIDE,
+    BOT_JOB_OFFERS,
+    botJobDecideResponseSchema,
+    botJobOffersResponseSchema,
     type BotTaskResponse,
     botTaskResponseSchema,
     type DecisionRequest,
     type Envelope,
+    type JobOfferPayload,
     type LoggerPort,
     type Result,
     type SessionResume,
@@ -65,9 +76,14 @@ export interface TaskProgressObservation {
     failureClass?: string;
 }
 
+export interface TaskJobMarketPort {
+    context: () => JobMarketContext;
+}
+
 export interface TaskAutonomyOptions {
     botId: string;
     transport: TaskAutonomyTransportPort;
+    jobMarket?: TaskJobMarketPort;
     decisions: TaskDecisionPort;
     skills: TaskSkillPort;
     snapshot: TaskAutonomySnapshotPort;
@@ -214,6 +230,10 @@ export class TaskAutonomy {
 
     private async claim(): Promise<void> {
         if (this.options.canClaim?.() === false) return;
+        if (this.options.jobMarket !== undefined) {
+            await this.claimOffer();
+            return;
+        }
         const snapshot = this.options.snapshot.read();
         const [envelope, requestError] = await this.options.transport.request(
             TASK_CLAIM,
@@ -236,6 +256,87 @@ export class TaskAutonomy {
         if (prepared === null) return;
         this.active = prepared;
         await this.startTaskSkill(prepared);
+    }
+
+    private async claimOffer(): Promise<void> {
+        const market = this.options.jobMarket;
+        if (market === undefined) return;
+        const snapshot = this.options.snapshot.read();
+        const context = market.context();
+        const [envelope, requestError] = await this.options.transport.request(
+            BOT_JOB_OFFERS,
+            {
+                botId: this.options.botId,
+                at: new Date(this.now()).toISOString(),
+                role: context.role,
+                position: snapshot.position,
+                inventory: snapshot.inventory.map((item) => ({
+                    name: item.name,
+                    count: item.count,
+                })),
+            },
+            this.timeoutMilliseconds,
+        );
+        if (requestError || envelope === null) return;
+        const parsed = botJobOffersResponseSchema.safeParse(envelope.payload);
+        if (!parsed.success || !parsed.data.ok) return;
+        for (const offer of parsed.data.offers) {
+            const choice = JobMarketPolicy.decide(this.offerView(offer), context);
+            const accepted = await this.resolveOffer(offer, choice);
+            if (accepted !== null) {
+                this.active = accepted;
+                await this.startTaskSkill(accepted);
+                return;
+            }
+        }
+    }
+
+    private async resolveOffer(
+        offer: JobOfferPayload,
+        choice: JobMarketChoice,
+    ): Promise<ActiveTask | null> {
+        const context = this.options.jobMarket?.context();
+        if (context === undefined) return null;
+        const snapshot = this.options.snapshot.read();
+        const [envelope, requestError] = await this.options.transport.request(
+            BOT_JOB_DECIDE,
+            {
+                botId: this.options.botId,
+                taskId: offer.taskId,
+                decision: choice.decision,
+                reason: choice.reason,
+                role: context.role,
+                position: snapshot.position,
+                inventory: snapshot.inventory.map((item) => ({
+                    name: item.name,
+                    count: item.count,
+                })),
+            },
+            this.timeoutMilliseconds,
+        );
+        if (requestError || envelope === null) return null;
+        const parsed = botJobDecideResponseSchema.safeParse(envelope.payload);
+        if (!parsed.success || !parsed.data.ok) return null;
+        if (choice.decision !== 'accept') return null;
+        if (parsed.data.task === null || parsed.data.fencingToken === null) return null;
+        return TaskAutonomy.prepare({
+            ok: true,
+            taskId: parsed.data.taskId,
+            task: parsed.data.task,
+            fencingToken: parsed.data.fencingToken,
+            leaseUntil: parsed.data.leaseUntil,
+        });
+    }
+
+    private offerView(offer: JobOfferPayload): JobOfferView {
+        return {
+            taskId: offer.taskId,
+            title: offer.title,
+            priority: offer.priority,
+            skillId: offer.skillId,
+            requiredRole: offer.requiredRole,
+            distance: offer.distance,
+        };
     }
 
     private async startTaskSkill(active: ActiveTask): Promise<void> {

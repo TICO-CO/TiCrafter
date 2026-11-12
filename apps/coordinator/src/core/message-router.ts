@@ -4,11 +4,23 @@ import {
     BLOCK_UPDATE_EVENT,
     type BlockUpdateMessage,
     blockUpdateSchema,
+    BOT_JOB_DECIDE,
+    BOT_JOB_OFFERS,
+    BOT_PROJECT_ABANDON,
+    BOT_PROJECT_PROPOSE,
     type BotAgencyEpisodeMessage,
     botAgencyEpisodeSchema,
     type BotAgencyStateMessage,
     botAgencyStateSchema,
     botHeartbeatSchema,
+    type BotJobDecide,
+    botJobDecideSchema,
+    type BotJobOffers,
+    botJobOffersSchema,
+    type BotProjectAbandon,
+    botProjectAbandonSchema,
+    type BotProjectPropose,
+    botProjectProposeSchema,
     type BotTaskClaim,
     botTaskClaimSchema,
     type BotTaskComplete,
@@ -58,6 +70,18 @@ export interface MessageRouterOptions {
         payload: DecisionRequest,
         envelope: Envelope,
     ) => void;
+    onProjectPropose?: (
+        connection: ClientConnection,
+        payload: BotProjectPropose,
+        envelope: Envelope,
+    ) => void;
+    onProjectAbandon?: (
+        connection: ClientConnection,
+        payload: BotProjectAbandon,
+        envelope: Envelope,
+    ) => void;
+    onJobOffers?: (connection: ClientConnection, payload: BotJobOffers, envelope: Envelope) => void;
+    onJobDecide?: (connection: ClientConnection, payload: BotJobDecide, envelope: Envelope) => void;
     onTaskClaim?: (connection: ClientConnection, payload: BotTaskClaim, envelope: Envelope) => void;
     onTaskRenew?: (connection: ClientConnection, payload: BotTaskRenew, envelope: Envelope) => void;
     onTaskComplete?: (
@@ -164,6 +188,46 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onBlockUpdate?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_PROPOSE) {
+            const parsed = botProjectProposeSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid project propose');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onProjectPropose?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_ABANDON) {
+            const parsed = botProjectAbandonSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid project abandon');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onProjectAbandon?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_JOB_OFFERS) {
+            const parsed = botJobOffersSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid job offers request');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onJobOffers?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_JOB_DECIDE) {
+            const parsed = botJobDecideSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid job decision');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onJobDecide?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request' && envelope.type === TASK_CLAIM) {

@@ -11,6 +11,7 @@ const RESOURCE_RADIUS = 32;
 export interface AgencySnapshotSourceOptions {
     bot: Bot;
     world: WorldCacheAdapter;
+    home?: () => { x: number; y: number; z: number } | null;
     now?: () => Date;
 }
 
@@ -40,7 +41,7 @@ export class AgencySnapshotSource {
                 nearbyBots: [],
                 nearbyPlayers: players,
                 hostiles: digest.hazards ?? [],
-                home: null,
+                home: this.options.home?.() ?? null,
                 hasBed: this.bedNearby(),
                 knownResourceSites: this.resourceSites(),
             },

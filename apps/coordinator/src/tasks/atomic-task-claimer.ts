@@ -34,11 +34,69 @@ export class AtomicTaskClaimer {
         return [lease, null];
     }
 
+    claimTask(
+        taskId: string,
+        context: TaskClaimContext,
+        now = new Date().toISOString(),
+    ): Result<TaskLease | null, TaskFailure> {
+        const [result, transactionError] = this.transactions.run<
+            Result<TaskLease | null, TaskFailure>
+        >(() => this.claimTaskInside(taskId, context, now));
+        if (transactionError) return [null, { type: 'STORAGE', failure: transactionError }];
+        if (result === null) {
+            return [null, { type: 'CLAIM_CONFLICT', taskId }];
+        }
+        return result;
+    }
+
+    offerableTasks(
+        context: TaskClaimContext,
+        now = new Date().toISOString(),
+    ): Result<readonly TaskRecord[], TaskFailure> {
+        const [result, transactionError] = this.transactions.run<
+            Result<readonly TaskRecord[], TaskFailure>
+        >(() => this.offerableInside(context, now));
+        if (transactionError) return [null, { type: 'STORAGE', failure: transactionError }];
+        if (result === null) {
+            return [null, { type: 'CLAIM_CONFLICT', taskId: 'unknown' }];
+        }
+        return result;
+    }
+
     private claimInside(
         context: TaskClaimContext,
         now: string,
     ): Result<TaskLease | null, TaskFailure> {
         if (context.activeTaskCount > 0) return [null, null];
+        const [ranked, rankedError] = this.offerableInside(context, now);
+        if (rankedError) return [null, rankedError];
+        if (ranked === null) return [null, { type: 'MALFORMED_TASK', message: 'offers missing' }];
+        for (const task of ranked) {
+            const lease = this.claimOne(task, context.botId, now);
+            if (lease[1]) return [null, lease[1]];
+            if (lease[0] !== null) return [lease[0], null];
+        }
+        return [null, null];
+    }
+
+    private claimTaskInside(
+        taskId: string,
+        context: TaskClaimContext,
+        now: string,
+    ): Result<TaskLease | null, TaskFailure> {
+        if (context.activeTaskCount > 0) return [null, null];
+        const [ranked, rankedError] = this.offerableInside(context, now);
+        if (rankedError) return [null, rankedError];
+        if (ranked === null) return [null, { type: 'MALFORMED_TASK', message: 'offers missing' }];
+        const task = ranked.find((candidate) => candidate.id === taskId);
+        if (task === undefined) return [null, null];
+        return this.claimOne(task, context.botId, now);
+    }
+
+    private offerableInside(
+        context: TaskClaimContext,
+        now: string,
+    ): Result<readonly TaskRecord[], TaskFailure> {
         const [tasks, listError] = this.repository.list();
         if (listError) return [null, { type: 'STORAGE', failure: listError }];
         if (tasks === null) return [null, { type: 'MALFORMED_TASK', message: 'task list missing' }];
@@ -54,7 +112,8 @@ export class AtomicTaskClaimer {
             (task) =>
                 task.status === 'ready' &&
                 task.availableAt <= now &&
-                TaskDagResolver.dependenciesSatisfied(task, dag),
+                TaskDagResolver.dependenciesSatisfied(task, dag) &&
+                this.visibleTo(task, context.botId),
         );
         const eligible = candidates.filter((task) => {
             const [, failures] = this.evaluator.evaluate(task.preconditions, {
@@ -64,13 +123,13 @@ export class AtomicTaskClaimer {
             });
             return failures === null;
         });
-        const ranked = TaskPriorityScheduler.rank(eligible, context);
-        for (const task of ranked) {
-            const lease = this.claimOne(task, context.botId, now);
-            if (lease[1]) return [null, lease[1]];
-            if (lease[0] !== null) return [lease[0], null];
-        }
-        return [null, null];
+        return [TaskPriorityScheduler.rank(eligible, context), null];
+    }
+
+    private visibleTo(task: TaskRecord, botId: string): boolean {
+        const ownerBotId = task.payload.ownerBotId;
+        if (typeof ownerBotId !== 'string') return true;
+        return ownerBotId === botId;
     }
 
     private promoteReady(

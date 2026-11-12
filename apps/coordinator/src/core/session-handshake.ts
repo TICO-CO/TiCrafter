@@ -163,7 +163,9 @@ export class SessionHandshake {
                 fencingToken: null,
                 leaseUntil: null,
                 sipRevision: plan.delta.sipRevision,
+                role: plan.profile.role,
                 agency,
+                projects: SessionHandshake.projectsPayload(plan),
             };
         }
         return {
@@ -179,8 +181,24 @@ export class SessionHandshake {
             leaseUntil: task.leaseUntil,
             checkpoint: plan.checkpoint ?? undefined,
             sipRevision: plan.delta.sipRevision,
+            role: plan.profile.role,
             agency,
+            projects: SessionHandshake.projectsPayload(plan),
         };
+    }
+
+    private static projectsPayload(plan: BotResumePlan): SessionResume['projects'] {
+        return plan.projects.map((project) => ({
+            id: project.id,
+            botId: project.botId,
+            title: project.title,
+            kind: project.kind,
+            status: project.status,
+            anchor: project.anchor,
+            bbox: project.bbox,
+            structureId: project.structureId,
+            storageId: project.storageId,
+        }));
     }
 
     private static agencyPayload(record: AgencyStateRecord): AgencyStatePayload {

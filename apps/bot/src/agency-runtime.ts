@@ -8,6 +8,7 @@ import {
     goalNeedFor,
     type Intention,
     IntentionManager,
+    type JobMarketContext,
     RoutineModel,
 } from '@ticrafter/agency';
 import { type LoggerPort, type Result, skillInputSchema } from '@ticrafter/core';
@@ -109,6 +110,23 @@ export class AgencyRuntime {
 
     get isIdle(): boolean {
         return this.agent.intention === null && this.options.skills.activeSkillId === null;
+    }
+
+    get needs(): AgencyState['snapshot']['needs'] {
+        return this.state.snapshot.needs;
+    }
+
+    get traits(): AgencyState['snapshot']['traits'] {
+        return this.state.snapshot.traits;
+    }
+
+    jobContext(): JobMarketContext {
+        return {
+            role: null,
+            activeGoal: this.hasActiveGoal,
+            needs: this.state.snapshot.needs,
+            traits: this.state.snapshot.traits,
+        };
     }
 
     start(): void {

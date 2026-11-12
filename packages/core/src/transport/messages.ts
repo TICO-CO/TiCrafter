@@ -5,6 +5,14 @@ import {
     AGENCY_EPISODE_EVENT,
     AGENCY_STATE_EVENT,
     BLOCK_UPDATE_EVENT,
+    BOT_JOB_DECIDE,
+    BOT_JOB_DECIDE_RESPONSE,
+    BOT_JOB_OFFERS,
+    BOT_JOB_OFFERS_RESPONSE,
+    BOT_PROJECT_ABANDON,
+    BOT_PROJECT_ABANDON_RESPONSE,
+    BOT_PROJECT_PROPOSE,
+    BOT_PROJECT_RESPONSE,
     CHUNK_SNAPSHOT_EVENT,
     DECISION_REQUEST,
     DECISION_RESPONSE,
@@ -32,6 +40,14 @@ import {
     botAutonomyResumeSchema,
     botEventSchema,
     botHeartbeatSchema,
+    botJobDecideResponseSchema,
+    botJobDecideSchema,
+    botJobOffersResponseSchema,
+    botJobOffersSchema,
+    botProjectAbandonResponseSchema,
+    botProjectAbandonSchema,
+    botProjectProposeSchema,
+    botProjectResponseSchema,
     botSafetyResumeSchema,
     botSafetyStopSchema,
     botSkillCancelSchema,
@@ -130,7 +146,15 @@ export class MessageSchemaRegistry {
             .register(TASK_RENEW, botTaskRenewSchema)
             .register(TASK_COMPLETE, botTaskCompleteSchema)
             .register(TASK_FAIL, botTaskFailSchema)
-            .register(TASK_RESPONSE, botTaskResponseSchema);
+            .register(TASK_RESPONSE, botTaskResponseSchema)
+            .register(BOT_PROJECT_PROPOSE, botProjectProposeSchema)
+            .register(BOT_PROJECT_RESPONSE, botProjectResponseSchema)
+            .register(BOT_PROJECT_ABANDON, botProjectAbandonSchema)
+            .register(BOT_PROJECT_ABANDON_RESPONSE, botProjectAbandonResponseSchema)
+            .register(BOT_JOB_OFFERS, botJobOffersSchema)
+            .register(BOT_JOB_OFFERS_RESPONSE, botJobOffersResponseSchema)
+            .register(BOT_JOB_DECIDE, botJobDecideSchema)
+            .register(BOT_JOB_DECIDE_RESPONSE, botJobDecideResponseSchema);
     }
 
     private static describe(error: unknown): string {

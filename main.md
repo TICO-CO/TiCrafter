@@ -333,24 +333,38 @@ Every skill reports progress and failure class for Laya/planner feedback.
 
 ## 10. Building (three layers)
 
-1. **Procedural templates**: house (walls, roof, door, windows), path/road, 9x9 farm, wall, bridge, storage room, watchtower. Parameterized by size/material/anchor/rotation.
-2. **Schematic executor**: `.schem` via `prismarine-schematic`; optional `.litematic` adapter. Diff blueprint vs world, compute missing/extra blocks, inventory check, container refill.
-3. **LLM composition**: planner picks/composes templates and emits only Blueprint IR.
+Building is a first-class player capability, not template placement. Full design: [docs/building-system.md](docs/building-system.md).
 
-Blueprint IR:
+Locked decisions:
+
+- The deterministic composer is the authority. It turns a compact `BuildingBrief` into a valid, functional blueprint.
+- The planner emits a brief, template choice, or schematic reference. It does not author raw block lists by default.
+- Templates are motifs and quick sources, not the only building vocabulary.
+- Single-bot arbitrary construction is the first milestone. Multi-bot construction follows.
+- Site adaptation never mutates the canonical blueprint. Preparation and foundation changes belong to the construction plan.
+
+Three layers:
+
+1. **Design generation**: deterministic composer, motif library, style palette, schematic import, and observed-structure capture. Templates remain available as direct sources. Planner output is validated and composed before storage.
+2. **Construction planning**: site selection, terrain adaptation, foundation, phased dependency graph, reachability and scaffolding, material procurement, and phase-aware work packages. Work packages are claimable and idempotent: blocks already correct are skipped.
+3. **Coordinated execution**: verified block changes through the building executor, claims and grants, fencing tokens, progress reconciliation, completion, repair, renovation, and rollback.
+
+Blueprint IR remains the block-level contract:
 
 ```ts
 { id, anchor, rotation, blocks: [{x,y,z,state,priority}],
   materials, constraints, workPackages? }
 ```
 
-Executor:
+Executor invariants:
 
-- Support-first, bottom-up ordering; reachability planning; scaffold fallback.
-- **Work partitioning** for multi-bot builds: split into packages (layers, perimeter slices, quadrants) stored as claims. Idempotent: skip blocks already correct.
-- Per-block verification and rate limiting.
-- Respect `rules.protectedBboxes`, active-bot exclusion, and do not remove load-bearing blocks of occupied structures.
-- Rollback journal for every modification.
+- Support-first, bottom-up ordering; reachability planning; scaffold fallback and cleanup.
+- Per-block verification, rate limiting, and authoritative block changelog.
+- Respect `rules.protectedBboxes`, no-build zones, active-bot exclusion, and never remove load-bearing blocks of occupied structures.
+- Non-owner edits require a scoped grant; package execution requires a claim and fencing token.
+- Rollback journal for every modification, including scaffolds and site preparation.
+- Building goals are part of agency: shelter, personal home, expansion, repair, decoration, and social help.
+- Block changes are watched through metrics, progress reconciliation, design revisions, and audit records.
 
 ## 11. Autonomy loop and safety
 

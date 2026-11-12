@@ -138,6 +138,28 @@ export class TaskBoard {
         );
     }
 
+    offers(
+        context: Omit<TaskClaimContext, 'world' | 'claims'>,
+        now = new Date().toISOString(),
+    ): Result<readonly TaskRecord[], TaskFailure> {
+        return this.claimer.offerableTasks(
+            { ...context, world: this.options.world, claims: this.options.claims },
+            now,
+        );
+    }
+
+    claimOffered(
+        taskId: string,
+        context: Omit<TaskClaimContext, 'world' | 'claims'>,
+        now = new Date().toISOString(),
+    ): Result<TaskLease | null, TaskFailure> {
+        return this.claimer.claimTask(
+            taskId,
+            { ...context, world: this.options.world, claims: this.options.claims },
+            now,
+        );
+    }
+
     renew(
         taskId: string,
         botId: string,

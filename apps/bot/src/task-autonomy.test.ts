@@ -1,6 +1,9 @@
+import { NeedsModel, PersonalityModel } from '@ticrafter/agency';
 import type { Affordance, LayaDecision, PolicyState } from '@ticrafter/brains';
 import type { DecisionRequest } from '@ticrafter/core';
 import {
+    BOT_JOB_DECIDE,
+    BOT_JOB_OFFERS,
     type BotTaskResponse,
     type Envelope,
     type Result,
@@ -37,6 +40,56 @@ class FakeTransport implements TaskAutonomyTransportPort {
         _timeoutMilliseconds?: number,
     ): Promise<Result<Envelope, TransportFailure>> {
         this.requests.push({ type, payload });
+        if (type === BOT_JOB_OFFERS) {
+            return Promise.resolve([
+                {
+                    payload: {
+                        ok: true,
+                        offers: [
+                            {
+                                taskId: 'task-1',
+                                title: 'Walk north',
+                                priority: 60,
+                                skillId: 'navigate',
+                                target: null,
+                                requiredRole: 'builder',
+                                distance: 4,
+                            },
+                        ],
+                    },
+                } as Envelope,
+                null,
+            ]);
+        }
+        if (type === BOT_JOB_DECIDE) {
+            const decision = (payload as { decision?: string }).decision;
+            if (decision === 'accept') {
+                return Promise.resolve([
+                    {
+                        payload: {
+                            ok: true,
+                            taskId: 'task-1',
+                            offer: null,
+                            task: {
+                                id: 'task-1',
+                                title: 'Walk north',
+                                priority: 1,
+                                payload: {
+                                    skillId: 'navigate',
+                                    target: { x: 0, y: 64, z: 4 },
+                                },
+                                target: null,
+                                requiredRole: null,
+                            },
+                            fencingToken: 7,
+                            leaseUntil: '2026-11-11T10:01:00.000Z',
+                        },
+                    } as Envelope,
+                    null,
+                ]);
+            }
+            return Promise.resolve([{ payload: { ok: true, taskId: 'task-1' } } as Envelope, null]);
+        }
         if (type === TASK_CLAIM) {
             const response: BotTaskResponse = {
                 ok: true,
@@ -141,6 +194,39 @@ describe('TaskAutonomy', () => {
         expect(transport.requests.some((request) => request.type === TASK_CLAIM)).toBe(true);
         expect(decisions.requests).toHaveLength(1);
         expect(skills.runs[0]?.skillId).toBe('navigate');
+        expect(skills.runs[0]?.input.taskId).toBe('task-1');
+        expect(transport.requests.some((request) => request.type === TASK_COMPLETE)).toBe(true);
+    });
+
+    it('accepts a job offer through the market and completes the task', async () => {
+        const transport = new FakeTransport();
+        const decisions = new FakeDecision();
+        const skills = new FakeSkills();
+        const autonomy = new TaskAutonomy({
+            botId: 'bot.one',
+            transport,
+            decisions,
+            skills,
+            snapshot: { read: () => snapshot },
+            logger,
+            jobMarket: {
+                context: () => ({
+                    role: 'builder',
+                    activeGoal: false,
+                    needs: NeedsModel.create()[0] as NeedsModel,
+                    traits: PersonalityModel.fromBotIndex(0),
+                }),
+            },
+            tickMilliseconds: 1000,
+        });
+
+        autonomy.start();
+        await wait(20);
+        autonomy.stop();
+
+        expect(transport.requests.some((request) => request.type === BOT_JOB_OFFERS)).toBe(true);
+        expect(transport.requests.some((request) => request.type === BOT_JOB_DECIDE)).toBe(true);
+        expect(transport.requests.some((request) => request.type === TASK_CLAIM)).toBe(false);
         expect(skills.runs[0]?.input.taskId).toBe('task-1');
         expect(transport.requests.some((request) => request.type === TASK_COMPLETE)).toBe(true);
     });

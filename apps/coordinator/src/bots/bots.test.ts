@@ -139,6 +139,31 @@ describe('bots', () => {
             store,
             {
                 agency: { load: () => [null, null] },
+                projects: {
+                    listByBot: () => [
+                        [
+                            {
+                                id: 'project-1',
+                                botId: 'bot.tibot1',
+                                title: 'Home',
+                                kind: 'home',
+                                status: 'active',
+                                anchor: { x: 1, y: 64, z: 1 },
+                                bbox: {
+                                    min: { x: 1, y: 64, z: 1 },
+                                    max: { x: 7, y: 67, z: 7 },
+                                },
+                                claims: [],
+                                structureId: 'structure.project.project-1',
+                                storageId: null,
+                                reason: null,
+                                createdAt: now,
+                                updatedAt: now,
+                            },
+                        ],
+                        null,
+                    ],
+                },
                 claims: { listActive: () => [[claim()], null] },
                 tasks: {
                     get: () => [task({ status: 'completed' }), null],
@@ -154,6 +179,7 @@ describe('bots', () => {
         expect(resumeError).toBeNull();
         expect(plan?.claims).toHaveLength(1);
         expect(plan?.grants).toHaveLength(1);
+        expect(plan?.projects).toHaveLength(1);
         expect(plan?.profile.currentTaskId).toBeNull();
         expect(plan?.delta.sipRevision).toBe(4);
         expect(plan?.delta.tasks).toHaveLength(1);
@@ -172,6 +198,7 @@ describe('bots', () => {
             store,
             {
                 agency: { load: () => [null, null] },
+                projects: { listByBot: () => [[], null] },
                 claims: { listActive: () => [[], null] },
                 tasks: { get: () => [null, null], list: () => [[active], null] },
                 grants: { listActive: () => [[], null] },

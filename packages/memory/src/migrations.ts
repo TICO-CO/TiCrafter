@@ -147,4 +147,29 @@ export const migrations: Migration[] = [
         ON agent_episodes(bot_id, created_at);
     `,
     },
+    {
+        version: 10,
+        name: 'personal-projects',
+        sql: `
+      CREATE TABLE IF NOT EXISTS personal_projects (
+        id TEXT PRIMARY KEY,
+        bot_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL,
+        anchor_json TEXT NOT NULL,
+        bbox_json TEXT NOT NULL,
+        claims_json TEXT NOT NULL DEFAULT '[]',
+        structure_id TEXT,
+        storage_id TEXT,
+        reason TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_personal_projects_bot_status
+        ON personal_projects(bot_id, status);
+      CREATE INDEX IF NOT EXISTS idx_personal_projects_structure
+        ON personal_projects(structure_id);
+    `,
+    },
 ];
