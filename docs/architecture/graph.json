@@ -1,9 +1,9 @@
 {
     "meta": {
         "title": "TiCrafter Architecture Graph",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "generatedFrom": "main.md",
-        "updated": "2026-11-09",
+        "updated": "2026-11-11",
         "description": "Canonical decomposition of TiCrafter systems, owned components, state ownership, typed relations, templates, tunables, and process boundaries.",
         "relationTypes": [
             "depends_on",
@@ -75,6 +75,27 @@
                 "toPattern": "bot-runtime.*",
                 "types": ["depends_on", "controls", "writes"],
                 "reason": "Training is dev-only and not imported by runtime."
+            },
+            {
+                "id": "fe.agency-action",
+                "fromPattern": "agency.*",
+                "toPattern": "bot-runtime.action-executor",
+                "types": ["*"],
+                "reason": "Agency proposes goals only; skills perform actions through the executor."
+            },
+            {
+                "id": "fe.agency-sip-write",
+                "fromPattern": "agency.*",
+                "toPattern": "sip.*",
+                "types": ["writes"],
+                "reason": "Agency cannot write SIP state; it proposes personal projects through the coordinator."
+            },
+            {
+                "id": "fe.chat-action",
+                "fromPattern": "bot-runtime.chat-adapter",
+                "toPattern": "bot-runtime.action-executor",
+                "types": ["*"],
+                "reason": "Chat never triggers physical actions directly."
             }
         ],
         "componentTemplates": {
@@ -335,7 +356,13 @@
             "fleet.bots": {
                 "home-min": 4,
                 "home-full": 8
-            }
+            },
+            "agency.goalCadenceMs": 2000,
+            "agency.idleThresholdMs": 10000,
+            "agency.goalCardinalityMax": 16,
+            "agency.chatRatePerMinute": 5,
+            "agency.needDecayPerMinute": 0.02,
+            "agency.committedGoalBonus": 0.15
         },
         "processes": {
             "sys.core": ["coordinator"],
@@ -353,6 +380,7 @@
             "sys.skills": ["bot"],
             "sys.building": ["bot"],
             "sys.bot-runtime": ["bot"],
+            "sys.agency": ["coordinator", "bot"],
             "sys.safety": ["bot"],
             "sys.brains": ["bot"],
             "sys.memory": ["coordinator"],
@@ -367,6 +395,8 @@
         "stateMapping": {
             "bot_events": "SQLite table bot_events; append-only event log.",
             "episodes": "SQLite table episodes; outcome traces for replay and training export.",
+            "agent_state": "SQLite table agent_state; current needs, intention, routine, home, and mood per bot.",
+            "agent_episodes": "SQLite table agent_episodes; append-only episodic memories for agency and replay.",
             "sip.*": "The single logical sip table is stored as sip.zones, sip.structures, sip.roads, sip.farms, sip.containers, sip.pathGraph, sip.rules, and sip.revisions.",
             "world.containerMemory": "Observed container memory, distinct from SIP sip.containers."
         },
@@ -1034,14 +1064,16 @@
         {
             "id": "sys.tasks",
             "name": "Task Board",
-            "purpose": "Maintain the fleet work DAG and assign eligible work without duplicate execution.",
+            "purpose": "Maintain the fleet work DAG and offer eligible jobs without duplicate execution.",
             "ownerPackage": "apps/coordinator/src/tasks",
             "milestone": 5,
             "sourceRefs": ["main.md#4-claims-leases-task-board"],
             "invariants": [
                 "A task is claimed by at most one bot at a time.",
                 "Task transitions are persisted before they are acknowledged.",
-                "Dependencies and preconditions gate eligibility before a claim is allowed."
+                "Dependencies and preconditions gate eligibility before a claim is allowed.",
+                "Jobs are offers: bots may accept, defer, or decline with a reason.",
+                "Declining a job is not a task failure and never changes task state."
             ],
             "allowedDependencies": ["sys.memory"],
             "forbiddenDependencies": [],
@@ -1132,6 +1164,33 @@
                     "template": "tpl.lease-authority"
                 },
                 {
+                    "id": "tasks.job-offer-service",
+                    "name": "Job Offer Service",
+                    "responsibility": "Offer ranked eligible jobs to a bot and record accept, defer, and decline decisions without changing task state on decline.",
+                    "plannedPath": "apps/coordinator/src/tasks/job-offer-service",
+                    "provides": ["tasks.job-offer-service.interface"],
+                    "requires": [
+                        "tasks.task-repository",
+                        "tasks.priority-scheduler",
+                        "tasks.precondition-evaluator"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "tasks_jobs_offered_total",
+                        "tasks_jobs_accepted_total",
+                        "tasks_jobs_declined_total",
+                        "tasks_job_offer_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#4-claims-leases-task-board"],
+                    "milestone": 13,
+                    "template": "tpl.policy-authority",
+                    "invariants": [
+                        "Offers are advisory and never reserve a job.",
+                        "Accepting an offer claims the job in one transaction with a lease and fencing token.",
+                        "Declining records a reason and leaves the job available for another bot."
+                    ]
+                },
+                {
                     "id": "tasks.retry-manager",
                     "name": "Retry Manager",
                     "responsibility": "Retry failed tasks with bounded backoff and failure-class-specific policy.",
@@ -1193,7 +1252,13 @@
                 "A commit with a stale fencing token is rejected.",
                 "Expired leases return resources to planned state without losing audit history."
             ],
-            "allowedDependencies": ["sys.core", "sys.memory", "sys.sip", "sys.tasks"],
+            "allowedDependencies": [
+                "sys.core",
+                "sys.memory",
+                "sys.sip",
+                "sys.tasks",
+                "sys.transport"
+            ],
             "forbiddenDependencies": [],
             "components": [
                 {
@@ -1317,6 +1382,27 @@
                     "sourceRefs": ["main.md#4-claims-leases-task-board"],
                     "milestone": 5,
                     "template": "tpl.lease-authority"
+                },
+                {
+                    "id": "claims.bot-claim-command-handler",
+                    "name": "Bot Claim Command Handler",
+                    "responsibility": "Accept typed claim acquire, renew, and release requests from bots and route them through the claim service.",
+                    "plannedPath": "apps/coordinator/src/claims/bot-claim-command-handler",
+                    "provides": ["claims.bot-claim-command-handler.interface"],
+                    "requires": ["claims.claim-repository", "transport.ws-codec"],
+                    "ownsState": [],
+                    "metrics": [
+                        "claims_bot_claim_commands_total",
+                        "claims_bot_claim_command_errors_total",
+                        "claims_bot_claim_command_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#4-claims-leases-task-board"],
+                    "milestone": 13,
+                    "template": "tpl.lease-authority",
+                    "invariants": [
+                        "Bot-originated claims use the same overlap, lease, and fencing rules as job claims.",
+                        "A bot cannot acquire or release a claim for another bot."
+                    ]
                 },
                 {
                     "id": "claims.contention-metrics",
@@ -1527,16 +1613,16 @@
         {
             "id": "sys.bots",
             "name": "Bot Registry and Profiles",
-            "purpose": "Persist bot identity, roles, behavior, relationships, presence, and resume intent.",
+            "purpose": "Persist bot identity, personality, needs, intention, roles, behavior, relationships, presence, home, and resume state.",
             "ownerPackage": "apps/coordinator/src/bots",
             "milestone": 5,
             "sourceRefs": ["main.md#5-bot-identity-roles-and-persistence"],
             "invariants": [
                 "Bot identity and username assignment are stable across restarts.",
-                "Resume restores intent and obligations, then reconciles with the world.",
-                "Profiles and roles are coordinator-owned and persisted continuously."
+                "Resume restores intent, needs, home, and obligations, then reconciles with the world.",
+                "Profiles, roles, and agency state are coordinator-owned and persisted continuously."
             ],
-            "allowedDependencies": ["sys.config", "sys.memory"],
+            "allowedDependencies": ["sys.agency", "sys.config", "sys.memory"],
             "forbiddenDependencies": [],
             "components": [
                 {
@@ -1671,6 +1757,26 @@
                     "sourceRefs": ["main.md#5-bot-identity-roles-and-persistence"],
                     "milestone": 5,
                     "template": "tpl.state-repository"
+                },
+                {
+                    "id": "bots.agency-state-store",
+                    "name": "Agency State Store",
+                    "responsibility": "Persist current needs, intention, routine, home, mood, and last deliberation time per bot.",
+                    "plannedPath": "apps/coordinator/src/bots/agency-state-store",
+                    "provides": ["bots.agency-state-store.interface"],
+                    "requires": ["memory.transaction-manager", "agency.agency-state"],
+                    "ownsState": ["agent_state"],
+                    "metrics": [
+                        "bots_agency_state_store_errors_total",
+                        "bots_agency_state_store_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.state-repository",
+                    "invariants": [
+                        "Agency state writes are transactional and never expose partial snapshots.",
+                        "Restored intentions are marked for world reconciliation before resuming."
+                    ]
                 },
                 {
                     "id": "bots.name-pool-allocator",
@@ -2093,14 +2199,15 @@
         {
             "id": "sys.decision",
             "name": "Laya Decision Service",
-            "purpose": "Run one shared Laya model, serialize inference, and return calibrated tactical choices.",
+            "purpose": "Run one shared Laya model, serialize inference, and return calibrated choices over needs, goals, and actions.",
             "ownerPackage": "apps/coordinator/src/decision",
             "milestone": 8,
             "sourceRefs": ["main.md#7-short-term-decision-service-laya"],
             "invariants": [
                 "One Laya instance exists fleet-wide; never one instance per bot.",
                 "Only one inference forward pass is in flight at a time.",
-                "Low-confidence or timed-out decisions fall back to deterministic policy."
+                "Low-confidence or timed-out decisions fall back to deterministic utility policy.",
+                "Laya advises among goal candidates and actions; it never owns motivation or execution."
             ],
             "allowedDependencies": ["sys.config", "sys.transport"],
             "forbiddenDependencies": ["fe.model-action", "fe.decision-sip-write"],
@@ -2199,7 +2306,7 @@
                 {
                     "id": "decision.digest-assembler",
                     "name": "Digest Assembler",
-                    "responsibility": "Validate and normalize the bot state digest into a bounded inference request.",
+                    "responsibility": "Validate and normalize the bot state digest, needs, goal candidates, and actions into a bounded inference request.",
                     "plannedPath": "apps/coordinator/src/decision/digest-assembler",
                     "provides": ["decision.digest-assembler.interface"],
                     "requires": ["transport.message-schema-registry"],
@@ -2212,7 +2319,8 @@
                     "milestone": 8,
                     "template": "tpl.inference-stage",
                     "invariants": [
-                        "The state digest is at most 512 tokens and carries 8-16 affordances, each at most 12 words."
+                        "The state digest is at most 512 tokens and carries 8-16 goal or action candidates, each at most 12 words.",
+                        "Needs are summarized as bounded ratios; goal candidates are typed and de-duplicated."
                     ]
                 },
                 {
@@ -2333,14 +2441,15 @@
         },
         {
             "id": "sys.planner",
-            "name": "Cloud Planner",
-            "purpose": "Turn fleet-level goals and events into validated SIP revisions and task DAGs.",
+            "name": "Cloud Planner Advisor",
+            "purpose": "Turn fleet-level context and events into optional strategic goals, validated SIP revisions, and opt-in job offers.",
             "ownerPackage": "packages/planning/src",
             "milestone": 9,
             "sourceRefs": ["main.md#8-long-term-planner-muse-spark-13-contributor"],
             "invariants": [
                 "Planner output is untrusted until schema and semantic validation pass.",
                 "Planner never writes blocks or commits SIP state directly.",
+                "Planner work is advisory: bots may defer or decline jobs.",
                 "Invalid output keeps the last known good plan after bounded repair attempts."
             ],
             "allowedDependencies": ["sys.config", "sys.memory", "sys.sip"],
@@ -3456,7 +3565,8 @@
                 "sys.perception",
                 "sys.safety",
                 "sys.skill-runtime",
-                "sys.transport"
+                "sys.transport",
+                "sys.agency"
             ],
             "forbiddenDependencies": ["fe.bot-sqlite"],
             "components": [
@@ -3632,6 +3742,80 @@
                     "sourceRefs": ["main.md#1-fleet-coordinator"],
                     "milestone": 1,
                     "template": "tpl.bot-adapter"
+                },
+                {
+                    "id": "bot-runtime.agent-loop",
+                    "name": "Agent Loop",
+                    "responsibility": "Run the local agency tick, decide between personal goals and jobs, and drive intention execution through skills.",
+                    "plannedPath": "apps/bot/src/agent-loop",
+                    "provides": ["bot-runtime.agent-loop.interface"],
+                    "requires": [
+                        "agency.agency-state",
+                        "agency.goal-arbiter",
+                        "agency.goal-generator",
+                        "agency.intention-manager",
+                        "agency.routine-model",
+                        "brains.laya-client",
+                        "brains.deterministic-policy",
+                        "bot-runtime.state-digest-collector",
+                        "bot-runtime.skill-host"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_agent_loop_errors_total",
+                        "bot_runtime_agent_loop_latency_ms",
+                        "bot_runtime_self_initiated_goals_total",
+                        "bot_runtime_idle_milliseconds"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "The agent loop never blocks the 20Hz guardian and never calls mineflayer directly.",
+                        "Urgent needs preempt jobs and personal goals; the guardian preempts everything.",
+                        "No job is accepted without a local utility decision and a valid lease."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.chat-adapter",
+                    "name": "Chat Adapter",
+                    "responsibility": "Send and receive typed social messages through mineflayer chat with rate limits and no physical actions.",
+                    "plannedPath": "apps/bot/src/chat",
+                    "provides": ["bot-runtime.chat-adapter.interface"],
+                    "requires": ["agency.social-engine", "bot-runtime.connection-lifecycle"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_chat_adapter_errors_total",
+                        "bot_runtime_chat_messages_total",
+                        "bot_runtime_chat_rate_limited_total"
+                    ],
+                    "sourceRefs": ["main.md#21-social-behavior"],
+                    "milestone": 14,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Chat never triggers a physical action directly and never echoes arbitrary input.",
+                        "Chat is rate-limited per bot and can be muted by ops."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.agency-state-adapter",
+                    "name": "Agency State Adapter",
+                    "responsibility": "Load and persist agency snapshots through coordinator state and reconcile intention with the observed world.",
+                    "plannedPath": "apps/bot/src/agency-state-adapter",
+                    "provides": ["bot-runtime.agency-state-adapter.interface"],
+                    "requires": ["agency.agency-state", "transport.ws-codec"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_agency_state_adapter_errors_total",
+                        "bot_runtime_agency_state_adapter_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Restored intentions are validated against the observed world before resuming.",
+                        "Agency state writes go through coordinator persistence, never local SQLite."
+                    ]
                 },
                 {
                     "id": "bot-runtime.reconnect-supervisor",
@@ -4083,6 +4267,26 @@
                         "memory_episode_store_writes_total",
                         "memory_episode_store_latency_ms"
                     ]
+                },
+                {
+                    "id": "memory.agent-episode-repository",
+                    "name": "Agent Episode Repository",
+                    "responsibility": "Persist append-only episodic memories for needs, intentions, discoveries, deaths, gifts, chats, and goal outcomes.",
+                    "plannedPath": "packages/memory/src/agent-episode-repository",
+                    "provides": ["memory.agent-episode-repository.interface"],
+                    "requires": ["memory.transaction-manager"],
+                    "ownsState": ["agent_episodes"],
+                    "metrics": [
+                        "memory_agent_episode_repository_writes_total",
+                        "memory_agent_episode_repository_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.persistence",
+                    "invariants": [
+                        "Agent episodes are append-only and tied to bot, goal, and episode id.",
+                        "Episode retention follows the same 30-day log policy."
+                    ]
                 }
             ]
         },
@@ -4116,6 +4320,7 @@
                     "requires": [
                         "transport.message-schema-registry",
                         "ops.status-aggregator",
+                        "ops.agency-status-view",
                         "ops.pause-resume-controller",
                         "ops.fleet-emergency-stop"
                     ],
@@ -4146,6 +4351,29 @@
                     "sourceRefs": ["main.md#1-fleet-coordinator"],
                     "milestone": 11,
                     "template": "tpl.observability"
+                },
+                {
+                    "id": "ops.agency-status-view",
+                    "name": "Agency Status View",
+                    "responsibility": "Expose current needs, intention, routine, home, goal outcomes, and chat rate per bot.",
+                    "plannedPath": "apps/coordinator/src/ops/agency-status-view",
+                    "provides": ["ops.agency-status-view.interface"],
+                    "requires": [
+                        "bots.agency-state-store",
+                        "memory.agent-episode-repository",
+                        "bots.presence-tracker"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "ops_agency_status_view_errors_total",
+                        "ops_agency_status_view_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.observability",
+                    "invariants": [
+                        "Agency status is read-only and never mutates needs or intention."
+                    ]
                 },
                 {
                     "id": "ops.pause-resume-controller",
@@ -4759,7 +4987,7 @@
         {
             "id": "sys.brains",
             "name": "Brains",
-            "purpose": "Own reflex, affordances, deterministic fallback policy, and the bot-side Laya client.",
+            "purpose": "Own reflex, affordances, deterministic decision fallback, and the bot-side Laya client.",
             "ownerPackage": "packages/brains/src",
             "milestone": 4,
             "sourceRefs": [
@@ -4770,7 +4998,7 @@
             "invariants": [
                 "Brain components emit proposals and never call mineflayer directly.",
                 "Deterministic policy is always available when Laya is unavailable, late, or low-confidence.",
-                "Reflex guardian outranks Laya and the planner."
+                "Reflex guardian outranks agency, Laya, and the planner."
             ],
             "allowedDependencies": [
                 "sys.bot-runtime",
@@ -4878,6 +5106,208 @@
                         "brains_laya_client_timeouts_total",
                         "brains_laya_client_latency_ms"
                     ]
+                }
+            ]
+        },
+        {
+            "id": "sys.agency",
+            "name": "Agency",
+            "purpose": "Turn needs, personality, memory, world context, and social signals into goal candidates, committed intentions, routines, and social proposals without executing actions.",
+            "ownerPackage": "packages/agency/src",
+            "milestone": 12,
+            "sourceRefs": ["main.md#20-agency-and-motivation", "main.md#21-social-behavior"],
+            "invariants": [
+                "Agency components emit proposals only; they never call mineflayer or write SIP state.",
+                "Deterministic utility is always available when Laya is unavailable, late, or below the confidence gate.",
+                "Needs, intention, routine, home, and social state survive restart and are reconciled before resumption.",
+                "Agency never bypasses the reflex guardian."
+            ],
+            "allowedDependencies": [],
+            "forbiddenDependencies": [],
+            "components": [
+                {
+                    "id": "agency.personality-model",
+                    "name": "Personality Model",
+                    "responsibility": "Seed, validate, and expose persistent personality traits that weight needs, goals, risk, and chat style.",
+                    "plannedPath": "packages/agency/src/personality-model",
+                    "provides": ["agency.personality-model.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_personality_model_errors_total",
+                        "agency_personality_model_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Traits are seeded deterministically from bot index, persisted, and always bounded to 0..1.",
+                        "Traits modulate utility and style but never override the guardian."
+                    ]
+                },
+                {
+                    "id": "agency.needs-model",
+                    "name": "Needs Model",
+                    "responsibility": "Maintain homeostatic need levels, decay them over time, and apply satisfaction events.",
+                    "plannedPath": "packages/agency/src/needs-model",
+                    "provides": ["agency.needs-model.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": ["agency_needs_model_errors_total", "agency_needs_model_latency_ms"],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Need levels are bounded to 0..1 and decay deterministically with elapsed time.",
+                        "Need satisfaction never decreases unrelated needs."
+                    ]
+                },
+                {
+                    "id": "agency.goal-catalog",
+                    "name": "Goal Catalog",
+                    "responsibility": "Define typed goal templates, their skill steps, costs, risks, and expected values.",
+                    "plannedPath": "packages/agency/src/goal-catalog",
+                    "provides": ["agency.goal-catalog.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_goal_catalog_errors_total",
+                        "agency_goal_catalog_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Every goal template names an existing skill id and bounded typed input."
+                    ]
+                },
+                {
+                    "id": "agency.goal-generator",
+                    "name": "Goal Generator",
+                    "responsibility": "Emit concrete goal candidates from needs, personality, world context, time, home, and social signals.",
+                    "plannedPath": "packages/agency/src/goal-generator",
+                    "provides": ["agency.goal-generator.interface"],
+                    "requires": [
+                        "agency.goal-catalog",
+                        "agency.needs-model",
+                        "agency.personality-model"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_goal_generator_errors_total",
+                        "agency_goal_generator_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Generation returns 1-16 legal candidates and rejects infeasible or unsafe goals."
+                    ]
+                },
+                {
+                    "id": "agency.goal-arbiter",
+                    "name": "Goal Arbiter",
+                    "responsibility": "Score goal candidates with utility, personality, commitment hysteresis, cost, and risk.",
+                    "plannedPath": "packages/agency/src/goal-arbiter",
+                    "provides": ["agency.goal-arbiter.interface"],
+                    "requires": [
+                        "agency.goal-generator",
+                        "agency.needs-model",
+                        "agency.personality-model"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_goal_arbiter_errors_total",
+                        "agency_goal_arbiter_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Selection is deterministic for the same inputs and keeps an active goal until completion, abandonment, or preemption.",
+                        "Laya advice is requested only when top scores are close or after repeated failure."
+                    ]
+                },
+                {
+                    "id": "agency.intention-manager",
+                    "name": "Intention Manager",
+                    "responsibility": "Track the active goal, step index, retries, completion, abandonment, preemption, and expiry.",
+                    "plannedPath": "packages/agency/src/intention-manager",
+                    "provides": ["agency.intention-manager.interface"],
+                    "requires": ["agency.goal-arbiter"],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_intention_manager_errors_total",
+                        "agency_intention_manager_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Only one intention is active per bot.",
+                        "Every completion or abandonment records a typed reason and timestamp."
+                    ]
+                },
+                {
+                    "id": "agency.routine-model",
+                    "name": "Routine Model",
+                    "responsibility": "Derive morning, day, evening, and night phases and expose work, rest, and social preferences.",
+                    "plannedPath": "packages/agency/src/routine-model",
+                    "provides": ["agency.routine-model.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_routine_model_errors_total",
+                        "agency_routine_model_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Routine phase is a pure function of time of day and is a prior, not a script."
+                    ]
+                },
+                {
+                    "id": "agency.social-engine",
+                    "name": "Social Engine",
+                    "responsibility": "Classify social messages, generate personality-styled replies, and enforce chat rate limits.",
+                    "plannedPath": "packages/agency/src/social-engine",
+                    "provides": ["agency.social-engine.interface"],
+                    "requires": ["agency.personality-model"],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_social_engine_errors_total",
+                        "agency_social_engine_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#21-social-behavior"],
+                    "milestone": 14,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Social output is typed, rate-limited, and never echoes arbitrary input.",
+                        "Social behavior never triggers a physical action outside the skill pipeline."
+                    ]
+                },
+                {
+                    "id": "agency.agency-state",
+                    "name": "Agency State",
+                    "responsibility": "Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot.",
+                    "plannedPath": "packages/agency/src/agency-state",
+                    "provides": ["agency.agency-state.interface"],
+                    "requires": [
+                        "agency.needs-model",
+                        "agency.personality-model",
+                        "agency.intention-manager",
+                        "agency.routine-model"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_agency_state_errors_total",
+                        "agency_agency_state_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": ["Agency state snapshots are immutable and restart-safe."]
                 }
             ]
         },
@@ -5074,6 +5504,26 @@
                 "bots.name-pool-allocator"
             ],
             "readers": ["planner.context-builder", "ops.status-aggregator"]
+        },
+        {
+            "state": "agent_state",
+            "owner": "bots.agency-state-store",
+            "writers": ["bots.agency-state-store"],
+            "readers": [
+                "bot-runtime.agency-state-adapter",
+                "ops.agency-status-view",
+                "agency.goal-generator"
+            ]
+        },
+        {
+            "state": "agent_episodes",
+            "owner": "memory.agent-episode-repository",
+            "writers": ["memory.agent-episode-repository"],
+            "readers": [
+                "bot-runtime.agent-loop",
+                "ops.agency-status-view",
+                "agency.intention-manager"
+            ]
         },
         {
             "state": "chunks",
@@ -11560,6 +12010,438 @@
             "criticality": "soft",
             "failureBehavior": "Control still applies; drop the audit record and record telemetry loss through structured logging.",
             "notes": "Every fleet emergency stop is audited."
+        },
+        {
+            "id": "rel.0497",
+            "from": "bot-runtime.agent-loop",
+            "to": "agency.goal-arbiter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "goal selection",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Keep the current intention, skip this deliberation tick, and retry with deterministic utility.",
+            "notes": "The agent loop asks the goal arbiter for the next goal."
+        },
+        {
+            "id": "rel.0498",
+            "from": "bot-runtime.agent-loop",
+            "to": "agency.intention-manager",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "intention lifecycle",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Abandon the current goal with a typed reason and continue with the next deterministic tick.",
+            "notes": "The agent loop advances and closes intentions."
+        },
+        {
+            "id": "rel.0499",
+            "from": "bot-runtime.agent-loop",
+            "to": "agency.agency-state",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "agency snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the last known snapshot and record the stale state; never skip the guardian.",
+            "notes": "The agent loop reads the aggregate agency snapshot."
+        },
+        {
+            "id": "rel.0500",
+            "from": "bot-runtime.agent-loop",
+            "to": "brains.laya-client",
+            "type": "delegates_to",
+            "protocol": "in-process",
+            "payload": "advisory goal choice",
+            "sync": false,
+            "criticality": "soft",
+            "failureBehavior": "Use deterministic utility policy and record the Laya fallback.",
+            "notes": "Laya is advisory for close or repeated goal choices."
+        },
+        {
+            "id": "rel.0501",
+            "from": "bot-runtime.agent-loop",
+            "to": "brains.deterministic-policy",
+            "type": "delegates_to",
+            "protocol": "in-process",
+            "payload": "deterministic goal fallback",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Keep the current intention and stop starting new goals until a legal candidate exists.",
+            "notes": "Deterministic policy remains the primary fallback."
+        },
+        {
+            "id": "rel.0502",
+            "from": "bot-runtime.agent-loop",
+            "to": "bot-runtime.state-digest-collector",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "state digest and needs inputs",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Skip the tick and keep the active intention; the guardian continues independently.",
+            "notes": "Goal generation consumes a normalized local state digest."
+        },
+        {
+            "id": "rel.0503",
+            "from": "bot-runtime.agent-loop",
+            "to": "bot-runtime.skill-host",
+            "type": "delegates_to",
+            "protocol": "in-process",
+            "payload": "goal step execution",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Abandon or retry the current goal step with a typed failure class.",
+            "notes": "The agent loop delegates execution to the skill host."
+        },
+        {
+            "id": "rel.0504",
+            "from": "bot-runtime.chat-adapter",
+            "to": "agency.social-engine",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "social intent and reply",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Drop the chat message and continue without social output.",
+            "notes": "Chat text is generated locally by the social engine."
+        },
+        {
+            "id": "rel.0505",
+            "from": "bot-runtime.chat-adapter",
+            "to": "transport.event-stream",
+            "type": "publishes",
+            "protocol": "ws",
+            "payload": "social event and chat audit",
+            "sync": false,
+            "criticality": "soft",
+            "failureBehavior": "Drop the audit event and keep playing; reconnect will resync state.",
+            "notes": "Social events are observable but never block the bot."
+        },
+        {
+            "id": "rel.0506",
+            "from": "bot-runtime.agency-state-adapter",
+            "to": "bots.agency-state-store",
+            "type": "persists_to",
+            "protocol": "ws",
+            "payload": "agency state snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Keep the local snapshot, retry on reconnect, and surface a typed persistence error.",
+            "notes": "Agency state persists through coordinator transport, never local SQLite."
+        },
+        {
+            "id": "rel.0507",
+            "from": "bot-runtime.agent-loop",
+            "to": "memory.agent-episode-repository",
+            "type": "persists_to",
+            "protocol": "ws",
+            "payload": "goal outcome episode",
+            "sync": false,
+            "criticality": "soft",
+            "failureBehavior": "Drop the episode record and continue; a later tick can retry.",
+            "notes": "Goal outcomes are appended to episodic memory."
+        },
+        {
+            "id": "rel.0508",
+            "from": "bots.agency-state-store",
+            "to": "memory.transaction-manager",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "transaction boundary",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Abort the write and keep the previous committed snapshot.",
+            "notes": "Agency state writes are transactional."
+        },
+        {
+            "id": "rel.0509",
+            "from": "bots.agency-state-store",
+            "to": "bots.agency-state-store",
+            "type": "writes",
+            "protocol": "in-process",
+            "payload": "agent_state write",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Abort the write and keep the previous committed snapshot.",
+            "notes": "Agency state store owns agent_state."
+        },
+        {
+            "id": "rel.0510",
+            "from": "memory.agent-episode-repository",
+            "to": "memory.transaction-manager",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "transaction boundary",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Abort the append and keep the existing episode history.",
+            "notes": "Agent episodes are appended transactionally."
+        },
+        {
+            "id": "rel.0511",
+            "from": "memory.agent-episode-repository",
+            "to": "memory.agent-episode-repository",
+            "type": "writes",
+            "protocol": "in-process",
+            "payload": "agent_episodes append",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Abort the append and keep the existing episode history.",
+            "notes": "Agent episode repository owns agent_episodes."
+        },
+        {
+            "id": "rel.0512",
+            "from": "ops.agency-status-view",
+            "to": "bots.agency-state-store",
+            "type": "reads",
+            "protocol": "in-process",
+            "payload": "agency state snapshot",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Return degraded partial status with an explicit unavailable marker.",
+            "notes": "Operators inspect needs, intention, home, and routine."
+        },
+        {
+            "id": "rel.0513",
+            "from": "ops.agency-status-view",
+            "to": "memory.agent-episode-repository",
+            "type": "reads",
+            "protocol": "in-process",
+            "payload": "recent agency episodes",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Return degraded partial status with an explicit unavailable marker.",
+            "notes": "Operators inspect recent goal outcomes."
+        },
+        {
+            "id": "rel.0514",
+            "from": "ops.ops-api",
+            "to": "ops.agency-status-view",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "agency status endpoint",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Return a degraded status response and keep other endpoints available.",
+            "notes": "Ops API exposes agency status."
+        },
+        {
+            "id": "rel.0515",
+            "from": "tasks.job-offer-service",
+            "to": "tasks.priority-scheduler",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "ranked eligible jobs",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return no offers and keep existing claims unchanged.",
+            "notes": "Job offers reuse eligibility and ranking."
+        },
+        {
+            "id": "rel.0516",
+            "from": "tasks.job-offer-service",
+            "to": "tasks.atomic-task-claimer",
+            "type": "delegates_to",
+            "protocol": "in-process",
+            "payload": "accepted job claim",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the acceptance, leave the job open, and record contention.",
+            "notes": "Accepting an offer delegates the atomic claim."
+        },
+        {
+            "id": "rel.0517",
+            "from": "claims.bot-claim-command-handler",
+            "to": "claims.claim-repository",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "bot claim acquire, renew, or release",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the request with a typed claim error and keep the previous claim state.",
+            "notes": "Bot-facing claims use the same repository and lease rules."
+        },
+        {
+            "id": "rel.0518",
+            "from": "claims.bot-claim-command-handler",
+            "to": "transport.ws-codec",
+            "type": "depends_on",
+            "protocol": "ws",
+            "payload": "typed claim command",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the frame and keep the connection alive for valid messages.",
+            "notes": "Claim commands arrive over the bot transport."
+        },
+        {
+            "id": "rel.0519",
+            "from": "agency.goal-generator",
+            "to": "agency.goal-catalog",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "goal templates",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return no goals and let the caller retry with the deterministic fallback.",
+            "notes": "Goal generation uses the typed catalog."
+        },
+        {
+            "id": "rel.0520",
+            "from": "agency.goal-generator",
+            "to": "agency.needs-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "need levels",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return no goals and keep the current intention.",
+            "notes": "Need pressure gates goal templates."
+        },
+        {
+            "id": "rel.0521",
+            "from": "agency.goal-generator",
+            "to": "agency.personality-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "personality traits",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use default traits and record the downgrade.",
+            "notes": "Traits modulate candidate generation."
+        },
+        {
+            "id": "rel.0522",
+            "from": "agency.goal-arbiter",
+            "to": "agency.goal-generator",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "goal candidates",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Keep the current intention and skip selection.",
+            "notes": "The arbiter scores generated candidates."
+        },
+        {
+            "id": "rel.0523",
+            "from": "agency.goal-arbiter",
+            "to": "agency.needs-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "need pressure",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the last known need pressure and record the downgrade.",
+            "notes": "Need pressure is a primary utility term."
+        },
+        {
+            "id": "rel.0524",
+            "from": "agency.goal-arbiter",
+            "to": "agency.personality-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "trait weights",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use default trait weights and record the downgrade.",
+            "notes": "Traits weight utility and risk."
+        },
+        {
+            "id": "rel.0525",
+            "from": "agency.intention-manager",
+            "to": "agency.goal-arbiter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "selected goal",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Keep the previous intention and skip the transition.",
+            "notes": "Intentions begin from an arbitrated goal."
+        },
+        {
+            "id": "rel.0526",
+            "from": "agency.social-engine",
+            "to": "agency.personality-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "chat style and sociability",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Use neutral fallback replies or stay silent.",
+            "notes": "Social style follows personality."
+        },
+        {
+            "id": "rel.0527",
+            "from": "agency.agency-state",
+            "to": "agency.needs-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "need snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return a partial snapshot with explicit missing fields.",
+            "notes": "Agency state aggregates need levels."
+        },
+        {
+            "id": "rel.0528",
+            "from": "agency.agency-state",
+            "to": "agency.personality-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "trait snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return a partial snapshot with explicit missing fields.",
+            "notes": "Agency state aggregates traits."
+        },
+        {
+            "id": "rel.0529",
+            "from": "agency.agency-state",
+            "to": "agency.intention-manager",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "active intention",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return a snapshot with a null intention.",
+            "notes": "Agency state aggregates the active intention."
+        },
+        {
+            "id": "rel.0530",
+            "from": "agency.agency-state",
+            "to": "agency.routine-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "routine state",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return a default routine phase and record the downgrade.",
+            "notes": "Agency state aggregates routine state."
+        },
+        {
+            "id": "rel.0531",
+            "from": "agency.social-engine",
+            "to": "bot-runtime.chat-adapter",
+            "type": "proposes_to",
+            "protocol": "in-process",
+            "payload": "chat reply",
+            "sync": false,
+            "criticality": "soft",
+            "failureBehavior": "Drop the reply and continue; chat never blocks the agent loop.",
+            "notes": "The social engine proposes text; the adapter sends it."
+        },
+        {
+            "id": "rel.0532",
+            "from": "bots.agency-state-store",
+            "to": "agency.agency-state",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "agency state shape and snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the persistence request and keep the prior committed snapshot.",
+            "notes": "Persisted agency state uses the pure agency snapshot contract."
         }
     ]
 }

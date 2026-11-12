@@ -33,14 +33,14 @@ export class PlannerTriggerEvaluator {
         return this.trigger('interval', 'planner interval elapsed', now, {});
     }
 
-    observeWorkGap(openTasks: number, onlineBots: number, now: number): PlannerTrigger | null {
-        if (onlineBots <= 0 || openTasks >= onlineBots) return null;
+    observeWorkGap(openTasks: number, requiredTasks: number, now: number): PlannerTrigger | null {
+        if (requiredTasks <= 0 || openTasks >= requiredTasks) return null;
         const cooldown = this.options.workGapCooldownMilliseconds ?? 60_000;
         if (this.lastWorkGapAt !== null && now - this.lastWorkGapAt < cooldown) return null;
         this.lastWorkGapAt = now;
-        return this.trigger('work_gap', 'more online bots than open tasks', now, {
+        return this.trigger('work_gap', 'open work below required buffer', now, {
             openTasks,
-            onlineBots,
+            requiredTasks,
         });
     }
 

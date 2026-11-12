@@ -36,6 +36,7 @@
       "name": "@ticrafter/bot",
       "version": "0.1.0",
       "dependencies": {
+        "@ticrafter/agency": "0.1.0",
         "@ticrafter/brains": "0.1.0",
         "@ticrafter/building": "0.1.0",
         "@ticrafter/core": "0.1.0",
@@ -55,6 +56,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@receptron/laya": "0.2.0",
+        "@ticrafter/agency": "0.1.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/memory": "0.1.0",
         "@ticrafter/planning": "0.1.0",
@@ -63,6 +65,13 @@
         "pino": "10.4.0",
         "ws": "8.22.2",
         "zod": "4.6.7",
+      },
+    },
+    "packages/agency": {
+      "name": "@ticrafter/agency",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ticrafter/core": "0.1.0",
       },
     },
     "packages/brains": {
@@ -283,6 +292,8 @@
     "@tanstack/react-virtual": ["@tanstack/react-virtual@3.14.26", "", { "dependencies": { "@tanstack/virtual-core": "3.19.11" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-HUDlfsrYH6ko5xH56L62Mcl/uzT+AGVNMHFuDNqDJMdZWc1AQa2oeVKNUvZ/RWBZQ4TYtyQerFrNvLnp39h65A=="],
 
     "@tanstack/virtual-core": ["@tanstack/virtual-core@3.19.11", "", {}, "sha512-/5iHb0RHBvj8Di59FDs4ESNm45jls33aZAi4zccVXZjc/6ZvwQP6nzEYeT6weXjTf9E6/vrp2JhYWRyO+ZP13A=="],
+
+    "@ticrafter/agency": ["@ticrafter/agency@workspace:packages/agency"],
 
     "@ticrafter/bot": ["@ticrafter/bot@workspace:apps/bot"],
 

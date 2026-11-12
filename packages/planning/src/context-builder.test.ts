@@ -22,6 +22,7 @@ describe('PlannerContextBuilder', () => {
             source: new FakePlannerContextSource(context),
             allowedSkills: ['explore', 'navigate'],
             maxContextCharacters: 12_000,
+            reserveTasksPerBot: 1,
             now: () => 1_000,
         });
         const [first, firstError] = builder.build(plannerTrigger());
@@ -36,6 +37,9 @@ describe('PlannerContextBuilder', () => {
         expect(systemPrompt?.includes('baseRevision must equal context.sip.revision')).toBe(true);
         expect(systemPrompt?.includes('Every task must be independent')).toBe(true);
         expect(systemPrompt?.includes('Set cancelTaskIds to existing open task IDs')).toBe(true);
+        expect(
+            systemPrompt?.includes('Maintain 2 actionable independent tasks for 1 online bot'),
+        ).toBe(true);
         expect(systemPrompt?.includes('"schemaVersion":1')).toBe(true);
     });
 

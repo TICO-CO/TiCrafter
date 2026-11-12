@@ -21,6 +21,7 @@ describe('config', () => {
         expect(config.decision.minConfidence).toBe(0.6);
         expect(config.planner.model).toBe('Muse Spark 1.3 Contributor');
         expect(config.planner.maxRepairAttempts).toBe(2);
+        expect(config.planner.reserveTasksPerBot).toBe(1);
         expect(config.training.traceEnabled).toBe(false);
     });
 
@@ -65,6 +66,7 @@ describe('config', () => {
             PLANNER_BASE_URL: 'https://planner.invalid',
             PLANNER_API_KEY: 'secret',
             PLANNER_MODEL: 'planner-model',
+            PLANNER_RESERVE_TASKS_PER_BOT: '2',
         });
         expect(configError).toBeNull();
         if (config === null) return;
@@ -74,6 +76,7 @@ describe('config', () => {
         expect(config.laya.executionProviders).toEqual(['cpu', 'webgpu']);
         expect(config.planner.enabled).toBe(true);
         expect(config.planner.model).toBe('planner-model');
+        expect(config.planner.reserveTasksPerBot).toBe(2);
         expect(config.training.traceEnabled).toBe(true);
     });
 

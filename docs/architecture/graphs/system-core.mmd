@@ -1,86 +1,86 @@
 flowchart LR
-n68["Process Bootstrap"]
-n69["Service Composition"]
-n70["Bot Session Manager"]
-n28["Command Router"]
-n29["Coordinator Epoch Authority"]
-n30["Global Scheduler"]
-n31["Restart Recovery Orchestrator"]
-n71["Backpressure Controller"]
-n32["Bot Process Supervisor"]
-n130["Fencing Token Authority (Claims and Leases)"]
-n131["Flow Control (Transport and Protocol)"]
-n132["Atomic Claim Acquirer (Claims and Leases)"]
-n133["Grant Issuer (Edit Grants and Collaboration)"]
-n134["SIP Transactional Committer (Shared Infrastructure Plan)"]
-n135["Atomic Task Claimer (Task Board)"]
-n136["Message Schema Registry (Transport and Protocol)"]
-n137["Transaction Manager (Memory and Persistence)"]
-n138["Lease Reaper (Claims and Leases)"]
-n139["Retention Pruner (Memory and Persistence)"]
-n42["Planner Trigger Evaluator (Cloud Planner)"]
-n140["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
-n141["Config Schema Validator (Config and Profiles)"]
-n142["Environment Parser (Config and Profiles)"]
-n143["Migration Runner (Memory and Persistence)"]
-n144["WebSocket Codec (Transport and Protocol)"]
-n145["Resume Orchestrator (Bot Registry and Profiles)"]
-n146["Grant Expiry (Edit Grants and Collaboration)"]
-n147["Profile Resolver (Config and Profiles)"]
-n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n149["Presence Tracker (Bot Registry and Profiles)"]
-n62["Emergency Stop Controller (Autonomy and Safety)"]
-n61["Recovery Ladder (Autonomy and Safety)"]
-n53["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
-n53 -->|depends_on| n141
-n145 -->|delegates_to| n140
-n132 -->|depends_on| n137
-n130 -->|depends_on| n29
-n130 -->|depends_on| n137
-n141 -->|depends_on| n142
-n147 -->|depends_on| n141
-n71 -->|depends_on| n131
-n28 -->|controls| n132
-n28 -->|controls| n133
-n28 -->|controls| n134
-n28 -->|controls| n135
-n28 -->|depends_on| n136
-n29 -->|controls| n130
-n29 -->|depends_on| n137
-n30 -->|delegates_to| n138
-n30 -->|depends_on| n29
-n30 -->|delegates_to| n139
-n30 -->|delegates_to| n42
-n30 -->|delegates_to| n140
-n68 -->|depends_on| n141
-n68 -->|depends_on| n142
-n68 -->|depends_on| n31
-n68 -->|depends_on| n69
-n68 -->|depends_on| n143
-n68 -->|depends_on| n144
-n31 -->|depends_on| n145
-n31 -->|delegates_to| n138
-n31 -->|delegates_to| n146
-n31 -->|depends_on| n137
-n31 -->|depends_on| n140
-n69 -->|depends_on| n147
-n69 -->|depends_on| n30
-n70 -->|depends_on| n148
-n70 -->|publishes| n149
-n70 -->|depends_on| n144
-n139 -->|depends_on| n137
-n62 -->|controls| n28
-n61 -->|proposes_to| n28
-n61 -->|proposes_to| n42
-n61 -->|controls| n62
-n140 -->|depends_on| n134
-n134 -->|depends_on| n137
-n135 -->|depends_on| n137
-n144 -->|depends_on| n136
-n32 -->|controls| n53
-n32 -->|depends_on| n29
-n31 -->|depends_on| n32
+n72["Process Bootstrap"]
+n73["Service Composition"]
+n74["Bot Session Manager"]
+n29["Command Router"]
+n30["Coordinator Epoch Authority"]
+n31["Global Scheduler"]
+n32["Restart Recovery Orchestrator"]
+n75["Backpressure Controller"]
+n33["Bot Process Supervisor"]
+n135["Fencing Token Authority (Claims and Leases)"]
+n136["Flow Control (Transport and Protocol)"]
+n137["Atomic Claim Acquirer (Claims and Leases)"]
+n138["Grant Issuer (Edit Grants and Collaboration)"]
+n139["SIP Transactional Committer (Shared Infrastructure Plan)"]
+n140["Atomic Task Claimer (Task Board)"]
+n141["Message Schema Registry (Transport and Protocol)"]
+n142["Transaction Manager (Memory and Persistence)"]
+n143["Lease Reaper (Claims and Leases)"]
+n144["Retention Pruner (Memory and Persistence)"]
+n43["Planner Trigger Evaluator (Cloud Planner Advisor)"]
+n145["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
+n146["Config Schema Validator (Config and Profiles)"]
+n147["Environment Parser (Config and Profiles)"]
+n148["Migration Runner (Memory and Persistence)"]
+n149["WebSocket Codec (Transport and Protocol)"]
+n150["Resume Orchestrator (Bot Registry and Profiles)"]
+n151["Grant Expiry (Edit Grants and Collaboration)"]
+n152["Profile Resolver (Config and Profiles)"]
+n153["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n154["Presence Tracker (Bot Registry and Profiles)"]
+n65["Emergency Stop Controller (Autonomy and Safety)"]
+n64["Recovery Ladder (Autonomy and Safety)"]
+n54["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
+n54 -->|depends_on| n146
+n150 -->|delegates_to| n145
+n137 -->|depends_on| n142
+n135 -->|depends_on| n30
+n135 -->|depends_on| n142
+n146 -->|depends_on| n147
+n152 -->|depends_on| n146
+n75 -->|depends_on| n136
+n29 -->|controls| n137
+n29 -->|controls| n138
+n29 -->|controls| n139
+n29 -->|controls| n140
+n29 -->|depends_on| n141
+n30 -->|controls| n135
+n30 -->|depends_on| n142
+n31 -->|delegates_to| n143
+n31 -->|depends_on| n30
+n31 -->|delegates_to| n144
+n31 -->|delegates_to| n43
+n31 -->|delegates_to| n145
+n72 -->|depends_on| n146
+n72 -->|depends_on| n147
+n72 -->|depends_on| n32
+n72 -->|depends_on| n73
+n72 -->|depends_on| n148
+n72 -->|depends_on| n149
+n32 -->|depends_on| n150
+n32 -->|delegates_to| n143
+n32 -->|delegates_to| n151
+n32 -->|depends_on| n142
+n32 -->|depends_on| n145
+n73 -->|depends_on| n152
+n73 -->|depends_on| n31
+n74 -->|depends_on| n153
+n74 -->|publishes| n154
+n74 -->|depends_on| n149
+n144 -->|depends_on| n142
+n65 -->|controls| n29
+n64 -->|proposes_to| n29
+n64 -->|proposes_to| n43
+n64 -->|controls| n65
+n145 -->|depends_on| n139
+n139 -->|depends_on| n142
+n140 -->|depends_on| n142
+n149 -->|depends_on| n141
+n33 -->|controls| n54
+n33 -->|depends_on| n30
+n32 -->|depends_on| n33
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n68,n69,n70,n28,n29,n30,n31,n71,n32 internal;
-class n130,n131,n132,n133,n134,n135,n136,n137,n138,n139,n42,n140,n141,n142,n143,n144,n145,n146,n147,n148,n149,n62,n61,n53 external;
+class n72,n73,n74,n29,n30,n31,n32,n75,n33 internal;
+class n135,n136,n137,n138,n139,n140,n141,n142,n143,n144,n43,n145,n146,n147,n148,n149,n150,n151,n152,n153,n154,n65,n64,n54 external;

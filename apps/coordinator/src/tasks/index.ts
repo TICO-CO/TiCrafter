@@ -1,6 +1,7 @@
 export * from './atomic-task-claimer.js';
 export * from './dag-resolver.js';
 export * from './dead-letter-manager.js';
+export * from './job-offer-service.js';
 export * from './precondition-evaluator.js';
 export * from './priority-scheduler.js';
 export * from './retry-manager.js';

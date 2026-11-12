@@ -9,7 +9,7 @@ n6["Bot Registry and Profiles"]
 n7["World Model and Landmarks"]
 n8["Perception"]
 n9["Laya Decision Service"]
-n10["Cloud Planner"]
+n10["Cloud Planner Advisor"]
 n11["Skill Runtime"]
 n12["Skill Library"]
 n13["Building"]
@@ -21,29 +21,30 @@ n18["Config and Profiles"]
 n19["Testing and Evaluation"]
 n20["Laya Training"]
 n21["Brains"]
-n22["Bootstrap and Toolchain"]
-n23(["Minecraft 1.20.1 LAN Server"])
-n24(["Muse Spark Planner Endpoint"])
-n25(["ONNX Runtime / WebGPU Driver"])
-n26(["Host Hardware"])
-n27(["Fleet Operator"])
+n22["Agency"]
+n23["Bootstrap and Toolchain"]
+n24(["Minecraft 1.20.1 LAN Server"])
+n25(["Muse Spark Planner Endpoint"])
+n26(["ONNX Runtime / WebGPU Driver"])
+n27(["Host Hardware"])
+n28(["Fleet Operator"])
 n14 -->|depends_on×2| n15
 n21 -->|depends_on×2| n14
 n21 -->|depends_on×1| n11
 n14 -->|depends_on×3| n18
-n14 -->|depends_on×1| n23
+n14 -->|depends_on×1| n24
 n21 -->|reads×1| n6
 n21 -->|subscribes×1, depends_on×1| n1
 n14 -->|delegates_to×2, depends_on×2| n8
-n14 -->|delegates_to×1| n21
-n14 -->|delegates_to×1| n6
-n14 -->|depends_on×1, publishes×1| n1
+n14 -->|delegates_to×3| n21
+n14 -->|delegates_to×1, persists_to×1| n6
+n14 -->|depends_on×1, publishes×2| n1
 n14 -->|depends_on×2, delegates_to×1| n11
 n6 -->|reads×1| n5
 n6 -->|reads×1, delegates_to×1| n2
 n6 -->|reads×1| n3
 n6 -->|depends_on×2| n18
-n6 -->|depends_on×1| n16
+n6 -->|depends_on×2| n16
 n6 -->|delegates_to×1| n4
 n6 -->|reads×1| n11
 n13 -->|depends_on×2, reads×1| n14
@@ -58,7 +59,7 @@ n4 -->|depends_on×2| n3
 n4 -->|observes×1| n17
 n4 -->|depends_on×1| n0
 n4 -->|depends_on×1| n2
-n18 -->|depends_on×1| n26
+n18 -->|depends_on×1| n27
 n0 -->|depends_on×4| n1
 n0 -->|controls×2, delegates_to×2| n4
 n0 -->|controls×1, delegates_to×1| n5
@@ -72,26 +73,26 @@ n9 -->|proposes_to×1| n21
 n9 -->|depends_on×4| n18
 n9 -->|depends_on×1, publishes×1, subscribes×1| n1
 n9 -->|observes×2, writes×1| n17
-n9 -->|depends_on×1| n25
+n9 -->|depends_on×1| n26
 n19 -->|depends_on×1| n4
 n19 -->|depends_on×1| n3
 n19 -->|depends_on×1| n8
-n19 -->|depends_on×1| n23
+n19 -->|depends_on×1| n24
 n19 -->|depends_on×2| n9
 n19 -->|observes×1| n17
 n19 -->|depends_on×1, reads×1| n16
-n27 -->|controls×1| n17
+n28 -->|controls×1| n17
 n5 -->|publishes×1| n1
 n5 -->|reads×1, depends_on×1| n4
 n5 -->|depends_on×3, reads×1| n2
 n5 -->|depends_on×1| n16
 n5 -->|reads×2| n6
-n17 -->|reads×3, depends_on×1, writes×2| n16
+n17 -->|reads×4, depends_on×1, writes×2| n16
 n17 -->|controls×1| n15
 n17 -->|depends_on×3| n1
 n17 -->|depends_on×1| n9
 n17 -->|controls×1| n14
-n17 -->|depends_on×2| n6
+n17 -->|depends_on×2, reads×1| n6
 n17 -->|depends_on×1, reads×1| n2
 n17 -->|reads×1| n4
 n17 -->|reads×1| n3
@@ -105,7 +106,7 @@ n10 -->|reads×4, depends_on×1, proposes_to×1| n2
 n10 -->|reads×2, proposes_to×1| n3
 n10 -->|reads×2| n7
 n10 -->|depends_on×2| n18
-n10 -->|depends_on×1| n24
+n10 -->|depends_on×1| n25
 n10 -->|depends_on×1| n16
 n10 -->|reads×1| n11
 n15 -->|validates×1, controls×1| n14
@@ -149,7 +150,12 @@ n7 -->|depends_on×2| n16
 n7 -->|reads×2| n2
 n7 -->|subscribes×1, reads×1| n1
 n0 -->|controls×1| n14
+n14 -->|depends_on×4| n22
+n14 -->|persists_to×1| n16
+n4 -->|depends_on×1| n1
+n22 -->|proposes_to×1| n14
+n6 -->|depends_on×1| n22
 classDef system fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n0,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,n18,n19,n20,n21,n22 system;
-class n23,n24,n25,n26,n27 external;
+class n0,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,n18,n19,n20,n21,n22,n23 system;
+class n24,n25,n26,n27,n28 external;

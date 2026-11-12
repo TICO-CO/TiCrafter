@@ -112,9 +112,11 @@ When adding a relation, use one of the declared types and provide protocol, payl
 The validator enforces the rules that prevent the worst implementation failures:
 
 - no model or planner calls `bot-runtime.action-executor`
+- agency components never call `bot-runtime.action-executor` or write SIP state
+- chat never triggers physical actions directly
 - planner never writes SIP state
 - bot processes never open SQLite directly
-- perception, skills, and Laya never write SIP state
+- perception, skills, Laya, and agency never write SIP state
 - destructive executors listed in `meta.destructiveExecutors` require `safety.action-veto-gate` validation
 - training code is not a runtime dependency
 - cross-system `depends_on` cycles are rejected
@@ -140,11 +142,11 @@ Set `FIREFOX=/path/to/firefox` to override browser detection. No Chromium downlo
 
 Current graph:
 
-- 23 internal systems
-- 238 owned components
-- 494 typed relations
+- 24 internal systems
+- 255 owned components
+- 532 typed relations
 - 5 external actors and services
-- 21 state owners
+- 23 state owners
 - 23 component templates
 - 7 protocols
 

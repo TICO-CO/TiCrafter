@@ -14,6 +14,7 @@ export interface PlannerContextBuilderOptions {
     source: PlannerContextSource;
     allowedSkills: readonly string[];
     maxContextCharacters: number;
+    reserveTasksPerBot?: number;
     now?: () => number;
 }
 
@@ -63,6 +64,7 @@ export class PlannerContextBuilder {
             y: 64,
             z: 0,
         };
+        const onlineBots = context.bots.filter((bot) => bot.online).length;
         const messages: readonly PlannerChatMessage[] = [
             {
                 role: 'system',
@@ -70,6 +72,8 @@ export class PlannerContextBuilder {
                     this.options.allowedSkills,
                     context.sip.revision,
                     examplePosition,
+                    onlineBots,
+                    this.options.reserveTasksPerBot ?? 0,
                 ),
             },
             { role: 'user', content: `Plan request: ${serialized}` },
@@ -88,6 +92,8 @@ export class PlannerContextBuilder {
         allowedSkills: readonly string[],
         baseRevision: number,
         position: PlannerPosition,
+        onlineBots: number,
+        reserveTasksPerBot: number,
     ): string {
         const example = JSON.stringify({
             schemaVersion: 1,
@@ -126,6 +132,8 @@ export class PlannerContextBuilder {
             notes: '',
         });
 
+        const botLabel = onlineBots === 1 ? 'bot' : 'bots';
+        const reserveLabel = reserveTasksPerBot === 1 ? 'task' : 'tasks';
         return [
             'You are the TiCrafter fleet planner.',
             'Return exactly one strict JSON object, with no markdown, prose, or code fences.',
@@ -140,7 +148,7 @@ export class PlannerContextBuilder {
             'Every task must be independent: parentId must be null and dependencies must be [].',
             'Use unique task IDs that do not already exist in context.tasks.',
             'Give each task a distinct target or explore center.',
-            'When actionable open tasks plus new tasks are fewer than online bots, add enough independent tasks to cover every online bot.',
+            `Maintain ${onlineBots * (1 + reserveTasksPerBot)} actionable independent tasks for ${onlineBots} online ${botLabel}: one active task per bot plus ${reserveTasksPerBot} reserve ${reserveLabel} per bot.`,
             'Use context.tasks titles, skillIds, and targets to decide whether to keep or cancel current work.',
             'Set cancelTaskIds to existing open task IDs that no longer make sense; otherwise use [].',
             'Do not cancel a task and create a task with the same ID.',

@@ -319,6 +319,25 @@ This section is about sum types, not state machines. Safety signals and
 failures are payloads emitted by guards; `RecoveryLadder` is the actual state
 machine. Do not turn failure construction into a generic transition engine.
 
+## 14. Agency code rules [NORMATIVE]
+
+- `packages/agency` stays pure: no `fs`, `node:*`, `bun:*`, mineflayer, SQLite,
+  or provider SDKs.
+- Agency code emits goals, intentions, and social proposals only. It never
+  executes actions.
+- Deterministic utility policy is the primary fallback. Laya and the planner are
+  advisory.
+- Do not put LLM text generation inside the agency control loop.
+- Social output is typed, rate-limited, and generated from local templates or a
+  policy port, never by echoing arbitrary input.
+- Chat adaptation stays thin in `apps/bot`. Conversation classification and
+  reply selection belong in `packages/agency`.
+- Need, trait, goal, and intention values are bounded and validated at
+  construction. Invalid values fail closed with a `Result`.
+- Persist agency state through coordinator repositories. Bot processes never
+  open SQLite.
+- Every goal completion and abandonment records a typed reason and timestamp.
+
 ## TiCrafter mapping and exceptions
 
 The rules above are preserved verbatim. This appendix maps foreign references to

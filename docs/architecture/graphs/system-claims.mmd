@@ -1,65 +1,69 @@
 flowchart LR
-n194["Claim Repository"]
-n172["Overlap Margin Checker"]
-n132["Atomic Claim Acquirer"]
-n195["Lease Heartbeat"]
-n138["Lease Reaper"]
-n130["Fencing Token Authority"]
-n190["Claim Releaser"]
-n196["Contention Metrics"]
-n145["Resume Orchestrator (Bot Registry and Profiles)"]
-n137["Transaction Manager (Memory and Persistence)"]
-n189["Task State Machine (Task Board)"]
-n124["Metrics Registry (Ops and Observability)"]
-n29["Coordinator Epoch Authority (Coordinator Runtime)"]
-n168["Spatial Overlap Validator (Shared Infrastructure Plan)"]
-n28["Command Router (Coordinator Runtime)"]
-n30["Global Scheduler (Coordinator Runtime)"]
-n31["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n191["Contention Harness (Testing and Evaluation)"]
-n173["Compatibility Checker (Edit Grants and Collaboration)"]
-n197["Grant Revoker (Edit Grants and Collaboration)"]
-n122["Status Aggregator (Ops and Observability)"]
-n118["Active Bot Support Rule (Autonomy and Safety)"]
-n116["Claim Loss Evaluator (Autonomy and Safety)"]
-n117["Protected BBox Rule (Autonomy and Safety)"]
-n120["Safety Policy Engine (Autonomy and Safety)"]
-n145 -->|delegates_to| n190
-n132 -->|writes| n194
-n132 -->|depends_on| n172
-n132 -->|depends_on| n137
-n190 -->|writes| n194
-n190 -->|depends_on| n189
-n194 -->|depends_on| n137
-n196 -->|depends_on| n194
-n196 -->|observes| n124
-n130 -->|depends_on| n29
-n130 -->|depends_on| n137
-n195 -->|writes| n194
-n138 -->|writes| n194
-n138 -->|depends_on| n189
-n172 -->|depends_on| n194
-n172 -->|depends_on| n168
-n28 -->|controls| n132
-n29 -->|controls| n130
-n29 -->|depends_on| n137
-n30 -->|delegates_to| n138
-n30 -->|depends_on| n29
-n31 -->|depends_on| n145
-n31 -->|delegates_to| n138
-n31 -->|depends_on| n137
-n191 -->|depends_on| n194
-n173 -->|reads| n194
-n197 -->|depends_on| n130
-n122 -->|reads| n194
-n122 -->|observes| n124
-n118 -->|reads| n194
-n116 -->|reads| n194
-n117 -->|reads| n194
-n120 -->|reads| n194
-n120 -->|depends_on| n118
-n120 -->|depends_on| n117
+n201["Claim Repository"]
+n178["Overlap Margin Checker"]
+n137["Atomic Claim Acquirer"]
+n202["Lease Heartbeat"]
+n143["Lease Reaper"]
+n135["Fencing Token Authority"]
+n197["Claim Releaser"]
+n165["Bot Claim Command Handler"]
+n203["Contention Metrics"]
+n150["Resume Orchestrator (Bot Registry and Profiles)"]
+n142["Transaction Manager (Memory and Persistence)"]
+n196["Task State Machine (Task Board)"]
+n130["Metrics Registry (Ops and Observability)"]
+n30["Coordinator Epoch Authority (Coordinator Runtime)"]
+n174["Spatial Overlap Validator (Shared Infrastructure Plan)"]
+n29["Command Router (Coordinator Runtime)"]
+n31["Global Scheduler (Coordinator Runtime)"]
+n32["Restart Recovery Orchestrator (Coordinator Runtime)"]
+n198["Contention Harness (Testing and Evaluation)"]
+n179["Compatibility Checker (Edit Grants and Collaboration)"]
+n204["Grant Revoker (Edit Grants and Collaboration)"]
+n127["Status Aggregator (Ops and Observability)"]
+n123["Active Bot Support Rule (Autonomy and Safety)"]
+n121["Claim Loss Evaluator (Autonomy and Safety)"]
+n122["Protected BBox Rule (Autonomy and Safety)"]
+n125["Safety Policy Engine (Autonomy and Safety)"]
+n149["WebSocket Codec (Transport and Protocol)"]
+n150 -->|delegates_to| n197
+n137 -->|writes| n201
+n137 -->|depends_on| n178
+n137 -->|depends_on| n142
+n197 -->|writes| n201
+n197 -->|depends_on| n196
+n201 -->|depends_on| n142
+n203 -->|depends_on| n201
+n203 -->|observes| n130
+n135 -->|depends_on| n30
+n135 -->|depends_on| n142
+n202 -->|writes| n201
+n143 -->|writes| n201
+n143 -->|depends_on| n196
+n178 -->|depends_on| n201
+n178 -->|depends_on| n174
+n29 -->|controls| n137
+n30 -->|controls| n135
+n30 -->|depends_on| n142
+n31 -->|delegates_to| n143
+n31 -->|depends_on| n30
+n32 -->|depends_on| n150
+n32 -->|delegates_to| n143
+n32 -->|depends_on| n142
+n198 -->|depends_on| n201
+n179 -->|reads| n201
+n204 -->|depends_on| n135
+n127 -->|reads| n201
+n127 -->|observes| n130
+n123 -->|reads| n201
+n121 -->|reads| n201
+n122 -->|reads| n201
+n125 -->|reads| n201
+n125 -->|depends_on| n123
+n125 -->|depends_on| n122
+n165 -->|depends_on| n201
+n165 -->|depends_on| n149
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n194,n172,n132,n195,n138,n130,n190,n196 internal;
-class n145,n137,n189,n124,n29,n168,n28,n30,n31,n191,n173,n197,n122,n118,n116,n117,n120 external;
+class n201,n178,n137,n202,n143,n135,n197,n165,n203 internal;
+class n150,n142,n196,n130,n30,n174,n29,n31,n32,n198,n179,n204,n127,n123,n121,n122,n125,n149 external;

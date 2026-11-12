@@ -18,6 +18,7 @@ const KNOWN_KEYS = new Set([
     'PLANNER_BASE_URL',
     'PLANNER_API_KEY',
     'PLANNER_MODEL',
+    'PLANNER_RESERVE_TASKS_PER_BOT',
     'LOG_LEVEL',
     'TRAINING_TRACE_ENABLED',
 ]);
@@ -103,12 +104,22 @@ export class EnvOverlay {
         const baseUrl = environment.PLANNER_BASE_URL;
         const apiKey = environment.PLANNER_API_KEY;
         const model = environment.PLANNER_MODEL;
-        if (enabled === undefined && !baseUrl && !apiKey && !model) return;
+        const reserveTasksPerBot = EnvOverlay.number(environment.PLANNER_RESERVE_TASKS_PER_BOT);
+        if (
+            enabled === undefined &&
+            !baseUrl &&
+            !apiKey &&
+            !model &&
+            reserveTasksPerBot === undefined
+        ) {
+            return;
+        }
         overrides.planner = {
             ...(enabled !== undefined ? { enabled } : {}),
             ...(baseUrl ? { baseUrl } : {}),
             ...(apiKey ? { apiKey } : {}),
             ...(model ? { model } : {}),
+            ...(reserveTasksPerBot !== undefined ? { reserveTasksPerBot } : {}),
         };
     }
 

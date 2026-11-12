@@ -1,3 +1,4 @@
+export * from './agent-episode-repository.js';
 export * from './block-changelog-reader.js';
 export * from './block-changelog-writer.js';
 export * from './episode-store.js';

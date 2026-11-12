@@ -5,6 +5,7 @@
     "type": "module",
     "main": "src/main.ts",
     "dependencies": {
+        "@ticrafter/agency": "0.1.0",
         "@ticrafter/brains": "0.1.0",
         "@ticrafter/building": "0.1.0",
         "@ticrafter/core": "0.1.0",

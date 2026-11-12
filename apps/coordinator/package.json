@@ -18,6 +18,7 @@
     },
     "dependencies": {
         "@receptron/laya": "0.2.0",
+        "@ticrafter/agency": "0.1.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/memory": "0.1.0",
         "@ticrafter/planning": "0.1.0",

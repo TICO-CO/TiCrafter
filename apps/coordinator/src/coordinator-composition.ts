@@ -522,7 +522,9 @@ export class CoordinatorComposition {
                             .length ?? 0;
                     const onlineBots =
                         botList?.filter((bot) => bot.status === 'online').length ?? 0;
-                    plannerRuntime.tick(openTasks, onlineBots);
+                    const requiredTasks =
+                        onlineBots * (1 + options.config.planner.reserveTasksPerBot);
+                    plannerRuntime.tick(openTasks, requiredTasks);
                 }
             },
         });
@@ -611,6 +613,7 @@ export class CoordinatorComposition {
         const semantic = new PlannerSemanticValidator({
             skills: { has: (skillId) => options.skillIds.has(skillId) },
             sip: sipPorts,
+            reserveTasksPerBot: planner.reserveTasksPerBot,
         });
         const cache = new PlannerPlanCache({
             store: new SqlitePlannerPlanStore(options.database),
@@ -626,6 +629,7 @@ export class CoordinatorComposition {
             }),
             allowedSkills: [...options.skillIds].sort(),
             maxContextCharacters: planner.maxContextCharacters,
+            reserveTasksPerBot: planner.reserveTasksPerBot,
         });
         const service = new PlannerService({
             enabled: true,

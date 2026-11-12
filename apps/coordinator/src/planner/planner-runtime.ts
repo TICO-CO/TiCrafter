@@ -29,7 +29,7 @@ export class PlannerRuntime {
 
     constructor(private readonly options: PlannerRuntimeOptions) {}
 
-    tick(openTasks = 0, onlineBots = 0): void {
+    tick(openTasks = 0, requiredTasks = 0): void {
         if (this.running) return;
         const now = this.now();
         const interval = this.options.triggers.evaluateInterval(now);
@@ -37,7 +37,7 @@ export class PlannerRuntime {
             this.run(interval);
             return;
         }
-        const workGap = this.options.triggers.observeWorkGap(openTasks, onlineBots, now);
+        const workGap = this.options.triggers.observeWorkGap(openTasks, requiredTasks, now);
         if (workGap !== null) this.run(workGap);
     }
 

@@ -63,6 +63,15 @@ export const configSchema = zod
             timeoutMilliseconds: zod.number().int().positive(),
             maxRepairAttempts: zod.number().int().min(0).max(2),
             maxContextCharacters: zod.number().int().positive(),
+            reserveTasksPerBot: zod.number().int().min(0).max(8),
+        }),
+        agency: zod.object({
+            enabled: zod.boolean(),
+            goalCadenceMilliseconds: zod.number().int().min(250),
+            idleThresholdMilliseconds: zod.number().int().min(1000),
+            chatRatePerMinute: zod.number().int().min(0).max(30),
+            needDecayPerMinute: zod.number().min(0).max(1),
+            committedGoalBonus: zod.number().min(0).max(1),
         }),
         logging: zod.object({
             level: zod.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']),

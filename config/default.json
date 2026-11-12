@@ -52,10 +52,19 @@
         "maxTokensPerCall": 16000,
         "timeoutMilliseconds": 60000,
         "maxRepairAttempts": 2,
-        "maxContextCharacters": 48000
+        "maxContextCharacters": 48000,
+        "reserveTasksPerBot": 1
     },
     "logging": {
         "level": "info"
+    },
+    "agency": {
+        "enabled": true,
+        "goalCadenceMilliseconds": 2000,
+        "idleThresholdMilliseconds": 10000,
+        "chatRatePerMinute": 5,
+        "needDecayPerMinute": 0.02,
+        "committedGoalBonus": 0.15
     },
     "safety": {
         "guardianHz": 20,

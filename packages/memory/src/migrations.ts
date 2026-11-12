@@ -122,4 +122,29 @@ export const migrations: Migration[] = [
         ON planner_responses(created_at);
     `,
     },
+    {
+        version: 9,
+        name: 'agent-state-episodes',
+        sql: `
+      CREATE TABLE IF NOT EXISTS agent_state (
+        bot_id TEXT PRIMARY KEY,
+        state_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_agent_state_updated_at ON agent_state(updated_at);
+      CREATE TABLE IF NOT EXISTS agent_episodes (
+        id TEXT PRIMARY KEY,
+        bot_id TEXT NOT NULL,
+        goal_id TEXT,
+        kind TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        position_json TEXT,
+        related_bot_id TEXT,
+        payload_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_agent_episodes_bot_created
+        ON agent_episodes(bot_id, created_at);
+    `,
+    },
 ];

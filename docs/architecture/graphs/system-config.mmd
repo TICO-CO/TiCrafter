@@ -1,57 +1,57 @@
 flowchart LR
-n142["Environment Parser"]
-n141["Config Schema Validator"]
-n147["Profile Resolver"]
-n225["Hardware Probe"]
-n157["Secrets Loader"]
-n204["Name Pool Validator"]
-n226["Laya Runtime Resolver"]
-n250["Fail Fast Handler"]
-n53["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
-n107["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
-n108["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
-n148["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n203["Name Pool Allocator (Bot Registry and Profiles)"]
-n26(["Host Hardware"])
-n68["Process Bootstrap (Coordinator Runtime)"]
-n69["Service Composition (Coordinator Runtime)"]
-n38["Confidence Calibrator (Laya Decision Service)"]
-n34["Execution Provider Selector (Laya Decision Service)"]
-n33["Model Loader (Laya Decision Service)"]
-n73["Decision Rate Limiter (Laya Decision Service)"]
-n223["Perception Rate Limiter (Perception)"]
-n40["OpenAI-Compatible Client (Cloud Planner)"]
-n154["Transport Authentication (Transport and Protocol)"]
-n53 -->|depends_on| n141
-n107 -->|depends_on| n53
-n107 -->|depends_on| n147
-n108 -->|depends_on| n141
-n148 -->|depends_on| n157
-n203 -->|depends_on| n204
-n141 -->|depends_on| n142
-n250 -->|depends_on| n141
-n225 -->|depends_on| n147
-n225 -->|depends_on| n26
-n226 -->|depends_on| n225
-n226 -->|depends_on| n147
-n204 -->|depends_on| n141
-n147 -->|depends_on| n141
-n157 -->|depends_on| n142
-n68 -->|depends_on| n141
-n68 -->|depends_on| n142
-n68 -->|depends_on| n69
-n69 -->|depends_on| n147
-n38 -->|depends_on| n141
-n34 -->|depends_on| n225
-n34 -->|controls| n33
-n33 -->|depends_on| n226
-n73 -->|depends_on| n147
-n223 -->|depends_on| n147
-n40 -->|depends_on| n141
-n40 -->|depends_on| n157
-n154 -->|depends_on| n148
-n154 -->|depends_on| n157
+n147["Environment Parser"]
+n146["Config Schema Validator"]
+n152["Profile Resolver"]
+n234["Hardware Probe"]
+n162["Secrets Loader"]
+n212["Name Pool Validator"]
+n235["Laya Runtime Resolver"]
+n263["Fail Fast Handler"]
+n54["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
+n111["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
+n112["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
+n153["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n211["Name Pool Allocator (Bot Registry and Profiles)"]
+n27(["Host Hardware"])
+n72["Process Bootstrap (Coordinator Runtime)"]
+n73["Service Composition (Coordinator Runtime)"]
+n39["Confidence Calibrator (Laya Decision Service)"]
+n35["Execution Provider Selector (Laya Decision Service)"]
+n34["Model Loader (Laya Decision Service)"]
+n77["Decision Rate Limiter (Laya Decision Service)"]
+n232["Perception Rate Limiter (Perception)"]
+n41["OpenAI-Compatible Client (Cloud Planner Advisor)"]
+n159["Transport Authentication (Transport and Protocol)"]
+n54 -->|depends_on| n146
+n111 -->|depends_on| n54
+n111 -->|depends_on| n152
+n112 -->|depends_on| n146
+n153 -->|depends_on| n162
+n211 -->|depends_on| n212
+n146 -->|depends_on| n147
+n263 -->|depends_on| n146
+n234 -->|depends_on| n152
+n234 -->|depends_on| n27
+n235 -->|depends_on| n234
+n235 -->|depends_on| n152
+n212 -->|depends_on| n146
+n152 -->|depends_on| n146
+n162 -->|depends_on| n147
+n72 -->|depends_on| n146
+n72 -->|depends_on| n147
+n72 -->|depends_on| n73
+n73 -->|depends_on| n152
+n39 -->|depends_on| n146
+n35 -->|depends_on| n234
+n35 -->|controls| n34
+n34 -->|depends_on| n235
+n77 -->|depends_on| n152
+n232 -->|depends_on| n152
+n41 -->|depends_on| n146
+n41 -->|depends_on| n162
+n159 -->|depends_on| n153
+n159 -->|depends_on| n162
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n142,n141,n147,n225,n157,n204,n226,n250 internal;
-class n53,n107,n108,n148,n203,n68,n69,n38,n34,n33,n73,n223,n40,n154,n26 external;
+class n147,n146,n152,n234,n162,n212,n235,n263 internal;
+class n54,n111,n112,n153,n211,n72,n73,n39,n35,n34,n77,n232,n41,n159,n27 external;

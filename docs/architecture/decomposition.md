@@ -3,11 +3,11 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Source:** `main.md`  
-**Systems:** 23  
-**Components:** 238  
-**Relations:** 496  
+**Systems:** 24  
+**Components:** 255  
+**Relations:** 532  
 **Externals:** 5
 
 ## Reading this catalog
@@ -21,25 +21,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.core` | [Coordinator Runtime](#coordinator-runtime) | 9 | `apps/coordinator/src/core` | 1 |
 | `sys.transport` | [Transport and Protocol](#transport-and-protocol) | 8 | `packages/core/src/transport` | 1 |
 | `sys.sip` | [Shared Infrastructure Plan](#shared-infrastructure-plan) | 13 | `apps/coordinator/src/sip` | 5 |
-| `sys.tasks` | [Task Board](#task-board) | 8 | `apps/coordinator/src/tasks` | 5 |
-| `sys.claims` | [Claims and Leases](#claims-and-leases) | 8 | `apps/coordinator/src/claims` | 5 |
+| `sys.tasks` | [Task Board](#task-board) | 9 | `apps/coordinator/src/tasks` | 5 |
+| `sys.claims` | [Claims and Leases](#claims-and-leases) | 9 | `apps/coordinator/src/claims` | 5 |
 | `sys.grants` | [Edit Grants and Collaboration](#edit-grants-and-collaboration) | 9 | `apps/coordinator/src/grants` | 5 |
-| `sys.bots` | [Bot Registry and Profiles](#bot-registry-and-profiles) | 9 | `apps/coordinator/src/bots` | 5 |
+| `sys.bots` | [Bot Registry and Profiles](#bot-registry-and-profiles) | 10 | `apps/coordinator/src/bots` | 5 |
 | `sys.world` | [World Model and Landmarks](#world-model-and-landmarks) | 11 | `packages/worldmodel/src` | 3 |
 | `sys.perception` | [Perception](#perception) | 11 | `packages/perception/src` | 3 |
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
-| `sys.planner` | [Cloud Planner](#cloud-planner) | 12 | `packages/planning/src` | 9 |
+| `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 12 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
 | `sys.skills` | [Skill Library](#skill-library) | 20 | `packages/skills/src` | 4 |
 | `sys.building` | [Building](#building) | 21 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 11 | `apps/bot/src` | 1 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 14 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
-| `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 9 | `packages/memory/src` | 1 |
-| `sys.ops` | [Ops and Observability](#ops-and-observability) | 9 | `apps/coordinator/src/ops` | 11 |
+| `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
+| `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
 | `sys.config` | [Config and Profiles](#config-and-profiles) | 8 | `packages/core/src/config` | 1 |
 | `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
 | `sys.brains` | [Brains](#brains) | 4 | `packages/brains/src` | 4 |
+| `sys.agency` | [Agency](#agency) | 9 | `packages/agency/src` | 12 |
 | `sys.toolchain` | [Bootstrap and Toolchain](#bootstrap-and-toolchain) | 5 | `tools` | 1 |
 
 ## Coordinator Runtime
@@ -745,12 +746,14 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Allowed cross-system dependencies:** `sys.memory`
 - **Forbidden dependencies:** none
 
-**Purpose.** Maintain the fleet work DAG and assign eligible work without duplicate execution.
+**Purpose.** Maintain the fleet work DAG and offer eligible jobs without duplicate execution.
 
 **System invariants.**
 - A task is claimed by at most one bot at a time.
 - Task transitions are persisted before they are acknowledged.
 - Dependencies and preconditions gate eligibility before a claim is allowed.
+- Jobs are offers: bots may accept, defer, or decline with a reason.
+- Declining a job is not a task failure and never changes task state.
 
 ### Components
 
@@ -761,6 +764,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `tasks.precondition-evaluator` | Precondition Evaluator | Evaluate world, inventory, zone, and claim preconditions before task eligibility. | `apps/coordinator/src/tasks/precondition-evaluator` | 5 |
 | `tasks.priority-scheduler` | Priority Scheduler | Order eligible tasks by priority, role fit, distance, and fleet contention. | `apps/coordinator/src/tasks/priority-scheduler` | 5 |
 | `tasks.atomic-task-claimer` | Atomic Task Claimer | Claim the next eligible task in one transaction and issue the task lease. | `apps/coordinator/src/tasks/atomic-task-claimer` | 5 |
+| `tasks.job-offer-service` | Job Offer Service | Offer ranked eligible jobs to a bot and record accept, defer, and decline decisions without changing task state on decline. | `apps/coordinator/src/tasks/job-offer-service` | 13 |
 | `tasks.retry-manager` | Retry Manager | Retry failed tasks with bounded backoff and failure-class-specific policy. | `apps/coordinator/src/tasks/retry-manager` | 5 |
 | `tasks.dead-letter-manager` | Dead Letter Manager | Park exhausted tasks for planner review instead of retrying forever. | `apps/coordinator/src/tasks/dead-letter-manager` | 5 |
 | `tasks.task-state-machine` | Task State Machine | Validate and persist every legal task transition with actor and reason. | `apps/coordinator/src/tasks/task-state-machine` | 5 |
@@ -865,6 +869,29 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `tasks_atomic_task_claimer_errors_total`
   - `tasks_atomic_task_claimer_latency_ms`
 
+### `tasks.job-offer-service` — Job Offer Service
+
+- **Responsibility:** Offer ranked eligible jobs to a bot and record accept, defer, and decline decisions without changing task state on decline.
+- **Owner path:** `apps/coordinator/src/tasks/job-offer-service`
+- **Provides:** `tasks.job-offer-service.interface`
+- **Requires:** `tasks.task-repository`, `tasks.priority-scheduler`, `tasks.precondition-evaluator`
+- **Owns state:** none
+- **Source refs:** `main.md#4-claims-leases-task-board`
+- **Milestone:** 13
+- **Invariants:**
+  - Offers are advisory and never reserve a job.
+  - Accepting an offer claims the job in one transaction with a lease and fencing token.
+  - Declining records a reason and leaves the job available for another bot.
+- **Failure modes:**
+  - Policy ambiguity or missing owner: deny the request and return a typed reason.
+- **Tests:**
+  - Grant/deny matrix including owner-offline and revision-bump cases.
+- **Metrics:**
+  - `tasks_jobs_offered_total`
+  - `tasks_jobs_accepted_total`
+  - `tasks_jobs_declined_total`
+  - `tasks_job_offer_latency_ms`
+
 ### `tasks.retry-manager` — Retry Manager
 
 - **Responsibility:** Retry failed tasks with bounded backoff and failure-class-specific policy.
@@ -933,7 +960,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner package:** `apps/coordinator/src/claims`
 - **Milestone:** 5
 - **Source refs:** `main.md#4-claims-leases-task-board`
-- **Allowed cross-system dependencies:** `sys.core`, `sys.memory`, `sys.sip`, `sys.tasks`
+- **Allowed cross-system dependencies:** `sys.core`, `sys.memory`, `sys.sip`, `sys.tasks`, `sys.transport`
 - **Forbidden dependencies:** none
 
 **Purpose.** Prevent duplicate work through atomic claims, leases, heartbeats, and fencing tokens.
@@ -954,6 +981,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `claims.lease-reaper` | Lease Reaper | Expire overdue leases, requeue work, and invalidate fencing tokens. | `apps/coordinator/src/claims/lease-reaper` | 5 |
 | `claims.fencing-token-authority` | Fencing Token Authority | Issue monotonic fencing tokens bound to coordinator epoch and claim identity. | `apps/coordinator/src/claims/fencing-token-authority` | 5 |
 | `claims.claim-releaser` | Claim Releaser | Release a claim on completion, cancellation, or bot loss and requeue uncompleted work. | `apps/coordinator/src/claims/claim-releaser` | 5 |
+| `claims.bot-claim-command-handler` | Bot Claim Command Handler | Accept typed claim acquire, renew, and release requests from bots and route them through the claim service. | `apps/coordinator/src/claims/bot-claim-command-handler` | 13 |
 | `claims.contention-metrics` | Contention Metrics | Record claim wait, reclaims, duplicate attempts, and lease churn. | `apps/coordinator/src/claims/contention-metrics` | 5 |
 
 ### `claims.claim-repository` — Claim Repository
@@ -1093,6 +1121,27 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `claims_claim_releaser_errors_total`
   - `claims_claim_releaser_latency_ms`
+
+### `claims.bot-claim-command-handler` — Bot Claim Command Handler
+
+- **Responsibility:** Accept typed claim acquire, renew, and release requests from bots and route them through the claim service.
+- **Owner path:** `apps/coordinator/src/claims/bot-claim-command-handler`
+- **Provides:** `claims.bot-claim-command-handler.interface`
+- **Requires:** `claims.claim-repository`, `transport.ws-codec`
+- **Owns state:** none
+- **Source refs:** `main.md#4-claims-leases-task-board`
+- **Milestone:** 13
+- **Invariants:**
+  - Bot-originated claims use the same overlap, lease, and fencing rules as job claims.
+  - A bot cannot acquire or release a claim for another bot.
+- **Failure modes:**
+  - Lease conflict or stale token: reject the commit, requeue the work, and record contention.
+- **Tests:**
+  - Concurrent acquisition, expiry, and stale-commit race tests.
+- **Metrics:**
+  - `claims_bot_claim_commands_total`
+  - `claims_bot_claim_command_errors_total`
+  - `claims_bot_claim_command_latency_ms`
 
 ### `claims.contention-metrics` — Contention Metrics
 
@@ -1331,15 +1380,15 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner package:** `apps/coordinator/src/bots`
 - **Milestone:** 5
 - **Source refs:** `main.md#5-bot-identity-roles-and-persistence`
-- **Allowed cross-system dependencies:** `sys.config`, `sys.memory`
+- **Allowed cross-system dependencies:** `sys.agency`, `sys.config`, `sys.memory`
 - **Forbidden dependencies:** none
 
-**Purpose.** Persist bot identity, roles, behavior, relationships, presence, and resume intent.
+**Purpose.** Persist bot identity, personality, needs, intention, roles, behavior, relationships, presence, home, and resume state.
 
 **System invariants.**
 - Bot identity and username assignment are stable across restarts.
-- Resume restores intent and obligations, then reconciles with the world.
-- Profiles and roles are coordinator-owned and persisted continuously.
+- Resume restores intent, needs, home, and obligations, then reconciles with the world.
+- Profiles, roles, and agency state are coordinator-owned and persisted continuously.
 
 ### Components
 
@@ -1353,6 +1402,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bots.presence-tracker` | Presence Tracker | Track online, offline, and suspended state from session events. | `apps/coordinator/src/bots/presence-tracker` | 5 |
 | `bots.delta-sync-planner` | Delta Sync Planner | Compute the state delta a reconnecting bot needs from persisted cursors. | `apps/coordinator/src/bots/delta-sync-planner` | 5 |
 | `bots.resume-orchestrator` | Resume Orchestrator | Restore profile, leases, task, grants, and skill checkpoint; requeue if stale. | `apps/coordinator/src/bots/resume-orchestrator` | 5 |
+| `bots.agency-state-store` | Agency State Store | Persist current needs, intention, routine, home, mood, and last deliberation time per bot. | `apps/coordinator/src/bots/agency-state-store` | 12 |
 | `bots.name-pool-allocator` | Name Pool Allocator | Assign names by stable bot index and reject pools shorter than bot count. | `apps/coordinator/src/bots/name-pool-allocator` | 5 |
 
 ### `bots.identity-authenticator` — Bot Identity Authenticator
@@ -1514,6 +1564,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bots_resume_orchestrator_errors_total`
   - `bots_resume_orchestrator_latency_ms`
+
+### `bots.agency-state-store` — Agency State Store
+
+- **Responsibility:** Persist current needs, intention, routine, home, mood, and last deliberation time per bot.
+- **Owner path:** `apps/coordinator/src/bots/agency-state-store`
+- **Provides:** `bots.agency-state-store.interface`
+- **Requires:** `memory.transaction-manager`, `agency.agency-state`
+- **Owns state:** `agent_state`
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Agency state writes are transactional and never expose partial snapshots.
+  - Restored intentions are marked for world reconciliation before resuming.
+- **Failure modes:**
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
+- **Tests:**
+  - Repository contract test with rollback, concurrency, and stale-read cases.
+- **Metrics:**
+  - `bots_agency_state_store_errors_total`
+  - `bots_agency_state_store_latency_ms`
 
 ### `bots.name-pool-allocator` — Name Pool Allocator
 
@@ -2052,12 +2122,13 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Allowed cross-system dependencies:** `sys.config`, `sys.transport`
 - **Forbidden dependencies:** `fe.model-action`, `fe.decision-sip-write`
 
-**Purpose.** Run one shared Laya model, serialize inference, and return calibrated tactical choices.
+**Purpose.** Run one shared Laya model, serialize inference, and return calibrated choices over needs, goals, and actions.
 
 **System invariants.**
 - One Laya instance exists fleet-wide; never one instance per bot.
 - Only one inference forward pass is in flight at a time.
-- Low-confidence or timed-out decisions fall back to deterministic policy.
+- Low-confidence or timed-out decisions fall back to deterministic utility policy.
+- Laya advises among goal candidates and actions; it never owns motivation or execution.
 
 ### Components
 
@@ -2068,7 +2139,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `decision.queue` | Decision Queue | Order decision requests by priority with per-bot rate limits and bounded depth. | `apps/coordinator/src/decision/queue` | 8 |
 | `decision.rate-limiter` | Decision Rate Limiter | Enforce fleet-wide and per-bot decision rates for the active hardware profile. | `apps/coordinator/src/decision/rate-limiter` | 8 |
 | `decision.digest-cache` | Digest Cache | Cache normalized state digests to avoid repeated tokenization work. | `apps/coordinator/src/decision/digest-cache` | 8 |
-| `decision.digest-assembler` | Digest Assembler | Validate and normalize the bot state digest into a bounded inference request. | `apps/coordinator/src/decision/digest-assembler` | 8 |
+| `decision.digest-assembler` | Digest Assembler | Validate and normalize the bot state digest, needs, goal candidates, and actions into a bounded inference request. | `apps/coordinator/src/decision/digest-assembler` | 8 |
 | `decision.batch-runner` | Batch Runner | Batch questions from one decision request into a single forward pass. | `apps/coordinator/src/decision/batch-runner` | 8 |
 | `decision.single-inflight-guard` | Single In-flight Guard | Block concurrent forward passes and enforce timeout around the model session. | `apps/coordinator/src/decision/single-inflight-guard` | 8 |
 | `decision.output-parser` | Output Parser | Parse typed choice, score, and noul outputs without accepting free text. | `apps/coordinator/src/decision/output-parser` | 8 |
@@ -2177,7 +2248,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 ### `decision.digest-assembler` — Digest Assembler
 
-- **Responsibility:** Validate and normalize the bot state digest into a bounded inference request.
+- **Responsibility:** Validate and normalize the bot state digest, needs, goal candidates, and actions into a bounded inference request.
 - **Owner path:** `apps/coordinator/src/decision/digest-assembler`
 - **Provides:** `decision.digest-assembler.interface`
 - **Requires:** `transport.message-schema-registry`
@@ -2185,7 +2256,8 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Source refs:** `main.md#7-short-term-decision-service-laya`
 - **Milestone:** 8
 - **Invariants:**
-  - The state digest is at most 512 tokens and carries 8-16 affordances, each at most 12 words.
+  - The state digest is at most 512 tokens and carries 8-16 goal or action candidates, each at most 12 words.
+  - Needs are summarized as bounded ratios; goal candidates are typed and de-duplicated.
 - **Failure modes:**
   - Timeout, crash, or low confidence: fall back to deterministic policy and record the downgrade.
 - **Tests:**
@@ -2314,7 +2386,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 
 ---
 
-## Cloud Planner
+## Cloud Planner Advisor
 
 - **ID:** `sys.planner`
 - **Owner package:** `packages/planning/src`
@@ -2323,11 +2395,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Allowed cross-system dependencies:** `sys.config`, `sys.memory`, `sys.sip`
 - **Forbidden dependencies:** `fe.planner-action`, `fe.planner-sip-write`
 
-**Purpose.** Turn fleet-level goals and events into validated SIP revisions and task DAGs.
+**Purpose.** Turn fleet-level context and events into optional strategic goals, validated SIP revisions, and opt-in job offers.
 
 **System invariants.**
 - Planner output is untrusted until schema and semantic validation pass.
 - Planner never writes blocks or commits SIP state directly.
+- Planner work is advisory: bots may defer or decline jobs.
 - Invalid output keeps the last known good plan after bounded repair attempts.
 
 ### Components
@@ -3730,7 +3803,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner package:** `apps/bot/src`
 - **Milestone:** 1
 - **Source refs:** `main.md#1-fleet-coordinator`
-- **Allowed cross-system dependencies:** `sys.config`, `sys.perception`, `sys.safety`, `sys.skill-runtime`, `sys.transport`
+- **Allowed cross-system dependencies:** `sys.config`, `sys.perception`, `sys.safety`, `sys.skill-runtime`, `sys.transport`, `sys.agency`
 - **Forbidden dependencies:** `fe.bot-sqlite`
 
 **Purpose.** Own each bot child process, mineflayer lifecycle, local state digest, affordances, and action execution.
@@ -3754,6 +3827,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.guardian-hook` | Guardian Hook | Connect the local reflex guardian to the action veto gate on every tick. | `apps/bot/src/guardian-hook` | 1 |
 | `bot-runtime.skill-host` | Skill Host | Host the skill runtime inside the bot process and step active skills. | `apps/bot/src/skill-host` | 1 |
 | `bot-runtime.perception-host` | Perception Host | Host the perception sampler and detector pipeline inside the bot process. | `apps/bot/src/perception-host` | 1 |
+| `bot-runtime.agent-loop` | Agent Loop | Run the local agency tick, decide between personal goals and jobs, and drive intention execution through skills. | `apps/bot/src/agent-loop` | 12 |
+| `bot-runtime.chat-adapter` | Chat Adapter | Send and receive typed social messages through mineflayer chat with rate limits and no physical actions. | `apps/bot/src/chat` | 14 |
+| `bot-runtime.agency-state-adapter` | Agency State Adapter | Load and persist agency snapshots through coordinator state and reconcile intention with the observed world. | `apps/bot/src/agency-state-adapter` | 12 |
 | `bot-runtime.reconnect-supervisor` | Reconnect Supervisor | Reconnect after disconnect and trigger delta resync and resume. | `apps/bot/src/reconnect-supervisor` | 1 |
 
 ### `bot-runtime.connection-lifecycle` — Connection Lifecycle
@@ -3954,6 +4030,70 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bot_runtime_perception_host_errors_total`
   - `bot_runtime_perception_host_latency_ms`
+
+### `bot-runtime.agent-loop` — Agent Loop
+
+- **Responsibility:** Run the local agency tick, decide between personal goals and jobs, and drive intention execution through skills.
+- **Owner path:** `apps/bot/src/agent-loop`
+- **Provides:** `bot-runtime.agent-loop.interface`
+- **Requires:** `agency.agency-state`, `agency.goal-arbiter`, `agency.goal-generator`, `agency.intention-manager`, `agency.routine-model`, `brains.laya-client`, `brains.deterministic-policy`, `bot-runtime.state-digest-collector`, `bot-runtime.skill-host`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - The agent loop never blocks the 20Hz guardian and never calls mineflayer directly.
+  - Urgent needs preempt jobs and personal goals; the guardian preempts everything.
+  - No job is accepted without a local utility decision and a valid lease.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `bot_runtime_agent_loop_errors_total`
+  - `bot_runtime_agent_loop_latency_ms`
+  - `bot_runtime_self_initiated_goals_total`
+  - `bot_runtime_idle_milliseconds`
+
+### `bot-runtime.chat-adapter` — Chat Adapter
+
+- **Responsibility:** Send and receive typed social messages through mineflayer chat with rate limits and no physical actions.
+- **Owner path:** `apps/bot/src/chat`
+- **Provides:** `bot-runtime.chat-adapter.interface`
+- **Requires:** `agency.social-engine`, `bot-runtime.connection-lifecycle`
+- **Owns state:** none
+- **Source refs:** `main.md#21-social-behavior`
+- **Milestone:** 14
+- **Invariants:**
+  - Chat never triggers a physical action directly and never echoes arbitrary input.
+  - Chat is rate-limited per bot and can be muted by ops.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_chat_adapter_errors_total`
+  - `bot_runtime_chat_messages_total`
+  - `bot_runtime_chat_rate_limited_total`
+
+### `bot-runtime.agency-state-adapter` — Agency State Adapter
+
+- **Responsibility:** Load and persist agency snapshots through coordinator state and reconcile intention with the observed world.
+- **Owner path:** `apps/bot/src/agency-state-adapter`
+- **Provides:** `bot-runtime.agency-state-adapter.interface`
+- **Requires:** `agency.agency-state`, `transport.ws-codec`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Restored intentions are validated against the observed world before resuming.
+  - Agency state writes go through coordinator persistence, never local SQLite.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `bot_runtime_agency_state_adapter_errors_total`
+  - `bot_runtime_agency_state_adapter_latency_ms`
 
 ### `bot-runtime.reconnect-supervisor` — Reconnect Supervisor
 
@@ -4320,6 +4460,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `memory.snapshot-export` | Snapshot Export | Export consistent snapshots for backup, replay, and evaluation. | `packages/memory/src/snapshot-export` | 1 |
 | `memory.schema-version-registry` | Schema Version Registry | Track and validate the applied database schema version. | `packages/memory/src/schema-version-registry` | 1 |
 | `memory.episode-store` | Episode Store | Persist task episodes and outcome traces for replay, evaluation, and training export. | `packages/memory/src/episode-store` | 1 |
+| `memory.agent-episode-repository` | Agent Episode Repository | Persist append-only episodic memories for needs, intentions, discoveries, deaths, gifts, chats, and goal outcomes. | `packages/memory/src/agent-episode-repository` | 12 |
 
 ### `memory.sqlite-runtime` — SQLite Runtime
 
@@ -4499,6 +4640,26 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `memory_episode_store_writes_total`
   - `memory_episode_store_latency_ms`
 
+### `memory.agent-episode-repository` — Agent Episode Repository
+
+- **Responsibility:** Persist append-only episodic memories for needs, intentions, discoveries, deaths, gifts, chats, and goal outcomes.
+- **Owner path:** `packages/memory/src/agent-episode-repository`
+- **Provides:** `memory.agent-episode-repository.interface`
+- **Requires:** `memory.transaction-manager`
+- **Owns state:** `agent_episodes`
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Agent episodes are append-only and tied to bot, goal, and episode id.
+  - Episode retention follows the same 30-day log policy.
+- **Failure modes:**
+  - SQLite or migration failure: fail closed at startup, or abort the write at runtime.
+- **Tests:**
+  - Migration, WAL mode, retention, and append-only tests.
+- **Metrics:**
+  - `memory_agent_episode_repository_writes_total`
+  - `memory_agent_episode_repository_latency_ms`
+
 ---
 
 ## Ops and Observability
@@ -4523,6 +4684,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 |---|---|---|---|---:|
 | `ops.ops-api` | Ops API | Expose status, pause, resume, stop, SIP dump, and metrics endpoints. | `apps/coordinator/src/ops/ops-api` | 11 |
 | `ops.status-aggregator` | Status Aggregator | Aggregate bot, task, claim, grant, SIP, and decision status for operators. | `apps/coordinator/src/ops/status-aggregator` | 11 |
+| `ops.agency-status-view` | Agency Status View | Expose current needs, intention, routine, home, goal outcomes, and chat rate per bot. | `apps/coordinator/src/ops/agency-status-view` | 12 |
 | `ops.pause-resume-controller` | Pause and Resume Controller | Pause or resume one bot or the fleet without corrupting claims. | `apps/coordinator/src/ops/pause-resume-controller` | 11 |
 | `ops.fleet-emergency-stop` | Fleet Emergency Stop | Trigger a fleet-wide safe stop through the safety authority. | `apps/coordinator/src/ops/fleet-emergency-stop` | 11 |
 | `ops.sip-dump` | SIP Dump | Render a read-only snapshot of the current SIP revision. | `apps/coordinator/src/ops/sip-dump` | 11 |
@@ -4536,7 +4698,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Responsibility:** Expose status, pause, resume, stop, SIP dump, and metrics endpoints.
 - **Owner path:** `apps/coordinator/src/ops/ops-api`
 - **Provides:** `ops.ops-api.interface`
-- **Requires:** `transport.message-schema-registry`, `ops.status-aggregator`, `ops.pause-resume-controller`, `ops.fleet-emergency-stop`
+- **Requires:** `transport.message-schema-registry`, `ops.status-aggregator`, `ops.agency-status-view`, `ops.pause-resume-controller`, `ops.fleet-emergency-stop`
 - **Owns state:** none
 - **Source refs:** `main.md#1-fleet-coordinator`
 - **Milestone:** 11
@@ -4570,6 +4732,25 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `ops_status_aggregator_errors_total`
   - `ops_status_aggregator_latency_ms`
+
+### `ops.agency-status-view` — Agency Status View
+
+- **Responsibility:** Expose current needs, intention, routine, home, goal outcomes, and chat rate per bot.
+- **Owner path:** `apps/coordinator/src/ops/agency-status-view`
+- **Provides:** `ops.agency-status-view.interface`
+- **Requires:** `bots.agency-state-store`, `memory.agent-episode-repository`, `bots.presence-tracker`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Agency status is read-only and never mutates needs or intention.
+- **Failure modes:**
+  - Metrics sink or logger unavailable: drop telemetry without blocking fleet work.
+- **Tests:**
+  - Endpoint contract, pause/stop, and telemetry-failure tests.
+- **Metrics:**
+  - `ops_agency_status_view_errors_total`
+  - `ops_agency_status_view_latency_ms`
 
 ### `ops.pause-resume-controller` — Pause and Resume Controller
 
@@ -5311,12 +5492,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Allowed cross-system dependencies:** `sys.bot-runtime`, `sys.safety`, `sys.skill-runtime`, `sys.transport`
 - **Forbidden dependencies:** none
 
-**Purpose.** Own reflex, affordances, deterministic fallback policy, and the bot-side Laya client.
+**Purpose.** Own reflex, affordances, deterministic decision fallback, and the bot-side Laya client.
 
 **System invariants.**
 - Brain components emit proposals and never call mineflayer directly.
 - Deterministic policy is always available when Laya is unavailable, late, or low-confidence.
-- Reflex guardian outranks Laya and the planner.
+- Reflex guardian outranks agency, Laya, and the planner.
 
 ### Components
 
@@ -5403,6 +5584,215 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `brains_laya_client_timeouts_total`
   - `brains_laya_client_latency_ms`
+
+---
+
+## Agency
+
+- **ID:** `sys.agency`
+- **Owner package:** `packages/agency/src`
+- **Milestone:** 12
+- **Source refs:** `main.md#20-agency-and-motivation`, `main.md#21-social-behavior`
+- **Allowed cross-system dependencies:** none
+- **Forbidden dependencies:** none
+
+**Purpose.** Turn needs, personality, memory, world context, and social signals into goal candidates, committed intentions, routines, and social proposals without executing actions.
+
+**System invariants.**
+- Agency components emit proposals only; they never call mineflayer or write SIP state.
+- Deterministic utility is always available when Laya is unavailable, late, or below the confidence gate.
+- Needs, intention, routine, home, and social state survive restart and are reconciled before resumption.
+- Agency never bypasses the reflex guardian.
+
+### Components
+
+| ID | Component | Responsibility | Owner path | Milestone |
+|---|---|---|---|---:|
+| `agency.personality-model` | Personality Model | Seed, validate, and expose persistent personality traits that weight needs, goals, risk, and chat style. | `packages/agency/src/personality-model` | 12 |
+| `agency.needs-model` | Needs Model | Maintain homeostatic need levels, decay them over time, and apply satisfaction events. | `packages/agency/src/needs-model` | 12 |
+| `agency.goal-catalog` | Goal Catalog | Define typed goal templates, their skill steps, costs, risks, and expected values. | `packages/agency/src/goal-catalog` | 12 |
+| `agency.goal-generator` | Goal Generator | Emit concrete goal candidates from needs, personality, world context, time, home, and social signals. | `packages/agency/src/goal-generator` | 12 |
+| `agency.goal-arbiter` | Goal Arbiter | Score goal candidates with utility, personality, commitment hysteresis, cost, and risk. | `packages/agency/src/goal-arbiter` | 12 |
+| `agency.intention-manager` | Intention Manager | Track the active goal, step index, retries, completion, abandonment, preemption, and expiry. | `packages/agency/src/intention-manager` | 12 |
+| `agency.routine-model` | Routine Model | Derive morning, day, evening, and night phases and expose work, rest, and social preferences. | `packages/agency/src/routine-model` | 12 |
+| `agency.social-engine` | Social Engine | Classify social messages, generate personality-styled replies, and enforce chat rate limits. | `packages/agency/src/social-engine` | 14 |
+| `agency.agency-state` | Agency State | Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot. | `packages/agency/src/agency-state` | 12 |
+
+### `agency.personality-model` — Personality Model
+
+- **Responsibility:** Seed, validate, and expose persistent personality traits that weight needs, goals, risk, and chat style.
+- **Owner path:** `packages/agency/src/personality-model`
+- **Provides:** `agency.personality-model.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Traits are seeded deterministically from bot index, persisted, and always bounded to 0..1.
+  - Traits modulate utility and style but never override the guardian.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_personality_model_errors_total`
+  - `agency_personality_model_latency_ms`
+
+### `agency.needs-model` — Needs Model
+
+- **Responsibility:** Maintain homeostatic need levels, decay them over time, and apply satisfaction events.
+- **Owner path:** `packages/agency/src/needs-model`
+- **Provides:** `agency.needs-model.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Need levels are bounded to 0..1 and decay deterministically with elapsed time.
+  - Need satisfaction never decreases unrelated needs.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_needs_model_errors_total`
+  - `agency_needs_model_latency_ms`
+
+### `agency.goal-catalog` — Goal Catalog
+
+- **Responsibility:** Define typed goal templates, their skill steps, costs, risks, and expected values.
+- **Owner path:** `packages/agency/src/goal-catalog`
+- **Provides:** `agency.goal-catalog.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Every goal template names an existing skill id and bounded typed input.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_goal_catalog_errors_total`
+  - `agency_goal_catalog_latency_ms`
+
+### `agency.goal-generator` — Goal Generator
+
+- **Responsibility:** Emit concrete goal candidates from needs, personality, world context, time, home, and social signals.
+- **Owner path:** `packages/agency/src/goal-generator`
+- **Provides:** `agency.goal-generator.interface`
+- **Requires:** `agency.goal-catalog`, `agency.needs-model`, `agency.personality-model`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Generation returns 1-16 legal candidates and rejects infeasible or unsafe goals.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_goal_generator_errors_total`
+  - `agency_goal_generator_latency_ms`
+
+### `agency.goal-arbiter` — Goal Arbiter
+
+- **Responsibility:** Score goal candidates with utility, personality, commitment hysteresis, cost, and risk.
+- **Owner path:** `packages/agency/src/goal-arbiter`
+- **Provides:** `agency.goal-arbiter.interface`
+- **Requires:** `agency.goal-generator`, `agency.needs-model`, `agency.personality-model`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Selection is deterministic for the same inputs and keeps an active goal until completion, abandonment, or preemption.
+  - Laya advice is requested only when top scores are close or after repeated failure.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_goal_arbiter_errors_total`
+  - `agency_goal_arbiter_latency_ms`
+
+### `agency.intention-manager` — Intention Manager
+
+- **Responsibility:** Track the active goal, step index, retries, completion, abandonment, preemption, and expiry.
+- **Owner path:** `packages/agency/src/intention-manager`
+- **Provides:** `agency.intention-manager.interface`
+- **Requires:** `agency.goal-arbiter`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Only one intention is active per bot.
+  - Every completion or abandonment records a typed reason and timestamp.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_intention_manager_errors_total`
+  - `agency_intention_manager_latency_ms`
+
+### `agency.routine-model` — Routine Model
+
+- **Responsibility:** Derive morning, day, evening, and night phases and expose work, rest, and social preferences.
+- **Owner path:** `packages/agency/src/routine-model`
+- **Provides:** `agency.routine-model.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Routine phase is a pure function of time of day and is a prior, not a script.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_routine_model_errors_total`
+  - `agency_routine_model_latency_ms`
+
+### `agency.social-engine` — Social Engine
+
+- **Responsibility:** Classify social messages, generate personality-styled replies, and enforce chat rate limits.
+- **Owner path:** `packages/agency/src/social-engine`
+- **Provides:** `agency.social-engine.interface`
+- **Requires:** `agency.personality-model`
+- **Owns state:** none
+- **Source refs:** `main.md#21-social-behavior`
+- **Milestone:** 14
+- **Invariants:**
+  - Social output is typed, rate-limited, and never echoes arbitrary input.
+  - Social behavior never triggers a physical action outside the skill pipeline.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_social_engine_errors_total`
+  - `agency_social_engine_latency_ms`
+
+### `agency.agency-state` — Agency State
+
+- **Responsibility:** Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot.
+- **Owner path:** `packages/agency/src/agency-state`
+- **Provides:** `agency.agency-state.interface`
+- **Requires:** `agency.needs-model`, `agency.personality-model`, `agency.intention-manager`, `agency.routine-model`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Agency state snapshots are immutable and restart-safe.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_agency_state_errors_total`
+  - `agency_agency_state_latency_ms`
 
 ---
 

@@ -3,12 +3,16 @@ import { describe, expect, it } from 'bun:test';
 import { plannerContext, plannerPlan } from './planning-fixture.js';
 import { PlannerSemanticValidator } from './semantic-validator.js';
 
-function validator(sipError: string | null = null): PlannerSemanticValidator {
+function validator(
+    sipError: string | null = null,
+    reserveTasksPerBot = 0,
+): PlannerSemanticValidator {
     return new PlannerSemanticValidator({
         skills: { has: (skillId) => skillId === 'navigate' },
         sip: {
             validate: () => (sipError === null ? [undefined, null] : [null, sipError]),
         },
+        reserveTasksPerBot,
     });
 }
 
@@ -84,15 +88,39 @@ describe('PlannerSemanticValidator', () => {
         expect(shortValidated).toBeNull();
         expect(shortError?.type).toBe('SEMANTIC');
         if (shortError?.type !== 'SEMANTIC') return;
-        expect(
-            shortError.issues.some((issue) =>
-                issue.includes('plan must provide independent tasks for every online bot'),
-            ),
-        ).toBe(true);
+        expect(shortError.issues.some((issue) => issue.includes('plan must provide'))).toBe(true);
 
         const [validated, validationError] = validator().validate(
             plannerPlan({
                 tasks: Array.from({ length: 4 }, (_, index) =>
+                    workTask(`task-${index}`, { target: { x: index, y: 64, z: 1 } }),
+                ),
+            }),
+            plannerContext({ tasks: [], bots }),
+        );
+        expect(validationError).toBeNull();
+        expect(validated).toBe(undefined);
+    });
+
+    it('requires reserve tasks when configured', () => {
+        const bots = Array.from({ length: 4 }, (_, index) => ({
+            id: `bot-${index}`,
+            role: 'builder',
+            online: true,
+            position: { x: index, y: 64, z: 0 },
+        }));
+        const fourTasks = Array.from({ length: 4 }, (_, index) =>
+            workTask(`task-${index}`, { target: { x: index, y: 64, z: 1 } }),
+        );
+        const [, shortError] = validator(null, 1).validate(
+            plannerPlan({ tasks: fourTasks }),
+            plannerContext({ tasks: [], bots }),
+        );
+        expect(shortError?.type).toBe('SEMANTIC');
+
+        const [validated, validationError] = validator(null, 1).validate(
+            plannerPlan({
+                tasks: Array.from({ length: 8 }, (_, index) =>
                     workTask(`task-${index}`, { target: { x: index, y: 64, z: 1 } }),
                 ),
             }),
@@ -166,11 +194,9 @@ describe('PlannerSemanticValidator', () => {
         );
         expect(validationError?.type).toBe('SEMANTIC');
         if (validationError?.type !== 'SEMANTIC') return;
-        expect(
-            validationError.issues.some((issue) =>
-                issue.includes('plan must provide independent tasks for every online bot'),
-            ),
-        ).toBe(true);
+        expect(validationError.issues.some((issue) => issue.includes('plan must provide'))).toBe(
+            true,
+        );
     });
 
     it('rejects empty plans when no work is open', () => {
@@ -181,11 +207,9 @@ describe('PlannerSemanticValidator', () => {
         expect(validated).toBeNull();
         expect(validationError?.type).toBe('SEMANTIC');
         if (validationError?.type !== 'SEMANTIC') return;
-        expect(
-            validationError.issues.some((issue) =>
-                issue.includes('plan must provide independent tasks for every online bot'),
-            ),
-        ).toBe(true);
+        expect(validationError.issues.some((issue) => issue.includes('plan must provide'))).toBe(
+            true,
+        );
     });
 
     it('accepts empty plans when work is already open', () => {

@@ -19,6 +19,7 @@ export interface PlannerSemanticValidatorOptions {
     maxBlueprints?: number;
     maxMutations?: number;
     maxDistanceBlocks?: number;
+    reserveTasksPerBot?: number;
 }
 
 export class PlannerSemanticValidator {
@@ -162,9 +163,11 @@ export class PlannerSemanticValidator {
         ).length;
         const newTasks = plan.tasks.filter((task) => !existingIds.has(task.id)).length;
         const onlineBots = context.bots.filter((bot) => bot.online).length;
-        if (effectiveOpen + newTasks < onlineBots) {
+        const requiredTasks = onlineBots * (1 + (this.options.reserveTasksPerBot ?? 0));
+        if (effectiveOpen + newTasks < requiredTasks) {
+            const botLabel = onlineBots === 1 ? 'bot' : 'bots';
             issues.push(
-                `plan must provide independent tasks for every online bot: ${effectiveOpen + newTasks} available, ${onlineBots} online`,
+                `plan must provide ${requiredTasks} actionable independent tasks for ${onlineBots} online ${botLabel}: ${effectiveOpen + newTasks} available`,
             );
         }
     }

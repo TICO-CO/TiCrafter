@@ -8,13 +8,18 @@
 - **Laya execution provider:** CPU on `home-min`; `["webgpu","cpu"]` on `home-full`, automatic CPU fallback.
 - **LAN defaults:** `localhost:25565`, name pool `["TiBot1" … "TiBot8"]`; bot index `i` gets `names[i]`.
 - Bots all share **one common infrastructure plan** (SIP) so they do not override each other.
-- **Cloud planner:** Muse Spark 1.3 Contributor via an OpenAI-compatible endpoint ("opencode").
+- Bots are **self-motivated agents**, not task workers. Each bot owns needs, personality, goals, intention, routine, home, social memory, and relationships.
+- The coordinator coordinates world state, claims, grants, jobs, and persistence. It does not choose every bot action.
+- The **task board is an opt-in job market**. Jobs are offers; bots accept, defer, or decline with a reason.
+- **Cloud planner:** Muse Spark 1.3 Contributor via an OpenAI-compatible endpoint ("opencode"). The planner is an optional strategic advisor, not a fleet boss.
+- The local agency loop runs with the planner disabled and with no seed tasks.
 - **Short-term decision model:** Laya (`@receptron/laya`, Node/ONNX). Typed `choice`/`score`/`noul` only, no text.
 - **Execution:** mineflayer.
 - **Building:** all three layers — procedural templates, schematic import, LLM composition into a Blueprint IR.
 - Bots **may modify existing builds/farms**, under coordination, logging, and rollback rules.
 - **Active builds are private by default.** A non-owner may edit only through an explicit scoped grant that confirms compatibility with the owner's current plan.
-- Bots persist identity, role, behavior profile, current task, claims, and skill checkpoints; restart resumes last state.
+- Bots persist identity, personality, needs, intention, home, relationships, claims, and skill checkpoints; restart resumes last state.
+- **Social behavior is local, typed, and rate-limited.** Bots chat, build trust, share, and cooperate without a cloud dependency.
 - Dev-only Python allowed for Laya fine-tuning; **runtime stays Bun-only**.
 - **Self-contained bootstrap:** missing deps and apps install into repo-local, gitignored paths. No global installs or system package manager.
 - Infrastructure recognition: paths, houses, farms, walls, bridges, storage, workstations.
@@ -69,8 +74,10 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
                  │  • Task board + atomic claims + leases     │
                  │  • Edit grants + compatibility checks      │
                  │  • Bot profiles, roles, checkpoints        │
+                 │  • Agency state and episode persistence    │
+                 │  • Job offers and bot-facing claims        │
                  │  • Laya decision service (one model)       │
-                 │  • Cloud planner client (Muse Spark)       │
+                 │  • Optional planner advisor (Muse Spark)   │
                  │  • SQLite WAL, event log, metrics          │
                  └───────────────▲────────────────────────────┘
                                  │ localhost WebSocket / IPC
@@ -80,18 +87,22 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
    │ mineflayer│           │ mineflayer│             │ mineflayer│
    │ perception│           │ perception│             │ perception│
    │ reflex    │           │ reflex    │             │ reflex    │
+   │ needs     │           │ needs     │             │ needs     │
+   │ goals     │           │ goals     │             │ goals     │
+   │ social    │           │ social    │             │ social    │
    │ skills    │           │ skills    │             │ skills    │
    │ builder   │           │ builder   │             │ builder   │
    └──────────┘            └──────────┘              └──────────┘
 ```
 
-Logic is three-tier:
+Logic is four-tier:
 
 1. **Reflex guardian** — deterministic, 20Hz, local to each bot. Final veto always.
-2. **Laya** — shared decision service, ~0.5–2Hz per bot, proposes next action from enumerated affordances.
-3. **Cloud planner** — fleet-level, event-driven every 60–300s. Emits plans/tasks only.
+2. **Agency** — local needs, personality, goal generation, intention commitment, routine, and social reasoning.
+3. **Laya** — shared decision service, ~0.5–2Hz per bot, advises among needs and goal candidates.
+4. **Cloud planner** — optional fleet-level advisor, event-driven every 60–300s. Emits strategic goals, SIP revisions, and job proposals only.
 
-Priority: **guardian > Laya > planner**. No model ever calls mineflayer directly.
+Priority: **guardian > urgent needs > agency intention > Laya advice > planner advice**. No model ever calls mineflayer directly.
 
 ## 1. Fleet Coordinator
 
@@ -100,12 +111,14 @@ Single process for LAN simplicity; can later split into services. Fleet size, La
 Responsibilities:
 
 - Own the **SIP** (canonical intended world state).
-- Own the **task board**, claims, leases, fencing tokens, and edit grants.
+- Own the **task board**, job offers, claims, leases, fencing tokens, and edit grants.
 - Merge perceptual updates from all bots into one world model.
+- Persist bot agency state: needs, intention, home, routines, episodes, and relationships.
+- Offer jobs to bots and expose bot-facing claims for personal projects.
 - Host the single Laya instance and serialize/rate-limit decisions.
-- Call the cloud planner and apply validated plan revisions.
+- Call the optional cloud planner and apply validated strategic revisions.
 - Persist everything to SQLite (WAL) and an append-only event log.
-- Expose ops endpoints: status, pause bot, pause fleet, dump SIP, metrics.
+- Expose ops endpoints: status, agency state, pause bot, pause fleet, dump SIP, metrics.
 
 Crash isolation: one coordinator process; each bot runs in its own child process. Bots can reconnect; claims expire by lease.
 
@@ -193,8 +206,11 @@ Optional escalation: if compatibility is ambiguous, the cloud planner arbitrates
 - **Fencing token**: executor must present token on every commit; stale token rejected.
 - Lease TTL + heartbeat; expired claims reclaimed to `planned`.
 - Task board holds dependencies, preconditions, priority, retries, dead-letter state.
-- Bots atomically claim the next eligible task. No duplicate work by construction.
-- Contention metrics: claim wait, reclaimed leases, duplicate attempts.
+- The task board is a **job market**: coordinator offers eligible jobs; a bot accepts, defers, or declines with a reason.
+- Declining a job is a normal outcome and never a failure. Deferred jobs stay open for another bot or a later tick.
+- Bots may propose **personal projects** and acquire claims for their own bbox through the coordinator.
+- Claims still guarantee single-writer execution. No duplicate work by construction.
+- Contention metrics: claim wait, reclaimed leases, duplicate attempts, declined jobs, deferred jobs.
 
 ## 5. Bot identity, roles, and persistence
 
@@ -204,10 +220,17 @@ Persistent per-bot profile, loaded on connect and saved continuously:
 BotProfile {
   botId, username, uuid, createdAt, lastSeen,
   role: "builder"|"farmer"|"miner"|"scout"|"hauler"|"guard",
+  traits: { curiosity, industriousness, caution, sociability,
+            ambition, orderliness, patience },
   behavior: { riskTolerance, workRadius, sociability, preferredBaseId },
   currentTaskId?, currentSkill?, currentStructureId?,
+  needs: { safety, hunger, rest, materials, tools,
+           shelter, social, novelty, achievement },
+  intention?: { goalId, label, step, startedAt, deadline },
+  routine: { phase, lastMealAt, lastRestAt },
+  homeStructureId?, personalStorageId?,
   activeClaimIds: [],
-  homeStructureId?, relationships: { botId, trust, interactions }[],
+  relationships: { botId, trust, interactions, lastInteractionAt }[],
   permissions: { editGrantIds: [] },
   lastWorldVersion, lastSipRevision
 }
@@ -215,25 +238,29 @@ BotProfile {
 
 SQLite tables:
 
-- `bots` — profile, role, behavior, status (`online`/`offline`/`suspended`).
-- `bot_events` — append-only log of decisions, task transitions, grants, failures.
+- `bots` — profile, role, traits, behavior, status (`online`/`offline`/`suspended`).
+- `agent_state` — current needs, intention, routine, home, mood, last goal tick.
+- `agent_episodes` — append-only episodic memory: deaths, discoveries, gifts, chats, goal outcomes.
+- `bot_events` — append-only log of decisions, task transitions, grants, failures, social events.
 - `skill_checkpoints` — `(botId, taskId, skillId, stateJson, updatedAt)`.
 - Claims and edit grants are coordinator-owned; bots reconnect to them by `botId`.
 
 Restart / resume flow:
 
 1. Bot connects; coordinator authenticates by `botId`/`username`.
-2. Load profile, role, behavior weights, open claims, current task, skill checkpoint.
-3. Renew leases; release expired claims and requeue their tasks.
-4. Delta sync: chunk versions, SIP revisions, task board, grants since `lastSeen`.
-5. Resume skill from checkpoint if still valid; otherwise cleanly requeue and replan.
-6. Role and behavior are restored, so the bot's choices stay consistent across restarts.
+2. Load profile, traits, behavior weights, needs, intention, routine, home, open claims, current job, skill checkpoint, and relationships.
+3. Renew leases; release expired claims and requeue their jobs.
+4. Delta sync: chunk versions, SIP revisions, job board, grants since `lastSeen`.
+5. Reconcile the intention with the observed world before resuming.
+6. Resume the intention and skill checkpoint if still valid; otherwise abandon the goal cleanly, record why, and let the bot choose a new goal.
+7. Traits, needs, and relationships are restored, so the bot's choices stay consistent across restarts.
 
 Semantics:
 
 - "Pick up last state" means restore **intent and obligations**, then reconcile with the world — not blindly replay stale block positions.
-- Offline bots keep their structures and policies; their claims expire after a grace period.
-- Roles are persisted and influence planner assignment and Laya state priors. Default: fixed roles, with planner allowed to reassign temporarily.
+- Offline bots keep their structures, homes, and policies; their claims expire after a grace period.
+- Roles are persisted and influence the bot's work preferences and job fit. Default: fixed roles, with planner allowed to reassign temporarily.
+- Personality traits are persisted and modulate need urgency, goal choice, chat style, and risk appetite.
 - Usernames come from an ordered pool (`BOT_NAMES`); bot index `i` gets `names[i]`. Pool length must be ≥ `BOT_COUNT`; assignment is stable across restarts.
 
 ## 6. Perception → shared world model
@@ -251,6 +278,7 @@ Each bot samples loaded chunks on a ring (16–64 blocks configurable) and strea
 - Merge rules: newest observation wins; confidence decays; conflicts flagged for re-verification.
 - Blocks belonging to an **active planId** are tagged as in-progress, not natural infrastructure.
 - Query API: `nearest(type)`, `insideBase(pos)`, `route(a,b)`, `isProtected(pos)`, `containerAt(pos)`, `whoOwns(bbox)`.
+- Local agency inputs: nearby resource sites, food sources, shelter sites, danger sites, nearby players and bots, current time, weather, and last known home position.
 
 ## 7. Short-term decision service (Laya)
 
@@ -268,16 +296,16 @@ Load configuration is profile-driven:
 
 Per decision request from a bot:
 
-- State digest ≤512 tokens: health, food, time, biome, y-level, target, 5-line inventory, nearby hazards/mobs, current skill and progress, last result.
-- Affordances: 8–16 legal actions, each ≤12-word label.
+- State digest ≤512 tokens: health, food, time, biome, y-level, target, 5-line inventory, nearby hazards/mobs, nearby players/bots, needs vector, active goal, goal candidates, current skill and progress, last result.
+- Affordances: 8–16 legal goal or action candidates, each ≤12-word label.
 - Questions:
-    - `nextAction: choice` over affordance ids.
+    - `nextGoal: choice` over goal or action candidate ids.
     - `danger: noul` ("about to take damage or die?").
-    - `shouldContinue: noul` ("current skill still making progress?").
+    - `shouldContinue: noul` ("current goal or skill still making progress?").
 - Return `{choice, probabilities, answer_confidence, danger, latency}`.
 - Concurrency: priority queue; per-bot rate limit; digest cache; timeout.
 - **Confidence gate**: if `answer_confidence` < calibrated threshold (start 0.60), bot uses its deterministic utility policy.
-- Bots always maintain a local deterministic fallback; Laya latency never blocks the 20Hz guardian.
+- Bots always maintain a local deterministic fallback; Laya latency never blocks the 20Hz guardian or the agency tick.
 
 Choice cardinality: keep ≤16. Laya options cap is 192 tokens total and recommends <20.
 
@@ -285,13 +313,15 @@ Choice cardinality: keep ≤16. Laya options cap is 192 tokens total and recomme
 
 - OpenAI-compatible client. Config: `PLANNER_BASE_URL`, `PLANNER_API_KEY`, `PLANNER_MODEL="Muse Spark 1.3 Contributor"`.
 - Load `PLANNER_BASE_URL`/`PLANNER_API_KEY` from process env, then gitignored `config/.env`. **No default URL**; the coordinator fails fast if either variable is missing. Commit `config/.env.example` with empty values.
-- Fleet-level, not per-bot: plans the village/farm/road system and assigns work.
-- Triggers: interval, SIP conflict, task failure burst, death cluster, new landmark, chat request.
+- Optional strategic advisor, not a fleet boss.
+- Fleet-level, not per-bot: proposes village/farm/road goals, project blueprints, SIP revisions, and job offers.
+- Bots may defer or decline planner jobs when needs, safety, distance, or personality make the job unattractive.
+- Triggers: interval, SIP conflict, job failure burst, death cluster, new landmark, chat request.
 - Output: strict JSON validated with zod — goal stack, SIP mutations, task DAG, blueprint specs, recovery policy, notes.
 - Validation before commit: schema, skill catalog references, material feasibility, distance, zone rules, budget.
 - Invalid output: max 2 repair attempts, then keep the last good plan.
 - Budget: calls/min cap, token cap, timeout, cancellation, plan cache.
-- Planner never writes blocks; it only proposes SIP revisions and tasks.
+- Planner never writes blocks; it only proposes SIP revisions, strategic goals, and jobs.
 
 ## 9. Skills
 
@@ -325,9 +355,13 @@ Executor:
 ## 11. Autonomy loop and safety
 
 - 20Hz guardian: lava/void/fall/drowning, hostile mobs, hunger, stuck detection, path timeout, inventory full, claim lost.
+- 1Hz agency tick: needs decay, opportunity scan, goal generation, routine check.
 - 200–500ms skill step.
-- Laya called on skill completion, failure, danger, or 1Hz heartbeat.
-- Recovery ladder: local retry → Laya alternative → planner replan → safe mode → emergency stop.
+- Goal deliberation on need threshold, goal completion, failure, danger, social event, or 1Hz heartbeat.
+- Laya called when goal scores are close, on repeated failure, or on a slow heartbeat. Agency utility policy is the default.
+- Interruption order: guardian veto, urgent survival goal, active intention, accepted job, social or leisure goal, idle behavior.
+- Recovery ladder: local retry → agency alternative goal → Laya alternative → planner advisory → safe mode → emergency stop.
+- Goal abandonment is explicit: unsafe, infeasible, preempted, expired, conflicting claim, or social rejection. Abandonment is recorded in `agent_episodes`.
 - Multi-bot safety even though edits are allowed:
     - non-owner edits to active builds require a valid, unexpired grant/fencing token;
     - never break blocks supporting an online bot;
@@ -339,7 +373,7 @@ Executor:
 
 ## 12. Memory and persistence
 
-SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `bot_events`, `skill_checkpoints`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
+SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `agent_state`, `agent_episodes`, `personal_projects`, `bot_events`, `skill_checkpoints`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
 
 - **Data directory:** `DATA_DIR`, default `./data`; holds the SQLite DB, event log, and block changelog. Gitignored.
 - **Retention:** prune event logs and block changelogs after 30 days. Keep SQLite state until manual pruning.
@@ -349,14 +383,17 @@ Event log is append-only. Bot processes keep only short-lived local queues; coor
 ## 13. Repo layout
 
 ```
-apps/coordinator/        SIP, task board, grants, Laya service, planner client, SQLite
-apps/bot/                mineflayer lifecycle, perception stream, skill runtime
+apps/coordinator/        SIP, job board, claims, grants, agency persistence,
+                         Laya service, planner advisor, SQLite
+apps/bot/                mineflayer lifecycle, perception stream, skill runtime,
+                         agency loop, chat adapter
 packages/core/           types, blackboard, event bus, zod schemas
 packages/perception/     voxel sampler, chunk cache, detectors
 packages/worldmodel/     world merge, landmark registry, reconciliation
 packages/skills/         skill implementations
 packages/building/       Blueprint IR, templates, schematic adapter, executor,
                          work packages, scaffold, rollback
+packages/agency/         personality, needs, goals, intention, routine, social engine
 packages/brains/         reflex, affordances, deterministic policy, Laya client
 packages/safety/         deterministic safety evaluators, veto gate, recovery ladder
 packages/planning/       planner client, prompt builders, validators, task DAG
@@ -379,8 +416,8 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 
 ## 14. Laya training and calibration (dev-time Python, runtime Bun)
 
-1. Log `(state digest, affordances, action, outcome)` from deterministic policy and fleet runs.
-2. Label with cloud teacher + outcome rewards: progress, damage, time, materials, task completion.
+1. Log `(state digest, needs, goal candidates, chosen goal, action, outcome)` from deterministic policy and fleet runs.
+2. Label with cloud teacher + outcome rewards: need satisfaction, progress, damage, time, materials, social outcome, goal completion.
 3. Fine-tune Laya; export ONNX bundle into `models/`; load via `modelDir`.
 4. Dev-time Python may use ROCm PyTorch on `home-full`, but the runtime remains Bun-only and loads only the exported ONNX bundle.
 5. Fit per-question-type temperature on held-out traces.
@@ -406,7 +443,15 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
     - kill bot mid-build → restart → resumes task, lease, and checkpoint; no duplicate blocks.
     - kill coordinator during multi-bot build → restart → bots reconnect, leases recovered, SIP consistent.
     - 8-bot contention test: claim throughput, decision queue latency, no deadlock.
-- Metrics: task success, time, deaths, blocks/min, claim contention, duplicate work, idle time, Laya accuracy/ECE, planner calls/tokens/cost.
+- Autonomy scenarios:
+    - `autonomy-no-tasks`: planner off, seed jobs empty; bots survive, eat, shelter, gather, craft, and explore.
+    - `personality-diversity`: different traits produce visibly different routines and choices.
+    - `night-routine`: bots eat, shelter, sleep, and resume work.
+    - `personal-homes`: bots build distinct homes without overlap or conflicting edits.
+    - `social-village`: bots greet, share, cooperate, and update trust.
+    - `goal-resume`: kill a bot mid-goal; restart resumes needs, intention, home, and claims.
+    - `planner-advisory`: a planner project is accepted or deferred by local utility.
+- Metrics: task success, goal success, goal abandonment, time, deaths, blocks/min, claim contention, duplicate work, idle time, self-initiated goals, need satisfaction, social interactions, chat rate, Laya accuracy/ECE, planner calls/tokens/cost.
 - Soak test: 2+ hours on both profiles — 4 bots on `home-min`, 8 bots on `home-full`; no memory growth, no deadlocks, claims stable.
 
 ## 16. Milestones
@@ -422,8 +467,14 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 9. **Cloud planner**: Muse Spark, schema, SIP revisions, budget guards; plan-revision arbitration for ambiguous edits.
 10. **Calibration + fleet eval**: tune, measure, promote; 4 bots on `home-min`, 8 on `home-full`.
 11. **Hardening**: restart/resume, soak tests, error taxonomy, ops controls, docs.
+12. **Local agency core**: traits, needs, goal catalog, utility arbitration, intention manager, routine, personal goals with no planner and no seed jobs.
+13. **Homes and job market**: personal homes, storage, projects, bot-facing claims, opt-in job offers with accept/decline.
+14. **Social village**: chat, relationships, sharing, cooperation, body language, social goals.
+15. **Player-like validation**: autonomy scenarios, 2-hour soak, Laya goal-choice calibration, v2 acceptance.
 
 **v1 done when:** 8 bots run unattended on `home-full` for 2 hours (4 bots on `home-min` with the same guarantees), maintain one consistent SIP, build/repair farms/houses/roads cooperatively, detect and reuse existing infrastructure, never overwrite active work without a valid grant, and resume their roles/tasks correctly after stop/restart.
+
+**v2 done when:** bots run with the planner disabled and no seed jobs, pursue self-generated goals, build personal homes, maintain routines, decline unsuitable jobs, chat and cooperate, and resume needs, intentions, homes, and relationships after stop/restart without long idle drift or goal thrash.
 
 ## 17. Risks and mitigations
 
@@ -441,17 +492,28 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - **Placement physics/reach** → reachability planner, verification, rollback.
 - **Cloud cost/latency** → fleet-level event-driven planning, caps, caching, local fallback.
 - **Server anti-cheat/rate limits** → configurable action rate, no impossible reach.
+- **Goal thrash** → utility hysteresis, minimum commitment time, explicit abandonment reasons.
+- **Utility runaway** → need caps, cost and risk terms, guardian veto, deterministic policy audit.
+- **Planner-bot disagreement** → jobs are offers; bots decline or defer with a reason.
+- **Chat spam or harassment** → per-bot rate limits, typed intents, local moderation, operator mute.
+- **Personal project claim deadlock** → lease TTL, release on abandonment, coordinator conflict resolution.
+- **Agency state drift after restart** → restore needs and intention, then reconcile with world before resuming.
+- **Laya out of distribution on goal choices** → deterministic utility primary, calibrated confidence gate, fine-tune later.
 
 ## 18. Resolved defaults
 
 1. **LAN:** `localhost:25565`. Ordered `BOT_NAMES` pool (`TiBot1`–`TiBot8`); bot index `i` gets `names[i]`, stable across restarts. See §5 and §13.
 2. **Planner:** `PLANNER_BASE_URL`/`PLANNER_API_KEY` from process env or gitignored `config/.env`; no default URL; fail fast if missing. See §8.
 3. **Owner-offline edits:** deny by default; compatibility check only when `autoAcceptCompatibleHelpers=true`. See §3 and §11.
-4. **Roles:** fixed and persisted; planner may reassign temporarily, then restore the fixed role. See §5.
+4. **Roles:** fixed and persisted; traits and needs modulate job fit and goal choice; planner may reassign temporarily, then restore the fixed role. See §5 and §20.
 5. **Persistence:** `DATA_DIR=./data`; prune event logs and block changelogs after 30 days; keep SQLite state until manual pruning. See §12.
 6. **Laya latency:** WebGPU warm-model p95 <250ms per decision request with ≤600 input tokens. The CPU path currently misses this target at ≈1s p95 on `home-full` and ≈1.9s on `home-min`. See §7 and §15.
 7. **WebGPU:** default on `home-full` only if faster than CPU p95 and stable for 2h with no crash or driver reset; otherwise CPU. See §15 and §17.
 8. **Remaining validation:** 2h WebGPU stability is a milestone 2 exit criterion, not an open design question. `home-min` and `home-full` latency, RAM, and fallback are measured. See §16.
+9. **Agency:** local, deterministic-first, always available. Planner and Laya are advisors. See §20.
+10. **Jobs:** opt-in offers. Bots accept, defer, or decline with a reason. Declining is never a failure. See §4.
+11. **Social:** local typed chat, 2–5 messages/minute per bot, no cloud dependency. See §21.
+12. **Agency persistence:** dedicated `agent_state` and `agent_episodes` tables; relationships stay with the bot profile. See §12.
 
 ## 19. Self-contained bootstrap
 
@@ -467,3 +529,199 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - **Low-priority I/O:** `bun install` runs under `nice`/`ionice` when available with a repo-local cache.
 
 Verification: `bun run bootstrap:check`, `bun run validate:graph`, `bun run render:graphs`, `bun run render:svg`, `bun test`.
+
+## 20. Agency and motivation
+
+Bots are self-directed agents. The agency layer runs locally inside each bot process and works with the planner disabled and with no seed jobs.
+
+```ts
+AgencyState {
+  botId
+  traits: { curiosity, industriousness, caution, sociability,
+            ambition, orderliness, patience }
+  needs: { safety, hunger, rest, materials, tools,
+           shelter, social, novelty, achievement }
+  intention: { goalId, label, step, createdAt, deadline, attempts } | null
+  routine: { phase, lastMealAt, lastRestAt }
+  homeStructureId, personalStorageId
+  mood
+  lastDeliberationAt
+}
+
+Goal {
+  id, kind, label, priority
+  target?: Vec3
+  steps: GoalStep[]
+  successCriteria
+  estimatedCost, estimatedRisk, expectedValue
+  deadline?, source: "need"|"job"|"social"|"curiosity"|"routine"
+}
+```
+
+Needs:
+
+- `safety` — nearby threat, health, light level, lava, void, fall risk.
+- `hunger` — food level and available food.
+- `rest` — time of day, exhaustion, bed availability.
+- `materials` — wood, stone, food stock, building stock.
+- `tools` — required tool tiers for current goals.
+- `shelter` — home validity, distance from home, night exposure.
+- `social` — time since interaction, nearby players/bots, unresolved requests.
+- `novelty` — time since exploration, unexplored landmarks, monotony.
+- `achievement` — unfinished personal projects, role goals, mastery.
+
+Personality traits are seeded from bot index, persisted, and modulate urgency, cost tolerance, goal diversity, chat style, and risk appetite. Traits never override the guardian.
+
+Goal generation:
+
+- Collect needs, inventory, world model, landmarks, time, nearby entities, home, relationships, active job, and recent episodes.
+- Emit 4–12 concrete goal candidates.
+- Each candidate maps to existing skills or a local multi-step plan.
+- Reject illegal or unsafe candidates before scoring.
+
+Goal arbitration:
+
+- Score `urgency × trait weight × expected value × feasibility − cost − risk`.
+- Add commitment hysteresis; an active intention keeps a bonus until completion, abandonment, or preemption.
+- Ask Laya only when top scores are close, after repeated failure, or on a slow heartbeat.
+- Below the confidence gate, use the deterministic utility policy.
+
+Intention lifecycle:
+
+- `propose → select → execute → complete | abandon | preempt`.
+- Abandonment reasons: `unsafe`, `infeasible`, `preempted`, `expired`, `claim_conflict`, `social_rejection`.
+- Record every outcome in `agent_episodes`.
+- Restart restores the intention, reconciles it with the observed world, then resumes or abandons.
+
+Routine:
+
+- Morning: eat, check needs, resume project or accept a job.
+- Day: work, gather, build, farm, explore, socialize.
+- Evening: deposit, craft, visit home, chat.
+- Night: shelter, sleep if a bed exists, or keep working with caution.
+- Routine is a prior, not a script.
+
+Personal homes and projects:
+
+- Each bot may claim a home area, bed, and storage.
+- Personal projects request claims and, when needed, SIP structure proposals.
+- Shared areas and other bots' active builds still require grants.
+- Project abandonment releases claims and leaves a recorded episode.
+
+Persistence:
+
+- `agent_state` stores current needs, intention, routine, home, mood, and last deliberation time.
+- `agent_episodes` stores episodic memories: deaths, discoveries, gifts, chats, builds, goal outcomes.
+- Relationships stay in the bot profile.
+
+Boundaries:
+
+- Agency never calls mineflayer.
+- Agency never writes SIP, claims, or grants.
+- Agency emits goal and skill proposals.
+- Skills act through the action executor.
+- The guardian can veto any agency, Laya, or planner proposal.
+
+## 21. Social behavior
+
+Social behavior is local, typed, and rate-limited. It does not require the cloud planner.
+
+Chat intents:
+
+- `greeting` — first meeting or return after absence.
+- `status` — short answer about current goal or needs.
+- `request` — ask for help, food, material, or coordination.
+- `offer` — share food, tools, materials, or help.
+- `danger` — warn nearby bots or players.
+- `discovery` — mention a landmark, resource, or build.
+- `small_talk` — low-priority idle chatter.
+
+Conversation engine:
+
+- Parse direct messages into typed intents.
+- Reply with personality-styled local templates.
+- Optional richer text later, but never block the agency loop on a model.
+- Ignore malformed or hostile messages. Never echo arbitrary text.
+- Rate limit: 2–5 messages/minute per bot, configurable.
+- Cooldown per conversation and per intent.
+- Operator mute through ops.
+
+Relationships:
+
+- Track trust, interactions, last interaction, gifts, and help given/received.
+- Cooperation, gifts, and positive chat raise trust.
+- Ignored requests or unsafe behavior lower trust.
+- Trust influences goal weight for helping, sharing, and socializing.
+- `bots.relationship-store` remains the owner.
+
+Social goals:
+
+- Greet a nearby player or bot once per encounter.
+- Check on a friend who has not been seen recently.
+- Share food when another bot's hunger need is high.
+- Offer help on a friend's active project when compatible.
+- Invite help on an own project.
+- Warn about danger.
+- Explore together or follow for a short time.
+
+Body language:
+
+- Look at nearby players and bots.
+- Pause briefly after conversations.
+- Inspect held item or nearby block.
+- Short wander during idle.
+- No fake actions and no impossible reach.
+
+Safety and abuse:
+
+- Social actions never bypass the guardian.
+- No fire, lava, TNT, or destructive social actions.
+- Chat rate, content type, and recipients are bounded.
+- Ops can mute one bot or the fleet.
+
+## 22. Player-like acceptance
+
+v2 acceptance is measured with the planner disabled and `config/seed-tasks.json` empty.
+
+Required behavior:
+
+- Each bot survives at least 30 minutes without operator intervention.
+- Each bot eats before starvation, shelters or sleeps at night, and avoids known hazards.
+- Each bot completes multiple self-initiated goals covering at least three categories: survival, resources, shelter, exploration, social, or projects.
+- Each bot maintains a personal home or shelter with a bed and storage.
+- Bots decline or defer unsuitable jobs with a recorded reason.
+- Bots greet, reply, share, and cooperate at a bounded chat rate.
+- Personal projects acquire claims and never overlap another bot's home or active build.
+- Restart restores needs, intention, home, claims, and relationships before new work begins.
+
+Required scenarios:
+
+- `autonomy-no-tasks`
+- `personality-diversity`
+- `night-routine`
+- `personal-homes`
+- `social-village`
+- `goal-resume`
+- `planner-advisory`
+
+Required metrics:
+
+- Idle fraction below 20% while awake.
+- Self-initiated goals per bot per 10 minutes.
+- Need satisfaction trends.
+- Goal completion and abandonment rates.
+- Deaths by cause.
+- Exploration distance and new landmarks.
+- Chat messages per minute and social interactions.
+- Claim conflicts and duplicate work.
+- Planner jobs accepted, deferred, and declined.
+
+Required soak:
+
+- 2 hours, 4 bots on `home-min`.
+- 2 hours, 8 bots on `home-full`.
+- No memory growth above the soak gate.
+- No deadlocks.
+- No unbounded goal churn.
+- Claims stable.
+- Bots still pursuing goals at the end of the run.

@@ -13,6 +13,10 @@ Default endpoint: `http://127.0.0.1:8787`.
 | GET    | `/status`                      | Fleet, task, claim, and SIP view |
 | GET    | `/metrics`                     | In-process metrics snapshot      |
 | GET    | `/sip`                         | Current SIP snapshot             |
+| GET    | `/agency`                      | Fleet needs, goals, and routines |
+| GET    | `/bots/:botId/agency`          | One bot's agency state           |
+| GET    | `/bots/:botId/episodes`        | Recent agency episodes           |
+| POST   | `/bots/:botId/goal/cancel`     | Cancel one bot's active goal     |
 | GET    | `/audit/events?limit=N`        | Recent coordinator events        |
 | GET    | `/audit/blocks?limit=N&botId=` | Recent block changes             |
 | GET    | `/audit/episodes?limit=N`      | Recent decision episodes         |
@@ -30,13 +34,15 @@ Control requests accept an optional JSON body:
 
 ## Pause and emergency stop
 
-`pause` sends `bot.autonomy.pause`, suspends the bot profile, and cancels the
-active skill. `resume` clears the pause, clears any guardian emergency stop, and
-lets the bot claim work again.
+`pause` sends `bot.autonomy.pause`, suspends the bot profile, cancels the
+active skill, and stops goal deliberation. The active intention is retained but
+not advanced. `resume` clears the pause, clears any guardian emergency stop, and
+lets the bot resume its intention or accept work again.
 
 `emergency-stop` sends `bot.safety.stop` to every connected bot and suspends all
-profiles. A bot stays stopped until `resume` clears the guardian state. Both
-operations append an audit event.
+profiles. It cancels jobs, personal goals, and social actions. A bot stays
+stopped until `resume` clears the guardian state. Both operations append an audit
+event.
 
 ## Restart recovery
 
@@ -53,22 +59,45 @@ On coordinator start:
 If recovery or startup reconciliation fails, the coordinator closes instead of accepting work.
 The scheduler then runs SIP reconciliation every 60 seconds and retention pruning daily.
 
-On bot reconnect, the session response carries the prior task, lease token,
-checkpoint, and SIP revision. The bot restores the task and resumes the skill
-checkpoint before claiming new work.
+On bot reconnect, the session response carries the prior agency state, intention,
+home, relationships, job lease, checkpoint, and SIP revision. The bot restores
+needs and intention, reconciles the goal with the observed world, then resumes
+the skill checkpoint or abandons the goal with a typed reason before asking for
+new work.
 
 ## Startup task seeds
 
 `config/seed-tasks.json` is optional. When present, the coordinator creates its
-tasks before startup. Existing task IDs are skipped, so restarts do not duplicate
-work. The default file seeds four `collect` tasks with an eight-block radius.
+jobs before startup. Existing task IDs are skipped, so restarts do not duplicate
+work. The default file seeds four `collect` jobs with an eight-block radius.
+
+Seed jobs are not required for autonomy. With an empty seed file and the planner
+disabled, bots start from needs and generate personal goals.
 
 ## Planner application
 
 When `planner.enabled` is true, each successful planner cycle commits its SIP
-proposal first and then creates its task proposals through the task board.
+proposal first and then creates its job proposals through the task board.
 Existing task IDs are treated as no-ops. SIP commit failures leave the cycle
 unapplied for the next planner trigger.
+
+Planner jobs are offers. Bots may accept, defer, or decline them based on needs,
+safety, distance, role fit, and personality. A decline never changes job state.
+The planner remains an advisor even when enabled.
+
+## Autonomy operations
+
+Inspect `GET /agency` or `GET /bots/:botId/agency` for current needs, active
+goal, routine phase, home, and last deliberation time. `GET /bots/:botId/episodes`
+shows recent goal outcomes and abandonment reasons.
+
+Cancel one active goal with `POST /bots/:botId/goal/cancel`. This releases the
+associated claims and records an abandonment episode. It does not stop survival
+reflexes or the guardian.
+
+Chat rate, goal cadence, need decay, idle threshold, and job acceptance
+thresholds come from the `agency` config block. Lower chat rate or disable social
+output through config when running unattended demos.
 
 The planner client sends `x-opencode-session` and a TiCrafter user agent. For
 OpenCode Go, set `PLANNER_BASE_URL=https://opencode.ai/inference/go/openai/v1`
@@ -114,6 +143,19 @@ The soak report fails on RSS growth above 256 MiB, claim-count drift, missing
 heartbeat evidence, or a coordinator that does not stay up for the full run.
 Run the 4-bot profile on `home-min` and the 8-bot profile on `home-full`.
 
+Autonomy soaks:
+
+```sh
+bun tools/eval/run.mjs soak autonomy-no-tasks --duration 600000 --interval 30000
+bun tools/eval/run.mjs soak personal-homes --duration 600000 --interval 30000
+bun tools/eval/run.mjs soak social-village --duration 600000 --interval 30000
+bun tools/eval/run.mjs soak night-routine --duration 600000 --interval 30000
+```
+
+Autonomy soak fails on long idle drift above 20%, goal churn above the configured
+limit, missing need-satisfaction evidence, claim conflicts between personal
+homes, or a bot that stops pursuing goals before the run ends.
+
 ## Failure classes
 
 Skill failures map to task retry classes:
@@ -128,3 +170,17 @@ Skill failures map to task retry classes:
 
 `transient`, `precondition`, and `blocked` retry with backoff. `invalid` and
 `fatal` go straight to dead letter.
+
+Agency goals abandon with a typed reason instead of retrying forever:
+
+| Reason             | Meaning                                           |
+| ------------------ | ------------------------------------------------- |
+| `unsafe`           | Guardian or hazard evaluator rejected the goal.   |
+| `infeasible`       | Required resource, tool, or path does not exist.  |
+| `preempted`        | Urgent survival need or emergency stop took over. |
+| `expired`          | Goal deadline passed or opportunity disappeared.  |
+| `claim_conflict`   | Personal project overlapped another active claim. |
+| `social_rejection` | Requested help or sharing was declined.           |
+
+Every abandonment is appended to `agent_episodes` and appears in
+`GET /bots/:botId/episodes`.

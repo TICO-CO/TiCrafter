@@ -1,0 +1,35 @@
+flowchart LR
+n274["Personality Model"]
+n275["Needs Model"]
+n276["Goal Catalog"]
+n277["Goal Generator"]
+n252["Goal Arbiter"]
+n253["Intention Manager"]
+n278["Routine Model"]
+n254["Social Engine"]
+n213["Agency State"]
+n60["Agent Loop (Bot Runtime and Mineflayer Adapter)"]
+n61["Chat Adapter (Bot Runtime and Mineflayer Adapter)"]
+n210["Agency State Store (Bot Registry and Profiles)"]
+n60 -->|depends_on| n252
+n60 -->|depends_on| n253
+n60 -->|depends_on| n213
+n61 -->|depends_on| n254
+n277 -->|depends_on| n276
+n277 -->|depends_on| n275
+n277 -->|depends_on| n274
+n252 -->|depends_on| n277
+n252 -->|depends_on| n275
+n252 -->|depends_on| n274
+n253 -->|depends_on| n252
+n254 -->|depends_on| n274
+n213 -->|depends_on| n275
+n213 -->|depends_on| n274
+n213 -->|depends_on| n253
+n213 -->|depends_on| n278
+n254 -->|proposes_to| n61
+n210 -->|depends_on| n213
+classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
+classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
+class n274,n275,n276,n277,n252,n253,n278,n254,n213 internal;
+class n60,n61,n210 external;

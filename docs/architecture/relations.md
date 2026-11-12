@@ -3,8 +3,8 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 496  
-**State owners:** 21  
+**Relations:** 532  
+**State owners:** 23  
 **Allowed cycles:** 0
 
 ## Relation types
@@ -28,15 +28,16 @@
 | Type | Count |
 |---|---:|
 | `controls` | 22 |
-| `delegates_to` | 18 |
-| `depends_on` | 326 |
+| `delegates_to` | 22 |
+| `depends_on` | 350 |
 | `observes` | 8 |
-| `proposes_to` | 6 |
-| `publishes` | 12 |
-| `reads` | 59 |
+| `persists_to` | 2 |
+| `proposes_to` | 7 |
+| `publishes` | 13 |
+| `reads` | 61 |
 | `subscribes` | 5 |
 | `validates` | 2 |
-| `writes` | 38 |
+| `writes` | 40 |
 
 ## State ownership
 
@@ -56,6 +57,8 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `claims` | `claims.claim-repository` | `claims.atomic-acquirer`, `claims.lease-heartbeat`, `claims.lease-reaper`, `claims.claim-releaser` | `grants.compatibility-checker`, `safety.safety-policy-engine`, `ops.status-aggregator` |
 | `edit_grants` | `grants.grant-repository` | `grants.grant-issuer`, `grants.grant-revoker`, `grants.grant-expiry` | `grants.compatibility-checker`, `bots.delta-sync-planner` |
 | `bots` | `bots.profile-store` | `bots.identity-authenticator`, `bots.role-manager`, `bots.behavior-profile-manager`, `bots.relationship-store`, `bots.name-pool-allocator` | `planner.context-builder`, `ops.status-aggregator` |
+| `agent_state` | `bots.agency-state-store` | `bots.agency-state-store` | `bot-runtime.agency-state-adapter`, `ops.agency-status-view`, `agency.goal-generator` |
+| `agent_episodes` | `memory.agent-episode-repository` | `memory.agent-episode-repository` | `bot-runtime.agent-loop`, `ops.agency-status-view`, `agency.intention-manager` |
 | `chunks` | `world.chunk-version-store` | `world.observation-ingestor`, `world.merge-conflict-resolver` | `world.occupancy-grid` |
 | `landmarks` | `world.landmark-registry` | `world.detector-result-integrator`, `world.confidence-decay` | `world.spatial-query-engine`, `world.world-reconciler` |
 | `world.containerMemory` | `world.container-memory` | `building.container-refill-adapter` | `skills.deposit`, `skills.withdraw`, `building.material-preflight` |
@@ -76,7 +79,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Coordinator Runtime` | `Config and Profiles` | 3 | depends_on×3 |
 | `Coordinator Runtime` | `Edit Grants and Collaboration` | 2 | controls×1, delegates_to×1 |
 | `Coordinator Runtime` | `Memory and Persistence` | 4 | depends_on×3, delegates_to×1 |
-| `Coordinator Runtime` | `Cloud Planner` | 1 | delegates_to×1 |
+| `Coordinator Runtime` | `Cloud Planner Advisor` | 1 | delegates_to×1 |
 | `Coordinator Runtime` | `Shared Infrastructure Plan` | 3 | controls×1, delegates_to×1, depends_on×1 |
 | `Coordinator Runtime` | `Task Board` | 1 | controls×1 |
 | `Coordinator Runtime` | `Transport and Protocol` | 4 | depends_on×4 |
@@ -94,15 +97,17 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Claims and Leases` | `Ops and Observability` | 1 | observes×1 |
 | `Claims and Leases` | `Shared Infrastructure Plan` | 1 | depends_on×1 |
 | `Claims and Leases` | `Task Board` | 2 | depends_on×2 |
+| `Claims and Leases` | `Transport and Protocol` | 1 | depends_on×1 |
 | `Edit Grants and Collaboration` | `Bot Registry and Profiles` | 2 | reads×2 |
 | `Edit Grants and Collaboration` | `Claims and Leases` | 2 | reads×1, depends_on×1 |
 | `Edit Grants and Collaboration` | `Memory and Persistence` | 1 | depends_on×1 |
 | `Edit Grants and Collaboration` | `Shared Infrastructure Plan` | 4 | depends_on×3, reads×1 |
 | `Edit Grants and Collaboration` | `Transport and Protocol` | 1 | publishes×1 |
+| `Bot Registry and Profiles` | `Agency` | 1 | depends_on×1 |
 | `Bot Registry and Profiles` | `Claims and Leases` | 1 | delegates_to×1 |
 | `Bot Registry and Profiles` | `Config and Profiles` | 2 | depends_on×2 |
 | `Bot Registry and Profiles` | `Edit Grants and Collaboration` | 1 | reads×1 |
-| `Bot Registry and Profiles` | `Memory and Persistence` | 1 | depends_on×1 |
+| `Bot Registry and Profiles` | `Memory and Persistence` | 2 | depends_on×2 |
 | `Bot Registry and Profiles` | `Shared Infrastructure Plan` | 2 | reads×1, delegates_to×1 |
 | `Bot Registry and Profiles` | `Skill Runtime` | 1 | reads×1 |
 | `Bot Registry and Profiles` | `Task Board` | 1 | reads×1 |
@@ -115,16 +120,16 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Laya Decision Service` | `Config and Profiles` | 4 | depends_on×4 |
 | `Laya Decision Service` | `Ops and Observability` | 3 | observes×2, writes×1 |
 | `Laya Decision Service` | `Transport and Protocol` | 3 | depends_on×1, publishes×1, subscribes×1 |
-| `Cloud Planner` | `Bot Registry and Profiles` | 1 | reads×1 |
-| `Cloud Planner` | `Config and Profiles` | 2 | depends_on×2 |
-| `Cloud Planner` | `Edit Grants and Collaboration` | 2 | reads×1, proposes_to×1 |
-| `Cloud Planner` | `Memory and Persistence` | 1 | depends_on×1 |
-| `Cloud Planner` | `Ops and Observability` | 2 | observes×2 |
-| `Cloud Planner` | `Shared Infrastructure Plan` | 6 | reads×4, depends_on×1, proposes_to×1 |
-| `Cloud Planner` | `Skill Runtime` | 1 | reads×1 |
-| `Cloud Planner` | `Task Board` | 3 | reads×2, proposes_to×1 |
-| `Cloud Planner` | `Transport and Protocol` | 1 | subscribes×1 |
-| `Cloud Planner` | `World Model and Landmarks` | 2 | reads×2 |
+| `Cloud Planner Advisor` | `Bot Registry and Profiles` | 1 | reads×1 |
+| `Cloud Planner Advisor` | `Config and Profiles` | 2 | depends_on×2 |
+| `Cloud Planner Advisor` | `Edit Grants and Collaboration` | 2 | reads×1, proposes_to×1 |
+| `Cloud Planner Advisor` | `Memory and Persistence` | 1 | depends_on×1 |
+| `Cloud Planner Advisor` | `Ops and Observability` | 2 | observes×2 |
+| `Cloud Planner Advisor` | `Shared Infrastructure Plan` | 6 | reads×4, depends_on×1, proposes_to×1 |
+| `Cloud Planner Advisor` | `Skill Runtime` | 1 | reads×1 |
+| `Cloud Planner Advisor` | `Task Board` | 3 | reads×2, proposes_to×1 |
+| `Cloud Planner Advisor` | `Transport and Protocol` | 1 | subscribes×1 |
+| `Cloud Planner Advisor` | `World Model and Landmarks` | 2 | reads×2 |
 | `Skill Runtime` | `Bot Runtime and Mineflayer Adapter` | 1 | reads×1 |
 | `Skill Runtime` | `Brains` | 1 | reads×1 |
 | `Skill Runtime` | `Memory and Persistence` | 1 | depends_on×1 |
@@ -146,28 +151,30 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Building` | `Skill Runtime` | 1 | reads×1 |
 | `Building` | `Transport and Protocol` | 1 | subscribes×1 |
 | `Building` | `World Model and Landmarks` | 5 | reads×4, writes×1 |
-| `Bot Runtime and Mineflayer Adapter` | `Bot Registry and Profiles` | 1 | delegates_to×1 |
-| `Bot Runtime and Mineflayer Adapter` | `Brains` | 1 | delegates_to×1 |
+| `Bot Runtime and Mineflayer Adapter` | `Agency` | 4 | depends_on×4 |
+| `Bot Runtime and Mineflayer Adapter` | `Bot Registry and Profiles` | 2 | delegates_to×1, persists_to×1 |
+| `Bot Runtime and Mineflayer Adapter` | `Brains` | 3 | delegates_to×3 |
 | `Bot Runtime and Mineflayer Adapter` | `Config and Profiles` | 3 | depends_on×3 |
+| `Bot Runtime and Mineflayer Adapter` | `Memory and Persistence` | 1 | persists_to×1 |
 | `Bot Runtime and Mineflayer Adapter` | `Perception` | 4 | delegates_to×2, depends_on×2 |
 | `Bot Runtime and Mineflayer Adapter` | `Autonomy and Safety` | 2 | depends_on×2 |
 | `Bot Runtime and Mineflayer Adapter` | `Skill Runtime` | 3 | depends_on×2, delegates_to×1 |
-| `Bot Runtime and Mineflayer Adapter` | `Transport and Protocol` | 2 | depends_on×1, publishes×1 |
+| `Bot Runtime and Mineflayer Adapter` | `Transport and Protocol` | 3 | depends_on×1, publishes×2 |
 | `Autonomy and Safety` | `Bot Runtime and Mineflayer Adapter` | 2 | validates×1, controls×1 |
 | `Autonomy and Safety` | `Brains` | 1 | reads×1 |
 | `Autonomy and Safety` | `Building` | 1 | validates×1 |
 | `Autonomy and Safety` | `Claims and Leases` | 4 | reads×4 |
 | `Autonomy and Safety` | `Coordinator Runtime` | 2 | controls×1, proposes_to×1 |
 | `Autonomy and Safety` | `Memory and Persistence` | 1 | writes×1 |
-| `Autonomy and Safety` | `Cloud Planner` | 1 | proposes_to×1 |
+| `Autonomy and Safety` | `Cloud Planner Advisor` | 1 | proposes_to×1 |
 | `Autonomy and Safety` | `Shared Infrastructure Plan` | 2 | reads×2 |
 | `Autonomy and Safety` | `Transport and Protocol` | 2 | depends_on×2 |
 | `Autonomy and Safety` | `World Model and Landmarks` | 2 | reads×2 |
 | `Ops and Observability` | `Bot Runtime and Mineflayer Adapter` | 1 | controls×1 |
-| `Ops and Observability` | `Bot Registry and Profiles` | 2 | depends_on×2 |
+| `Ops and Observability` | `Bot Registry and Profiles` | 3 | depends_on×2, reads×1 |
 | `Ops and Observability` | `Claims and Leases` | 1 | reads×1 |
 | `Ops and Observability` | `Laya Decision Service` | 1 | depends_on×1 |
-| `Ops and Observability` | `Memory and Persistence` | 6 | reads×3, depends_on×1, writes×2 |
+| `Ops and Observability` | `Memory and Persistence` | 7 | reads×4, depends_on×1, writes×2 |
 | `Ops and Observability` | `Autonomy and Safety` | 1 | controls×1 |
 | `Ops and Observability` | `Shared Infrastructure Plan` | 2 | depends_on×1, reads×1 |
 | `Ops and Observability` | `Task Board` | 1 | reads×1 |
@@ -186,6 +193,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Brains` | `Autonomy and Safety` | 7 | controls×1, depends_on×6 |
 | `Brains` | `Skill Runtime` | 1 | depends_on×1 |
 | `Brains` | `Transport and Protocol` | 2 | subscribes×1, depends_on×1 |
+| `Agency` | `Bot Runtime and Mineflayer Adapter` | 1 | proposes_to×1 |
 
 ## Allowed dependency cycles
 
@@ -203,6 +211,9 @@ None.
 | `fe.skills-sip-write` | `skills.*` | `sip.*` | `writes` | Skills emit effects; coordinator owns SIP writes. |
 | `fe.decision-sip-write` | `decision.*` | `sip.*` | `writes` | Decision service is advisory only. |
 | `fe.training-runtime` | `training.*` | `bot-runtime.*` | `depends_on`, `controls`, `writes` | Training is dev-only and not imported by runtime. |
+| `fe.agency-action` | `agency.*` | `bot-runtime.action-executor` | `*` | Agency proposes goals only; skills perform actions through the executor. |
+| `fe.agency-sip-write` | `agency.*` | `sip.*` | `writes` | Agency cannot write SIP state; it proposes personal projects through the coordinator. |
+| `fe.chat-action` | `bot-runtime.chat-adapter` | `bot-runtime.action-executor` | `*` | Chat never triggers physical actions directly. |
 
 ## Coordinator Runtime relations
 
@@ -318,6 +329,8 @@ None.
 | `rel.0431` | `tasks.task-repository` | `depends_on` | `memory.transaction-manager` | `in-process` | sync | hard | depends on payload for Transaction Manager | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Task Repository depends on Transaction Manager. |
 | `rel.0432` | `tasks.task-state-machine` | `depends_on` | `memory.event-log-writer` | `in-process` | sync | hard | depends on payload for Event Log Writer | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Task State Machine depends on Event Log Writer. |
 | `rel.0433` | `tasks.task-state-machine` | `writes` | `tasks.task-repository` | `in-process` | sync | hard | task transition | Reject the operation, keep the last committed state, and surface a typed error to the caller. | State transitions are persisted. |
+| `rel.0515` | `tasks.job-offer-service` | `depends_on` | `tasks.priority-scheduler` | `in-process` | sync | hard | ranked eligible jobs | Return no offers and keep existing claims unchanged. | Job offers reuse eligibility and ranking. |
+| `rel.0516` | `tasks.job-offer-service` | `delegates_to` | `tasks.atomic-task-claimer` | `in-process` | sync | hard | accepted job claim | Reject the acceptance, leave the job open, and record contention. | Accepting an offer delegates the atomic claim. |
 
 ## Claims and Leases relations
 
@@ -338,6 +351,8 @@ None.
 | `rel.0099` | `claims.lease-reaper` | `depends_on` | `tasks.task-state-machine` | `in-process` | sync | hard | depends on payload for Task State Machine | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Lease Reaper depends on Task State Machine. |
 | `rel.0100` | `claims.overlap-margin-checker` | `depends_on` | `claims.claim-repository` | `in-process` | sync | hard | depends on payload for Claim Repository | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Overlap Margin Checker depends on Claim Repository. |
 | `rel.0101` | `claims.overlap-margin-checker` | `depends_on` | `sip.spatial-overlap-validator` | `in-process` | sync | hard | depends on payload for Spatial Overlap Validator | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Overlap Margin Checker depends on Spatial Overlap Validator. |
+| `rel.0517` | `claims.bot-claim-command-handler` | `depends_on` | `claims.claim-repository` | `in-process` | sync | hard | bot claim acquire, renew, or release | Reject the request with a typed claim error and keep the previous claim state. | Bot-facing claims use the same repository and lease rules. |
+| `rel.0518` | `claims.bot-claim-command-handler` | `depends_on` | `transport.ws-codec` | `ws` | sync | hard | typed claim command | Reject the frame and keep the connection alive for valid messages. | Claim commands arrive over the bot transport. |
 
 ## Edit Grants and Collaboration relations
 
@@ -393,6 +408,9 @@ None.
 | `rel.0486` | `bots.behavior-profile-manager` | `writes` | `bots.profile-store` | `in-process` | sync | hard | bots write | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Behavior Profile Manager writes Bot Profile Store. |
 | `rel.0487` | `bots.relationship-store` | `writes` | `bots.profile-store` | `in-process` | sync | hard | bots write | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Relationship Store writes Bot Profile Store. |
 | `rel.0488` | `bots.name-pool-allocator` | `writes` | `bots.profile-store` | `in-process` | sync | hard | bots write | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Name Pool Allocator writes Bot Profile Store. |
+| `rel.0508` | `bots.agency-state-store` | `depends_on` | `memory.transaction-manager` | `in-process` | sync | hard | transaction boundary | Abort the write and keep the previous committed snapshot. | Agency state writes are transactional. |
+| `rel.0509` | `bots.agency-state-store` | `writes` | `bots.agency-state-store` | `in-process` | sync | hard | agent_state write | Abort the write and keep the previous committed snapshot. | Agency state store owns agent_state. |
+| `rel.0532` | `bots.agency-state-store` | `depends_on` | `agency.agency-state` | `in-process` | sync | hard | agency state shape and snapshot | Reject the persistence request and keep the prior committed snapshot. | Persisted agency state uses the pure agency snapshot contract. |
 
 ## World Model and Landmarks relations
 
@@ -469,7 +487,7 @@ None.
 | `rel.0161` | `decision.timeout-fallback` | `controls` | `decision.output-parser` | `in-process` | sync | soft | timeout | Fall back to deterministic policy or the last good plan and record the downgrade. | Timeout aborts the inference and falls back. |
 | `rel.0162` | `decision.timeout-fallback` | `depends_on` | `decision.queue` | `in-process` | sync | soft | depends on payload for Decision Queue | Fall back to deterministic policy or the last good plan and record the downgrade. | Timeout and Fallback Handler depends on Decision Queue. |
 
-## Cloud Planner relations
+## Cloud Planner Advisor relations
 
 | ID | From | Type | To | Protocol | Sync | Criticality | Payload | Failure behavior | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -654,6 +672,17 @@ None.
 | `rel.0030` | `bot-runtime.world-cache-adapter` | `depends_on` | `bot-runtime.event-bridge` | `in-process` | sync | hard | depends on payload for Mineflayer Event Bridge | Reject the operation, keep the last committed state, and surface a typed error to the caller. | World Cache Adapter depends on Mineflayer Event Bridge. |
 | `rel.0031` | `bot-runtime.world-cache-adapter` | `delegates_to` | `perception.ring-sampler` | `in-process` | sync | hard | local world snapshot | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Bot runtime supplies the world view port; perception does not import the bot process. |
 | `rel.0032` | `bot-runtime.world-cache-adapter` | `delegates_to` | `skill-runtime.context-builder` | `in-process` | sync | hard | world view | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Bot runtime supplies the world view port; skill runtime does not import the bot process. |
+| `rel.0497` | `bot-runtime.agent-loop` | `depends_on` | `agency.goal-arbiter` | `in-process` | sync | hard | goal selection | Keep the current intention, skip this deliberation tick, and retry with deterministic utility. | The agent loop asks the goal arbiter for the next goal. |
+| `rel.0498` | `bot-runtime.agent-loop` | `depends_on` | `agency.intention-manager` | `in-process` | sync | hard | intention lifecycle | Abandon the current goal with a typed reason and continue with the next deterministic tick. | The agent loop advances and closes intentions. |
+| `rel.0499` | `bot-runtime.agent-loop` | `depends_on` | `agency.agency-state` | `in-process` | sync | hard | agency snapshot | Use the last known snapshot and record the stale state; never skip the guardian. | The agent loop reads the aggregate agency snapshot. |
+| `rel.0500` | `bot-runtime.agent-loop` | `delegates_to` | `brains.laya-client` | `in-process` | async | soft | advisory goal choice | Use deterministic utility policy and record the Laya fallback. | Laya is advisory for close or repeated goal choices. |
+| `rel.0501` | `bot-runtime.agent-loop` | `delegates_to` | `brains.deterministic-policy` | `in-process` | sync | hard | deterministic goal fallback | Keep the current intention and stop starting new goals until a legal candidate exists. | Deterministic policy remains the primary fallback. |
+| `rel.0502` | `bot-runtime.agent-loop` | `depends_on` | `bot-runtime.state-digest-collector` | `in-process` | sync | hard | state digest and needs inputs | Skip the tick and keep the active intention; the guardian continues independently. | Goal generation consumes a normalized local state digest. |
+| `rel.0503` | `bot-runtime.agent-loop` | `delegates_to` | `bot-runtime.skill-host` | `in-process` | sync | hard | goal step execution | Abandon or retry the current goal step with a typed failure class. | The agent loop delegates execution to the skill host. |
+| `rel.0504` | `bot-runtime.chat-adapter` | `depends_on` | `agency.social-engine` | `in-process` | sync | soft | social intent and reply | Drop the chat message and continue without social output. | Chat text is generated locally by the social engine. |
+| `rel.0505` | `bot-runtime.chat-adapter` | `publishes` | `transport.event-stream` | `ws` | async | soft | social event and chat audit | Drop the audit event and keep playing; reconnect will resync state. | Social events are observable but never block the bot. |
+| `rel.0506` | `bot-runtime.agency-state-adapter` | `persists_to` | `bots.agency-state-store` | `ws` | sync | hard | agency state snapshot | Keep the local snapshot, retry on reconnect, and surface a typed persistence error. | Agency state persists through coordinator transport, never local SQLite. |
+| `rel.0507` | `bot-runtime.agent-loop` | `persists_to` | `memory.agent-episode-repository` | `ws` | async | soft | goal outcome episode | Drop the episode record and continue; a later tick can retry. | Goal outcomes are appended to episodic memory. |
 
 ## Autonomy and Safety relations
 
@@ -699,6 +728,8 @@ None.
 | `rel.0213` | `memory.transaction-manager` | `depends_on` | `memory.sqlite-runtime` | `in-process` | sync | hard | depends on payload for SQLite Runtime | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Transaction Manager depends on SQLite Runtime. |
 | `rel.0483` | `memory.retention-pruner` | `depends_on` | `memory.episode-store` | `in-process` | sync | hard | episode retention | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Retention Pruner depends on Episode Store. |
 | `rel.0489` | `memory.episode-store` | `writes` | `memory.episode-store` | `in-process` | sync | hard | episodes write | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Episode Store writes Episode Store. |
+| `rel.0510` | `memory.agent-episode-repository` | `depends_on` | `memory.transaction-manager` | `in-process` | sync | hard | transaction boundary | Abort the append and keep the existing episode history. | Agent episodes are appended transactionally. |
+| `rel.0511` | `memory.agent-episode-repository` | `writes` | `memory.agent-episode-repository` | `in-process` | sync | hard | agent_episodes append | Abort the append and keep the existing episode history. | Agent episode repository owns agent_episodes. |
 
 ## Ops and Observability relations
 
@@ -727,6 +758,9 @@ None.
 | `rel.0482` | `ops.audit-viewer` | `reads` | `memory.episode-store` | `in-process` | sync | hard | episode traces | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Audit Viewer reads Episode Store. |
 | `rel.0495` | `ops.pause-resume-controller` | `writes` | `memory.event-log-writer` | `in-process` | sync | soft | ops pause and resume audit events | Control still applies; drop the audit record and record telemetry loss through structured logging. | Every pause and resume is audited. |
 | `rel.0496` | `ops.fleet-emergency-stop` | `writes` | `memory.event-log-writer` | `in-process` | sync | soft | ops emergency stop audit event | Control still applies; drop the audit record and record telemetry loss through structured logging. | Every fleet emergency stop is audited. |
+| `rel.0512` | `ops.agency-status-view` | `reads` | `bots.agency-state-store` | `in-process` | sync | soft | agency state snapshot | Return degraded partial status with an explicit unavailable marker. | Operators inspect needs, intention, home, and routine. |
+| `rel.0513` | `ops.agency-status-view` | `reads` | `memory.agent-episode-repository` | `in-process` | sync | soft | recent agency episodes | Return degraded partial status with an explicit unavailable marker. | Operators inspect recent goal outcomes. |
+| `rel.0514` | `ops.ops-api` | `depends_on` | `ops.agency-status-view` | `in-process` | sync | soft | agency status endpoint | Return a degraded status response and keep other endpoints available. | Ops API exposes agency status. |
 
 ## Config and Profiles relations
 
@@ -804,6 +838,24 @@ None.
 | `rel.0477` | `brains.laya-client` | `depends_on` | `brains.affordance-enumerator` | `in-process` | sync | hard | affordances | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Affordance Enumerator. |
 | `rel.0478` | `brains.laya-client` | `depends_on` | `transport.ws-codec` | `ws` | sync | hard | decision request frames | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Laya Client depends on WebSocket Codec. |
 | `rel.0479` | `brains.laya-client` | `depends_on` | `brains.deterministic-policy` | `in-process` | sync | hard | timeout fallback | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Deterministic Policy. |
+
+## Agency relations
+
+| ID | From | Type | To | Protocol | Sync | Criticality | Payload | Failure behavior | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| `rel.0519` | `agency.goal-generator` | `depends_on` | `agency.goal-catalog` | `in-process` | sync | hard | goal templates | Return no goals and let the caller retry with the deterministic fallback. | Goal generation uses the typed catalog. |
+| `rel.0520` | `agency.goal-generator` | `depends_on` | `agency.needs-model` | `in-process` | sync | hard | need levels | Return no goals and keep the current intention. | Need pressure gates goal templates. |
+| `rel.0521` | `agency.goal-generator` | `depends_on` | `agency.personality-model` | `in-process` | sync | hard | personality traits | Use default traits and record the downgrade. | Traits modulate candidate generation. |
+| `rel.0522` | `agency.goal-arbiter` | `depends_on` | `agency.goal-generator` | `in-process` | sync | hard | goal candidates | Keep the current intention and skip selection. | The arbiter scores generated candidates. |
+| `rel.0523` | `agency.goal-arbiter` | `depends_on` | `agency.needs-model` | `in-process` | sync | hard | need pressure | Use the last known need pressure and record the downgrade. | Need pressure is a primary utility term. |
+| `rel.0524` | `agency.goal-arbiter` | `depends_on` | `agency.personality-model` | `in-process` | sync | hard | trait weights | Use default trait weights and record the downgrade. | Traits weight utility and risk. |
+| `rel.0525` | `agency.intention-manager` | `depends_on` | `agency.goal-arbiter` | `in-process` | sync | hard | selected goal | Keep the previous intention and skip the transition. | Intentions begin from an arbitrated goal. |
+| `rel.0526` | `agency.social-engine` | `depends_on` | `agency.personality-model` | `in-process` | sync | soft | chat style and sociability | Use neutral fallback replies or stay silent. | Social style follows personality. |
+| `rel.0527` | `agency.agency-state` | `depends_on` | `agency.needs-model` | `in-process` | sync | hard | need snapshot | Return a partial snapshot with explicit missing fields. | Agency state aggregates need levels. |
+| `rel.0528` | `agency.agency-state` | `depends_on` | `agency.personality-model` | `in-process` | sync | hard | trait snapshot | Return a partial snapshot with explicit missing fields. | Agency state aggregates traits. |
+| `rel.0529` | `agency.agency-state` | `depends_on` | `agency.intention-manager` | `in-process` | sync | hard | active intention | Return a snapshot with a null intention. | Agency state aggregates the active intention. |
+| `rel.0530` | `agency.agency-state` | `depends_on` | `agency.routine-model` | `in-process` | sync | hard | routine state | Return a default routine phase and record the downgrade. | Agency state aggregates routine state. |
+| `rel.0531` | `agency.social-engine` | `proposes_to` | `bot-runtime.chat-adapter` | `in-process` | async | soft | chat reply | Drop the reply and continue; chat never blocks the agent loop. | The social engine proposes text; the adapter sends it. |
 
 ## Bootstrap and Toolchain relations
 
