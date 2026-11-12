@@ -91,6 +91,32 @@ if (err) return [null, err];
 - Thin adapters (routes, SSE, event-log I/O, views) stay thin; they may be
   functions or thin classes, but hold no domain logic.
 
+### Schema ownership [NORMATIVE]
+
+- Every wire or domain schema belongs to the bounded context that owns the
+  concept. Schemas live in `packages/core/src/schemas/<context>.ts`; schema
+  declarations and their inferred types are exported together from that file.
+- `packages/core/src/schemas/index.ts` is the shared facade. Consumers outside
+  the folder import schemas through it.
+- Shared value objects live in `packages/core/src/schemas/shared.ts`; do not
+  redefine positions, bounding boxes, chunk coordinates, inventory items, or
+  roles in another context.
+- A plural `schemas.ts` file is forbidden. The canonical `schemas/` directory
+  is required; do not create a schema dumping ground anywhere else.
+- `packages/core/src/transport` owns the envelope, registry, codec, auth, event
+  stream, reconnect, flow control, and delta sync. It must not define domain
+  payload schemas.
+- Message type constants live with the schema that owns them. Do not keep a
+  separate cross-domain event-constant file.
+- Schemas stay in `packages/core/src/schemas` while every dependent package
+  imports `@ticrafter/core`. Moving a schema into another package requires
+  changing the import chain first so no package cycle is introduced.
+- Schema files import siblings directly through `./<sibling>.js`; they never
+  import `./index.js` from inside the folder, to avoid cycles.
+- Enforcement: `@ticrafter/no-schema-dumping-ground` rejects plural `schemas`
+  files outside the canonical directory and rejects exported schema
+  declarations under `packages/core/src/transport`.
+
 ## 5. Formatting [NORMATIVE]
 
 - **Prettier is the source of truth.** `.prettierrc.json` is normative:

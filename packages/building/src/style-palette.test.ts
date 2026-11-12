@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'bun:test';
+
+import { StylePalette } from './style-palette.js';
+
+describe('StylePalette', () => {
+    it('resolves a named palette', () => {
+        const palette = StylePalette.resolve({
+            palette: 'oak_and_cobblestone',
+            roof: 'gable',
+            symmetry: 0.8,
+            decoration: 0.5,
+        });
+
+        expect(palette.structure).toBe('oak_planks');
+        expect(palette.floor).toBe('cobblestone');
+        expect(palette.fence).toBe('oak_fence');
+    });
+
+    it('falls back to the default palette', () => {
+        const palette = StylePalette.resolve({
+            palette: 'missing_palette',
+            roof: 'gable',
+            symmetry: 0.8,
+            decoration: 0.5,
+        });
+
+        expect(palette.structure).toBe('oak_planks');
+    });
+
+    it('lists every palette name', () => {
+        expect(StylePalette.names().includes('sandstone')).toBe(true);
+        expect(StylePalette.names()).toEqual([...StylePalette.names()].sort());
+    });
+});

@@ -1,26 +1,24 @@
 import { describe, expect, it } from 'bun:test';
 
-import { SessionAuthenticator } from './auth.js';
-import { WsCodec } from './codec.js';
-import { DeltaSync } from './delta-sync.js';
 import {
     BLOCK_UPDATE_EVENT,
-    CHUNK_SNAPSHOT_EVENT,
-    DECISION_REQUEST,
-    DECISION_RESPONSE,
-    LANDMARK_CANDIDATE_EVENT,
-} from './event-types.js';
-import { FlowController } from './flow-control.js';
-import { MessageSchemaRegistry, ProtocolEnvelope } from './messages.js';
-import { RequestCorrelator } from './request-correlator.js';
-import {
     BOT_AUTONOMY_PAUSE,
     BOT_AUTONOMY_RESUME,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
     BOT_SKILL_START,
-} from './schemas.js';
+    CHUNK_SNAPSHOT_EVENT,
+    DECISION_REQUEST,
+    DECISION_RESPONSE,
+    LANDMARK_CANDIDATE_EVENT,
+} from '../schemas/index.js';
+import { SessionAuthenticator } from './auth.js';
+import { WsCodec } from './codec.js';
+import { DeltaSync } from './delta-sync.js';
+import { FlowController } from './flow-control.js';
+import { MessageSchemaRegistry, ProtocolEnvelope } from './messages.js';
+import { RequestCorrelator } from './request-correlator.js';
 
 describe('transport', () => {
     const registry = MessageSchemaRegistry.withDefaults();

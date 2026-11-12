@@ -99,6 +99,7 @@ export interface BlueprintProvenance {
     briefId?: string;
     landmarkId?: string;
     plannerPlanId?: string;
+    confidence?: number;
 }
 
 export interface BlueprintDocument {

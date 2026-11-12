@@ -88,7 +88,10 @@ Gaps:
 - SIP structures store `blueprintRef` without a stored blueprint payload.
 - Work packages are not created from blueprints or claimed by bots.
 - Claims and grants are not wired into bot safety snapshots.
-- There is no build project state in the agency layer.
+- Agency build project state is planned but not implemented. The cognitive
+  architecture plan adds project focus.
+- Project proposals create claims and SIP structures but do not yet create
+  construction tasks, so a proposed project can remain claimed but unbuilt.
 - Block changelog entries lack plan, structure, package, design-revision, and
   fencing-token attribution.
 
@@ -473,14 +476,23 @@ do not open the coordinator database.
 
 ### 12.2 Proposal and commit flow
 
-1. A bot or planner submits a blueprint request.
+1. A bot or planner submits a blueprint or project request.
 2. The coordinator validates zones, overlap, size, and material feasibility.
 3. The composer produces or validates the blueprint.
 4. The coordinator stores the document and assigns a design revision.
 5. The structure is upserted in SIP.
 6. Work packages are partitioned.
-7. Construction tasks are created.
+7. Construction tasks are created and carry `projectId` and `structureId`
+   metadata.
 8. Claims and grants are issued for package execution.
+9. The project remains agency focus; the bot claims matching construction tasks
+   as sub-work without replacing that focus.
+
+Project proposal alone is not a build. A proposed project without seeded
+construction tasks is incomplete design.
+
+The detailed ownership boundary is in
+[`docs/cognitive-architecture.md`](cognitive-architecture.md).
 
 ### 12.3 Claims, grants, and fencing
 
@@ -531,6 +543,12 @@ Behavior:
 - personal projects persist across restarts
 - bots may observe and imitate existing structures
 - social help uses claims, grants, and the same construction pipeline
+- a project is agency focus; construction tasks are sub-work
+- survival or recovery interruptions preserve project focus and task leases
+- a late tactical decision cannot replace newer project focus
+
+Agency project goals, working memory, and interruption semantics are defined in
+[`docs/cognitive-architecture.md`](cognitive-architecture.md).
 
 ## 14. Safety and watching
 
@@ -655,7 +673,15 @@ the building milestone itself.
 ## 19. Implementation sequence
 
 The building refactor is the next implementation step after this document is
-accepted. Planned order:
+accepted. Each phase follows the docs-first gate:
+
+1. update design docs;
+2. implement;
+3. update `docs/architecture/graph.json` when the planned module paths exist;
+4. run graph validation and regeneration;
+5. run tests and behavior validation.
+
+Planned order:
 
 1. contracts, blueprint storage, changelog attribution, and building config
 2. deterministic composer, motif library, palette, schematics, and observation
@@ -665,7 +691,7 @@ accepted. Planned order:
    service, and `construction` skill
 5. coordinator lifecycle: proposal, design revisions, packages, claims,
    grants, progress, repair, and rollback
-6. agency goals and player-like behavior
+6. agency project focus and player-like behavior, including project task seeding
 7. multi-bot coordination
 8. architecture graph update, generated docs, ops runbook, and evaluation
 

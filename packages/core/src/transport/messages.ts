@@ -5,6 +5,9 @@ import {
     AGENCY_EPISODE_EVENT,
     AGENCY_STATE_EVENT,
     BLOCK_UPDATE_EVENT,
+    blockUpdateSchema,
+    BOT_AUTONOMY_PAUSE,
+    BOT_AUTONOMY_RESUME,
     BOT_JOB_DECIDE,
     BOT_JOB_DECIDE_RESPONSE,
     BOT_JOB_OFFERS,
@@ -13,22 +16,6 @@ import {
     BOT_PROJECT_ABANDON_RESPONSE,
     BOT_PROJECT_PROPOSE,
     BOT_PROJECT_RESPONSE,
-    CHUNK_SNAPSHOT_EVENT,
-    DECISION_REQUEST,
-    DECISION_RESPONSE,
-    LANDMARK_CANDIDATE_EVENT,
-    SKILL_PROGRESS_EVENT,
-    TASK_CLAIM,
-    TASK_COMPLETE,
-    TASK_FAIL,
-    TASK_RENEW,
-    TASK_RESPONSE,
-} from './event-types.js';
-import type { TransportFailure } from './failures.js';
-import {
-    blockUpdateSchema,
-    BOT_AUTONOMY_PAUSE,
-    BOT_AUTONOMY_RESUME,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
@@ -58,24 +45,33 @@ import {
     botTaskFailSchema,
     botTaskRenewSchema,
     botTaskResponseSchema,
+    CHUNK_SNAPSHOT_EVENT,
     chunkSnapshotSchema,
     coordinatorErrorSchema,
     coordinatorPingResponseSchema,
     coordinatorPingSchema,
     coordinatorStatusResponseSchema,
     coordinatorStatusSchema,
+    DECISION_REQUEST,
+    DECISION_RESPONSE,
     decisionRequestSchema,
     decisionResponseSchema,
     type Envelope,
     envelopeSchema,
+    LANDMARK_CANDIDATE_EVENT,
     landmarkCandidateSchema,
     PROTOCOL_VERSION,
     sessionHelloResponseSchema,
     sessionHelloSchema,
+    SKILL_PROGRESS_EVENT,
     skillProgressSchema,
-} from './schemas.js';
-
-export * from './schemas.js';
+    TASK_CLAIM,
+    TASK_COMPLETE,
+    TASK_FAIL,
+    TASK_RENEW,
+    TASK_RESPONSE,
+} from '../schemas/index.js';
+import type { TransportFailure } from './failures.js';
 
 export class MessageSchemaRegistry {
     private readonly schemas = new Map<string, zod.ZodType>();

@@ -22,9 +22,34 @@ export type BuildingFailure =
     | { type: 'ACTION_REJECTED'; message: string }
     | { type: 'RATE_LIMITED'; message: string }
     | { type: 'JOURNAL_FAILED'; message: string }
-    | { type: 'VERIFICATION_FAILED'; message: string };
+    | { type: 'VERIFICATION_FAILED'; message: string }
+    | { type: 'COMPOSE_FAILED'; message: string }
+    | { type: 'UNSUPPORTED_SOURCE'; source: string }
+    | { type: 'RAW_BLUEPRINTS_DISABLED' }
+    | { type: 'OBSERVATION_FAILED'; message: string }
+    | { type: 'STRUCTURAL_FAILURE'; position: Vec3 };
 
 export class BuildingFailures {
+    static composeFailed(message: string): BuildingFailure {
+        return { type: 'COMPOSE_FAILED', message };
+    }
+
+    static unsupportedSource(source: string): BuildingFailure {
+        return { type: 'UNSUPPORTED_SOURCE', source };
+    }
+
+    static rawBlueprintsDisabled(): BuildingFailure {
+        return { type: 'RAW_BLUEPRINTS_DISABLED' };
+    }
+
+    static observationFailed(message: string): BuildingFailure {
+        return { type: 'OBSERVATION_FAILED', message };
+    }
+
+    static structuralFailure(position: Vec3): BuildingFailure {
+        return { type: 'STRUCTURAL_FAILURE', position };
+    }
+
     static describe(failure: BuildingFailure): string {
         switch (failure.type) {
             case 'INVALID_BLUEPRINT':
@@ -41,6 +66,8 @@ export class BuildingFailures {
             case 'JOURNAL_FAILED':
             case 'VERIFICATION_FAILED':
             case 'TEMPLATE_FAILED':
+            case 'COMPOSE_FAILED':
+            case 'OBSERVATION_FAILED':
                 return failure.message;
             case 'INVALID_ROTATION':
                 return `invalid blueprint rotation ${failure.value}`;
@@ -62,8 +89,12 @@ export class BuildingFailures {
                 return `missing build materials: ${failure.items.join(', ')}`;
             case 'SAFETY_VETO':
                 return `safety veto: ${failure.reason}`;
-            default:
-                return 'unknown building failure';
+            case 'UNSUPPORTED_SOURCE':
+                return `unsupported blueprint source ${failure.source}`;
+            case 'RAW_BLUEPRINTS_DISABLED':
+                return 'raw block blueprints are disabled';
+            case 'STRUCTURAL_FAILURE':
+                return `unsupported block at ${BuildingFailures.position(failure.position)}`;
         }
     }
 

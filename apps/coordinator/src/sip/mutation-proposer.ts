@@ -1,6 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
-import { sipProposalSchema } from './schemas.js';
+import { sipProposalSchema } from './schema.js';
 import type { SipProposal, SipProposalInput, SipValidationFailure } from './types.js';
 
 export class SipMutationProposer {

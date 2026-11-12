@@ -2,7 +2,6 @@ export * from './auth.js';
 export * from './codec.js';
 export * from './delta-sync.js';
 export * from './event-stream.js';
-export * from './event-types.js';
 export * from './failures.js';
 export * from './flow-control.js';
 export * from './messages.js';

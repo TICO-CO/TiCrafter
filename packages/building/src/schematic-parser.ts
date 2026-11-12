@@ -1,7 +1,12 @@
 import { attemptAsync, type Result, type Vec3 } from '@ticrafter/core';
 import { Schematic } from 'prismarine-schematic';
 
-import { type Blueprint, type BlueprintBlock, BlueprintIr } from './blueprint-ir.js';
+import {
+    type Blueprint,
+    type BlueprintBlock,
+    BlueprintIr,
+    type BlueprintRotation,
+} from './blueprint-ir.js';
 import type { BuildingFailure } from './failures.js';
 
 export type SchematicFormat = 'schem' | 'litematic';
@@ -26,6 +31,7 @@ export interface SchematicDecoderPort {
 export interface SchematicParseOptions {
     id: string;
     anchor: Vec3;
+    rotation?: BlueprintRotation;
     format?: SchematicFormat;
     version?: string;
 }
@@ -108,16 +114,23 @@ export class SchematicParser {
         if (decoded === null) {
             return [null, { type: 'PARSE_FAILED', message: 'schematic decoder returned null' }];
         }
-        const blocks = decoded.blocks.map<BlueprintBlock>((block) => ({
-            x: block.x + options.anchor.x,
-            y: block.y + options.anchor.y,
-            z: block.z + options.anchor.z,
-            state:
-                block.properties === undefined
-                    ? { name: block.stateName }
-                    : { name: block.stateName, properties: block.properties },
-            priority: 0,
-        }));
+        const rotation = options.rotation ?? 0;
+        const blocks = decoded.blocks.map<BlueprintBlock>((block) =>
+            BlueprintIr.transform(
+                {
+                    x: block.x,
+                    y: block.y,
+                    z: block.z,
+                    state:
+                        block.properties === undefined
+                            ? { name: block.stateName }
+                            : { name: block.stateName, properties: block.properties },
+                    priority: 0,
+                },
+                options.anchor,
+                rotation,
+            ),
+        );
         if (blocks.length === 0) {
             return [null, { type: 'PARSE_FAILED', message: 'schematic contains no solid blocks' }];
         }
@@ -125,7 +138,7 @@ export class SchematicParser {
             {
                 id: options.id,
                 anchor: options.anchor,
-                rotation: 0,
+                rotation,
                 blocks,
                 materials: BlueprintIr.materialNeeds(blocks),
                 constraints: [],

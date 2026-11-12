@@ -1,6 +1,7 @@
 import { attempt, type Result } from '../kernel/index.js';
+import type { Envelope } from '../schemas/index.js';
 import type { TransportFailure } from './failures.js';
-import type { Envelope, MessageSchemaRegistry } from './messages.js';
+import type { MessageSchemaRegistry } from './messages.js';
 
 export class WsCodec {
     constructor(private readonly registry: MessageSchemaRegistry) {}

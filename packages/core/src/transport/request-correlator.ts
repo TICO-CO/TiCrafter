@@ -1,6 +1,7 @@
 import type { Result } from '../kernel/index.js';
+import type { Envelope } from '../schemas/index.js';
 import type { TransportFailure } from './failures.js';
-import { type Envelope, ProtocolEnvelope } from './messages.js';
+import { ProtocolEnvelope } from './messages.js';
 
 interface PendingRequest {
     resolve: (result: Result<Envelope, TransportFailure>) => void;

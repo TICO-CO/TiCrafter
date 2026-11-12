@@ -3,6 +3,7 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import tseslint from 'typescript-eslint';
 
 import noComments from './eslint-rules/no-comments.mjs';
+import noSchemaDumpingGround from './eslint-rules/no-schema-dumping-ground.mjs';
 import noThrowStatements from './eslint-rules/no-throw-statements.mjs';
 import noTryStatements from './eslint-rules/no-try-statements.mjs';
 import requireFacade from './eslint-rules/require-facade.mjs';
@@ -10,6 +11,7 @@ import requireFacade from './eslint-rules/require-facade.mjs';
 const localPlugin = {
     rules: {
         'no-comments': noComments,
+        'no-schema-dumping-ground': noSchemaDumpingGround,
         'no-throw-statements': noThrowStatements,
         'no-try-statements': noTryStatements,
         'require-facade': requireFacade,
@@ -80,6 +82,7 @@ export default tseslint.config(
         },
         rules: {
             '@ticrafter/no-comments': 'error',
+            '@ticrafter/no-schema-dumping-ground': 'error',
             '@ticrafter/no-throw-statements': 'error',
             '@ticrafter/no-try-statements': 'error',
             '@ticrafter/require-facade': 'error',

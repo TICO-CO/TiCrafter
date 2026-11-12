@@ -1,6 +1,6 @@
 import type { Result } from '../kernel/index.js';
+import type { Envelope } from '../schemas/index.js';
 import type { TransportFailure } from './failures.js';
-import type { Envelope } from './messages.js';
 
 export type EventHandler = (envelope: Envelope) => void;
 

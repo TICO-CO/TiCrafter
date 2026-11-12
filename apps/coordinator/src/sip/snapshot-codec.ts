@@ -1,6 +1,6 @@
 import { attempt, type Result } from '@ticrafter/core';
 
-import { sipRevisionRecordSchema, sipSnapshotSchema } from './schemas.js';
+import { sipRevisionRecordSchema, sipSnapshotSchema } from './schema.js';
 import type { SipProposalMetadata, SipRevisionRecord, SipSnapshot } from './types.js';
 
 export class SipSnapshotCodec {

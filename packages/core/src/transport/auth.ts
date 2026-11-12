@@ -1,6 +1,6 @@
 import type { Result } from '../kernel/index.js';
+import { sessionHelloSchema } from '../schemas/index.js';
 import type { TransportFailure } from './failures.js';
-import { sessionHelloSchema } from './messages.js';
 
 export interface AuthenticatedBot {
     botId: string;

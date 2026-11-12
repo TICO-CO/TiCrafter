@@ -14,6 +14,10 @@
 - **Cloud planner:** Muse Spark 1.3 Contributor via an OpenAI-compatible endpoint ("opencode"). The planner is an optional strategic advisor, not a fleet boss.
 - The local agency loop runs with the planner disabled and with no seed tasks.
 - **Short-term decision model:** Laya (`@receptron/laya`, Node/ONNX). Typed `choice`/`score`/`noul` only, no text.
+- **Cognitive layering:** guardian is deterministic reflex; agency owns intention and commitment; Laya is a tactical advisor; the cloud planner is an optional strategic advisor. Laya never plans or executes.
+- **Tactical Laya profiles:** `home-full` enables blocking tactical decisions by default; `home-min` uses background advisory with strict limits. Deterministic fallback is always available.
+- **Working memory:** bounded bot-local memory lives inside agency state. Focus is an agency goal, project, or task; interruptions preserve intentions and task leases.
+- **Project goals:** build and project goals are agency focus and execute through project proposal plus task-board construction tasks.
 - **Execution:** mineflayer.
 - **Building:** all three layers — procedural templates, schematic import, LLM composition into a Blueprint IR.
 - Bots **may modify existing builds/farms**, under coordination, logging, and rollback rules.
@@ -35,6 +39,7 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
 - Tactical budget: one shared Laya instance, ~4 decisions/sec fleet-wide.
 - 4 bots ≈0.6–0.8GB for mineflayer processes; coordinator + SQLite <1GB; Laya ≈2GB. Total ≈3.5–4GB, fits — though the host currently has ~9GB already used by other applications.
 - Set Laya `intraOpNumThreads=3`; leave 1 core for pathfinding.
+- Tactical Laya is background advisory only: never block task start, agency tick, skill execution, or guardian. Enforce a strict interval and circuit breaker.
 - Stagger bot decision heartbeats; each bot mostly runs deterministic skills between decisions.
 - Target 4 bots; test at 4 and 8. 8 is an overload test, not the default.
 
@@ -44,6 +49,7 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
 - 8 bots ≈1.2–1.6GB; coordinator + SQLite <1GB; Laya ≈2GB. Total ≈5GB of 32GB.
 - Laya on CPU: `intraOpNumThreads=8`, still leave headroom for pathfinding.
 - Laya on WebGPU: model weights ≈2–3GB VRAM including activations; shared with the desktop.
+- Tactical Laya is enabled by default: blocking at safe boundaries with a short deadline and deterministic fallback when the deadline expires.
 - Target 8 bots. Raise decision rate only after measuring p50/p95 latency and stability.
 - No ROCm path: `onnxruntime-node` ships no ROCm EP. WebGPU on Linux x64 is experimental; CPU is the fallback.
 
@@ -59,7 +65,7 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
 - fp16 WebGPU, 577-token compact request with all three questions: p50 137–180ms, p95 140–188ms over 200 requests.
 - fp32 WebGPU, same request: p95 ≈613ms. fp16 CPU on `home-full`: p95 ≈1.0s.
 - fp16 CPU on `home-min`, 3 threads, same compact request: p50 1828ms, p95 1906ms over 200 requests.
-- 908-token prompt: p95 ≈835ms even with fp16. Total input tokens must stay ≤600 for the three-question request.
+- 908-token prompt: p95 ≈835ms even with fp16. Total input tokens must stay ≤600 for the three-question benchmark; tactical decisions drop the `danger` question and may be smaller.
 - WebGPU VRAM delta ≈1GB; process RSS peak <1.2GB.
 - WebGPU-to-CPU fallback verified by forcing WebGPU load failure: report keeps `requestedProvider=webgpu`, records `provider=cpu` and the fallback reason.
 - 2h WebGPU stability remains a milestone 2 exit criterion.
@@ -95,14 +101,16 @@ Same codebase, selected by `HARDWARE_PROFILE` (`home-min` | `home-full`).
    └──────────┘            └──────────┘              └──────────┘
 ```
 
-Logic is four-tier:
+Logic has four cognitive tiers plus deterministic execution:
 
 1. **Reflex guardian** — deterministic, 20Hz, local to each bot. Final veto always.
-2. **Agency** — local needs, personality, goal generation, intention commitment, routine, and social reasoning.
-3. **Laya** — shared decision service, ~0.5–2Hz per bot, advises among needs and goal candidates.
-4. **Cloud planner** — optional fleet-level advisor, event-driven every 60–300s. Emits strategic goals, SIP revisions, and job proposals only.
+2. **Agency and working memory** — local needs, personality, goal generation, intention commitment, routine, social reasoning, focus, commitments, and interruption state.
+3. **Laya** — shared tactical advisor at legal choice points. Profile-dependent cadence; never strategic, never an executor.
+4. **Cloud planner** — optional strategic advisor, event-driven every 60–300s. Emits strategic intent, SIP revisions, and job proposals only.
 
-Priority: **guardian > urgent needs > agency intention > Laya advice > planner advice**. No model ever calls mineflayer directly.
+Priority: **guardian > urgent needs > agency intention/project > Laya tactical advice > planner strategic advice**. No model ever calls mineflayer directly.
+
+Detailed cognitive ownership, working memory, interruption, and strategic-intent semantics: [docs/cognitive-architecture.md](docs/cognitive-architecture.md).
 
 ## 1. Fleet Coordinator
 
@@ -113,10 +121,10 @@ Responsibilities:
 - Own the **SIP** (canonical intended world state).
 - Own the **task board**, job offers, claims, leases, fencing tokens, and edit grants.
 - Merge perceptual updates from all bots into one world model.
-- Persist bot agency state: needs, intention, home, routines, episodes, and relationships.
-- Offer jobs to bots and expose bot-facing claims for personal projects.
-- Host the single Laya instance and serialize/rate-limit decisions.
-- Call the optional cloud planner and apply validated strategic revisions.
+- Persist bot agency state: needs, intention, working memory, home, routines, episodes, and relationships.
+- Offer jobs to bots and expose bot-facing claims, project state, and project sub-tasks.
+- Host the single Laya instance and apply profile-specific tactical policy.
+- Call the optional cloud planner and apply validated strategic intent and SIP revisions.
 - Persist everything to SQLite (WAL) and an append-only event log.
 - Expose ops endpoints: status, agency state, pause bot, pause fleet, dump SIP, metrics.
 
@@ -239,7 +247,7 @@ BotProfile {
 SQLite tables:
 
 - `bots` — profile, role, traits, behavior, status (`online`/`offline`/`suspended`).
-- `agent_state` — current needs, intention, routine, home, mood, last goal tick.
+- `agent_state` — current needs, intention, working memory, routine, home, mood, last goal tick.
 - `agent_episodes` — append-only episodic memory: deaths, discoveries, gifts, chats, goal outcomes.
 - `bot_events` — append-only log of decisions, task transitions, grants, failures, social events.
 - `skill_checkpoints` — `(botId, taskId, skillId, stateJson, updatedAt)`.
@@ -282,7 +290,14 @@ Each bot samples loaded chunks on a ring (16–64 blocks configurable) and strea
 
 ## 7. Short-term decision service (Laya)
 
-One shared `@receptron/laya` instance inside the coordinator.
+One shared `@receptron/laya` instance inside the coordinator. Laya is a tactical
+advisor, not a smaller planner.
+
+Laya decides only at legal choice points where multiple options exist. Agency
+and task execution provide bounded affordances plus relevant working memory.
+Laya returns a choice, confidence, and continuation signal; it never calls
+skills or mineflayer. The result is applied only when the focus and working
+memory revision still match.
 
 Load configuration is profile-driven:
 
@@ -291,37 +306,46 @@ Load configuration is profile-driven:
 - **No ROCm EP** exists in `onnxruntime-node` for the RX 7600. WebGPU on Linux x64 is experimental, so benchmark it and keep CPU fallback.
 - WebGPU uses the fp16 ONNX bundle with float32 I/O; fp32 remains the reference bundle.
 - Decision-rate targets: ~4/sec fleet-wide on `home-min`; measure `home-full` and raise the cap only if p95 latency stays within budget.
-- Latency gate: WebGPU warm-model p95 <250ms per decision request. The measured CPU path is ≈1.0s p95 on `home-full` and ≈1.9s on `home-min`, so CPU profiles need a revised latency target or a smaller model before claiming v1.
-- Total request tokens: keep ≤600 for the three-question request. A 908-token prompt measured ≈835ms p95 even with fp16.
+- Latency gate: WebGPU warm-model p95 <250ms per decision request. The measured CPU path is ≈1.0s p95 on `home-full` and ≈1.9s on `home-min`, so CPU profiles use background advisory or deterministic fallback instead of blocking.
+- Total request tokens: keep ≤600 for the current three-question benchmark. Tactical decisions drop the `danger` question and may be smaller.
 
 Per decision request from a bot:
 
-- State digest ≤512 tokens: health, food, time, biome, y-level, target, 5-line inventory, nearby hazards/mobs, nearby players/bots, needs vector, active goal, goal candidates, current skill and progress, last result.
-- Affordances: 8–16 legal goal or action candidates, each ≤12-word label.
+- State digest ≤512 tokens: health, food, time, biome, y-level, target, compact inventory, nearby hazards/mobs, nearby players/bots, needs vector, current focus, commitments, interruption, recent experiences, strategic goal and constraints, current skill and progress.
+- Affordances: 1–16 legal action or goal candidates, each ≤12-word label. Skip Laya entirely when only one legal option exists.
 - Questions:
-    - `nextGoal: choice` over goal or action candidate ids.
-    - `danger: noul` ("about to take damage or die?").
-    - `shouldContinue: noul` ("current goal or skill still making progress?").
-- Return `{choice, probabilities, answer_confidence, danger, latency}`.
-- Concurrency: priority queue; per-bot rate limit; digest cache; timeout.
-- **Confidence gate**: if `answer_confidence` < calibrated threshold (start 0.60), bot uses its deterministic utility policy.
+    - `nextAction: choice` over legal candidate ids.
+    - `shouldContinue: noul` only when an active skill is running and stall evaluation is needed.
+- `danger` is not a Laya decision input. The guardian owns danger detection and safety; hazards may still appear in the digest and Laya may choose a survival affordance.
+- Return `{choice, probabilities, answer_confidence, shouldContinue, latency}`.
+- Concurrency: priority queue; per-bot rate limit; digest cache; timeout; one in-flight decision per bot.
+- **Confidence gate**: if `answer_confidence` < calibrated threshold (start 0.60), the bot continues its deterministic policy or current commitment.
 - Bots always maintain a local deterministic fallback; Laya latency never blocks the 20Hz guardian or the agency tick.
 
-Choice cardinality: keep ≤16. Laya options cap is 192 tokens total and recommends <20.
+Profile policy:
+
+- `home-full`: blocking tactical decision at safe boundaries with a short deadline. No result by deadline: deterministic fallback.
+- `home-min`: background advisory only. Inference runs while work continues; the result applies only at the next safe boundary if the focus and revision still match and the result has not expired. A background result never cancels an active skill.
+- Both profiles: strict minimum interval and circuit breaker after repeated timeouts or low-confidence results.
+
+Choice cardinality: keep ≤16. Laya options cap is 192 tokens total and recommends <20. The first promotion gate compares tactical Laya against deterministic policy on behavioral outcomes, not latency alone.
 
 ## 8. Long-term planner (Muse Spark 1.3 Contributor)
 
 - OpenAI-compatible client. Config: `PLANNER_BASE_URL`, `PLANNER_API_KEY`, `PLANNER_MODEL="Muse Spark 1.3 Contributor"`.
 - Load `PLANNER_BASE_URL`/`PLANNER_API_KEY` from process env, then gitignored `config/.env`. **No default URL**; the coordinator fails fast if either variable is missing. Commit `config/.env.example` with empty values.
 - Optional strategic advisor, not a fleet boss.
-- Fleet-level, not per-bot: proposes village/farm/road goals, project blueprints, SIP revisions, and job offers.
+- Fleet-level by default, with per-bot overrides: proposes strategic goals, project goals, SIP revisions, and job offers.
 - Bots may defer or decline planner jobs when needs, safety, distance, or personality make the job unattractive.
 - Triggers: interval, SIP conflict, job failure burst, death cluster, new landmark, chat request.
-- Output: strict JSON validated with zod — goal stack, SIP mutations, task DAG, blueprint specs, recovery policy, notes.
-- Validation before commit: schema, skill catalog references, material feasibility, distance, zone rules, budget.
-- Invalid output: max 2 repair attempts, then keep the last good plan.
+- Output: strict JSON validated with zod — strategic intent, fleet and per-bot goal priorities, constraints, SIP mutations, task DAG, blueprint specs, recovery policy, notes.
+- Strategic intent uses supported goal kinds and project kinds. Project goals may reference `home`, `storage`, or `build` and a blueprint reference that resolves through the building catalog.
+- Validation before commit: schema, bot IDs, goal and project kinds, skill catalog references, material feasibility, distance, zone rules, budget.
+- Invalid output: max 2 repair attempts, then keep the last validated plan and strategic intent.
 - Budget: calls/min cap, token cap, timeout, cancellation, plan cache.
-- Planner never writes blocks; it only proposes SIP revisions, strategic goals, and jobs.
+- Delivery: current intent arrives on session resume; a planner commit publishes a structured update event. Bots apply new intent at the next goal boundary, not by interrupting the active intention.
+- Cloud unavailable or planner disabled: bots use the last validated strategic intent, then deterministic local defaults.
+- Planner never writes blocks; it only proposes strategic intent, SIP revisions, and jobs.
 
 ## 9. Skills
 
@@ -342,6 +366,7 @@ Locked decisions:
 - Templates are motifs and quick sources, not the only building vocabulary.
 - Single-bot arbitrary construction is the first milestone. Multi-bot construction follows.
 - Site adaptation never mutates the canonical blueprint. Preparation and foundation changes belong to the construction plan.
+- Build and project goals are agency focus. A project proposal seeds construction tasks; task execution is sub-work and does not replace project focus.
 
 Three layers:
 
@@ -363,7 +388,8 @@ Executor invariants:
 - Respect `rules.protectedBboxes`, no-build zones, active-bot exclusion, and never remove load-bearing blocks of occupied structures.
 - Non-owner edits require a scoped grant; package execution requires a claim and fencing token.
 - Rollback journal for every modification, including scaffolds and site preparation.
-- Building goals are part of agency: shelter, personal home, expansion, repair, decoration, and social help.
+- Building goals are part of agency: shelter, personal home, expansion, repair, decoration, social help, and strategic projects.
+- Project completion is reconciled from work-package and structure progress; a proposed project without construction tasks is incomplete design, not a completed build.
 - Block changes are watched through metrics, progress reconciliation, design revisions, and audit records.
 
 ## 11. Autonomy loop and safety
@@ -372,9 +398,11 @@ Executor invariants:
 - 1Hz agency tick: needs decay, opportunity scan, goal generation, routine check.
 - 200–500ms skill step.
 - Goal deliberation on need threshold, goal completion, failure, danger, social event, or 1Hz heartbeat.
-- Laya called when goal scores are close, on repeated failure, or on a slow heartbeat. Agency utility policy is the default.
-- Interruption order: guardian veto, urgent survival goal, active intention, accepted job, social or leisure goal, idle behavior.
-- Recovery ladder: local retry → agency alternative goal → Laya alternative → planner advisory → safe mode → emergency stop.
+- Tactical Laya is called only at legal choice points with more than one option. `danger` is not a Laya input; the guardian owns danger.
+- Working memory records focus, commitments, interruptions, recent experiences, and the revision used for the last tactical decision.
+- Interruptions preserve the current intention or task lease and record a resume condition. Task interruption never releases the lease by itself.
+- Interruption order: guardian veto, urgent survival need, active project or agency intention, accepted project sub-task or job, social or leisure goal, idle behavior.
+- Recovery ladder: local retry → agency alternative goal → Laya tactical alternative → planner strategic advice → safe mode → emergency stop.
 - Goal abandonment is explicit: unsafe, infeasible, preempted, expired, conflicting claim, or social rejection. Abandonment is recorded in `agent_episodes`.
 - Multi-bot safety even though edits are allowed:
     - non-owner edits to active builds require a valid, unexpired grant/fencing token;
@@ -387,10 +415,13 @@ Executor invariants:
 
 ## 12. Memory and persistence
 
-SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `agent_state`, `agent_episodes`, `personal_projects`, `bot_events`, `skill_checkpoints`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
+SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `agent_state`, `agent_episodes`, `personal_projects`, `planner_plans`, `bot_events`, `skill_checkpoints`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
 
 - **Data directory:** `DATA_DIR`, default `./data`; holds the SQLite DB, event log, and block changelog. Gitignored.
 - **Retention:** prune event logs and block changelogs after 30 days. Keep SQLite state until manual pruning.
+- **Working memory:** stored inside the `agent_state` JSON snapshot; missing fields restore to an empty memory for compatibility.
+- **Strategic intent:** the last validated intent is stored with the planner plan or an equivalent validated store, and survives planner unavailability.
+- **Project tasks:** construction tasks carry enough project and structure metadata for a bot to claim them as sub-work while retaining agency project focus.
 
 Event log is append-only. Bot processes keep only short-lived local queues; coordinator is source of truth.
 
@@ -407,10 +438,12 @@ packages/worldmodel/     world merge, landmark registry, reconciliation
 packages/skills/         skill implementations
 packages/building/       Blueprint IR, templates, schematic adapter, executor,
                          work packages, scaffold, rollback
-packages/agency/         personality, needs, goals, intention, routine, social engine
+packages/agency/         personality, needs, goals, intention, working memory,
+                         project goals, routine, social engine
 packages/brains/         reflex, affordances, deterministic policy, Laya client
 packages/safety/         deterministic safety evaluators, veto gate, recovery ladder
-packages/planning/       planner client, prompt builders, validators, task DAG
+packages/planning/       planner client, prompt builders, strategic intent,
+                         validators, task DAG
 packages/memory/         repositories, migrations, changelog
 packages/eval/           scenario runner, metrics, replay, contention tests,
                          offline behavior simulator, trace inspector (milestone 16)
@@ -445,6 +478,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - Integration: repo-provisioned 1.20.1 server (`bun run server:start`), offline, superflat; bots join via LAN. Docker remains an optional alternative only.
 - Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
 - Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95. Measured 2026-11-10: fp16 WebGPU compact p95 140–188ms; fp16 CPU p95 ≈1.0s on `home-full` and ≈1.9s on `home-min`; 908-token prompts p95 ≈835ms.
+- Tactical and working-memory tests: focus transitions, stale revision discard, interruption and resume, task lease preservation, `home-min` background advisory never blocking, `home-full` deadline fallback, and project focus while project tasks run.
 - Multi-bot scenarios:
     - 3 bots build one house without duplicate/conflicting blocks.
     - 2 bots race to claim a farm plot; only one proceeds.
@@ -466,7 +500,10 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
     - `social-village`: bots greet, share, cooperate, and update trust.
     - `goal-resume`: kill a bot mid-goal; restart resumes needs, intention, home, and claims.
     - `planner-advisory`: a planner project is accepted or deferred by local utility.
-- Metrics: task success, goal success, goal abandonment, time, deaths, blocks/min, claim contention, duplicate work, idle time, self-initiated goals, need satisfaction, social interactions, chat rate, Laya accuracy/ECE, planner calls/tokens/cost.
+    - `tactical-interruption`: survival interruption preserves task lease and resumes the same task.
+    - `stale-decision`: a late Laya result cannot overwrite a newer focus or revision.
+    - `project-build`: a project proposal creates a construction task and completes through the task board.
+- Metrics: task success, goal success, goal abandonment, time, deaths, blocks/min, claim contention, duplicate work, idle time, self-initiated goals, need satisfaction, social interactions, chat rate, Laya accuracy/ECE, planner calls/tokens/cost, interruption/resume success, stale-decision drops, project completion, and focus-switch rate.
 - Soak test: 2+ hours on both profiles — 4 bots on `home-min`, 8 bots on `home-full`; no memory growth, no deadlocks, claims stable.
 - Offline behavior validation (milestone 16, after all implementation milestones):
     - One scenario definition drives both `--mode simulate` and `--mode live`.
@@ -495,15 +532,17 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 5. **SIP + claims + task board + collaboration grants + bot profiles/roles**.
 6. **Building**: templates, schematic executor, work partitioning, rollback.
 7. **Infrastructure recognition**: paths, houses, farms, walls, bridges, storage.
-8. **Laya decision service**: central instance, affordances, digest, confidence gate, fallback.
+8. **Laya decision service**: central instance, affordances, digest, confidence gate, fallback. Tactical Laya profiles and working-memory integration follow the docs-first cognitive architecture gate.
 9. **Cloud planner**: Muse Spark, schema, SIP revisions, budget guards; plan-revision arbitration for ambiguous edits.
 10. **Calibration + fleet eval**: tune, measure, promote; 4 bots on `home-min`, 8 on `home-full`.
 11. **Hardening**: restart/resume, soak tests, error taxonomy, ops controls, docs.
 12. **Local agency core**: traits, needs, goal catalog, utility arbitration, intention manager, routine, personal goals with no planner and no seed jobs.
-13. **Homes and job market**: personal homes, storage, projects, bot-facing claims, opt-in job offers with accept/decline.
+13. **Homes and job market**: personal homes, storage, projects, project focus, project task seeding, bot-facing claims, opt-in job offers with accept/decline.
 14. **Social village**: chat, relationships, sharing, cooperation, body language, social goals.
-15. **Player-like validation**: autonomy scenarios, 2-hour soak, Laya goal-choice calibration, v2 acceptance.
+15. **Player-like validation**: autonomy scenarios, 2-hour soak, working-memory interruption/resume, tactical Laya calibration, project completion, v2 acceptance.
 16. **Behavior validation harness**: offline simulator for agency, planning, and building; shared simulate/live scenario spec; declarative assertions; trace inspector; CI run without a server. This is intentionally last, after milestones 1–15. It validates those implementations and changes no runtime behavior.
+
+Documentation gate: every implementation phase updates design docs first, then implements, then updates the architecture graph when the planned modules exist, then runs tests and validation. See [docs/cognitive-architecture.md](docs/cognitive-architecture.md).
 
 **v1 done when:** 8 bots run unattended on `home-full` for 2 hours (4 bots on `home-min` with the same guarantees), maintain one consistent SIP, build/repair farms/houses/roads cooperatively, detect and reuse existing infrastructure, never overwrite active work without a valid grant, and resume their roles/tasks correctly after stop/restart.
 
@@ -514,7 +553,8 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 ## 17. Risks and mitigations
 
 - **Laya weak zero-shot** → deterministic fallback + fine-tune + confidence gate.
-- **Laya throughput** → one instance, profile-specific tactical cadence, queue/rate limit, digest cache, single in-flight forward pass, ONNX threads 3 (`home-min`) / 8 (`home-full`).
+- **Laya throughput** → one instance, profile-specific tactical cadence, background advisory on `home-min`, queue/rate limit, digest cache, single in-flight forward pass, ONNX threads 3 (`home-min`) / 8 (`home-full`).
+- **Stale tactical decision** → working-memory revision and focus match; discard late results.
 - **WebGPU on RX 7600** → experimental on Linux x64; validate Mesa/Vulkan drivers, auto-fallback to CPU, adopt only if faster than CPU p95 and stable for 2h with no crash or driver reset.
 - **VRAM contention** → WebGPU shares 8GB with the desktop; cap session memory, monitor, fall back to CPU.
 - **home-min CPU bottleneck** → 4 bots default; 8 bots only as an overload test; stagger heartbeats.
@@ -528,7 +568,8 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 - **Placement physics/reach** → reachability planner, verification, rollback.
 - **Cloud cost/latency** → fleet-level event-driven planning, caps, caching, local fallback.
 - **Server anti-cheat/rate limits** → configurable action rate, no impossible reach.
-- **Goal thrash** → utility hysteresis, minimum commitment time, explicit abandonment reasons.
+- **Goal thrash** → utility hysteresis, working-memory commitments, minimum dwell time, interruption/resume, explicit abandonment reasons.
+- **Project without build work** → project proposal seeds construction tasks; project remains incomplete until task and structure progress complete.
 - **Utility runaway** → need caps, cost and risk terms, guardian veto, deterministic policy audit.
 - **Planner-bot disagreement** → jobs are offers; bots decline or defer with a reason.
 - **Chat spam or harassment** → per-bot rate limits, typed intents, local moderation, operator mute.
@@ -543,13 +584,16 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 3. **Owner-offline edits:** deny by default; compatibility check only when `autoAcceptCompatibleHelpers=true`. See §3 and §11.
 4. **Roles:** fixed and persisted; traits and needs modulate job fit and goal choice; planner may reassign temporarily, then restore the fixed role. See §5 and §20.
 5. **Persistence:** `DATA_DIR=./data`; prune event logs and block changelogs after 30 days; keep SQLite state until manual pruning. See §12.
-6. **Laya latency:** WebGPU warm-model p95 <250ms per decision request with ≤600 input tokens. The CPU path currently misses this target at ≈1s p95 on `home-full` and ≈1.9s on `home-min`. See §7 and §15.
+6. **Laya latency and tactical policy:** `home-full` uses blocking tactical decisions at safe boundaries with a short deadline and deterministic fallback. `home-min` uses background advisory with strict interval, expiry, and circuit breaker; it never blocks task start, agency tick, guardian, or skill execution. See §7 and §15.
 7. **WebGPU:** default on `home-full` only if faster than CPU p95 and stable for 2h with no crash or driver reset; otherwise CPU. See §15 and §17.
 8. **Remaining validation:** 2h WebGPU stability is a milestone 2 exit criterion, not an open design question. `home-min` and `home-full` latency, RAM, and fallback are measured. See §16.
-9. **Agency:** local, deterministic-first, always available. Planner and Laya are advisors. See §20.
+9. **Agency:** local, deterministic-first, always available. Laya is a tactical advisor; the planner is a strategic advisor. Working memory lives inside `agent_state`. See §20.
 10. **Jobs:** opt-in offers. Bots accept, defer, or decline with a reason. Declining is never a failure. See §4.
 11. **Social:** local typed chat, 2–5 messages/minute per bot, no cloud dependency. See §21.
-12. **Agency persistence:** dedicated `agent_state` and `agent_episodes` tables; relationships stay with the bot profile. See §12.
+12. **Agency persistence:** dedicated `agent_state` and `agent_episodes` tables; working memory is part of the `agent_state` snapshot, and relationships stay with the bot profile. See §12.
+13. **Strategic intent:** optional, fleet defaults plus per-bot overrides, persisted as last validated intent, delivered on resume and as an update event, and applied at the next goal boundary. See §8.
+14. **Project goals:** agency focus, project proposal plus construction task seeding, with project sub-tasks executed through the task board. See §10 and §20.
+15. **Documentation gate:** each implementation phase updates design docs before tests and validation; architecture graph updates land only when planned module paths exist. See [docs/cognitive-architecture.md](docs/cognitive-architecture.md).
 
 ## 19. Self-contained bootstrap
 
@@ -578,6 +622,14 @@ AgencyState {
   needs: { safety, hunger, rest, materials, tools,
            shelter, social, novelty, achievement }
   intention: { goalId, label, step, createdAt, deadline, attempts } | null
+  workingMemory: {
+    revision,
+    focus: { kind: "agency"|"project"|"task", id, label, startedAt } | null,
+    commitments,
+    interruption,
+    recentExperiences,
+    lastTacticalDecision
+  }
   routine: { phase, lastMealAt, lastRestAt }
   homeStructureId, personalStorageId
   mood
@@ -590,7 +642,8 @@ Goal {
   steps: GoalStep[]
   successCriteria
   estimatedCost, estimatedRisk, expectedValue
-  deadline?, source: "need"|"job"|"social"|"curiosity"|"routine"
+  deadline?, source: "need"|"job"|"social"|"curiosity"|"routine"|"project"
+  project?: { kind: "home"|"storage"|"build", structureId?, blueprintRef? }
 }
 ```
 
@@ -619,13 +672,22 @@ Goal arbitration:
 
 - Score `urgency × trait weight × expected value × feasibility − cost − risk`.
 - Add commitment hysteresis; an active intention keeps a bonus until completion, abandonment, or preemption.
-- Ask Laya only when top scores are close, after repeated failure, or on a slow heartbeat.
-- Below the confidence gate, use the deterministic utility policy.
+- Ask Laya for goal tie-break only when top scores are close, after repeated failure, or at a slow heartbeat, and only after the tactical task path has been evaluated.
+- Below the confidence gate or on a stale revision, use the deterministic utility policy or continue the current commitment.
+
+Working memory:
+
+- Tracks exactly one focus: agency goal, project, or task.
+- Records commitments, interruption reason, resume condition, and recent experiences.
+- Prevents a late tactical result from overwriting a newer focus.
+- Preserves task leases during survival or recovery interruptions.
+- Bounded to a small number of commitments and recent events; full episodes stay in `agent_episodes`.
 
 Intention lifecycle:
 
 - `propose → select → execute → complete | abandon | preempt`.
 - Abandonment reasons: `unsafe`, `infeasible`, `preempted`, `expired`, `claim_conflict`, `social_rejection`.
+- Tactical interruption is not abandonment. The intention resumes when the interruption clears.
 - Record every outcome in `agent_episodes`.
 - Restart restores the intention, reconciles it with the observed world, then resumes or abandons.
 
@@ -641,12 +703,14 @@ Personal homes and projects:
 
 - Each bot may claim a home area, bed, and storage.
 - Personal projects request claims and, when needed, SIP structure proposals.
+- A project is agency focus. Construction tasks are sub-work and do not replace project focus.
+- A project proposal must seed construction tasks, or the project remains incomplete.
 - Shared areas and other bots' active builds still require grants.
 - Project abandonment releases claims and leaves a recorded episode.
 
 Persistence:
 
-- `agent_state` stores current needs, intention, routine, home, mood, and last deliberation time.
+- `agent_state` stores current needs, intention, working memory, routine, home, mood, and last deliberation time.
 - `agent_episodes` stores episodic memories: deaths, discoveries, gifts, chats, builds, goal outcomes.
 - Relationships stay in the bot profile.
 
@@ -730,7 +794,11 @@ Required behavior:
 - Bots decline or defer unsuitable jobs with a recorded reason.
 - Bots greet, reply, share, and cooperate at a bounded chat rate.
 - Personal projects acquire claims and never overlap another bot's home or active build.
-- Restart restores needs, intention, home, claims, and relationships before new work begins.
+- Project proposals create construction tasks and complete through the task board.
+- Survival interruptions preserve task leases and resume the same task.
+- A late Laya result cannot overwrite a newer focus or commitment.
+- Restart restores needs, intention, working memory, home, claims, and relationships before new work begins.
+- `home-full` runs tactical Laya by default; `home-min` remains deterministic-first with background advisory only.
 
 Required scenarios:
 
@@ -741,6 +809,9 @@ Required scenarios:
 - `social-village`
 - `goal-resume`
 - `planner-advisory`
+- `tactical-interruption`
+- `stale-decision`
+- `project-build`
 
 Required metrics:
 
@@ -753,6 +824,10 @@ Required metrics:
 - Chat messages per minute and social interactions.
 - Claim conflicts and duplicate work.
 - Planner jobs accepted, deferred, and declined.
+- Interruption and resume success rate.
+- Stale tactical decisions dropped.
+- Project completion rate and time to first construction task.
+- Focus switch rate and goal oscillation.
 
 Required soak:
 
