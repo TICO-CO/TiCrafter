@@ -17,6 +17,7 @@ import { EmergencyStopController } from '@ticrafter/safety';
 import { MemoryCheckpointStore, type SkillCheckpointStore } from '@ticrafter/skills';
 
 import { BotConnection } from './bot-connection.js';
+import { type BotConnectionFailure, BotConnectionFailures } from './bot-connection-failures.js';
 import { ReconnectSupervisor } from './reconnect-supervisor.js';
 import { SqliteCheckpointStore } from './sqlite-checkpoint-store.js';
 
@@ -35,6 +36,7 @@ export interface StartBotOptions {
 export interface BotRuntimeOptions extends StartBotOptions {
     configLoader: ConfigLoader;
     loggerFactory: LoggerFactoryPort;
+    onFatal: (message: string) => void;
 }
 
 export class BotRuntime {
@@ -104,7 +106,16 @@ export class BotRuntime {
                 checkpointStore,
             );
             if (connectionError) {
-                logger.warn({ error: connectionError }, 'bot connection failed');
+                if (BotConnectionFailures.isFatal(connectionError)) {
+                    logger.error(
+                        { error: connectionError.message },
+                        'minecraft connection failed; stopping bot',
+                    );
+                    this.close();
+                    this.options.onFatal(connectionError.message);
+                    return;
+                }
+                logger.warn({ error: connectionError.message }, 'bot connection failed');
             }
             if (spawned) this.reconnect.reset();
             if (this.closed) break;
@@ -124,7 +135,7 @@ export class BotRuntime {
         registry: MessageSchemaRegistry,
         logger: LoggerPort,
         checkpointStore: SkillCheckpointStore,
-    ): Promise<Result<boolean, string>> {
+    ): Promise<Result<boolean, BotConnectionFailure>> {
         const connection = new BotConnection({
             config,
             name,

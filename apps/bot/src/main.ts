@@ -15,6 +15,7 @@ export class BotMain {
                 environment: process.env,
             }),
             loggerFactory: new NodeLoggerFactory(),
+            onFatal: (message) => this.fail(message),
         });
         const [handle, startError] = await runtime.start();
         if (startError) return this.fail(startError);

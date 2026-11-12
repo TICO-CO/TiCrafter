@@ -475,7 +475,7 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 ## 15. Testing and evaluation
 
 - Unit: detector fixtures, SIP validation, claim transactions, edit grants, blueprint diff, guardian invariants, resume logic.
-- Integration: repo-provisioned 1.20.1 server (`bun run server:start`), offline, superflat; bots join via LAN. Docker remains an optional alternative only.
+- Integration: repo-provisioned 1.20.1 server (`bun run server:start`), offline, normal terrain; bots join via LAN. Docker remains an optional alternative only.
 - Hardware matrix: `home-min` runs the 4-bot scenarios; `home-full` runs the 8-bot scenarios. The 8-bot contention test is `home-full` only; 8 bots on `home-min` is an overload test.
 - Laya benchmark: warm-model p50/p95 latency for CPU on both profiles and WebGPU on `home-full`. Hard gates: p95 <250ms and 2h with no crash or driver reset; adopt WebGPU only if it also beats CPU p95. Measured 2026-11-10: fp16 WebGPU compact p95 140–188ms; fp16 CPU p95 ≈1.0s on `home-full` and ≈1.9s on `home-min`; 908-token prompts p95 ≈835ms.
 - Tactical and working-memory tests: focus transitions, stale revision discard, interruption and resume, task lease preservation, `home-min` background advisory never blocking, `home-full` deadline fallback, and project focus while project tasks run.

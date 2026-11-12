@@ -61,6 +61,7 @@ import { AgencyRuntime } from './agency-runtime.js';
 import { type AgencyHomeSnapshot, AgencySnapshotSource } from './agency-snapshot-source.js';
 import { AgencyStateAdapter } from './agency-state-adapter.js';
 import { BlueprintFetchClient } from './blueprint-fetch-client.js';
+import { type BotConnectionFailure, BotConnectionFailures } from './bot-connection-failures.js';
 import { BuildingExecutionService } from './building-execution-service.js';
 import { BuildingProcurementService } from './building-procurement-service.js';
 import { BuildingSkillServices } from './building-services.js';
@@ -127,28 +128,34 @@ export class BotConnection {
 
     constructor(private readonly options: BotConnectionOptions) {}
 
-    async run(): Promise<Result<boolean, string>> {
+    async run(): Promise<Result<boolean, BotConnectionFailure>> {
         const transport = new BotTransportClient({
             url: this.options.url,
             registry: this.options.registry,
         });
         const [connected, connectError] = await transport.connect();
-        if (connectError) return [null, this.describe(connectError)];
-        if (connected === null) return [null, 'transport connect returned null'];
+        if (connectError)
+            return [null, BotConnectionFailures.transport(this.describe(connectError))];
+        if (connected === null) {
+            return [null, BotConnectionFailures.transport('transport connect returned null')];
+        }
 
         this.transport = transport;
         const [hello, helloError] = await transport.hello(this.options.botId, this.options.name);
         if (helloError) {
             this.closeTransport();
-            return [null, this.describe(helloError)];
+            return [null, BotConnectionFailures.transport(this.describe(helloError))];
         }
         if (hello === null) {
             this.closeTransport();
-            return [null, 'session hello returned null'];
+            return [null, BotConnectionFailures.transport('session hello returned null')];
         }
         if (!hello.accepted) {
             this.closeTransport();
-            return [null, hello.reason ?? 'coordinator rejected session'];
+            return [
+                null,
+                BotConnectionFailures.transport(hello.reason ?? 'coordinator rejected session'),
+            ];
         }
         this.pendingResume = hello.resume ?? null;
         this.safetyContext = this.pendingResume?.safety ?? null;
@@ -168,17 +175,20 @@ export class BotConnection {
         );
         if (botError || bot === null) {
             this.closeTransport();
-            return [null, `mineflayer failed: ${this.describe(botError)}`];
+            return [
+                null,
+                BotConnectionFailures.minecraft(`mineflayer failed: ${this.describe(botError)}`),
+            ];
         }
         this.bot = bot;
         const [injected, injectionError] = await this.waitForInjection(bot);
         if (injectionError) {
             this.close();
-            return [null, injectionError];
+            return [null, BotConnectionFailures.minecraft(injectionError)];
         }
         if (injected === null) {
             this.close();
-            return [null, 'mineflayer injection returned null'];
+            return [null, BotConnectionFailures.minecraft('mineflayer injection returned null')];
         }
         const world = new WorldCacheAdapter(bot);
         this.world = world;
@@ -364,9 +374,15 @@ export class BotConnection {
         this.unsubscribeInbound = null;
         this.perception?.stop();
         this.perception = null;
-        const [, quitError] = attempt(() => this.bot?.quit());
-        if (quitError) {
-            this.options.logger.warn({ error: this.describe(quitError) }, 'mineflayer quit failed');
+        const bot = this.bot;
+        if (bot !== null && typeof bot.quit === 'function') {
+            const [, quitError] = attempt(() => bot.quit());
+            if (quitError) {
+                this.options.logger.warn(
+                    { error: this.describe(quitError) },
+                    'mineflayer quit failed',
+                );
+            }
         }
         this.closeTransport();
         this.bot = null;

@@ -53,8 +53,8 @@ const writeDefaultProperties = () => {
         'simulation-distance=6',
         'spawn-protection=0',
         'difficulty=peaceful',
-        'level-type=minecraft\\:flat',
-        'generate-structures=false',
+        'level-type=minecraft\\:normal',
+        'generate-structures=true',
         'allow-nether=false',
         'enable-command-block=false',
     ];
