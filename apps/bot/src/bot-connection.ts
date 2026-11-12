@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { AgencyState, PersonalityModel } from '@ticrafter/agency';
+import { AgencyState, type NightIntent, PersonalityModel } from '@ticrafter/agency';
 import { DeterministicPolicy, type GuardianReport, LayaClient } from '@ticrafter/brains';
 import {
     attempt,
@@ -42,7 +42,7 @@ import { type Bot, createBot } from 'mineflayer';
 
 import { ActionExecutor } from './action-executor.js';
 import { AgencyRuntime } from './agency-runtime.js';
-import { AgencySnapshotSource } from './agency-snapshot-source.js';
+import { type AgencyHomeSnapshot, AgencySnapshotSource } from './agency-snapshot-source.js';
 import { AgencyStateAdapter } from './agency-state-adapter.js';
 import { BuildingSkillServices } from './building-services.js';
 import { BotEventBridge } from './event-bridge.js';
@@ -91,7 +91,7 @@ export class BotConnection {
     private autonomyStarted = false;
     private autonomyPausedReason: string | null = null;
     private pendingResume: SessionResume | null = null;
-    private homePosition: { x: number; y: number; z: number } | null = null;
+    private homeSnapshot: AgencyHomeSnapshot | null = null;
     private role: string | null = null;
     private homeProjectRequested = false;
     private lastReflexAt = 0;
@@ -122,7 +122,7 @@ export class BotConnection {
             return [null, hello.reason ?? 'coordinator rejected session'];
         }
         this.pendingResume = hello.resume ?? null;
-        this.homePosition = BotConnection.homeAnchor(this.pendingResume);
+        this.homeSnapshot = BotConnection.homeSnapshotFromResume(this.pendingResume);
         this.role = this.pendingResume?.role ?? null;
         this.options.logger.info({ epoch: hello.epoch }, 'coordinator accepted session');
 
@@ -332,7 +332,8 @@ export class BotConnection {
                 context: new AgencySnapshotSource({
                     bot,
                     world,
-                    home: () => this.homePosition,
+                    home: () => this.homeSnapshot,
+                    nightIntent: () => this.nightIntent(),
                 }),
                 skills,
                 persistence,
@@ -407,7 +408,7 @@ export class BotConnection {
             autonomy.start();
             if (this.autonomyPausedReason !== null) autonomy.pause(this.autonomyPausedReason);
             this.agencyRuntime?.start();
-            if (this.options.config.agency.enabled && this.homePosition === null) {
+            if (this.options.config.agency.enabled && this.homeSnapshot === null) {
                 void this.ensureHomeProject(this.transport);
             }
         }
@@ -464,8 +465,13 @@ export class BotConnection {
         this.autonomyStarted = false;
     }
 
+    private nightIntent(): NightIntent | null {
+        const payload = this.taskAutonomy?.activeTaskPayload;
+        return payload?.requiresMobDrops === true ? 'hunt' : null;
+    }
+
     private async ensureHomeProject(transport: BotTransportClient): Promise<void> {
-        if (this.homeProjectRequested || this.homePosition !== null || this.bot === null) return;
+        if (this.homeProjectRequested || this.homeSnapshot !== null || this.bot === null) return;
         this.homeProjectRequested = true;
         const position = this.bot.entity?.position;
         if (position === undefined) return;
@@ -498,24 +504,32 @@ export class BotConnection {
             );
             return;
         }
-        this.homePosition = parsed.data.project.anchor;
+        this.homeSnapshot = {
+            anchor: parsed.data.project.anchor,
+            bbox: parsed.data.project.bbox,
+            status: parsed.data.project.status,
+            structureId: parsed.data.project.structureId,
+        };
         this.options.logger.info(
             { projectId: parsed.data.project.id },
             'personal home project created',
         );
     }
 
-    private static homeAnchor(
-        resume: SessionResume | null,
-    ): { x: number; y: number; z: number } | null {
+    private static homeSnapshotFromResume(resume: SessionResume | null): AgencyHomeSnapshot | null {
         if (resume?.projects === undefined) return null;
-        return (
-            resume.projects.find(
-                (project) =>
-                    project.kind === 'home' &&
-                    (project.status === 'proposed' || project.status === 'active'),
-            )?.anchor ?? null
+        const project = resume.projects.find(
+            (candidate) =>
+                candidate.kind === 'home' &&
+                (candidate.status === 'proposed' || candidate.status === 'active'),
         );
+        if (project === undefined) return null;
+        return {
+            anchor: project.anchor,
+            bbox: project.bbox,
+            status: project.status,
+            structureId: project.structureId,
+        };
     }
 
     private readTaskSnapshot(): TaskAutonomySnapshot {

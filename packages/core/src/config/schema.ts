@@ -72,6 +72,18 @@ export const configSchema = zod
             chatRatePerMinute: zod.number().int().min(0).max(30),
             needDecayPerMinute: zod.number().min(0).max(1),
             committedGoalBonus: zod.number().min(0).max(1),
+            nightPrep: zod.object({
+                enabled: zod.boolean(),
+                duskLeadTicks: zod.number().int().nonnegative(),
+                foodServings: zod.number().int().nonnegative(),
+                minHealth: zod.number().min(0).max(20),
+                homeRadius: zod.number().nonnegative(),
+                buildWindowTicks: zod.number().int().nonnegative(),
+                buildMaterialCount: zod.number().int().nonnegative(),
+                woolTarget: zod.number().int().nonnegative(),
+                allowShelterBuild: zod.boolean(),
+                allowDigIn: zod.boolean(),
+            }),
         }),
         building: zod.object({
             maxStructureBlocks: zod.number().int().positive(),

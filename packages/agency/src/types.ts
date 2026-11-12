@@ -34,7 +34,14 @@ export type GoalKind =
     | 'social'
     | 'return-home'
     | 'deposit'
-    | 'leisure';
+    | 'leisure'
+    | 'prepare-night'
+    | 'build-shelter'
+    | 'dig-shelter'
+    | 'secure-bed'
+    | 'gather-wool'
+    | 'gather-food'
+    | 'equip-gear';
 
 export type GoalSource = 'need' | 'job' | 'social' | 'curiosity' | 'routine';
 
@@ -71,6 +78,75 @@ export interface AgencySnapshot {
     home: Vec3 | null;
     hasBed: boolean;
     knownResourceSites: readonly { kind: string; position: Vec3 }[];
+    homeBbox: SnapshotBoundingBox | null;
+    homeStatus: HomeStatus | null;
+    homeStructureId: string | null;
+    hasBedAtHome: boolean;
+    isSheltered: boolean;
+    digSite: Vec3 | null;
+    weapon: { name: string; tier: number } | null;
+    armorPieces: number;
+    armorInventoryPieces: number;
+    nightIntent: NightIntent | null;
+}
+
+export interface SnapshotBoundingBox {
+    min: Vec3;
+    max: Vec3;
+}
+
+export type HomeStatus = 'proposed' | 'active' | 'completed' | 'abandoned' | 'failed';
+
+export type NightIntent = 'rest' | 'hunt';
+
+export type NightGap =
+    | 'home-missing'
+    | 'home-far'
+    | 'shelter-missing'
+    | 'bed-missing'
+    | 'food-low'
+    | 'food-missing'
+    | 'weapon-missing'
+    | 'armor-missing'
+    | 'health-low'
+    | 'hostiles-near';
+
+export type NightActionKind =
+    | 'navigate-home'
+    | 'eat'
+    | 'gather-food'
+    | 'gather-wool'
+    | 'craft-bed'
+    | 'place-bed'
+    | 'craft-weapon'
+    | 'equip-gear'
+    | 'build-shelter'
+    | 'dig-shelter';
+
+export type ShelterStrategy = 'keep' | 'build' | 'dig-in' | 'none';
+
+export interface NightAction {
+    kind: NightActionKind;
+    gap: NightGap;
+    label: string;
+    input: Readonly<Record<string, unknown>>;
+}
+
+export interface NightCombatReadiness {
+    weaponTier: number;
+    armorPieces: number;
+    health: number;
+    ready: boolean;
+}
+
+export interface NightReadiness {
+    ready: boolean;
+    gaps: readonly NightGap[];
+    actions: readonly NightAction[];
+    foodServings: number;
+    shelterStrategy: ShelterStrategy;
+    combat: NightCombatReadiness;
+    nightIntent: NightIntent;
 }
 
 export type RoutinePhase = 'morning' | 'day' | 'evening' | 'night';

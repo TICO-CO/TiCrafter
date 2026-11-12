@@ -6,6 +6,7 @@ import { GoalGenerator } from './goal-generator.js';
 import { IntentionManager } from './intention-manager.js';
 import { NeedsModel } from './needs-model.js';
 import { PersonalityModel } from './personality-model.js';
+import { RoutineModel } from './routine-model.js';
 import { SocialEngine } from './social-engine.js';
 import type { AgencySnapshot, SocialContext } from './types.js';
 
@@ -23,6 +24,16 @@ function snapshot(overrides: Partial<AgencySnapshot> = {}): AgencySnapshot {
         home: { x: 0, y: 64, z: 0 },
         hasBed: false,
         knownResourceSites: [],
+        homeBbox: null,
+        homeStatus: null,
+        homeStructureId: null,
+        hasBedAtHome: false,
+        isSheltered: false,
+        digSite: null,
+        weapon: null,
+        armorPieces: 0,
+        armorInventoryPieces: 0,
+        nightIntent: null,
         ...overrides,
     };
 }
@@ -140,6 +151,37 @@ describe('agency', () => {
         const [outcome, outcomeError] = manager.abandon('preempted', snapshot().at);
         expect(outcomeError).toBeNull();
         expect(outcome?.reason).toBe('preempted');
+    });
+
+    it('classifies dusk and counts down to night', () => {
+        expect(RoutineModel.phase(17_500)).toBe('evening');
+        expect(RoutineModel.isDusk('evening')).toBe(true);
+        expect(RoutineModel.isNight('night')).toBe(true);
+        expect(RoutineModel.ticksUntilNight(17_500)).toBe(2_000);
+        expect(RoutineModel.isNightTime(20_000)).toBe(true);
+        expect(RoutineModel.isNightTime(12_000)).toBe(false);
+    });
+
+    it('builds a dusk preparation goal with actionable steps', () => {
+        const [goals, goalError] = new GoalGenerator().generate(
+            snapshot({
+                timeOfDay: 17_500,
+                isSheltered: false,
+                digSite: { x: 1, y: 64, z: 0 },
+                inventory: [],
+            }),
+            NeedsModel.defaults(),
+            PersonalityModel.fromBotIndex(1),
+            'evening',
+        );
+        expect(goalError).toBeNull();
+        if (goals === null) return;
+        const prep = goals.find((goal) => goal.kind === 'prepare-night');
+        expect(prep === undefined).toBe(false);
+        const skillIds = prep?.steps.map((step) => step.skillId) ?? [];
+        expect(skillIds.includes('dig-shelter')).toBe(true);
+        expect(skillIds.includes('gather-wool')).toBe(true);
+        expect(skillIds.includes('gather-food')).toBe(true);
     });
 
     it('classifies chat and enforces the rate limit', () => {

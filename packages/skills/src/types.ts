@@ -120,6 +120,7 @@ export interface SkillWorldView {
     blockStateAt?(position: Vec3): SkillBlockState | null;
     blocksInBox?(bbox: SkillBBox): readonly SkillBlock[];
     nearestBlock?(names: readonly string[], maxDistance: number): Vec3 | null;
+    entities?(): readonly { id?: number; name: string; position: Vec3 }[];
 }
 
 export interface SkillContext {

@@ -566,7 +566,15 @@ Behavior:
 - survival or recovery interruptions preserve project focus and task leases
 - a late tactical decision cannot replace newer project focus
 
-Agency project goals, working memory, and interruption semantics are defined in
+Night preparation uses the same agency loop. The readiness model chooses
+`keep`, `build`, `dig-in`, or `none`, and emits concrete goals for shelter,
+beds, food, and combat gear. A first shelter is built around the home anchor or
+the current position when no home exists. The corresponding skills are
+`place-build`, `dig-shelter`, `place-bed`, `gather-wool`, `gather-food`, and
+`equip-gear`.
+
+Agency project goals, working memory, interruption, and night preparation
+semantics are defined in
 [`docs/cognitive-architecture.md`](cognitive-architecture.md).
 
 ## 14. Safety and watching

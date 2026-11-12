@@ -74,7 +74,7 @@ function context(overrides: Partial<SkillContext> = {}): SkillContext {
         position: { x: 0, y: 64, z: 0 },
         health: 20,
         food: 20,
-        timeOfDay: 13_000,
+        timeOfDay: 20_000,
         inventory: [],
         world: new FakeWorld({ x: 0, y: 64, z: 3 }),
         hostiles: [],

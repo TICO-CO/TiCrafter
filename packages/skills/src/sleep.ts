@@ -112,7 +112,9 @@ export class SleepSkill implements Skill {
 
     private isDaytime(context: SkillContext): boolean {
         const timeOfDay = context.timeOfDay;
-        return timeOfDay !== undefined && timeOfDay >= 0 && timeOfDay < 12_000;
+        if (timeOfDay === undefined) return false;
+        const normalized = ((timeOfDay % 24_000) + 24_000) % 24_000;
+        return normalized >= 6_000 && normalized < 19_500;
     }
 
     private isThreatened(context: SkillContext): boolean {

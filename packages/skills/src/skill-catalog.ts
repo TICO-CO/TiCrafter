@@ -5,13 +5,18 @@ import { ClearSkill } from './clear.js';
 import { CollectSkill } from './collect.js';
 import { CraftSkill } from './craft.js';
 import { DepositSkill } from './deposit.js';
+import { DigShelterSkill } from './dig-shelter.js';
 import { EatSkill } from './eat.js';
+import { EquipGearSkill } from './equip-gear.js';
 import { ExploreSkill } from './explore.js';
 import { FleeDefendSkill } from './flee-defend.js';
 import { FollowPathSkill } from './follow-path.js';
+import { GatherFoodSkill } from './gather-food.js';
+import { GatherWoolSkill } from './gather-wool.js';
 import { HarvestFarmSkill } from './harvest-farm.js';
 import { MineSkill } from './mine.js';
 import { NavigateSkill } from './navigate.js';
+import { PlaceBedSkill } from './place-bed.js';
 import { PlaceBuildSkill } from './place-build.js';
 import { PlantFarmSkill } from './plant-farm.js';
 import { SkillRegistry } from './registry.js';
@@ -32,6 +37,11 @@ export class SkillCatalog {
             new SmeltSkill(),
             new EatSkill(),
             new SleepSkill(),
+            new EquipGearSkill(),
+            new GatherFoodSkill(),
+            new GatherWoolSkill(),
+            new PlaceBedSkill(),
+            new DigShelterSkill(),
             new DepositSkill(),
             new WithdrawSkill(),
             new FleeDefendSkill(),

@@ -135,6 +135,17 @@ export class GoalCatalog {
                 0.05,
                 0.0,
             ),
+            GoalCatalog.template(
+                'prepare-night',
+                'Prepare for nightfall',
+                85,
+                'routine',
+                'navigate',
+                {},
+                0.85,
+                0.2,
+                0.1,
+            ),
         ];
     }
 

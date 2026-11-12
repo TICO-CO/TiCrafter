@@ -3155,6 +3155,113 @@
                     "template": "tpl.skill"
                 },
                 {
+                    "id": "skills.entity-targeting",
+                    "name": "Entity Targeting",
+                    "responsibility": "Find and track the nearest matching entity and verify that a target still exists.",
+                    "plannedPath": "packages/skills/src/entity-targeting",
+                    "provides": ["skills.entity-targeting.interface"],
+                    "requires": ["bot-runtime.world-cache-adapter"],
+                    "ownsState": [],
+                    "metrics": [
+                        "skills_entity_targeting_errors_total",
+                        "skills_entity_targeting_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 15,
+                    "template": "tpl.skill"
+                },
+                {
+                    "id": "skills.equip-gear",
+                    "name": "Equip Gear",
+                    "responsibility": "Equip the best available weapon and armor into the correct slots.",
+                    "plannedPath": "packages/skills/src/equip-gear",
+                    "provides": ["skills.equip-gear.interface"],
+                    "requires": ["skills.shared-utilities", "bot-runtime.action-executor"],
+                    "ownsState": [],
+                    "metrics": ["skills_equip_gear_errors_total", "skills_equip_gear_latency_ms"],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 15,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "Only inventory items may be equipped and no slot is filled with an incompatible item."
+                    ]
+                },
+                {
+                    "id": "skills.gather-food",
+                    "name": "Gather Food",
+                    "responsibility": "Hunt passive animals and collect their drops until enough food is carried.",
+                    "plannedPath": "packages/skills/src/gather-food",
+                    "provides": ["skills.gather-food.interface"],
+                    "requires": [
+                        "skills.entity-targeting",
+                        "skills.shared-utilities",
+                        "bot-runtime.action-executor",
+                        "bot-runtime.world-cache-adapter"
+                    ],
+                    "ownsState": [],
+                    "metrics": ["skills_gather_food_errors_total", "skills_gather_food_latency_ms"],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 15,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "Gathering stops at the requested food count and never attacks players or bots."
+                    ]
+                },
+                {
+                    "id": "skills.gather-wool",
+                    "name": "Gather Wool",
+                    "responsibility": "Shear or hunt sheep for wool and skip already-sheared targets.",
+                    "plannedPath": "packages/skills/src/gather-wool",
+                    "provides": ["skills.gather-wool.interface"],
+                    "requires": [
+                        "skills.entity-targeting",
+                        "skills.shared-utilities",
+                        "bot-runtime.action-executor",
+                        "bot-runtime.world-cache-adapter"
+                    ],
+                    "ownsState": [],
+                    "metrics": ["skills_gather_wool_errors_total", "skills_gather_wool_latency_ms"],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 15,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "A sheared target is not retried indefinitely and gathering stops at the requested wool count."
+                    ]
+                },
+                {
+                    "id": "skills.place-bed",
+                    "name": "Place Bed",
+                    "responsibility": "Move to the target cell and place a carried bed with support-safe placement.",
+                    "plannedPath": "packages/skills/src/place-bed",
+                    "provides": ["skills.place-bed.interface"],
+                    "requires": ["skills.shared-utilities", "bot-runtime.action-executor"],
+                    "ownsState": [],
+                    "metrics": ["skills_place_bed_errors_total", "skills_place_bed_latency_ms"],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 15,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "A bed is placed only when a bed item is carried and the target cell is reachable."
+                    ]
+                },
+                {
+                    "id": "skills.dig-shelter",
+                    "name": "Dig Shelter",
+                    "responsibility": "Dig a sealed two-block pocket, wait out the night, then unseal and refill it.",
+                    "plannedPath": "packages/skills/src/dig-shelter",
+                    "provides": ["skills.dig-shelter.interface"],
+                    "requires": ["skills.shared-utilities", "bot-runtime.action-executor"],
+                    "ownsState": [],
+                    "metrics": ["skills_dig_shelter_errors_total", "skills_dig_shelter_latency_ms"],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 15,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "Each dug block is recorded and restored when the shelter is left.",
+                        "Digging advances only after the current break action completes."
+                    ]
+                },
+                {
                     "id": "skills.shared-utilities",
                     "name": "Skill Shared Utilities",
                     "responsibility": "Provide target selection, inventory math, reach checks, and progress helpers.",
@@ -3882,6 +3989,26 @@
                     "sourceRefs": ["main.md#1-fleet-coordinator"],
                     "milestone": 1,
                     "template": "tpl.bot-adapter"
+                },
+                {
+                    "id": "bot-runtime.shelter-inspector",
+                    "name": "Shelter Inspector",
+                    "responsibility": "Inspect the home bounding box for shelter and bed state and find a safe nearby dig site.",
+                    "plannedPath": "apps/bot/src/shelter-inspector",
+                    "provides": ["bot-runtime.shelter-inspector.interface"],
+                    "requires": ["bot-runtime.world-cache-adapter"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_shelter_inspector_errors_total",
+                        "bot_runtime_shelter_inspector_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Shelter is reported only while the bot is inside or next to the home bounds.",
+                        "Dig sites exclude water, lava, bedrock, and storage blocks."
+                    ]
                 },
                 {
                     "id": "bot-runtime.reach-rate-guard",
@@ -5439,7 +5566,10 @@
                     "requires": [
                         "agency.goal-catalog",
                         "agency.needs-model",
-                        "agency.personality-model"
+                        "agency.night-prep-config",
+                        "agency.night-readiness",
+                        "agency.personality-model",
+                        "agency.routine-model"
                     ],
                     "ownsState": [],
                     "metrics": [
@@ -5514,6 +5644,103 @@
                     "template": "tpl.brain",
                     "invariants": [
                         "Routine phase is a pure function of time of day and is a prior, not a script."
+                    ]
+                },
+                {
+                    "id": "agency.item-knowledge",
+                    "name": "Item Knowledge",
+                    "responsibility": "Classify food, weapons, armor, wool, beds, and building materials from the bot inventory.",
+                    "plannedPath": "packages/agency/src/item-knowledge",
+                    "provides": ["agency.item-knowledge.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_item_knowledge_errors_total",
+                        "agency_item_knowledge_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.brain"
+                },
+                {
+                    "id": "agency.night-prep-config",
+                    "name": "Night Preparation Config",
+                    "responsibility": "Define night preparation thresholds, material requirements, and shelter strategy switches.",
+                    "plannedPath": "packages/agency/src/night-prep-config",
+                    "provides": ["agency.night-prep-config.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_night_prep_config_errors_total",
+                        "agency_night_prep_config_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.brain"
+                },
+                {
+                    "id": "agency.shelter-strategy",
+                    "name": "Shelter Strategy",
+                    "responsibility": "Choose keep, build, dig-in, or none from shelter state, daylight left, and available material.",
+                    "plannedPath": "packages/agency/src/shelter-strategy",
+                    "provides": ["agency.shelter-strategy.interface"],
+                    "requires": ["agency.night-prep-config"],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_shelter_strategy_errors_total",
+                        "agency_shelter_strategy_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Build is chosen only when enough daylight and material remain.",
+                        "Dig-in is chosen only when a safe dig site is available."
+                    ]
+                },
+                {
+                    "id": "agency.shelter-plan",
+                    "name": "Shelter Plan",
+                    "responsibility": "Generate a bounded support-first shell of blocks for a first shelter.",
+                    "plannedPath": "packages/agency/src/shelter-plan",
+                    "provides": ["agency.shelter-plan.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_shelter_plan_errors_total",
+                        "agency_shelter_plan_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Shelter blocks are ordered support-first and bounded to a small footprint."
+                    ]
+                },
+                {
+                    "id": "agency.night-readiness",
+                    "name": "Night Readiness",
+                    "responsibility": "Assess home, shelter, bed, food, combat, and hostile gaps and emit ordered night preparation actions.",
+                    "plannedPath": "packages/agency/src/night-readiness",
+                    "provides": ["agency.night-readiness.interface"],
+                    "requires": [
+                        "agency.item-knowledge",
+                        "agency.night-prep-config",
+                        "agency.routine-model",
+                        "agency.shelter-plan",
+                        "agency.shelter-strategy"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_night_readiness_errors_total",
+                        "agency_night_readiness_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Readiness is a pure assessment and never calls a skill directly.",
+                        "Every emitted action names a supported skill id and typed input."
                     ]
                 },
                 {
@@ -12911,6 +13138,331 @@
             "criticality": "hard",
             "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
             "notes": "Site Planner depends on Construction Plan Types.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0550",
+            "from": "agency.night-readiness",
+            "to": "agency.item-knowledge",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Item Knowledge",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Night Readiness depends on Item Knowledge.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0551",
+            "from": "agency.night-readiness",
+            "to": "agency.night-prep-config",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Night Preparation Config",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Night Readiness depends on Night Preparation Config.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0552",
+            "from": "agency.night-readiness",
+            "to": "agency.routine-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Routine Model",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Night Readiness depends on Routine Model.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0553",
+            "from": "agency.night-readiness",
+            "to": "agency.shelter-plan",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Shelter Plan",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Night Readiness depends on Shelter Plan.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0554",
+            "from": "agency.night-readiness",
+            "to": "agency.shelter-strategy",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Shelter Strategy",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Night Readiness depends on Shelter Strategy.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0555",
+            "from": "agency.shelter-strategy",
+            "to": "agency.night-prep-config",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Night Preparation Config",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Shelter Strategy depends on Night Preparation Config.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0556",
+            "from": "agency.goal-generator",
+            "to": "agency.night-prep-config",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Night Preparation Config",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Goal Generator depends on Night Preparation Config.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0557",
+            "from": "agency.goal-generator",
+            "to": "agency.night-readiness",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Night Readiness",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Goal Generator depends on Night Readiness.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0558",
+            "from": "agency.goal-generator",
+            "to": "agency.routine-model",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Routine Model",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Goal Generator depends on Routine Model.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0559",
+            "from": "skills.entity-targeting",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for World Cache Adapter",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Entity Targeting depends on World Cache Adapter.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0560",
+            "from": "skills.equip-gear",
+            "to": "skills.shared-utilities",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Skill Shared Utilities",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Equip Gear depends on Skill Shared Utilities.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0561",
+            "from": "skills.equip-gear",
+            "to": "bot-runtime.action-executor",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Action Executor",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Equip Gear depends on Action Executor.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0562",
+            "from": "skills.gather-food",
+            "to": "skills.entity-targeting",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Entity Targeting",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Food depends on Entity Targeting.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0563",
+            "from": "skills.gather-food",
+            "to": "skills.shared-utilities",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Skill Shared Utilities",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Food depends on Skill Shared Utilities.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0564",
+            "from": "skills.gather-food",
+            "to": "bot-runtime.action-executor",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Action Executor",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Food depends on Action Executor.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0565",
+            "from": "skills.gather-food",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for World Cache Adapter",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Food depends on World Cache Adapter.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0566",
+            "from": "skills.gather-wool",
+            "to": "skills.entity-targeting",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Entity Targeting",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Wool depends on Entity Targeting.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0567",
+            "from": "skills.gather-wool",
+            "to": "skills.shared-utilities",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Skill Shared Utilities",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Wool depends on Skill Shared Utilities.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0568",
+            "from": "skills.gather-wool",
+            "to": "bot-runtime.action-executor",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Action Executor",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Wool depends on Action Executor.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0569",
+            "from": "skills.gather-wool",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for World Cache Adapter",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Wool depends on World Cache Adapter.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0570",
+            "from": "skills.place-bed",
+            "to": "skills.shared-utilities",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Skill Shared Utilities",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Place Bed depends on Skill Shared Utilities.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0571",
+            "from": "skills.place-bed",
+            "to": "bot-runtime.action-executor",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Action Executor",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Place Bed depends on Action Executor.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0572",
+            "from": "skills.dig-shelter",
+            "to": "skills.shared-utilities",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Skill Shared Utilities",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Dig Shelter depends on Skill Shared Utilities.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0573",
+            "from": "skills.dig-shelter",
+            "to": "bot-runtime.action-executor",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Action Executor",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Dig Shelter depends on Action Executor.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0574",
+            "from": "bot-runtime.shelter-inspector",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for World Cache Adapter",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Shelter Inspector depends on World Cache Adapter.",
             "explicit": false
         }
     ]

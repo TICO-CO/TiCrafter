@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 269  
-**Relations:** 549  
+**Components:** 281  
+**Relations:** 574  
 **Externals:** 5
 
 ## Reading this catalog
@@ -30,9 +30,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
 | `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 12 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
-| `sys.skills` | [Skill Library](#skill-library) | 20 | `packages/skills/src` | 4 |
+| `sys.skills` | [Skill Library](#skill-library) | 26 | `packages/skills/src` | 4 |
 | `sys.building` | [Building](#building) | 35 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 14 | `apps/bot/src` | 1 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 15 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
@@ -40,7 +40,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
 | `sys.brains` | [Brains](#brains) | 4 | `packages/brains/src` | 4 |
-| `sys.agency` | [Agency](#agency) | 9 | `packages/agency/src` | 12 |
+| `sys.agency` | [Agency](#agency) | 14 | `packages/agency/src` | 12 |
 | `sys.toolchain` | [Bootstrap and Toolchain](#bootstrap-and-toolchain) | 5 | `tools` | 1 |
 
 ## Coordinator Runtime
@@ -2931,6 +2931,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `skills.repair` | Repair | Repair a structure by diffing intended blueprint against observed blocks. | `packages/skills/src/repair` | 4 |
 | `skills.harvest-farm` | Harvest Farm | Harvest mature crops from an assigned farm plot. | `packages/skills/src/harvest-farm` | 4 |
 | `skills.plant-farm` | Plant Farm | Plant seeds and maintain water and crop state on an assigned plot. | `packages/skills/src/plant-farm` | 4 |
+| `skills.entity-targeting` | Entity Targeting | Find and track the nearest matching entity and verify that a target still exists. | `packages/skills/src/entity-targeting` | 15 |
+| `skills.equip-gear` | Equip Gear | Equip the best available weapon and armor into the correct slots. | `packages/skills/src/equip-gear` | 15 |
+| `skills.gather-food` | Gather Food | Hunt passive animals and collect their drops until enough food is carried. | `packages/skills/src/gather-food` | 15 |
+| `skills.gather-wool` | Gather Wool | Shear or hunt sheep for wool and skip already-sheared targets. | `packages/skills/src/gather-wool` | 15 |
+| `skills.place-bed` | Place Bed | Move to the target cell and place a carried bed with support-safe placement. | `packages/skills/src/place-bed` | 15 |
+| `skills.dig-shelter` | Dig Shelter | Dig a sealed two-block pocket, wait out the night, then unseal and refill it. | `packages/skills/src/dig-shelter` | 15 |
 | `skills.shared-utilities` | Skill Shared Utilities | Provide target selection, inventory math, reach checks, and progress helpers. | `packages/skills/src/shared-utilities` | 4 |
 
 ### `skills.navigate` — Navigate
@@ -3312,6 +3318,122 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `skills_plant_farm_errors_total`
   - `skills_plant_farm_latency_ms`
+
+### `skills.entity-targeting` — Entity Targeting
+
+- **Responsibility:** Find and track the nearest matching entity and verify that a target still exists.
+- **Owner path:** `packages/skills/src/entity-targeting`
+- **Provides:** `skills.entity-targeting.interface`
+- **Requires:** `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 15
+- **Invariants:**
+  - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
+  - Every effect passes the guardian veto gate before reaching the action executor.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_entity_targeting_errors_total`
+  - `skills_entity_targeting_latency_ms`
+
+### `skills.equip-gear` — Equip Gear
+
+- **Responsibility:** Equip the best available weapon and armor into the correct slots.
+- **Owner path:** `packages/skills/src/equip-gear`
+- **Provides:** `skills.equip-gear.interface`
+- **Requires:** `skills.shared-utilities`, `bot-runtime.action-executor`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 15
+- **Invariants:**
+  - Only inventory items may be equipped and no slot is filled with an incompatible item.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_equip_gear_errors_total`
+  - `skills_equip_gear_latency_ms`
+
+### `skills.gather-food` — Gather Food
+
+- **Responsibility:** Hunt passive animals and collect their drops until enough food is carried.
+- **Owner path:** `packages/skills/src/gather-food`
+- **Provides:** `skills.gather-food.interface`
+- **Requires:** `skills.entity-targeting`, `skills.shared-utilities`, `bot-runtime.action-executor`, `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 15
+- **Invariants:**
+  - Gathering stops at the requested food count and never attacks players or bots.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_gather_food_errors_total`
+  - `skills_gather_food_latency_ms`
+
+### `skills.gather-wool` — Gather Wool
+
+- **Responsibility:** Shear or hunt sheep for wool and skip already-sheared targets.
+- **Owner path:** `packages/skills/src/gather-wool`
+- **Provides:** `skills.gather-wool.interface`
+- **Requires:** `skills.entity-targeting`, `skills.shared-utilities`, `bot-runtime.action-executor`, `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 15
+- **Invariants:**
+  - A sheared target is not retried indefinitely and gathering stops at the requested wool count.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_gather_wool_errors_total`
+  - `skills_gather_wool_latency_ms`
+
+### `skills.place-bed` — Place Bed
+
+- **Responsibility:** Move to the target cell and place a carried bed with support-safe placement.
+- **Owner path:** `packages/skills/src/place-bed`
+- **Provides:** `skills.place-bed.interface`
+- **Requires:** `skills.shared-utilities`, `bot-runtime.action-executor`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 15
+- **Invariants:**
+  - A bed is placed only when a bed item is carried and the target cell is reachable.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_place_bed_errors_total`
+  - `skills_place_bed_latency_ms`
+
+### `skills.dig-shelter` — Dig Shelter
+
+- **Responsibility:** Dig a sealed two-block pocket, wait out the night, then unseal and refill it.
+- **Owner path:** `packages/skills/src/dig-shelter`
+- **Provides:** `skills.dig-shelter.interface`
+- **Requires:** `skills.shared-utilities`, `bot-runtime.action-executor`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 15
+- **Invariants:**
+  - Each dug block is recorded and restored when the shelter is left.
+  - Digging advances only after the current break action completes.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_dig_shelter_errors_total`
+  - `skills_dig_shelter_latency_ms`
 
 ### `skills.shared-utilities` — Skill Shared Utilities
 
@@ -4115,6 +4237,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.join-auth` | Join and Auth | Join the LAN server with the assigned identity and offline auth. | `apps/bot/src/join-auth` | 1 |
 | `bot-runtime.event-bridge` | Mineflayer Event Bridge | Translate mineflayer events into typed local and coordinator events. | `apps/bot/src/event-bridge` | 1 |
 | `bot-runtime.world-cache-adapter` | World Cache Adapter | Expose local block, chunk, entity, and inventory state to perception and skills. | `apps/bot/src/world-cache-adapter` | 1 |
+| `bot-runtime.shelter-inspector` | Shelter Inspector | Inspect the home bounding box for shelter and bed state and find a safe nearby dig site. | `apps/bot/src/shelter-inspector` | 15 |
 | `bot-runtime.reach-rate-guard` | Reach and Rate Guard | Reject impossible reach and enforce configurable action rates. | `apps/bot/src/reach-rate-guard` | 1 |
 | `bot-runtime.action-executor` | Action Executor | Execute only safety-approved place, break, use, attack, and movement actions. | `apps/bot/src/action-executor` | 1 |
 | `bot-runtime.state-digest-collector` | State Digest Collector | Collect health, food, time, biome, y-level, target, inventory, hazards, and skill progress. | `apps/bot/src/state-digest-collector` | 1 |
@@ -4205,6 +4328,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bot_runtime_world_cache_adapter_errors_total`
   - `bot_runtime_world_cache_adapter_latency_ms`
+
+### `bot-runtime.shelter-inspector` — Shelter Inspector
+
+- **Responsibility:** Inspect the home bounding box for shelter and bed state and find a safe nearby dig site.
+- **Owner path:** `apps/bot/src/shelter-inspector`
+- **Provides:** `bot-runtime.shelter-inspector.interface`
+- **Requires:** `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - Shelter is reported only while the bot is inside or next to the home bounds.
+  - Dig sites exclude water, lava, bedrock, and storage blocks.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_shelter_inspector_errors_total`
+  - `bot_runtime_shelter_inspector_latency_ms`
 
 ### `bot-runtime.reach-rate-guard` — Reach and Rate Guard
 
@@ -5909,6 +6052,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `agency.goal-arbiter` | Goal Arbiter | Score goal candidates with utility, personality, commitment hysteresis, cost, and risk. | `packages/agency/src/goal-arbiter` | 12 |
 | `agency.intention-manager` | Intention Manager | Track the active goal, step index, retries, completion, abandonment, preemption, and expiry. | `packages/agency/src/intention-manager` | 12 |
 | `agency.routine-model` | Routine Model | Derive morning, day, evening, and night phases and expose work, rest, and social preferences. | `packages/agency/src/routine-model` | 12 |
+| `agency.item-knowledge` | Item Knowledge | Classify food, weapons, armor, wool, beds, and building materials from the bot inventory. | `packages/agency/src/item-knowledge` | 15 |
+| `agency.night-prep-config` | Night Preparation Config | Define night preparation thresholds, material requirements, and shelter strategy switches. | `packages/agency/src/night-prep-config` | 15 |
+| `agency.shelter-strategy` | Shelter Strategy | Choose keep, build, dig-in, or none from shelter state, daylight left, and available material. | `packages/agency/src/shelter-strategy` | 15 |
+| `agency.shelter-plan` | Shelter Plan | Generate a bounded support-first shell of blocks for a first shelter. | `packages/agency/src/shelter-plan` | 15 |
+| `agency.night-readiness` | Night Readiness | Assess home, shelter, bed, food, combat, and hostile gaps and emit ordered night preparation actions. | `packages/agency/src/night-readiness` | 15 |
 | `agency.social-engine` | Social Engine | Classify social messages, generate personality-styled replies, and enforce chat rate limits. | `packages/agency/src/social-engine` | 14 |
 | `agency.agency-state` | Agency State | Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot. | `packages/agency/src/agency-state` | 12 |
 
@@ -5976,7 +6124,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Responsibility:** Emit concrete goal candidates from needs, personality, world context, time, home, and social signals.
 - **Owner path:** `packages/agency/src/goal-generator`
 - **Provides:** `agency.goal-generator.interface`
-- **Requires:** `agency.goal-catalog`, `agency.needs-model`, `agency.personality-model`
+- **Requires:** `agency.goal-catalog`, `agency.needs-model`, `agency.night-prep-config`, `agency.night-readiness`, `agency.personality-model`, `agency.routine-model`
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
 - **Milestone:** 12
@@ -6048,6 +6196,105 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `agency_routine_model_errors_total`
   - `agency_routine_model_latency_ms`
+
+### `agency.item-knowledge` — Item Knowledge
+
+- **Responsibility:** Classify food, weapons, armor, wool, beds, and building materials from the bot inventory.
+- **Owner path:** `packages/agency/src/item-knowledge`
+- **Provides:** `agency.item-knowledge.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - The brain layer emits proposals only; it never calls mineflayer.
+  - Deterministic policy is always available as the fallback path.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_item_knowledge_errors_total`
+  - `agency_item_knowledge_latency_ms`
+
+### `agency.night-prep-config` — Night Preparation Config
+
+- **Responsibility:** Define night preparation thresholds, material requirements, and shelter strategy switches.
+- **Owner path:** `packages/agency/src/night-prep-config`
+- **Provides:** `agency.night-prep-config.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - The brain layer emits proposals only; it never calls mineflayer.
+  - Deterministic policy is always available as the fallback path.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_night_prep_config_errors_total`
+  - `agency_night_prep_config_latency_ms`
+
+### `agency.shelter-strategy` — Shelter Strategy
+
+- **Responsibility:** Choose keep, build, dig-in, or none from shelter state, daylight left, and available material.
+- **Owner path:** `packages/agency/src/shelter-strategy`
+- **Provides:** `agency.shelter-strategy.interface`
+- **Requires:** `agency.night-prep-config`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - Build is chosen only when enough daylight and material remain.
+  - Dig-in is chosen only when a safe dig site is available.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_shelter_strategy_errors_total`
+  - `agency_shelter_strategy_latency_ms`
+
+### `agency.shelter-plan` — Shelter Plan
+
+- **Responsibility:** Generate a bounded support-first shell of blocks for a first shelter.
+- **Owner path:** `packages/agency/src/shelter-plan`
+- **Provides:** `agency.shelter-plan.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 15
+- **Invariants:**
+  - Shelter blocks are ordered support-first and bounded to a small footprint.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_shelter_plan_errors_total`
+  - `agency_shelter_plan_latency_ms`
+
+### `agency.night-readiness` — Night Readiness
+
+- **Responsibility:** Assess home, shelter, bed, food, combat, and hostile gaps and emit ordered night preparation actions.
+- **Owner path:** `packages/agency/src/night-readiness`
+- **Provides:** `agency.night-readiness.interface`
+- **Requires:** `agency.item-knowledge`, `agency.night-prep-config`, `agency.routine-model`, `agency.shelter-plan`, `agency.shelter-strategy`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - Readiness is a pure assessment and never calls a skill directly.
+  - Every emitted action names a supported skill id and typed input.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_night_readiness_errors_total`
+  - `agency_night_readiness_latency_ms`
 
 ### `agency.social-engine` — Social Engine
 

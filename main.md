@@ -697,6 +697,7 @@ Routine:
 - Day: work, gather, build, farm, explore, socialize.
 - Evening: deposit, craft, visit home, chat.
 - Night: shelter, sleep if a bed exists, or keep working with caution.
+- Dusk preparation: return home, secure shelter, check food, bed, and gear.
 - Routine is a prior, not a script.
 
 Personal homes and projects:

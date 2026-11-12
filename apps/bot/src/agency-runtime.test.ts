@@ -34,6 +34,16 @@ function snapshot(overrides: Partial<AgencySnapshot> = {}): AgencySnapshot {
         home: null,
         hasBed: false,
         knownResourceSites: [],
+        homeBbox: null,
+        homeStatus: null,
+        homeStructureId: null,
+        hasBedAtHome: false,
+        isSheltered: false,
+        digSite: null,
+        weapon: null,
+        armorPieces: 0,
+        armorInventoryPieces: 0,
+        nightIntent: null,
         ...overrides,
     };
 }
@@ -94,6 +104,7 @@ function createRuntime(
         isJobActive?: () => boolean;
         isPaused?: () => boolean;
         skills?: FakeSkills;
+        snapshot?: AgencySnapshot;
     } = {},
 ): RuntimeFixture | null {
     const skills = options.skills ?? new FakeSkills();
@@ -112,7 +123,7 @@ function createRuntime(
     const [runtime, runtimeError] = AgencyRuntime.create(
         {
             botId: 'bot.one',
-            context: { read: () => [snapshot(), null] },
+            context: { read: () => [options.snapshot ?? snapshot(), null] },
             skills,
             persistence,
             logger,
@@ -162,6 +173,27 @@ describe('agency runtime', () => {
         expect(persistence.episodes.some((episode) => episode.kind === 'goal.completed')).toBe(
             true,
         );
+    });
+
+    it('reports night readiness when dusk starts', () => {
+        const created = createRuntime({
+            snapshot: snapshot({
+                timeOfDay: 17_500,
+                isSheltered: true,
+                hasBedAtHome: true,
+                weapon: { name: 'stone_sword', tier: 2 },
+                inventory: [{ name: 'bread', count: 3 }],
+            }),
+        });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime, persistence } = created;
+        const [, tickError] = runtime.tick(1000);
+        expect(tickError).toBeNull();
+        const readiness = persistence.episodes.find(
+            (episode) => episode.kind === 'night.readiness',
+        );
+        expect(readiness === undefined).toBe(false);
     });
 
     it('skips deliberation while a job is active or autonomy is paused', () => {

@@ -336,7 +336,38 @@ Rules:
 - If the planner is disabled or unavailable, bots use the last validated intent,
   then deterministic local defaults.
 
-## 7. Build and project goals
+## 7. Routine and night preparation
+
+Routine is a prior, not a script. Evening opens a preparation window; the bot
+returns home, secures shelter, checks food, and readies gear before night.
+
+Night readiness reports concrete gaps:
+
+- missing or distant home;
+- missing shelter;
+- missing bed;
+- missing or low food;
+- missing weapon or armor;
+- low health;
+- nearby hostiles.
+
+Shelter strategy is:
+
+- `keep` when the bot is sheltered;
+- `build` when there is enough material and daylight;
+- `dig-in` when a safe dig site exists;
+- `none` otherwise.
+
+A first shelter is built around the home anchor, or around the current position
+when no home exists. Bed preparation gathers wool, crafts a bed, and places it
+at home or at the current position. Combat preparation crafts and equips the
+best available gear.
+
+`rest` is the default night intent. `hunt` is allowed only when a concrete need
+or active task requires mob drops. Night readiness is re-assessed each agency
+tick and recorded as an episode when it changes.
+
+## 8. Build and project goals
 
 Build projects are agency focus. They are not a separate goal manager.
 
@@ -359,7 +390,7 @@ Agency receives project summaries for goal generation. The bot process does not
 open the coordinator database; project state arrives through session resume,
 project responses, and structured update events.
 
-## 8. Persistence and resume
+## 9. Persistence and resume
 
 Working memory is persisted in `agent_state` through the existing JSON state
 snapshot. Old snapshots without working memory restore to an empty memory.
@@ -382,7 +413,7 @@ After restore, agency reconciles the focus with the observed world before
 executing a step. Stale blocks or tasks are handled by existing reconciliation
 rules.
 
-## 9. Safety and guardrails
+## 10. Safety and guardrails
 
 - Guardian remains the only safety authority.
 - No model directly calls mineflayer.
@@ -394,7 +425,7 @@ rules.
 - No project task may edit outside its claim, grant, and fencing token.
 - All destructive actions remain reversible and audited.
 
-## 10. Planned configuration
+## 11. Planned configuration
 
 These keys are planned, not implemented.
 
@@ -416,7 +447,7 @@ Profile defaults:
 - `home-min`: background advisory, strict interval and circuit breaker;
 - `home-full`: blocking tactical at safe boundaries with a short deadline.
 
-## 11. Evaluation gates
+## 12. Evaluation gates
 
 Behavior:
 
@@ -441,7 +472,7 @@ Behavioral value:
 - Laya must beat deterministic policy on at least one behavioral metric without
   regressing others before agency tie-break is enabled.
 
-## 12. Migration and compatibility
+## 13. Migration and compatibility
 
 - `agent_state` stores JSON; optional working memory fields need no schema
   migration.
@@ -451,7 +482,7 @@ Behavioral value:
 - Architecture graph update happens only when planned modules exist.
 - Generated architecture Markdown is never edited by hand.
 
-## 13. Documentation sequence
+## 14. Documentation sequence
 
 Each implementation phase follows:
 
@@ -485,7 +516,7 @@ Phase 3 documentation:
 - agency tie-break;
 - reflection and bounded personality updates.
 
-## 14. Open questions
+## 15. Open questions
 
 - Exact minimum interval and deadline values for `home-min`.
 - Whether the first strategic intent version exposes constraints as a fixed

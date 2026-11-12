@@ -1,91 +1,115 @@
 flowchart LR
-n253["Navigate"]
-n200["Follow Path"]
-n255["Mine"]
-n256["Collect"]
-n252["Craft"]
-n257["Smelt"]
-n258["Eat"]
-n234["Deposit"]
-n237["Withdraw"]
-n259["Sleep"]
-n260["Flee or Defend"]
-n235["Explore"]
-n261["Bridge"]
-n262["Clear"]
-n254["Place Build"]
-n263["Schematic Build"]
-n264["Repair"]
-n201["Harvest Farm"]
-n202["Plant Farm"]
-n236["Skill Shared Utilities"]
+n254["Navigate"]
+n201["Follow Path"]
+n256["Mine"]
+n257["Collect"]
+n253["Craft"]
+n258["Smelt"]
+n259["Eat"]
+n235["Deposit"]
+n238["Withdraw"]
+n260["Sleep"]
+n261["Flee or Defend"]
+n236["Explore"]
+n262["Bridge"]
+n263["Clear"]
+n255["Place Build"]
+n264["Schematic Build"]
+n265["Repair"]
+n202["Harvest Farm"]
+n203["Plant Farm"]
+n266["Entity Targeting"]
+n267["Equip Gear"]
+n268["Gather Food"]
+n269["Gather Wool"]
+n270["Place Bed"]
+n271["Dig Shelter"]
+n237["Skill Shared Utilities"]
 n53["Block Executor (Building)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n52["Skill Context Builder (Skill Runtime)"]
-n196["Container Memory (World Model and Landmarks)"]
-n197["Spatial Query Engine (World Model and Landmarks)"]
-n131["Mob Threat Evaluator (Autonomy and Safety)"]
-n185["Path Graph Store (Shared Infrastructure Plan)"]
-n183["Farm Store (Shared Infrastructure Plan)"]
+n197["Container Memory (World Model and Landmarks)"]
+n198["Spatial Query Engine (World Model and Landmarks)"]
+n132["Mob Threat Evaluator (Autonomy and Safety)"]
+n186["Path Graph Store (Shared Infrastructure Plan)"]
+n184["Farm Store (Shared Infrastructure Plan)"]
 n82["Skill Contract (Skill Runtime)"]
 n103["Schematic Diff (Building)"]
 n105["Build Order Planner (Building)"]
 n104["Work Package Partitioner (Building)"]
+n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
 n57 -->|depends_on| n63
+n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
 n53 -->|depends_on| n63
 n105 -->|depends_on| n104
-n103 -->|reads| n197
+n103 -->|reads| n198
 n63 -->|validates| n57
 n63 -->|validates| n53
-n52 -->|reads| n197
-n261 -->|depends_on| n53
-n261 -->|depends_on| n253
+n52 -->|reads| n56
+n52 -->|reads| n198
 n262 -->|depends_on| n53
-n262 -->|depends_on| n63
-n256 -->|depends_on| n57
-n256 -->|depends_on| n255
-n256 -->|depends_on| n253
-n252 -->|depends_on| n57
-n252 -->|depends_on| n52
-n234 -->|depends_on| n57
-n234 -->|depends_on| n196
-n258 -->|depends_on| n57
-n235 -->|depends_on| n253
-n235 -->|depends_on| n197
-n260 -->|depends_on| n57
-n260 -->|depends_on| n131
-n260 -->|depends_on| n253
-n200 -->|depends_on| n185
-n200 -->|depends_on| n253
-n201 -->|depends_on| n57
-n201 -->|depends_on| n183
-n201 -->|depends_on| n253
-n255 -->|depends_on| n57
-n255 -->|depends_on| n253
-n253 -->|depends_on| n57
-n253 -->|depends_on| n82
-n254 -->|depends_on| n53
-n254 -->|depends_on| n52
-n202 -->|depends_on| n57
-n202 -->|depends_on| n183
-n202 -->|depends_on| n253
-n264 -->|depends_on| n53
-n264 -->|depends_on| n103
+n262 -->|depends_on| n254
 n263 -->|depends_on| n53
-n263 -->|depends_on| n105
-n263 -->|depends_on| n104
-n236 -->|depends_on| n52
-n236 -->|depends_on| n197
-n259 -->|depends_on| n57
-n259 -->|depends_on| n253
+n263 -->|depends_on| n63
 n257 -->|depends_on| n57
-n257 -->|depends_on| n253
-n237 -->|depends_on| n57
-n237 -->|depends_on| n196
-n197 -->|reads| n185
+n257 -->|depends_on| n256
+n257 -->|depends_on| n254
+n253 -->|depends_on| n57
+n253 -->|depends_on| n52
+n235 -->|depends_on| n57
+n235 -->|depends_on| n197
+n259 -->|depends_on| n57
+n236 -->|depends_on| n254
+n236 -->|depends_on| n198
+n261 -->|depends_on| n57
+n261 -->|depends_on| n132
+n261 -->|depends_on| n254
+n201 -->|depends_on| n186
+n201 -->|depends_on| n254
+n202 -->|depends_on| n57
+n202 -->|depends_on| n184
+n202 -->|depends_on| n254
+n256 -->|depends_on| n57
+n256 -->|depends_on| n254
+n254 -->|depends_on| n57
+n254 -->|depends_on| n82
+n255 -->|depends_on| n53
+n255 -->|depends_on| n52
+n203 -->|depends_on| n57
+n203 -->|depends_on| n184
+n203 -->|depends_on| n254
+n265 -->|depends_on| n53
+n265 -->|depends_on| n103
+n264 -->|depends_on| n53
+n264 -->|depends_on| n105
+n264 -->|depends_on| n104
+n237 -->|depends_on| n52
+n237 -->|depends_on| n198
+n260 -->|depends_on| n57
+n260 -->|depends_on| n254
+n258 -->|depends_on| n57
+n258 -->|depends_on| n254
+n238 -->|depends_on| n57
+n238 -->|depends_on| n197
+n198 -->|reads| n186
+n266 -->|depends_on| n56
+n267 -->|depends_on| n237
+n267 -->|depends_on| n57
+n268 -->|depends_on| n266
+n268 -->|depends_on| n237
+n268 -->|depends_on| n57
+n268 -->|depends_on| n56
+n269 -->|depends_on| n266
+n269 -->|depends_on| n237
+n269 -->|depends_on| n57
+n269 -->|depends_on| n56
+n270 -->|depends_on| n237
+n270 -->|depends_on| n57
+n271 -->|depends_on| n237
+n271 -->|depends_on| n57
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n253,n200,n255,n256,n252,n257,n258,n234,n237,n259,n260,n235,n261,n262,n254,n263,n264,n201,n202,n236 internal;
-class n53,n63,n57,n52,n196,n197,n131,n185,n183,n82,n103,n105,n104 external;
+class n254,n201,n256,n257,n253,n258,n259,n235,n238,n260,n261,n236,n262,n263,n255,n264,n265,n202,n203,n266,n267,n268,n269,n270,n271,n237 internal;
+class n53,n63,n57,n52,n197,n198,n132,n186,n184,n82,n103,n105,n104,n56 external;

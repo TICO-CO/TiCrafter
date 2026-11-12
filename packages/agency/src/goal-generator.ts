@@ -2,8 +2,21 @@ import type { Result, Vec3 } from '@ticrafter/core';
 
 import { GoalCatalog, type GoalTemplate } from './goal-catalog.js';
 import type { NeedsModel } from './needs-model.js';
+import type { NightPrepConfig } from './night-prep-config.js';
+import { NightPrepDefaults } from './night-prep-config.js';
+import { NightReadinessModel } from './night-readiness.js';
 import type { PersonalityModel } from './personality-model.js';
-import type { AgencySnapshot, Goal, GoalKind, GoalStep, RoutinePhase } from './types.js';
+import { RoutineModel } from './routine-model.js';
+import type {
+    AgencySnapshot,
+    Goal,
+    GoalKind,
+    GoalStep,
+    NightAction,
+    NightActionKind,
+    NightReadiness,
+    RoutinePhase,
+} from './types.js';
 
 const FOOD_ITEMS = new Set([
     'apple',
@@ -22,11 +35,19 @@ export class GoalGenerator {
         needs: NeedsModel,
         personality: PersonalityModel,
         phase: RoutinePhase,
+        nightPrep: NightPrepConfig = NightPrepDefaults.config(),
     ): Result<readonly Goal[], string> {
+        const readiness = NightReadinessModel.assess(snapshot, phase, nightPrep);
         const filtered = GoalCatalog.templates().filter((template) =>
-            this.applies(template, snapshot, needs, personality, phase),
+            template.kind === 'prepare-night'
+                ? nightPrep.enabled && this.shouldPrepare(readiness, snapshot, phase, nightPrep)
+                : this.applies(template, snapshot, needs, personality, phase),
         );
-        const goals = filtered.map((template) => this.materialize(template, snapshot));
+        const goals = filtered.map((template) =>
+            template.kind === 'prepare-night'
+                ? this.materializeNightPrep(template, readiness, snapshot)
+                : this.materialize(template, snapshot),
+        );
         if (goals.length === 0) return [null, 'no legal goal candidates'];
         return [goals, null];
     }
@@ -74,6 +95,80 @@ export class GoalGenerator {
                 return false;
             case 'leisure':
                 return true;
+            case 'prepare-night':
+            case 'build-shelter':
+            case 'dig-shelter':
+            case 'secure-bed':
+            case 'gather-wool':
+            case 'gather-food':
+            case 'equip-gear':
+                return false;
+        }
+    }
+
+    private shouldPrepare(
+        readiness: NightReadiness,
+        snapshot: AgencySnapshot,
+        phase: RoutinePhase,
+        nightPrep: NightPrepConfig,
+    ): boolean {
+        if (readiness.actions.length === 0) return false;
+        if (RoutineModel.isPreparationWindow(phase)) return true;
+        if (RoutineModel.isNight(phase)) return !readiness.ready;
+        const ticksUntilNight = RoutineModel.ticksUntilNight(snapshot.timeOfDay);
+        return ticksUntilNight > 0 && ticksUntilNight <= nightPrep.duskLeadTicks;
+    }
+
+    private materializeNightPrep(
+        template: GoalTemplate,
+        readiness: NightReadiness,
+        snapshot: AgencySnapshot,
+    ): Goal {
+        const target = snapshot.home;
+        return {
+            id: `goal:${template.kind}:${template.label.toLowerCase().replace(/\s+/g, '-')}`,
+            kind: template.kind,
+            label: template.label,
+            priority: template.priority,
+            source: template.source,
+            target,
+            steps: this.nightPrepSteps(readiness.actions),
+            expectedValue: template.expectedValue,
+            estimatedCost: template.estimatedCost,
+            estimatedRisk: template.estimatedRisk,
+            deadline: null,
+        };
+    }
+
+    private nightPrepSteps(actions: readonly NightAction[]): readonly GoalStep[] {
+        return actions.map((action) => ({
+            skillId: GoalGenerator.skillFor(action.kind),
+            label: action.label,
+            input: action.input,
+        }));
+    }
+
+    private static skillFor(kind: NightActionKind): string {
+        switch (kind) {
+            case 'navigate-home':
+                return 'navigate';
+            case 'eat':
+                return 'eat';
+            case 'gather-food':
+                return 'gather-food';
+            case 'gather-wool':
+                return 'gather-wool';
+            case 'craft-bed':
+            case 'craft-weapon':
+                return 'craft';
+            case 'place-bed':
+                return 'place-bed';
+            case 'equip-gear':
+                return 'equip-gear';
+            case 'build-shelter':
+                return 'place-build';
+            case 'dig-shelter':
+                return 'dig-shelter';
         }
     }
 

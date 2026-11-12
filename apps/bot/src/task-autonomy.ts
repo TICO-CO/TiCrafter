@@ -100,6 +100,7 @@ interface ActiveTask {
     title: string;
     skillId: string;
     input: SkillInput;
+    payload: Readonly<Record<string, unknown>>;
     fencingToken: number;
     leaseUntil: string | null;
     progress: number;
@@ -154,6 +155,10 @@ export class TaskAutonomy {
 
     get hasActiveTask(): boolean {
         return this.active !== null;
+    }
+
+    get activeTaskPayload(): Readonly<Record<string, unknown>> | null {
+        return this.active?.payload ?? null;
     }
 
     resumeTask(resume: SessionResume): boolean {
@@ -511,6 +516,7 @@ export class TaskAutonomy {
             title: task.title,
             skillId,
             input: parsed.data,
+            payload: task.payload,
             fencingToken: response.fencingToken,
             leaseUntil: response.leaseUntil,
             progress: 0,

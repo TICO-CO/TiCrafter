@@ -1,35 +1,49 @@
 flowchart LR
-n288["Personality Model"]
-n289["Needs Model"]
-n290["Goal Catalog"]
-n291["Goal Generator"]
-n266["Goal Arbiter"]
-n267["Intention Manager"]
-n292["Routine Model"]
-n268["Social Engine"]
-n227["Agency State"]
+n295["Personality Model"]
+n296["Needs Model"]
+n297["Goal Catalog"]
+n298["Goal Generator"]
+n273["Goal Arbiter"]
+n274["Intention Manager"]
+n299["Routine Model"]
+n300["Item Knowledge"]
+n301["Night Preparation Config"]
+n302["Shelter Strategy"]
+n303["Shelter Plan"]
+n304["Night Readiness"]
+n275["Social Engine"]
+n228["Agency State"]
 n60["Agent Loop (Bot Runtime and Mineflayer Adapter)"]
 n61["Chat Adapter (Bot Runtime and Mineflayer Adapter)"]
-n224["Agency State Store (Bot Registry and Profiles)"]
-n60 -->|depends_on| n266
-n60 -->|depends_on| n267
-n60 -->|depends_on| n227
-n61 -->|depends_on| n268
-n291 -->|depends_on| n290
-n291 -->|depends_on| n289
-n291 -->|depends_on| n288
-n266 -->|depends_on| n291
-n266 -->|depends_on| n289
-n266 -->|depends_on| n288
-n267 -->|depends_on| n266
-n268 -->|depends_on| n288
-n227 -->|depends_on| n289
-n227 -->|depends_on| n288
-n227 -->|depends_on| n267
-n227 -->|depends_on| n292
-n268 -->|proposes_to| n61
-n224 -->|depends_on| n227
+n225["Agency State Store (Bot Registry and Profiles)"]
+n60 -->|depends_on| n273
+n60 -->|depends_on| n274
+n60 -->|depends_on| n228
+n61 -->|depends_on| n275
+n298 -->|depends_on| n297
+n298 -->|depends_on| n296
+n298 -->|depends_on| n295
+n273 -->|depends_on| n298
+n273 -->|depends_on| n296
+n273 -->|depends_on| n295
+n274 -->|depends_on| n273
+n275 -->|depends_on| n295
+n228 -->|depends_on| n296
+n228 -->|depends_on| n295
+n228 -->|depends_on| n274
+n228 -->|depends_on| n299
+n275 -->|proposes_to| n61
+n225 -->|depends_on| n228
+n304 -->|depends_on| n300
+n304 -->|depends_on| n301
+n304 -->|depends_on| n299
+n304 -->|depends_on| n303
+n304 -->|depends_on| n302
+n302 -->|depends_on| n301
+n298 -->|depends_on| n301
+n298 -->|depends_on| n304
+n298 -->|depends_on| n299
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n288,n289,n290,n291,n266,n267,n292,n268,n227 internal;
-class n60,n61,n224 external;
+class n295,n296,n297,n298,n273,n274,n299,n300,n301,n302,n303,n304,n275,n228 internal;
+class n60,n61,n225 external;

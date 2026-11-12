@@ -47,6 +47,18 @@ const defaultConfig: Record<string, unknown> = {
         chatRatePerMinute: 5,
         needDecayPerMinute: 0.02,
         committedGoalBonus: 0.15,
+        nightPrep: {
+            enabled: true,
+            duskLeadTicks: 3000,
+            foodServings: 3,
+            minHealth: 10,
+            homeRadius: 8,
+            buildWindowTicks: 2000,
+            buildMaterialCount: 32,
+            woolTarget: 3,
+            allowShelterBuild: true,
+            allowDigIn: true,
+        },
     },
     building: {
         maxStructureBlocks: 4000,

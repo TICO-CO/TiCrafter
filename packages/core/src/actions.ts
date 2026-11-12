@@ -21,7 +21,12 @@ export type ActionRequest =
       }
     | { kind: 'use-block'; position: Vec3; itemName?: string }
     | { kind: 'attack'; entityId?: number; entityName?: string }
-    | { kind: 'equip'; itemName: string; destination?: 'hand' | 'off-hand' }
+    | {
+          kind: 'equip';
+          itemName: string;
+          destination?: 'hand' | 'off-hand' | 'head' | 'torso' | 'legs' | 'feet';
+      }
+    | { kind: 'use-entity'; entityId?: number; entityName?: string }
     | { kind: 'consume'; itemName?: string }
     | { kind: 'craft'; itemName: string; count: number }
     | { kind: 'collect-drops'; radius: number; itemName?: string }

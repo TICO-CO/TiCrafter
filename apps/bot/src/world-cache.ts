@@ -87,8 +87,9 @@ export class WorldCacheAdapter implements SkillWorldView {
         return { x: block.position.x, y: block.position.y, z: block.position.z };
     }
 
-    entities(): readonly { name: string; position: CoreVec3 }[] {
+    entities(): readonly { id?: number; name: string; position: CoreVec3 }[] {
         return Object.values(this.bot.entities).map((entity) => ({
+            id: entity.id,
             name: entity.name ?? 'unknown',
             position: {
                 x: entity.position.x,

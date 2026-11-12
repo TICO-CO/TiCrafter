@@ -43,6 +43,7 @@ export class MaterialBanRule implements SafetyRule {
             case 'follow-path':
             case 'use-block':
             case 'attack':
+            case 'use-entity':
             case 'equip':
             case 'consume':
             case 'craft':
@@ -76,6 +77,7 @@ export class ProtectedBboxRule implements SafetyRule {
             case 'follow-path':
             case 'use-block':
             case 'attack':
+            case 'use-entity':
             case 'equip':
             case 'consume':
             case 'craft':

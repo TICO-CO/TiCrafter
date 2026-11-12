@@ -9,6 +9,9 @@ import {
     type Intention,
     IntentionManager,
     type JobMarketContext,
+    type NightPrepConfig,
+    NightPrepDefaults,
+    NightReadinessModel,
     RoutineModel,
 } from '@ticrafter/agency';
 import { type LoggerPort, type Result, skillInputSchema } from '@ticrafter/core';
@@ -38,6 +41,7 @@ export interface AgencyRuntimeConfig {
     goalCadenceMilliseconds: number;
     needDecayPerMinute: number;
     committedGoalBonus: number;
+    nightPrep?: NightPrepConfig;
 }
 
 export interface AgencyRuntimeOptions {
@@ -70,6 +74,7 @@ export class AgencyRuntime {
     private timer: ReturnType<typeof setInterval> | null = null;
     private lastTickAt: number;
     private lastPersistAt = 0;
+    private lastNightReadinessKey: string | null = null;
     private launching = false;
 
     private constructor(
@@ -89,6 +94,7 @@ export class AgencyRuntime {
             arbiter,
             intentions: new IntentionManager(),
             snapshots: { read: () => this.readSnapshot() },
+            nightPrep: options.config.nightPrep,
         });
     }
 
@@ -156,6 +162,7 @@ export class AgencyRuntime {
             state.needs,
             state.traits,
             RoutineModel.phase(state.snapshot.timeOfDay),
+            this.options.config.nightPrep,
         );
         if (goalError) return [null, goalError];
         if (goals === null) return [null, 'goal generation returned null'];
@@ -193,6 +200,7 @@ export class AgencyRuntime {
         if (state === null) return [null, 'snapshot returned null'];
         this.applyElapsed(nowMilliseconds, state.snapshot.timeOfDay);
         const now = this.iso(nowMilliseconds);
+        this.reportNightReadiness(state.snapshot, now);
         const active = this.agent.intention;
         if (active !== null) {
             if (this.agent.expired(now)) {
@@ -398,6 +406,55 @@ export class AgencyRuntime {
             at: now,
         });
         return [{ action: 'abandoned', goalId: goal.id }, null];
+    }
+
+    private reportNightReadiness(snapshot: AgencySnapshot, now: string): void {
+        const config = this.options.config.nightPrep;
+        if (config !== undefined && !config.enabled) return;
+        const phase = RoutineModel.phase(snapshot.timeOfDay);
+        if (!RoutineModel.isPreparationWindow(phase) && !RoutineModel.isNight(phase)) {
+            this.lastNightReadinessKey = null;
+            return;
+        }
+        const readiness = NightReadinessModel.assess(
+            snapshot,
+            phase,
+            config ?? NightPrepDefaults.config(),
+        );
+        const key = [
+            phase,
+            readiness.shelterStrategy,
+            readiness.nightIntent,
+            readiness.gaps.join(','),
+            readiness.actions.map((action) => action.kind).join(','),
+        ].join(':');
+        if (key === this.lastNightReadinessKey) return;
+        this.lastNightReadinessKey = key;
+        this.options.persistence.episode({
+            goalId: null,
+            kind: 'night.readiness',
+            summary: `Night readiness: ${readiness.ready ? 'ready' : 'gaps'}`,
+            position: snapshot.position,
+            payload: {
+                ready: readiness.ready,
+                gaps: readiness.gaps,
+                actions: readiness.actions,
+                shelterStrategy: readiness.shelterStrategy,
+                combat: readiness.combat,
+                foodServings: readiness.foodServings,
+                nightIntent: readiness.nightIntent,
+            },
+            at: now,
+        });
+        this.options.logger.info(
+            {
+                phase,
+                ready: readiness.ready,
+                gaps: readiness.gaps,
+                shelterStrategy: readiness.shelterStrategy,
+            },
+            'night readiness assessed',
+        );
     }
 
     private abandonRestored(intention: Intention, reason: AbandonmentReason): void {

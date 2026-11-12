@@ -7,6 +7,7 @@ import {
     type Intention,
     IntentionManager,
     type NeedsModel,
+    type NightPrepConfig,
     type PersonalityModel,
     RoutineModel,
     type RoutineState,
@@ -31,6 +32,7 @@ export interface AgentLoopOptions {
     arbiter: GoalArbiter;
     intentions: IntentionManager;
     snapshots: AgentLoopSnapshotPort;
+    nightPrep?: NightPrepConfig;
 }
 
 export interface AgentLoopTick {
@@ -81,6 +83,7 @@ export class AgentLoop {
             state.needs,
             state.traits,
             phase,
+            this.options.nightPrep,
         );
         if (goalError) return [null, goalError];
         if (goals === null) return [null, 'goal generation returned null'];

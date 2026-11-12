@@ -157,6 +157,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 return this.attack(request.entityId, request.entityName);
             case 'equip':
                 return this.equip(request.itemName, request.destination ?? 'hand');
+            case 'use-entity':
+                return this.useEntity(request.entityId, request.entityName);
             case 'consume':
                 return this.consume(request.itemName);
             case 'craft':
@@ -307,9 +309,22 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         return [undefined, null];
     }
 
+    private async useEntity(
+        entityId: number | undefined,
+        entityName: string | undefined,
+    ): Promise<Result<void, string>> {
+        const entity = this.findEntity(entityId, entityName);
+        if (entity === null) return [null, 'target entity is missing'];
+        const [, guardError] = this.enforceGuard(entity.position);
+        if (guardError) return [null, guardError];
+        const [, error] = await attemptAsync(() => this.bot.activateEntity(entity));
+        if (error) return [null, this.describe(error)];
+        return [undefined, null];
+    }
+
     private async equip(
         itemName: string,
-        destination: 'hand' | 'off-hand',
+        destination: 'hand' | 'off-hand' | 'head' | 'torso' | 'legs' | 'feet',
     ): Promise<Result<void, string>> {
         const item = this.findItem(itemName);
         if (item === null) return [null, `missing item ${itemName}`];

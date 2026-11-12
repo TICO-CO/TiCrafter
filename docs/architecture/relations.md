@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 549  
+**Relations:** 574  
 **State owners:** 23  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 22 |
-| `depends_on` | 367 |
+| `depends_on` | 392 |
 | `observes` | 8 |
 | `persists_to` | 2 |
 | `proposes_to` | 7 |
@@ -138,7 +138,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Skill Runtime` | `Shared Infrastructure Plan` | 1 | reads×1 |
 | `Skill Runtime` | `Transport and Protocol` | 2 | publishes×2 |
 | `Skill Runtime` | `World Model and Landmarks` | 2 | reads×1, depends_on×1 |
-| `Skill Library` | `Bot Runtime and Mineflayer Adapter` | 12 | depends_on×12 |
+| `Skill Library` | `Bot Runtime and Mineflayer Adapter` | 20 | depends_on×20 |
 | `Skill Library` | `Building` | 8 | depends_on×8 |
 | `Skill Library` | `Autonomy and Safety` | 2 | depends_on×2 |
 | `Skill Library` | `Shared Infrastructure Plan` | 3 | depends_on×3 |
@@ -601,6 +601,21 @@ None.
 | `rel.0416` | `skills.smelt` | `depends_on` | `skills.navigate` | `in-process` | sync | hard | depends on payload for Navigate | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Smelt depends on Navigate. |
 | `rel.0417` | `skills.withdraw` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Withdraw depends on Action Executor. |
 | `rel.0418` | `skills.withdraw` | `depends_on` | `world.container-memory` | `ws` | sync | hard | depends on payload for Container Memory | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Withdraw depends on Container Memory. |
+| `rel.0559` | `skills.entity-targeting` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | depends on payload for World Cache Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Entity Targeting depends on World Cache Adapter. |
+| `rel.0560` | `skills.equip-gear` | `depends_on` | `skills.shared-utilities` | `in-process` | sync | hard | depends on payload for Skill Shared Utilities | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Equip Gear depends on Skill Shared Utilities. |
+| `rel.0561` | `skills.equip-gear` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Equip Gear depends on Action Executor. |
+| `rel.0562` | `skills.gather-food` | `depends_on` | `skills.entity-targeting` | `in-process` | sync | hard | depends on payload for Entity Targeting | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Food depends on Entity Targeting. |
+| `rel.0563` | `skills.gather-food` | `depends_on` | `skills.shared-utilities` | `in-process` | sync | hard | depends on payload for Skill Shared Utilities | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Food depends on Skill Shared Utilities. |
+| `rel.0564` | `skills.gather-food` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Food depends on Action Executor. |
+| `rel.0565` | `skills.gather-food` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | depends on payload for World Cache Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Food depends on World Cache Adapter. |
+| `rel.0566` | `skills.gather-wool` | `depends_on` | `skills.entity-targeting` | `in-process` | sync | hard | depends on payload for Entity Targeting | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Wool depends on Entity Targeting. |
+| `rel.0567` | `skills.gather-wool` | `depends_on` | `skills.shared-utilities` | `in-process` | sync | hard | depends on payload for Skill Shared Utilities | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Wool depends on Skill Shared Utilities. |
+| `rel.0568` | `skills.gather-wool` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Wool depends on Action Executor. |
+| `rel.0569` | `skills.gather-wool` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | depends on payload for World Cache Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Wool depends on World Cache Adapter. |
+| `rel.0570` | `skills.place-bed` | `depends_on` | `skills.shared-utilities` | `in-process` | sync | hard | depends on payload for Skill Shared Utilities | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Place Bed depends on Skill Shared Utilities. |
+| `rel.0571` | `skills.place-bed` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Place Bed depends on Action Executor. |
+| `rel.0572` | `skills.dig-shelter` | `depends_on` | `skills.shared-utilities` | `in-process` | sync | hard | depends on payload for Skill Shared Utilities | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Dig Shelter depends on Skill Shared Utilities. |
+| `rel.0573` | `skills.dig-shelter` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Dig Shelter depends on Action Executor. |
 
 ## Building relations
 
@@ -700,6 +715,7 @@ None.
 | `rel.0505` | `bot-runtime.chat-adapter` | `publishes` | `transport.event-stream` | `ws` | async | soft | social event and chat audit | Drop the audit event and keep playing; reconnect will resync state. | Social events are observable but never block the bot. |
 | `rel.0506` | `bot-runtime.agency-state-adapter` | `persists_to` | `bots.agency-state-store` | `ws` | sync | hard | agency state snapshot | Keep the local snapshot, retry on reconnect, and surface a typed persistence error. | Agency state persists through coordinator transport, never local SQLite. |
 | `rel.0507` | `bot-runtime.agent-loop` | `persists_to` | `memory.agent-episode-repository` | `ws` | async | soft | goal outcome episode | Drop the episode record and continue; a later tick can retry. | Goal outcomes are appended to episodic memory. |
+| `rel.0574` | `bot-runtime.shelter-inspector` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | depends on payload for World Cache Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Shelter Inspector depends on World Cache Adapter. |
 
 ## Autonomy and Safety relations
 
@@ -873,6 +889,15 @@ None.
 | `rel.0529` | `agency.agency-state` | `depends_on` | `agency.intention-manager` | `in-process` | sync | hard | active intention | Return a snapshot with a null intention. | Agency state aggregates the active intention. |
 | `rel.0530` | `agency.agency-state` | `depends_on` | `agency.routine-model` | `in-process` | sync | hard | routine state | Return a default routine phase and record the downgrade. | Agency state aggregates routine state. |
 | `rel.0531` | `agency.social-engine` | `proposes_to` | `bot-runtime.chat-adapter` | `in-process` | async | soft | chat reply | Drop the reply and continue; chat never blocks the agent loop. | The social engine proposes text; the adapter sends it. |
+| `rel.0550` | `agency.night-readiness` | `depends_on` | `agency.item-knowledge` | `in-process` | sync | hard | depends on payload for Item Knowledge | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Night Readiness depends on Item Knowledge. |
+| `rel.0551` | `agency.night-readiness` | `depends_on` | `agency.night-prep-config` | `in-process` | sync | hard | depends on payload for Night Preparation Config | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Night Readiness depends on Night Preparation Config. |
+| `rel.0552` | `agency.night-readiness` | `depends_on` | `agency.routine-model` | `in-process` | sync | hard | depends on payload for Routine Model | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Night Readiness depends on Routine Model. |
+| `rel.0553` | `agency.night-readiness` | `depends_on` | `agency.shelter-plan` | `in-process` | sync | hard | depends on payload for Shelter Plan | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Night Readiness depends on Shelter Plan. |
+| `rel.0554` | `agency.night-readiness` | `depends_on` | `agency.shelter-strategy` | `in-process` | sync | hard | depends on payload for Shelter Strategy | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Night Readiness depends on Shelter Strategy. |
+| `rel.0555` | `agency.shelter-strategy` | `depends_on` | `agency.night-prep-config` | `in-process` | sync | hard | depends on payload for Night Preparation Config | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Shelter Strategy depends on Night Preparation Config. |
+| `rel.0556` | `agency.goal-generator` | `depends_on` | `agency.night-prep-config` | `in-process` | sync | hard | depends on payload for Night Preparation Config | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Night Preparation Config. |
+| `rel.0557` | `agency.goal-generator` | `depends_on` | `agency.night-readiness` | `in-process` | sync | hard | depends on payload for Night Readiness | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Night Readiness. |
+| `rel.0558` | `agency.goal-generator` | `depends_on` | `agency.routine-model` | `in-process` | sync | hard | depends on payload for Routine Model | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Routine Model. |
 
 ## Bootstrap and Toolchain relations
 

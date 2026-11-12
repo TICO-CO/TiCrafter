@@ -16,6 +16,13 @@ const KIND_NEEDS: Readonly<Record<GoalKind, NeedName>> = {
     'return-home': 'shelter',
     deposit: 'achievement',
     leisure: 'novelty',
+    'prepare-night': 'shelter',
+    'build-shelter': 'shelter',
+    'dig-shelter': 'shelter',
+    'secure-bed': 'rest',
+    'gather-wool': 'materials',
+    'gather-food': 'hunger',
+    'equip-gear': 'tools',
 };
 
 export function goalNeedFor(kind: GoalKind): NeedName {
@@ -110,6 +117,13 @@ export class GoalArbiter {
             case 'shelter':
             case 'return-home':
             case 'deposit':
+            case 'prepare-night':
+            case 'build-shelter':
+            case 'dig-shelter':
+            case 'secure-bed':
+            case 'gather-wool':
+            case 'gather-food':
+            case 'equip-gear':
                 return 0.5 + personality.weight('orderliness');
             case 'explore':
                 return 0.5 + personality.weight('curiosity');
