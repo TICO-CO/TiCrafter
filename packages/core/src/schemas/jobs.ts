@@ -16,6 +16,8 @@ const jobOfferSchema = zod.object({
     target: positionSchema.nullable(),
     requiredRole: roleSchema.nullable(),
     distance: zod.number().nullable(),
+    projectId: zod.string().min(1).optional(),
+    structureId: zod.string().min(1).optional(),
 });
 
 export const botJobOffersSchema = zod.object({

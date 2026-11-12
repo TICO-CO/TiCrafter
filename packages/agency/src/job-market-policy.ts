@@ -11,6 +11,7 @@ export interface JobOfferView {
     skillId: string | null;
     requiredRole: string | null;
     distance: number | null;
+    projectId?: string | null;
 }
 
 export interface JobMarketContext {
@@ -18,6 +19,7 @@ export interface JobMarketContext {
     activeGoal: boolean;
     needs: NeedsModel;
     traits: PersonalityModel;
+    projectFocusId: string | null;
 }
 
 export interface JobMarketChoice {
@@ -35,6 +37,7 @@ const SKILL_NEEDS: Readonly<Record<string, NeedName>> = {
     sleep: 'rest',
     'place-build': 'achievement',
     'schematic-build': 'achievement',
+    construction: 'achievement',
     repair: 'shelter',
     deposit: 'achievement',
     withdraw: 'materials',
@@ -59,6 +62,17 @@ export class JobMarketPolicy {
                 decision: 'decline',
                 reason: `role mismatch: needs ${offer.requiredRole}`,
                 score,
+            };
+        }
+        if (
+            offer.projectId !== null &&
+            offer.projectId !== undefined &&
+            offer.projectId === context.projectFocusId
+        ) {
+            return {
+                decision: 'accept',
+                reason: 'project sub-work',
+                score: score + 0.5,
             };
         }
         if (score >= 0.45) {

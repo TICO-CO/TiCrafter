@@ -3,7 +3,8 @@ import type { Result } from '@ticrafter/core';
 import { NeedsModel } from './needs-model.js';
 import { PersonalityModel } from './personality-model.js';
 import { RoutineModel } from './routine-model.js';
-import type { Intention, NeedName, RoutineState } from './types.js';
+import type { Intention, NeedName, RoutineState, WorkingMemory } from './types.js';
+import { WorkingMemoryModel } from './working-memory.js';
 
 export interface AgencyStateSnapshot {
     botId: string;
@@ -15,6 +16,7 @@ export interface AgencyStateSnapshot {
     personalStorageId: string | null;
     mood: string;
     lastDeliberationAt: string | null;
+    workingMemory: WorkingMemory;
 }
 
 export class AgencyState {
@@ -48,6 +50,7 @@ export class AgencyState {
                 personalStorageId: null,
                 mood: 'calm',
                 lastDeliberationAt: null,
+                workingMemory: WorkingMemoryModel.create().snapshot,
             }),
             null,
         ];
@@ -58,7 +61,10 @@ export class AgencyState {
         if (input.mood.length === 0) return [null, 'mood is required'];
         const intentionError = AgencyState.validateIntention(input.intention);
         if (intentionError !== null) return [null, intentionError];
-        return [new AgencyState(input), null];
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(input.workingMemory);
+        if (memoryError) return [null, memoryError];
+        if (workingMemory === null) return [null, 'working memory returned null'];
+        return [new AgencyState({ ...input, workingMemory: workingMemory.snapshot }), null];
     }
 
     decayNeeds(elapsedMilliseconds: number, ratePerMinute: number): AgencyState {
@@ -89,6 +95,10 @@ export class AgencyState {
 
     withMood(mood: string): AgencyState {
         return new AgencyState({ ...this.snapshot, mood });
+    }
+
+    withWorkingMemory(workingMemory: WorkingMemory): AgencyState {
+        return new AgencyState({ ...this.snapshot, workingMemory });
     }
 
     touchDeliberation(now: string): AgencyState {

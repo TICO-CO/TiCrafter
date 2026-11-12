@@ -47,6 +47,19 @@ type ShortcutCapablePathfinder = Bot['pathfinder'] & {
     enablePathShortcut: boolean;
 };
 
+type MineflayerBlock = NonNullable<ReturnType<Bot['blockAt']>>;
+
+const PLACEMENT_OFFSETS = [
+    { offset: { x: 0, y: -1, z: 0 }, face: { x: 0, y: 1, z: 0 } },
+    { offset: { x: 0, y: 0, z: -1 }, face: { x: 0, y: 0, z: 1 } },
+    { offset: { x: 0, y: 0, z: 1 }, face: { x: 0, y: 0, z: -1 } },
+    { offset: { x: -1, y: 0, z: 0 }, face: { x: 1, y: 0, z: 0 } },
+    { offset: { x: 1, y: 0, z: 0 }, face: { x: -1, y: 0, z: 0 } },
+    { offset: { x: 0, y: 1, z: 0 }, face: { x: 0, y: -1, z: 0 } },
+] as const;
+
+const AIR_BLOCKS = new Set(['air', 'cave_air', 'void_air']);
+
 export class MineflayerActionExecutor implements ActionDispatchPort {
     private active: ActiveAction | null = null;
     private lastFailureValue: ActionFailure | null = null;
@@ -148,6 +161,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 return this.placeBlock(
                     request.position,
                     request.itemName,
+                    request.expectedBlockId,
+                    request.properties,
                     request.reference,
                     request.face,
                 );
@@ -254,29 +269,143 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     private async placeBlock(
         position: CoreVec3,
         itemName: string,
+        expectedBlockId: string | undefined,
+        properties: Readonly<Record<string, string>> | undefined,
         referencePosition?: CoreVec3,
         face?: CoreVec3,
     ): Promise<Result<void, string>> {
+        const expectedName = expectedBlockId ?? itemName;
+        const existing = this.bot.blockAt(this.vector(position));
+        if (existing !== null && this.blockMatches(existing, expectedName, properties)) {
+            return [undefined, null];
+        }
+        if (existing !== null && !AIR_BLOCKS.has(existing.name)) {
+            return [null, `target block is occupied by ${existing.name}`];
+        }
         const item = this.findItem(itemName);
         if (item === null) return [null, `missing item ${itemName}`];
-        const referencePoint = referencePosition ?? { ...position, y: position.y - 1 };
-        const [, approachError] = await this.ensureNear(referencePoint, 3);
+        const [, approachError] = await this.ensureNear(position, 3);
         if (approachError) return [null, approachError];
         const [, guardError] = this.enforceGuard(position);
         if (guardError) return [null, guardError];
-        const reference = this.bot.blockAt(this.vector(referencePoint));
-        if (reference === null) return [null, 'placement reference is missing'];
+        const [placement, placementError] = this.placementReference(
+            position,
+            referencePosition,
+            face,
+        );
+        if (placementError !== null) return [null, placementError];
+        if (placement === null) return [null, 'placement reference is missing'];
         const [, equipError] = await this.equip(itemName, 'hand');
         if (equipError) return [null, equipError];
-        const faceVector = face ?? { x: 0, y: 1, z: 0 };
+        const [, orientError] = await this.orientForPlacement(properties);
+        if (orientError !== null) return [null, orientError];
         const [, placeError] = await attemptAsync(() =>
             this.withTimeout(
-                this.bot.placeBlock(reference, new Vec3(faceVector.x, faceVector.y, faceVector.z)),
+                this.bot.placeBlock(
+                    placement.reference,
+                    new Vec3(placement.face.x, placement.face.y, placement.face.z),
+                ),
                 this.timeoutMilliseconds,
             ),
         );
         if (placeError) return [null, this.describe(placeError)];
+        const placed = this.bot.blockAt(this.vector(position));
+        if (placed === null || !this.blockMatches(placed, expectedName, properties)) {
+            return [null, `placed block did not match ${expectedName}`];
+        }
         return [undefined, null];
+    }
+
+    private blockMatches(
+        block: MineflayerBlock,
+        expectedName: string,
+        properties: Readonly<Record<string, string>> | undefined,
+    ): boolean {
+        if (block.name !== expectedName) return false;
+        if (properties === undefined) return true;
+        const actual = this.propertiesOf(block);
+        return Object.entries(properties).every(([key, value]) => actual[key] === value);
+    }
+
+    private propertiesOf(block: MineflayerBlock): Record<string, string> {
+        const properties = block.getProperties?.() ?? {};
+        return Object.fromEntries(
+            Object.entries(properties).map(([key, value]) => [key, String(value)]),
+        );
+    }
+
+    private placementReference(
+        position: CoreVec3,
+        referencePosition?: CoreVec3,
+        face?: CoreVec3,
+    ): Result<{ reference: MineflayerBlock; face: CoreVec3 }, string> {
+        if (referencePosition !== undefined) {
+            const reference = this.bot.blockAt(this.vector(referencePosition));
+            if (reference === null || AIR_BLOCKS.has(reference.name)) {
+                return [null, 'placement reference is missing'];
+            }
+            return [
+                { reference, face: face ?? this.faceBetween(referencePosition, position) },
+                null,
+            ];
+        }
+        for (const candidate of PLACEMENT_OFFSETS) {
+            const referencePositionCandidate = {
+                x: position.x + candidate.offset.x,
+                y: position.y + candidate.offset.y,
+                z: position.z + candidate.offset.z,
+            };
+            const reference = this.bot.blockAt(this.vector(referencePositionCandidate));
+            if (reference === null || reference.boundingBox !== 'block') continue;
+            return [{ reference, face: { ...candidate.face } }, null];
+        }
+        return [null, 'placement reference is missing'];
+    }
+
+    private faceBetween(reference: CoreVec3, target: CoreVec3): CoreVec3 {
+        return {
+            x: Math.sign(target.x - reference.x),
+            y: Math.sign(target.y - reference.y),
+            z: Math.sign(target.z - reference.z),
+        };
+    }
+
+    private async orientForPlacement(
+        properties: Readonly<Record<string, string>> | undefined,
+    ): Promise<Result<void, string>> {
+        const yaw = this.placementYaw(properties);
+        if (yaw === null) return [undefined, null];
+        const [, lookError] = await attemptAsync(() => this.bot.look(yaw, 0, true));
+        if (lookError) return [null, this.describe(lookError)];
+        return [undefined, null];
+    }
+
+    private placementYaw(properties: Readonly<Record<string, string>> | undefined): number | null {
+        const facing = properties?.facing;
+        if (facing !== undefined) {
+            switch (facing) {
+                case 'south':
+                    return 0;
+                case 'west':
+                    return Math.PI / 2;
+                case 'north':
+                    return Math.PI;
+                case 'east':
+                    return -Math.PI / 2;
+                default:
+                    return null;
+            }
+        }
+        switch (properties?.axis) {
+            case 'x':
+                return -Math.PI / 2;
+            case 'z':
+                return 0;
+            case undefined:
+                return null;
+            default:
+                return null;
+        }
     }
 
     private async useBlock(position: CoreVec3, itemName?: string): Promise<Result<void, string>> {

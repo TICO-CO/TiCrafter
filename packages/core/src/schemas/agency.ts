@@ -45,6 +45,50 @@ export const agencyRoutineSchema = zod.object({
     lastRestAt: zod.string().min(1).nullable(),
 });
 
+export const workingMemoryFocusSchema = zod.object({
+    kind: zod.enum(['agency', 'project', 'task']),
+    id: zod.string().min(1),
+    label: zod.string().min(1),
+    startedAt: zod.string().min(1),
+});
+
+export const workingMemoryCommitmentSchema = zod.object({
+    id: zod.string().min(1),
+    description: zod.string().min(1),
+    priority: zod.number(),
+    createdAt: zod.string().min(1),
+    expiresAt: zod.string().min(1).nullable(),
+});
+
+export const workingMemoryInterruptionSchema = zod.object({
+    reason: zod.string().min(1),
+    resumeCondition: zod.string().min(1),
+    interruptedFocusId: zod.string().min(1),
+    at: zod.string().min(1),
+});
+
+export const workingMemoryExperienceSchema = zod.object({
+    event: zod.string().min(1),
+    outcome: zod.string().min(1),
+    at: zod.string().min(1),
+});
+
+export const workingMemoryTacticalDecisionSchema = zod.object({
+    choiceId: zod.string().min(1),
+    source: zod.enum(['laya', 'fallback', 'deterministic']),
+    at: zod.string().min(1),
+    revision: zod.number().int().nonnegative(),
+});
+
+export const workingMemorySchema = zod.object({
+    revision: zod.number().int().nonnegative(),
+    focus: workingMemoryFocusSchema.nullable(),
+    commitments: zod.array(workingMemoryCommitmentSchema).max(4),
+    interruption: workingMemoryInterruptionSchema.nullable(),
+    recentExperiences: zod.array(workingMemoryExperienceSchema).max(8),
+    lastTacticalDecision: workingMemoryTacticalDecisionSchema.nullable(),
+});
+
 export const agencyStateSchema = zod.object({
     traits: agencyTraitsSchema,
     needs: agencyNeedsSchema,
@@ -54,6 +98,7 @@ export const agencyStateSchema = zod.object({
     personalStorageId: zod.string().min(1).nullable(),
     mood: zod.string().min(1),
     lastDeliberationAt: zod.string().min(1).nullable(),
+    workingMemory: workingMemorySchema.optional(),
 });
 
 export const botAgencyStateSchema = zod.object({
@@ -88,6 +133,7 @@ export type AgencyTraitsPayload = zod.infer<typeof agencyTraitsSchema>;
 export type AgencyNeedsPayload = zod.infer<typeof agencyNeedsSchema>;
 export type AgencyIntentionPayload = zod.infer<typeof agencyIntentionSchema>;
 export type AgencyRoutinePayload = zod.infer<typeof agencyRoutineSchema>;
+export type WorkingMemoryPayload = zod.infer<typeof workingMemorySchema>;
 export type AgencyStatePayload = zod.infer<typeof agencyStateSchema>;
 export type BotAgencyStateMessage = zod.infer<typeof botAgencyStateSchema>;
 export type BotAgencyEpisodeMessage = zod.infer<typeof botAgencyEpisodeSchema>;

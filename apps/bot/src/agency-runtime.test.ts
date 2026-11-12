@@ -5,6 +5,7 @@ import {
     type Intention,
     NeedsModel,
     PersonalityModel,
+    type ProjectSummary,
 } from '@ticrafter/agency';
 import type { LoggerPort, Result } from '@ticrafter/core';
 import type { SkillFailure, SkillInput, SkillProgressEvent, SkillStep } from '@ticrafter/skills';
@@ -102,9 +103,11 @@ function createRuntime(
     options: {
         intention?: Intention;
         isJobActive?: () => boolean;
+        isProjectTaskActive?: () => boolean;
         isPaused?: () => boolean;
         skills?: FakeSkills;
         snapshot?: AgencySnapshot;
+        project?: ProjectSummary | null;
     } = {},
 ): RuntimeFixture | null {
     const skills = options.skills ?? new FakeSkills();
@@ -134,6 +137,7 @@ function createRuntime(
                 committedGoalBonus: 0.15,
             },
             isJobActive: options.isJobActive,
+            isProjectTaskActive: options.isProjectTaskActive,
             isPaused: options.isPaused,
             now: () => 1000,
             maximumAttempts: 2,
@@ -142,6 +146,9 @@ function createRuntime(
     );
     expect(runtimeError).toBeNull();
     if (runtime === null) return null;
+    runtime.syncProjectFocus(
+        options.project === undefined || options.project === null ? [] : [options.project],
+    );
     return { runtime, skills, persistence };
 }
 
@@ -242,5 +249,75 @@ describe('agency runtime', () => {
         expect(runtime.hasActiveGoal).toBe(true);
         expect(runtime.tick(1000)[0]?.action).toBe('running');
         expect(skills.runs[0]?.skillId).toBe('eat');
+    });
+});
+
+const project: ProjectSummary = {
+    id: 'project-1',
+    title: 'Home of TiBot1',
+    kind: 'home',
+    status: 'active',
+    anchor: { x: 0, y: 64, z: 0 },
+    bbox: { min: { x: 0, y: 64, z: 0 }, max: { x: 6, y: 67, z: 6 } },
+    structureId: 'structure.project-1',
+    storageId: null,
+};
+
+describe('agency runtime project focus', () => {
+    it('keeps project focus instead of selecting optional goals', () => {
+        const created = createRuntime({
+            project,
+            snapshot: snapshot({ food: 20, inventory: [] }),
+        });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime, skills } = created;
+        expect(runtime.focus?.kind).toBe('project');
+        const [report, tickError] = runtime.tick(1000);
+        expect(tickError).toBeNull();
+        expect(report?.action).toBe('project');
+        expect(skills.runs).toHaveLength(0);
+    });
+
+    it('reports project sub-work without replacing project focus', () => {
+        const created = createRuntime({
+            project,
+            isProjectTaskActive: () => true,
+            snapshot: snapshot({ food: 20, inventory: [] }),
+        });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime } = created;
+        expect(runtime.tick(1000)[0]?.action).toBe('project');
+        expect(runtime.focus?.kind).toBe('project');
+    });
+
+    it('lets survival interrupt and restores project focus on completion', () => {
+        const created = createRuntime({
+            project,
+            snapshot: snapshot({ food: 20, inventory: [], hostiles: ['zombie'] }),
+        });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime, skills, persistence } = created;
+        const [report, tickError] = runtime.tick(1000);
+        expect(tickError).toBeNull();
+        expect(report?.action).toBe('running');
+        expect(skills.runs[0]?.skillId).toBe('flee-defend');
+        expect(runtime.focus?.kind).toBe('agency');
+        expect(runtime.workingMemory.interruption?.interruptedFocusId).toBe('project-1');
+        const goalId = persistence.episodes[0]?.goalId;
+        if (goalId === null || goalId === undefined) return;
+        skills.activeSkillId = null;
+        runtime.observeProgress({
+            botId: 'bot.one',
+            taskId: goalId,
+            at: '2026-11-11T12:00:01.000Z',
+            skillId: 'flee-defend',
+            status: 'completed',
+            progress: { done: 1, total: 1, label: 'safe' },
+        });
+        expect(runtime.focus?.kind).toBe('project');
+        expect(runtime.workingMemory.interruption).toBeNull();
     });
 });

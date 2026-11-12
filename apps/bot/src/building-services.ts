@@ -20,7 +20,9 @@ import type {
     SkillBlock,
     SkillBlockState,
     SkillBlueprintSource,
+    SkillBuildExecutionPort,
     SkillBuildTarget,
+    SkillConstructionSource,
     SkillInput,
     SkillRepairDiff,
     SkillRepairDiffSource,
@@ -28,6 +30,9 @@ import type {
     SkillSchematicRef,
     SkillServices,
 } from '@ticrafter/skills';
+
+import type { BlueprintFetchClient } from './blueprint-fetch-client.js';
+import { ConstructionSource } from './construction-source.js';
 
 const TEMPLATE_PREFIX = 'template:';
 const SCHEMATIC_EXTENSION = '.schem';
@@ -70,25 +75,63 @@ class CatalogRepairDiffSource implements SkillRepairDiffSource {
     }
 }
 
+export interface BuildingSkillServicesOptions {
+    documents?: BlueprintFetchClient;
+    buildExecution?: SkillBuildExecutionPort;
+    maxWorkPackageBlocks?: number;
+}
+
 export class BuildingSkillServices implements SkillServices {
     readonly blueprints: SkillBlueprintSource;
     readonly schematics: SkillSchematicPipeline;
     readonly repairDiff: SkillRepairDiffSource;
+    readonly construction: SkillConstructionSource | undefined;
+    readonly buildExecution: SkillBuildExecutionPort | undefined;
+    private readonly documents: BlueprintFetchClient | undefined;
 
-    private constructor(catalog: BuildingBlueprintCatalog, world: BuildingWorldView) {
+    private constructor(
+        catalog: BuildingBlueprintCatalog,
+        world: BuildingWorldView,
+        options: BuildingSkillServicesOptions,
+    ) {
         this.blueprints = new CatalogBlueprintSource(catalog);
         this.schematics = new CatalogSchematicPipeline(catalog);
         this.repairDiff = new CatalogRepairDiffSource(catalog, world);
+        this.construction =
+            options.documents === undefined
+                ? undefined
+                : new ConstructionSource({
+                      documents: options.documents,
+                      world,
+                      maxWorkPackageBlocks: options.maxWorkPackageBlocks ?? 128,
+                  });
+        this.buildExecution = options.buildExecution;
+        this.documents = options.documents;
+    }
+
+    async prefetch(input: SkillInput): Promise<Result<void, string>> {
+        if (input.blueprintId === undefined || input.blueprintRevision === undefined) {
+            return [undefined, null];
+        }
+        if (this.documents === undefined) return [null, 'blueprint fetch client is unavailable'];
+        const [document, fetchError] = await this.documents.fetch(
+            input.blueprintId,
+            input.blueprintRevision,
+        );
+        if (fetchError !== null) return [null, fetchError];
+        if (document === null) return [null, 'blueprint document returned null'];
+        return [undefined, null];
     }
 
     static async create(
         dataDirectory: string,
         world: BuildingWorldView,
+        options: BuildingSkillServicesOptions = {},
     ): Promise<Result<BuildingSkillServices, string>> {
         const [catalog, catalogError] = await BuildingBlueprintCatalog.load(dataDirectory);
         if (catalogError) return [null, catalogError];
         if (catalog === null) return [null, 'building blueprint catalog returned null'];
-        return [new BuildingSkillServices(catalog, world), null];
+        return [new BuildingSkillServices(catalog, world, options), null];
     }
 }
 
@@ -198,6 +241,9 @@ class BuildingBlueprintCatalog {
                 position: BlueprintIr.position(block),
                 itemName: block.state.name,
                 expectedBlockId: block.state.name,
+                ...(block.state.properties === undefined
+                    ? {}
+                    : { properties: block.state.properties }),
             }));
     }
 
@@ -214,6 +260,7 @@ class BuildingBlueprintCatalog {
             position: BlueprintIr.position(block),
             itemName: block.state.name,
             expectedBlockId: block.state.name,
+            ...(block.state.properties === undefined ? {} : { properties: block.state.properties }),
         };
     }
 

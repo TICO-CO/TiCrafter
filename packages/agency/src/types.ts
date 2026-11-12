@@ -88,6 +88,7 @@ export interface AgencySnapshot {
     armorPieces: number;
     armorInventoryPieces: number;
     nightIntent: NightIntent | null;
+    project?: ProjectSummary | null;
 }
 
 export interface SnapshotBoundingBox {
@@ -164,6 +165,67 @@ export interface Intention {
     createdAt: string;
     deadline: string | null;
     attempts: number;
+}
+
+export type FocusKind = 'agency' | 'project' | 'task';
+
+export interface WorkingMemoryFocus {
+    kind: FocusKind;
+    id: string;
+    label: string;
+    startedAt: string;
+}
+
+export interface WorkingMemoryCommitment {
+    id: string;
+    description: string;
+    priority: number;
+    createdAt: string;
+    expiresAt: string | null;
+}
+
+export interface WorkingMemoryInterruption {
+    reason: string;
+    resumeCondition: string;
+    interruptedFocusId: string;
+    at: string;
+}
+
+export interface WorkingMemoryExperience {
+    event: string;
+    outcome: string;
+    at: string;
+}
+
+export interface WorkingMemoryTacticalDecision {
+    choiceId: string;
+    source: 'laya' | 'fallback' | 'deterministic';
+    at: string;
+    revision: number;
+}
+
+export interface WorkingMemory {
+    revision: number;
+    focus: WorkingMemoryFocus | null;
+    commitments: readonly WorkingMemoryCommitment[];
+    interruption: WorkingMemoryInterruption | null;
+    recentExperiences: readonly WorkingMemoryExperience[];
+    lastTacticalDecision: WorkingMemoryTacticalDecision | null;
+}
+
+export type ProjectKind = 'home' | 'storage' | 'build';
+
+export type ProjectStatus = 'proposed' | 'active' | 'completed' | 'abandoned' | 'failed';
+
+export interface ProjectSummary {
+    id: string;
+    title: string;
+    kind: ProjectKind;
+    status: ProjectStatus;
+    anchor: Vec3;
+    bbox: SnapshotBoundingBox;
+    structureId: string | null;
+    storageId: string | null;
 }
 
 export type AbandonmentReason =

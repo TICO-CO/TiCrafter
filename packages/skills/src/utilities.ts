@@ -94,6 +94,13 @@ export class SkillSharedUtilities {
         return typeof value === 'string' ? value : null;
     }
 
+    static readProperties(value: unknown): Record<string, string> | null {
+        if (!SkillSharedUtilities.isRecord(value)) return null;
+        const entries = Object.entries(value);
+        if (!entries.every((entry) => typeof entry[1] === 'string')) return null;
+        return Object.fromEntries(entries) as Record<string, string>;
+    }
+
     static isRecord(value: unknown): value is Record<string, unknown> {
         return typeof value === 'object' && value !== null;
     }

@@ -8,6 +8,8 @@ import {
     blockUpdateSchema,
     BOT_AUTONOMY_PAUSE,
     BOT_AUTONOMY_RESUME,
+    BOT_BLUEPRINT_GET,
+    BOT_BLUEPRINT_RESPONSE,
     BOT_JOB_DECIDE,
     BOT_JOB_DECIDE_RESPONSE,
     BOT_JOB_OFFERS,
@@ -25,6 +27,8 @@ import {
     botAgencyStateSchema,
     botAutonomyPauseSchema,
     botAutonomyResumeSchema,
+    botBlueprintGetSchema,
+    botBlueprintResponseSchema,
     botEventSchema,
     botHeartbeatSchema,
     botJobDecideResponseSchema,
@@ -136,6 +140,8 @@ export class MessageSchemaRegistry {
             .register(BOT_SAFETY_STOP, botSafetyStopSchema)
             .register(BOT_AUTONOMY_PAUSE, botAutonomyPauseSchema)
             .register(BOT_AUTONOMY_RESUME, botAutonomyResumeSchema)
+            .register(BOT_BLUEPRINT_GET, botBlueprintGetSchema)
+            .register(BOT_BLUEPRINT_RESPONSE, botBlueprintResponseSchema)
             .register(DECISION_REQUEST, decisionRequestSchema)
             .register(DECISION_RESPONSE, decisionResponseSchema)
             .register(TASK_CLAIM, botTaskClaimSchema)

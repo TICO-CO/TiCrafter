@@ -1,87 +1,87 @@
 flowchart LR
-n168["Bot Identity Authenticator"]
-n214["Bot Profile Store"]
-n222["Role Manager"]
-n223["Behavior Profile Manager"]
-n224["Relationship Store"]
-n169["Presence Tracker"]
-n192["Delta Sync Planner"]
-n165["Resume Orchestrator"]
-n225["Agency State Store"]
-n226["Name Pool Allocator"]
+n171["Bot Identity Authenticator"]
+n217["Bot Profile Store"]
+n225["Role Manager"]
+n226["Behavior Profile Manager"]
+n227["Relationship Store"]
+n172["Presence Tracker"]
+n195["Delta Sync Planner"]
+n168["Resume Orchestrator"]
+n228["Agency State Store"]
+n229["Name Pool Allocator"]
 n70["Deterministic Policy (Brains)"]
 n62["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
-n220["Grant Repository (Edit Grants and Collaboration)"]
-n188["SIP Revision Manager (Shared Infrastructure Plan)"]
-n204["Task Repository (Task Board)"]
-n177["Secrets Loader (Config and Profiles)"]
-n227["Name Pool Validator (Config and Profiles)"]
-n157["Transaction Manager (Memory and Persistence)"]
-n212["Claim Releaser (Claims and Leases)"]
-n160["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
+n223["Grant Repository (Edit Grants and Collaboration)"]
+n191["SIP Revision Manager (Shared Infrastructure Plan)"]
+n207["Task Repository (Task Board)"]
+n180["Secrets Loader (Config and Profiles)"]
+n230["Name Pool Validator (Config and Profiles)"]
+n160["Transaction Manager (Memory and Persistence)"]
+n215["Claim Releaser (Claims and Leases)"]
+n163["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
 n87["Skill Checkpoint Manager (Skill Runtime)"]
 n32["Restart Recovery Orchestrator (Coordinator Runtime)"]
 n74["Bot Session Manager (Coordinator Runtime)"]
-n221["Owner Offline Policy (Edit Grants and Collaboration)"]
+n224["Owner Offline Policy (Edit Grants and Collaboration)"]
 n67["Pause and Resume Controller (Ops and Observability)"]
-n142["Status Aggregator (Ops and Observability)"]
+n145["Status Aggregator (Ops and Observability)"]
 n42["Planner Context Builder (Cloud Planner Advisor)"]
-n207["Priority Scheduler (Task Board)"]
-n174["Transport Authentication (Transport and Protocol)"]
-n130["Agency State Adapter (Bot Runtime and Mineflayer Adapter)"]
-n143["Agency Status View (Ops and Observability)"]
-n228["Agency State (Agency)"]
-n70 -->|reads| n223
-n62 -->|delegates_to| n192
-n223 -->|depends_on| n214
-n192 -->|depends_on| n214
-n192 -->|reads| n220
-n192 -->|reads| n188
-n192 -->|reads| n204
-n168 -->|depends_on| n214
-n168 -->|depends_on| n177
-n226 -->|depends_on| n214
-n226 -->|depends_on| n227
-n169 -->|depends_on| n214
-n214 -->|depends_on| n157
-n224 -->|depends_on| n214
-n165 -->|depends_on| n192
-n165 -->|depends_on| n214
-n165 -->|delegates_to| n212
-n165 -->|delegates_to| n160
-n165 -->|reads| n87
-n222 -->|depends_on| n214
-n32 -->|depends_on| n165
-n32 -->|depends_on| n157
+n210["Priority Scheduler (Task Board)"]
+n177["Transport Authentication (Transport and Protocol)"]
+n133["Agency State Adapter (Bot Runtime and Mineflayer Adapter)"]
+n146["Agency Status View (Ops and Observability)"]
+n231["Agency State (Agency)"]
+n70 -->|reads| n226
+n62 -->|delegates_to| n195
+n226 -->|depends_on| n217
+n195 -->|depends_on| n217
+n195 -->|reads| n223
+n195 -->|reads| n191
+n195 -->|reads| n207
+n171 -->|depends_on| n217
+n171 -->|depends_on| n180
+n229 -->|depends_on| n217
+n229 -->|depends_on| n230
+n172 -->|depends_on| n217
+n217 -->|depends_on| n160
+n227 -->|depends_on| n217
+n168 -->|depends_on| n195
+n168 -->|depends_on| n217
+n168 -->|delegates_to| n215
+n168 -->|delegates_to| n163
+n168 -->|reads| n87
+n225 -->|depends_on| n217
+n32 -->|depends_on| n168
 n32 -->|depends_on| n160
-n74 -->|depends_on| n168
-n74 -->|publishes| n169
-n220 -->|depends_on| n157
-n221 -->|reads| n169
-n221 -->|reads| n214
-n67 -->|depends_on| n169
-n142 -->|depends_on| n169
-n142 -->|reads| n188
-n142 -->|reads| n204
-n42 -->|reads| n214
-n42 -->|reads| n188
-n42 -->|reads| n204
-n188 -->|depends_on| n157
-n87 -->|depends_on| n157
-n207 -->|reads| n214
-n204 -->|depends_on| n157
-n174 -->|depends_on| n168
-n174 -->|depends_on| n177
-n168 -->|writes| n214
-n222 -->|writes| n214
-n223 -->|writes| n214
-n224 -->|writes| n214
-n226 -->|writes| n214
-n130 -->|persists_to| n225
-n225 -->|depends_on| n157
-n143 -->|reads| n225
-n225 -->|depends_on| n228
+n32 -->|depends_on| n163
+n74 -->|depends_on| n171
+n74 -->|publishes| n172
+n223 -->|depends_on| n160
+n224 -->|reads| n172
+n224 -->|reads| n217
+n67 -->|depends_on| n172
+n145 -->|depends_on| n172
+n145 -->|reads| n191
+n145 -->|reads| n207
+n42 -->|reads| n217
+n42 -->|reads| n191
+n42 -->|reads| n207
+n191 -->|depends_on| n160
+n87 -->|depends_on| n160
+n210 -->|reads| n217
+n207 -->|depends_on| n160
+n177 -->|depends_on| n171
+n177 -->|depends_on| n180
+n171 -->|writes| n217
+n225 -->|writes| n217
+n226 -->|writes| n217
+n227 -->|writes| n217
+n229 -->|writes| n217
+n133 -->|persists_to| n228
+n228 -->|depends_on| n160
+n146 -->|reads| n228
+n228 -->|depends_on| n231
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n168,n214,n222,n223,n224,n169,n192,n165,n225,n226 internal;
-class n70,n62,n220,n188,n204,n177,n227,n157,n212,n160,n87,n32,n74,n221,n67,n142,n42,n207,n174,n130,n143,n228 external;
+class n171,n217,n225,n226,n227,n172,n195,n168,n228,n229 internal;
+class n70,n62,n223,n191,n207,n180,n230,n160,n215,n163,n87,n32,n74,n224,n67,n145,n42,n210,n177,n133,n146,n231 external;

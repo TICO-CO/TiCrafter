@@ -60,6 +60,7 @@ export class CoordinatorJobOfferMarket implements JobOfferPort {
                     payload: lease.task.payload,
                     target: lease.task.target,
                     requiredRole: lease.task.requiredRole,
+                    ...CoordinatorJobOfferMarket.taskMetadata(lease.task),
                 },
                 fencingToken: lease.fencingToken,
                 leaseUntil: lease.leaseUntil,
@@ -89,7 +90,24 @@ export class CoordinatorJobOfferMarket implements JobOfferPort {
             target: task.target,
             requiredRole: task.requiredRole,
             distance: CoordinatorJobOfferMarket.distance(task.target, context.position),
+            ...CoordinatorJobOfferMarket.taskMetadata(task),
         };
+    }
+
+    private static taskMetadata(task: TaskRecord): {
+        projectId?: string;
+        structureId?: string;
+    } {
+        const projectId = CoordinatorJobOfferMarket.readString(task.payload.projectId);
+        const structureId = CoordinatorJobOfferMarket.readString(task.payload.structureId);
+        return {
+            ...(projectId === null ? {} : { projectId }),
+            ...(structureId === null ? {} : { structureId }),
+        };
+    }
+
+    private static readString(value: unknown): string | null {
+        return typeof value === 'string' && value.length > 0 ? value : null;
     }
 
     private append(botId: string, type: string, taskId: string, reason: string): void {

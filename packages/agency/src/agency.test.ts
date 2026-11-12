@@ -9,6 +9,7 @@ import { PersonalityModel } from './personality-model.js';
 import { RoutineModel } from './routine-model.js';
 import { SocialEngine } from './social-engine.js';
 import type { AgencySnapshot, SocialContext } from './types.js';
+import { WorkingMemoryModel } from './working-memory.js';
 
 function snapshot(overrides: Partial<AgencySnapshot> = {}): AgencySnapshot {
     return {
@@ -217,5 +218,23 @@ describe('agency', () => {
         expect(copy?.snapshot.mood).toBe('curious');
         expect((copy?.snapshot.needs.levels.hunger ?? 0) > 0.5).toBe(true);
         expect(copy?.snapshot.lastDeliberationAt).toBe('2026-11-11T12:00:00.000Z');
+    });
+
+    it('restores working memory and project focus with agency state', () => {
+        const [state, stateError] = AgencyState.create({ botId: 'bot.tibot1' });
+        expect(stateError).toBeNull();
+        if (state === null) return;
+        const focused = state.withWorkingMemory(
+            WorkingMemoryModel.create().withFocus({
+                kind: 'project',
+                id: 'project-1',
+                label: 'Home of TiBot1',
+                startedAt: '2026-11-11T12:00:00.000Z',
+            }).snapshot,
+        );
+        const [copy, copyError] = AgencyState.restore(focused.snapshot);
+        expect(copyError).toBeNull();
+        expect(copy?.snapshot.workingMemory.focus?.id).toBe('project-1');
+        expect(copy?.snapshot.workingMemory.revision).toBe(1);
     });
 });

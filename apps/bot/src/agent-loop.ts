@@ -9,8 +9,10 @@ import {
     type NeedsModel,
     type NightPrepConfig,
     type PersonalityModel,
+    ProjectFocusPolicy,
     RoutineModel,
     type RoutineState,
+    type WorkingMemoryFocus,
 } from '@ticrafter/agency';
 import type { Result } from '@ticrafter/core';
 
@@ -32,6 +34,7 @@ export interface AgentLoopOptions {
     arbiter: GoalArbiter;
     intentions: IntentionManager;
     snapshots: AgentLoopSnapshotPort;
+    focus?: () => WorkingMemoryFocus | null;
     nightPrep?: NightPrepConfig;
 }
 
@@ -56,7 +59,7 @@ export class AgentLoop {
         return this.activeGoal;
     }
 
-    tick(now: string): Result<AgentLoopTick, string> {
+    tick(now: string): Result<AgentLoopTick | null, string> {
         const active = this.options.intentions.intention;
         if (active !== null) {
             if (this.activeGoal === null) return [null, 'active intention has no goal'];
@@ -87,8 +90,14 @@ export class AgentLoop {
         );
         if (goalError) return [null, goalError];
         if (goals === null) return [null, 'goal generation returned null'];
+        const focus = this.options.focus?.() ?? null;
+        const candidates =
+            focus?.kind === 'project'
+                ? goals.filter((goal) => ProjectFocusPolicy.allowsGoal(goal.kind))
+                : goals;
+        if (candidates.length === 0) return [null, null];
         const [selection, selectionError] = this.options.arbiter.select(
-            goals,
+            candidates,
             state.needs,
             state.traits,
             null,

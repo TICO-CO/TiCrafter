@@ -211,6 +211,11 @@ export class SessionHandshake {
             personalStorageId: record.personalStorageId,
             mood: record.mood,
             lastDeliberationAt: record.lastDeliberationAt,
+            workingMemory: {
+                ...record.workingMemory,
+                commitments: [...record.workingMemory.commitments],
+                recentExperiences: [...record.workingMemory.recentExperiences],
+            },
         };
     }
 

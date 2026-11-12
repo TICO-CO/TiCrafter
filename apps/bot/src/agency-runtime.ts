@@ -12,7 +12,11 @@ import {
     type NightPrepConfig,
     NightPrepDefaults,
     NightReadinessModel,
+    type ProjectSummary,
     RoutineModel,
+    type WorkingMemory,
+    type WorkingMemoryFocus,
+    WorkingMemoryModel,
 } from '@ticrafter/agency';
 import { type LoggerPort, type Result, skillInputSchema } from '@ticrafter/core';
 import type { SkillInput, SkillProgressEvent, SkillStep } from '@ticrafter/skills';
@@ -53,6 +57,7 @@ export interface AgencyRuntimeOptions {
     config: AgencyRuntimeConfig;
     isPaused?: () => boolean;
     isJobActive?: () => boolean;
+    isProjectTaskActive?: () => boolean;
     now?: () => number;
     maximumAttempts?: number;
     telemetryMilliseconds?: number;
@@ -60,7 +65,15 @@ export interface AgencyRuntimeOptions {
 
 export interface AgencyTickReport {
     action:
-        'disabled' | 'paused' | 'job' | 'busy' | 'running' | 'completed' | 'abandoned' | 'retry';
+        | 'disabled'
+        | 'paused'
+        | 'job'
+        | 'project'
+        | 'busy'
+        | 'running'
+        | 'completed'
+        | 'abandoned'
+        | 'retry';
     goalId: string | null;
 }
 
@@ -76,6 +89,7 @@ export class AgencyRuntime {
     private lastPersistAt = 0;
     private lastNightReadinessKey: string | null = null;
     private launching = false;
+    private project: ProjectSummary | null = null;
 
     private constructor(
         private readonly options: AgencyRuntimeOptions,
@@ -94,6 +108,7 @@ export class AgencyRuntime {
             arbiter,
             intentions: new IntentionManager(),
             snapshots: { read: () => this.readSnapshot() },
+            focus: () => this.focus,
             nightPrep: options.config.nightPrep,
         });
     }
@@ -126,12 +141,89 @@ export class AgencyRuntime {
         return this.state.snapshot.traits;
     }
 
+    get workingMemory(): WorkingMemory {
+        return this.state.snapshot.workingMemory;
+    }
+
+    get focus(): WorkingMemoryFocus | null {
+        return this.state.snapshot.workingMemory.focus;
+    }
+
+    get projectFocus(): ProjectSummary | null {
+        return this.project;
+    }
+
+    syncProjectFocus(projects: readonly ProjectSummary[], at = this.iso(this.now())): void {
+        const active =
+            projects.find(
+                (project) =>
+                    project.status === 'active' &&
+                    (project.kind === 'home' ||
+                        project.kind === 'storage' ||
+                        project.kind === 'build'),
+            ) ??
+            projects.find(
+                (project) => project.status === 'proposed' || project.status === 'active',
+            ) ??
+            null;
+        this.setProjectFocus(active, at);
+    }
+
+    setProjectFocus(project: ProjectSummary | null, at = this.iso(this.now())): void {
+        this.project = project;
+        const memory = this.memory();
+        if (project === null) {
+            if (memory.focus?.kind === 'project') {
+                this.commitMemory(memory.withoutFocus());
+            }
+            return;
+        }
+        if (memory.focus?.kind === 'project' && memory.focus.id === project.id) return;
+        if (this.hasActiveGoal) {
+            this.commitMemory(
+                memory.withInterruption({
+                    reason: 'project-focus',
+                    resumeCondition: 'agency goal completes',
+                    interruptedFocusId: project.id,
+                    at,
+                }),
+            );
+            return;
+        }
+        this.commitMemory(
+            memory.withFocus({
+                kind: 'project',
+                id: project.id,
+                label: project.title,
+                startedAt: at,
+            }),
+        );
+    }
+
+    interrupt(reason: string, resumeCondition: string, at = this.iso(this.now())): void {
+        const focus = this.focus;
+        if (focus === null) return;
+        this.commitMemory(
+            this.memory().withInterruption({
+                reason,
+                resumeCondition,
+                interruptedFocusId: focus.id,
+                at,
+            }),
+        );
+    }
+
+    resumeFocus(): void {
+        this.commitMemory(this.memory().withoutInterruption());
+    }
+
     jobContext(): JobMarketContext {
         return {
             role: null,
             activeGoal: this.hasActiveGoal,
             needs: this.state.snapshot.needs,
             traits: this.state.snapshot.traits,
+            projectFocusId: this.projectFocus?.id ?? null,
         };
     }
 
@@ -184,6 +276,7 @@ export class AgencyRuntime {
             return [undefined, null];
         }
         this.state = this.state.withIntention(restored);
+        this.applyAgencyFocus(restored.goalId, restored.label, new Date(this.now()).toISOString());
         this.persist(this.now(), true);
         return [undefined, null];
     }
@@ -212,6 +305,9 @@ export class AgencyRuntime {
             if (goal === null) return [null, 'active intention has no goal'];
             return this.continueGoal(goal, active, state.snapshot, now);
         }
+        if (this.options.isProjectTaskActive?.() === true) {
+            return [{ action: 'project', goalId: null }, null];
+        }
         if (this.options.isJobActive?.() === true) {
             return [{ action: 'job', goalId: null }, null];
         }
@@ -220,8 +316,15 @@ export class AgencyRuntime {
         }
         const [tick, tickError] = this.agent.tick(now);
         if (tickError) return [null, tickError];
-        if (tick === null) return [null, 'agent tick returned null'];
+        if (tick === null) {
+            if (this.focus?.kind === 'project') {
+                this.persist(nowMilliseconds, true);
+                return [{ action: 'project', goalId: null }, null];
+            }
+            return [null, 'agent tick returned null'];
+        }
         this.state = this.state.withIntention(tick.intention).touchDeliberation(now);
+        this.applyAgencyFocus(tick.goalId, tick.goal.label, now);
         this.persist(nowMilliseconds, true);
         this.options.persistence.episode({
             goalId: tick.goalId,
@@ -367,6 +470,7 @@ export class AgencyRuntime {
         if (intention === null) return [null, 'intention complete returned null'];
         const need = goalNeedFor(goal.kind);
         this.state = this.state.withIntention(null).satisfyNeed(need, NEED_SATISFACTION);
+        this.restoreProjectFocus(now);
         if (goal.kind === 'eat' || goal.kind === 'rest') {
             this.state = this.state.withRoutine(
                 RoutineModel.update(
@@ -397,6 +501,7 @@ export class AgencyRuntime {
         const [, abandonError] = this.agent.abandon(reason, now);
         if (abandonError) return [null, abandonError];
         this.state = this.state.withIntention(null);
+        this.restoreProjectFocus(now);
         this.persist(this.now(), true);
         this.options.persistence.episode({
             goalId: goal.id,
@@ -406,6 +511,52 @@ export class AgencyRuntime {
             at: now,
         });
         return [{ action: 'abandoned', goalId: goal.id }, null];
+    }
+
+    private applyAgencyFocus(goalId: string, label: string, at: string): void {
+        const memory = this.memory();
+        const current = memory.focus;
+        let next = memory.withFocus({
+            kind: 'agency',
+            id: goalId,
+            label,
+            startedAt: at,
+        });
+        if (current?.kind === 'project') {
+            next = next.withInterruption({
+                reason: 'agency goal',
+                resumeCondition: 'agency goal completes',
+                interruptedFocusId: current.id,
+                at,
+            });
+        }
+        this.state = this.state.withWorkingMemory(next.snapshot);
+    }
+
+    private restoreProjectFocus(at: string): void {
+        const memory = this.memory().withoutInterruption();
+        if (this.project === null) {
+            this.state = this.state.withWorkingMemory(memory.withoutFocus().snapshot);
+            return;
+        }
+        this.state = this.state.withWorkingMemory(
+            memory.withFocus({
+                kind: 'project',
+                id: this.project.id,
+                label: this.project.title,
+                startedAt: at,
+            }).snapshot,
+        );
+    }
+
+    private memory(): WorkingMemoryModel {
+        const [memory] = WorkingMemoryModel.restore(this.state.snapshot.workingMemory);
+        return memory ?? WorkingMemoryModel.create();
+    }
+
+    private commitMemory(memory: WorkingMemoryModel): void {
+        this.state = this.state.withWorkingMemory(memory.snapshot);
+        this.persist(this.now(), true);
     }
 
     private reportNightReadiness(snapshot: AgencySnapshot, now: string): void {

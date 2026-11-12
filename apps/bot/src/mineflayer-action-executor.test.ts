@@ -15,6 +15,13 @@ interface FakeItem {
     count: number;
 }
 
+interface FakeBlock {
+    name: string;
+    position: Vec3;
+    boundingBox: string;
+    getProperties: () => Record<string, string>;
+}
+
 interface FakeContainer {
     slots: Array<FakeItem | null>;
     inventoryStart: number;
@@ -27,6 +34,9 @@ interface FakeBotState {
     bot: Bot;
     placedReference: Vec3 | null;
     placedFace: Vec3 | null;
+    placedProperties: Record<string, string>;
+    lookYaw: number | null;
+    blocks: Map<string, FakeBlock>;
     equippedItem: FakeItem | null;
     activatedBlock: { name: string } | null;
     movedSlots: Array<[number, number]>;
@@ -49,6 +59,9 @@ function createFakeBot(): FakeBotState {
         bot: null as unknown as Bot,
         placedReference: null,
         placedFace: null,
+        placedProperties: {},
+        lookYaw: null,
+        blocks: new Map(),
         equippedItem: null,
         activatedBlock: null,
         movedSlots: [],
@@ -64,6 +77,12 @@ function createFakeBot(): FakeBotState {
             withdraw: async () => undefined,
         },
     };
+    state.blocks.set('4,64,0', {
+        name: 'oak_planks',
+        position: new Vec3(4, 64, 0),
+        boundingBox: 'block',
+        getProperties: () => ({ facing: 'north' }),
+    });
     const items: FakeItem[] = [
         { name: 'stone', count: 4 },
         { name: 'wheat_seeds', count: 3 },
@@ -102,14 +121,25 @@ function createFakeBot(): FakeBotState {
         },
         pathfinder,
         loadPlugin: () => undefined,
-        blockAt: (position: Vec3) => ({
-            name: 'oak_planks',
-            position,
-            getProperties: () => ({ facing: 'north' }),
-        }),
+        blockAt: (position: Vec3) =>
+            state.blocks.get(`${position.x},${position.y},${position.z}`) ?? null,
         placeBlock: async (reference: { position: Vec3 }, face: Vec3) => {
             state.placedReference = reference.position;
             state.placedFace = face;
+            const position = new Vec3(
+                reference.position.x + face.x,
+                reference.position.y + face.y,
+                reference.position.z + face.z,
+            );
+            state.blocks.set(`${position.x},${position.y},${position.z}`, {
+                name: state.equippedItem?.name ?? 'stone',
+                position,
+                boundingBox: 'block',
+                getProperties: () => state.placedProperties,
+            });
+        },
+        look: async (yaw: number) => {
+            state.lookYaw = yaw;
         },
         activateBlock: async (block: { name: string }) => {
             state.activatedBlock = block;
@@ -154,7 +184,7 @@ describe('mineflayer action executor', () => {
             position: { x: 4, y: 64, z: 1 },
             itemName: 'stone',
             reference: { x: 4, y: 64, z: 0 },
-            face: { x: 1, y: 0, z: 0 },
+            face: { x: 0, y: 0, z: 1 },
         });
         expect(dispatchError).toBeNull();
         if (handle === null) return;
@@ -163,7 +193,48 @@ describe('mineflayer action executor', () => {
         expect(outcome?.status).toBe('completed');
         expect(state.placedReference?.x).toBe(4);
         expect(state.placedReference?.z).toBe(0);
-        expect(state.placedFace?.x).toBe(1);
+        expect(state.placedFace?.z).toBe(1);
+    });
+
+    it('skips blocks that already match the expected state', async () => {
+        const state = createFakeBot();
+        state.blocks.set('4,64,1', {
+            name: 'stone',
+            position: new Vec3(4, 64, 1),
+            boundingBox: 'block',
+            getProperties: () => ({}),
+        });
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'place-block',
+            position: { x: 4, y: 64, z: 1 },
+            itemName: 'stone',
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.placedReference).toBeNull();
+    });
+
+    it('orients placement from block properties and finds a reference', async () => {
+        const state = createFakeBot();
+        state.placedProperties = { facing: 'south' };
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'place-block',
+            position: { x: 4, y: 64, z: 1 },
+            itemName: 'stone',
+            expectedBlockId: 'stone',
+            properties: { facing: 'south' },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.placedReference?.z).toBe(0);
+        expect(state.placedFace?.z).toBe(1);
+        expect(state.lookYaw).toBe(0);
     });
 
     it('rejects physical actions beyond reach', async () => {

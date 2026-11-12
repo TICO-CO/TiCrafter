@@ -1,9 +1,10 @@
 # TiCrafter Building System
 
-Status: implementation in progress. Steps 1–3 exist: blueprint storage and
+Status: implementation in progress. Steps 1–4 exist: blueprint storage and
 composer, terrain site planning, foundation planning, dependency ordering,
-scaffolding, phase-aware packages, and material procurement planning.
-Execution wiring and coordinator lifecycle remain.
+scaffolding, phase-aware packages, material procurement planning, verified
+execution wiring, exact blueprint fetch, and the construction skill. Coordinator
+lifecycle remains.
 
 `docs/architecture/graph.json` tracks the implemented module paths.
 
@@ -94,23 +95,40 @@ Current pieces:
   operations.
 - `packages/skills/src/blueprint.ts`: direct multi-target placement skill.
 - `packages/skills/src/schematic-build.ts`: schematic-to-target pipeline.
-- `apps/bot/src/building-services.ts`: template and `.schem` catalog for bots.
+- `packages/skills/src/construction.ts`: verified construction execution with
+  material preflight, replacement breaks, scaffold cleanup, and restore by
+  re-diffing.
+- `packages/core/src/schemas/blueprint.ts`: exact blueprint fetch request and
+  response schemas.
+- `apps/coordinator/src/building/blueprint-command-handler.ts`: coordinator
+  blueprint fetch handler.
+- `apps/bot/src/blueprint-fetch-client.ts`: exact revision fetch and cache.
+- `apps/bot/src/construction-source.ts`: bot-side site, foundation, package,
+  scaffold, and replacement operation derivation.
+- `apps/bot/src/building-execution-service.ts`: verified, safety-vetted,
+  journaled block preparation and completion.
+- `apps/bot/src/building-services.ts`: template and `.schem` catalog plus
+  construction and blueprint services for bots.
 
 Gaps:
 
-- The runtime uses direct placement, not `BlockExecutor`, so journaling,
-  verification, rollback, and scaffold handling are largely unused.
-- The planner can validate and store blueprints but cannot yet drive the
-  construction plan through the bot execution service.
+- Legacy `place-build` and `schematic-build` still use direct placement; the
+  new construction path uses `BlockExecutor` through the bot execution service.
+- Coordinator lifecycle still needs to seed construction tasks with blueprint,
+  package, claim, grant, and fencing metadata.
 - SIP structures store `blueprintRef` without a stored blueprint payload.
-- Work packages are not created from blueprints or claimed by bots.
-- Claims and grants are not wired into bot safety snapshots.
-- Agency build project state is planned but not implemented. The cognitive
-  architecture plan adds project focus.
+- Work packages are derived on the bot for construction but are not yet
+  persisted, claimed, or scheduled by the coordinator.
+- Claims and grants are not wired into bot safety snapshots; construction
+  validates grant and fencing metadata when supplied.
+- Agency build projects now carry working-memory project focus, including
+  interruption/resume and project sub-work handling. Project task seeding and
+  progress-driven project completion remain.
 - Project proposals create claims and SIP structures but do not yet create
   construction tasks, so a proposed project can remain claimed but unbuilt.
-- Block changelog entries lack plan, structure, package, design-revision, and
-  fencing-token attribution.
+- The bot-side construction journal carries plan, structure, package,
+  design-revision, and fencing-token attribution, but live block-update events
+  do not yet forward that attribution to the coordinator changelog.
 
 ## 5. Terminology
 
@@ -722,7 +740,7 @@ Planned order:
 7. multi-bot coordination
 8. architecture graph update, generated docs, ops runbook, and evaluation
 
-Steps 1–3 are implemented. Step 4 is next.
+Steps 1–4 are implemented. Step 5 is next.
 
 The single-bot acceptance gate lands after step 5.
 

@@ -83,6 +83,7 @@ describe('CoordinatorJobOfferMarket', () => {
         expect(otherOffers).toEqual([]);
         const [ownerOffers] = service.offer(context('bot.one'));
         expect(ownerOffers?.map((offer) => offer.taskId)).toEqual(['task-private']);
+        expect(ownerOffers?.[0]?.projectId).toBe('project-1');
     });
 
     it('refuses to accept a job that another bot already claimed', () => {

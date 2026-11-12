@@ -1,4 +1,4 @@
-import { NeedsModel, PersonalityModel } from '@ticrafter/agency';
+import { NeedsModel, PersonalityModel, WorkingMemoryModel } from '@ticrafter/agency';
 import { AgentEpisodeRepository, EventLogWriter, TransactionManager } from '@ticrafter/memory';
 import { afterEach, describe, expect, it } from 'bun:test';
 
@@ -68,6 +68,7 @@ describe('PersonalProjectService', () => {
             homeStructureId: null,
             personalStorageId: null,
             mood: 'calm',
+            workingMemory: WorkingMemoryModel.create().snapshot,
             lastDeliberationAt: null,
             updatedAt: now,
         });

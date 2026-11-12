@@ -1,49 +1,53 @@
 flowchart LR
-n295["Personality Model"]
-n296["Needs Model"]
-n297["Goal Catalog"]
-n298["Goal Generator"]
-n273["Goal Arbiter"]
-n274["Intention Manager"]
-n299["Routine Model"]
-n300["Item Knowledge"]
-n301["Night Preparation Config"]
-n302["Shelter Strategy"]
-n303["Shelter Plan"]
-n304["Night Readiness"]
-n275["Social Engine"]
-n228["Agency State"]
+n299["Personality Model"]
+n300["Needs Model"]
+n301["Goal Catalog"]
+n302["Goal Generator"]
+n277["Goal Arbiter"]
+n278["Intention Manager"]
+n303["Routine Model"]
+n304["Item Knowledge"]
+n305["Night Preparation Config"]
+n306["Shelter Strategy"]
+n307["Shelter Plan"]
+n308["Night Readiness"]
+n279["Social Engine"]
+n309["Working Memory"]
+n310["Project Focus Policy"]
+n231["Agency State"]
 n60["Agent Loop (Bot Runtime and Mineflayer Adapter)"]
 n61["Chat Adapter (Bot Runtime and Mineflayer Adapter)"]
-n225["Agency State Store (Bot Registry and Profiles)"]
-n60 -->|depends_on| n273
-n60 -->|depends_on| n274
-n60 -->|depends_on| n228
-n61 -->|depends_on| n275
-n298 -->|depends_on| n297
-n298 -->|depends_on| n296
-n298 -->|depends_on| n295
-n273 -->|depends_on| n298
-n273 -->|depends_on| n296
-n273 -->|depends_on| n295
-n274 -->|depends_on| n273
-n275 -->|depends_on| n295
-n228 -->|depends_on| n296
-n228 -->|depends_on| n295
-n228 -->|depends_on| n274
-n228 -->|depends_on| n299
-n275 -->|proposes_to| n61
-n225 -->|depends_on| n228
-n304 -->|depends_on| n300
-n304 -->|depends_on| n301
-n304 -->|depends_on| n299
-n304 -->|depends_on| n303
-n304 -->|depends_on| n302
+n228["Agency State Store (Bot Registry and Profiles)"]
+n60 -->|depends_on| n277
+n60 -->|depends_on| n278
+n60 -->|depends_on| n231
+n61 -->|depends_on| n279
 n302 -->|depends_on| n301
-n298 -->|depends_on| n301
-n298 -->|depends_on| n304
-n298 -->|depends_on| n299
+n302 -->|depends_on| n300
+n302 -->|depends_on| n299
+n277 -->|depends_on| n302
+n277 -->|depends_on| n300
+n277 -->|depends_on| n299
+n278 -->|depends_on| n277
+n279 -->|depends_on| n299
+n231 -->|depends_on| n300
+n231 -->|depends_on| n299
+n231 -->|depends_on| n278
+n231 -->|depends_on| n303
+n231 -->|depends_on| n309
+n310 -->|depends_on| n309
+n279 -->|proposes_to| n61
+n228 -->|depends_on| n231
+n308 -->|depends_on| n304
+n308 -->|depends_on| n305
+n308 -->|depends_on| n303
+n308 -->|depends_on| n307
+n308 -->|depends_on| n306
+n306 -->|depends_on| n305
+n302 -->|depends_on| n305
+n302 -->|depends_on| n308
+n302 -->|depends_on| n303
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n295,n296,n297,n298,n273,n274,n299,n300,n301,n302,n303,n304,n275,n228 internal;
-class n60,n61,n225 external;
+class n299,n300,n301,n302,n277,n278,n303,n304,n305,n306,n307,n308,n279,n309,n310,n231 internal;
+class n60,n61,n228 external;

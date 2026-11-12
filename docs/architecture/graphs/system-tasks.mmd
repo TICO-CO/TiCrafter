@@ -1,59 +1,59 @@
 flowchart LR
-n204["Task Repository"]
-n205["Task DAG Resolver"]
-n206["Precondition Evaluator"]
-n207["Priority Scheduler"]
-n155["Atomic Task Claimer"]
-n208["Job Offer Service"]
-n209["Retry Manager"]
-n210["Dead Letter Manager"]
-n211["Task State Machine"]
-n192["Delta Sync Planner (Bot Registry and Profiles)"]
-n212["Claim Releaser (Claims and Leases)"]
-n158["Lease Reaper (Claims and Leases)"]
+n207["Task Repository"]
+n208["Task DAG Resolver"]
+n209["Precondition Evaluator"]
+n210["Priority Scheduler"]
+n158["Atomic Task Claimer"]
+n211["Job Offer Service"]
+n212["Retry Manager"]
+n213["Dead Letter Manager"]
+n214["Task State Machine"]
+n195["Delta Sync Planner (Bot Registry and Profiles)"]
+n215["Claim Releaser (Claims and Leases)"]
+n161["Lease Reaper (Claims and Leases)"]
 n29["Command Router (Coordinator Runtime)"]
-n213["Contention Harness (Testing and Evaluation)"]
-n142["Status Aggregator (Ops and Observability)"]
+n216["Contention Harness (Testing and Evaluation)"]
+n145["Status Aggregator (Ops and Observability)"]
 n42["Planner Context Builder (Cloud Planner Advisor)"]
 n48["Task DAG Translator (Cloud Planner Advisor)"]
 n43["Planner Trigger Evaluator (Cloud Planner Advisor)"]
-n157["Transaction Manager (Memory and Persistence)"]
-n198["Spatial Query Engine (World Model and Landmarks)"]
-n214["Bot Profile Store (Bot Registry and Profiles)"]
-n215["Event Log Writer (Memory and Persistence)"]
-n192 -->|depends_on| n214
-n192 -->|reads| n204
-n214 -->|depends_on| n157
-n212 -->|depends_on| n211
-n158 -->|depends_on| n211
-n29 -->|controls| n155
-n213 -->|depends_on| n204
-n215 -->|depends_on| n157
-n142 -->|reads| n204
-n42 -->|reads| n214
-n42 -->|reads| n204
-n42 -->|reads| n198
-n48 -->|proposes_to| n204
+n160["Transaction Manager (Memory and Persistence)"]
+n201["Spatial Query Engine (World Model and Landmarks)"]
+n217["Bot Profile Store (Bot Registry and Profiles)"]
+n218["Event Log Writer (Memory and Persistence)"]
+n195 -->|depends_on| n217
+n195 -->|reads| n207
+n217 -->|depends_on| n160
+n215 -->|depends_on| n214
+n161 -->|depends_on| n214
+n29 -->|controls| n158
+n216 -->|depends_on| n207
+n218 -->|depends_on| n160
+n145 -->|reads| n207
+n42 -->|reads| n217
+n42 -->|reads| n207
+n42 -->|reads| n201
+n48 -->|proposes_to| n207
 n43 -->|delegates_to| n42
-n43 -->|reads| n210
-n155 -->|depends_on| n157
-n155 -->|depends_on| n207
-n155 -->|writes| n204
-n205 -->|depends_on| n204
-n210 -->|writes| n204
-n206 -->|depends_on| n204
-n206 -->|reads| n198
-n207 -->|reads| n214
-n207 -->|depends_on| n205
-n207 -->|depends_on| n206
-n209 -->|writes| n204
-n209 -->|depends_on| n211
-n204 -->|depends_on| n157
-n211 -->|depends_on| n215
-n211 -->|writes| n204
+n43 -->|reads| n213
+n158 -->|depends_on| n160
+n158 -->|depends_on| n210
+n158 -->|writes| n207
 n208 -->|depends_on| n207
-n208 -->|delegates_to| n155
+n213 -->|writes| n207
+n209 -->|depends_on| n207
+n209 -->|reads| n201
+n210 -->|reads| n217
+n210 -->|depends_on| n208
+n210 -->|depends_on| n209
+n212 -->|writes| n207
+n212 -->|depends_on| n214
+n207 -->|depends_on| n160
+n214 -->|depends_on| n218
+n214 -->|writes| n207
+n211 -->|depends_on| n210
+n211 -->|delegates_to| n158
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n204,n205,n206,n207,n155,n208,n209,n210,n211 internal;
-class n192,n212,n158,n29,n213,n142,n42,n48,n43,n157,n198,n214,n215 external;
+class n207,n208,n209,n210,n158,n211,n212,n213,n214 internal;
+class n195,n215,n161,n29,n216,n145,n42,n48,n43,n160,n201,n217,n218 external;

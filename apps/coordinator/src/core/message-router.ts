@@ -4,6 +4,7 @@ import {
     BLOCK_UPDATE_EVENT,
     type BlockUpdateMessage,
     blockUpdateSchema,
+    BOT_BLUEPRINT_GET,
     BOT_JOB_DECIDE,
     BOT_JOB_OFFERS,
     BOT_PROJECT_ABANDON,
@@ -12,6 +13,8 @@ import {
     botAgencyEpisodeSchema,
     type BotAgencyStateMessage,
     botAgencyStateSchema,
+    type BotBlueprintGet,
+    botBlueprintGetSchema,
     botHeartbeatSchema,
     type BotJobDecide,
     botJobDecideSchema,
@@ -78,6 +81,11 @@ export interface MessageRouterOptions {
     onProjectAbandon?: (
         connection: ClientConnection,
         payload: BotProjectAbandon,
+        envelope: Envelope,
+    ) => void;
+    onBlueprintGet?: (
+        connection: ClientConnection,
+        payload: BotBlueprintGet,
         envelope: Envelope,
     ) => void;
     onJobOffers?: (connection: ClientConnection, payload: BotJobOffers, envelope: Envelope) => void;
@@ -188,6 +196,16 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onBlockUpdate?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_BLUEPRINT_GET) {
+            const parsed = botBlueprintGetSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid blueprint request');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onBlueprintGet?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_PROPOSE) {

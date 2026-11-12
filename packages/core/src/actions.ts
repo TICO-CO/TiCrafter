@@ -16,6 +16,8 @@ export type ActionRequest =
           kind: 'place-block';
           position: Vec3;
           itemName: string;
+          expectedBlockId?: string;
+          properties?: Readonly<Record<string, string>>;
           reference?: Vec3;
           face?: Vec3;
       }

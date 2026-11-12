@@ -39,9 +39,15 @@ export class Blueprint {
     }
 
     static isSatisfied(world: SkillWorldView, target: SkillBuildTarget): boolean {
-        const blockName = this.blockNameAt(world, target.position);
-        if (blockName === null) return false;
-        return blockName === target.expectedBlockId || blockName === target.itemName;
+        const expectedName = this.expectedBlockName(target);
+        const state = world.blockStateAt?.(target.position) ?? null;
+        const blockName = state?.name ?? this.blockNameAt(world, target.position);
+        if (blockName === null || blockName !== expectedName) return false;
+        if (target.properties === undefined) return true;
+        if (state === null) return false;
+        return Object.entries(target.properties).every(
+            ([key, value]) => state.properties[key] === value,
+        );
     }
 
     static sortSupportFirst(
@@ -88,6 +94,10 @@ export class Blueprint {
             kind: 'place-block',
             position: target.position,
             itemName: target.itemName,
+            ...(target.expectedBlockId === undefined
+                ? {}
+                : { expectedBlockId: target.expectedBlockId }),
+            ...(target.properties === undefined ? {} : { properties: target.properties }),
             reference: {
                 x: target.position.x,
                 y: target.position.y - 1,
@@ -208,10 +218,16 @@ export class Blueprint {
             if (position === null || itemName === null) return null;
             const expectedBlockId =
                 SkillSharedUtilities.readString(entry.expectedBlockId) ?? undefined;
+            const properties =
+                entry.properties === undefined
+                    ? undefined
+                    : SkillSharedUtilities.readProperties(entry.properties);
+            if (entry.properties !== undefined && properties === null) return null;
             targets.push({
                 position,
                 itemName,
                 ...(expectedBlockId === undefined ? {} : { expectedBlockId }),
+                ...(properties === null || properties === undefined ? {} : { properties }),
             });
         }
         return targets;

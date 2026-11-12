@@ -10,6 +10,8 @@ export interface JobOffer {
     target: { x: number; y: number; z: number } | null;
     requiredRole: TaskRole | null;
     distance: number | null;
+    projectId?: string;
+    structureId?: string;
 }
 
 export type JobDecision = 'accept' | 'defer' | 'decline';
@@ -28,6 +30,9 @@ export interface JobTaskAssignment {
     payload: Readonly<Record<string, unknown>>;
     target: { x: number; y: number; z: number } | null;
     requiredRole: TaskRole | null;
+    projectId?: string;
+    structureId?: string;
+    workPackageId?: string;
 }
 
 export interface JobAssignment {

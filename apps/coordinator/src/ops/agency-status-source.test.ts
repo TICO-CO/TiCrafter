@@ -1,4 +1,4 @@
-import { NeedsModel, PersonalityModel } from '@ticrafter/agency';
+import { NeedsModel, PersonalityModel, WorkingMemoryModel } from '@ticrafter/agency';
 import { describe, expect, it } from 'bun:test';
 
 import { AgencyStatusSource } from './agency-status-source.js';
@@ -32,6 +32,7 @@ function source() {
                     homeStructureId: 'home.one',
                     personalStorageId: null,
                     mood: 'calm',
+                    workingMemory: WorkingMemoryModel.create().snapshot,
                     lastDeliberationAt: '2026-11-11T12:00:00.000Z',
                     updatedAt: '2026-11-11T12:00:00.000Z',
                 },

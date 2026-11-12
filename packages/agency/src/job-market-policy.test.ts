@@ -7,6 +7,7 @@ import { PersonalityModel } from './personality-model.js';
 const context = (overrides: { activeGoal?: boolean; role?: string | null } = {}) => ({
     role: overrides.role ?? 'miner',
     activeGoal: overrides.activeGoal ?? false,
+    projectFocusId: null,
     needs: NeedsModel.create()[0] as NeedsModel,
     traits: PersonalityModel.fromBotIndex(0),
 });
@@ -38,6 +39,18 @@ describe('JobMarketPolicy', () => {
         const choice = JobMarketPolicy.decide(offer(), context({ activeGoal: true }));
         expect(choice.decision).toBe('defer');
         expect(choice.reason.includes('agency goal')).toBe(true);
+    });
+
+    it('accepts project sub-work while project focus is active', () => {
+        const choice = JobMarketPolicy.decide(
+            offer({ projectId: 'project-1', priority: 1, distance: 200 }),
+            {
+                ...context(),
+                projectFocusId: 'project-1',
+            },
+        );
+        expect(choice.decision).toBe('accept');
+        expect(choice.reason).toBe('project sub-work');
     });
 
     it('declines distant low-value work', () => {

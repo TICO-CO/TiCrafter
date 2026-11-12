@@ -125,6 +125,19 @@ Bots reject physical actions outside `safety.interactionReach` and actions that
 exceed `safety.actionsPerSecond`. Both values come from config; defaults are
 `4.5` blocks and `10` actions per second.
 
+## Building execution
+
+Bots fetch blueprint documents by exact id and revision with
+`bot.blueprint.get`; the coordinator replies with `bot.blueprint.response`.
+Missing revisions fail closed and are never replaced with the latest revision.
+
+The `construction` skill derives the site, foundation, dependency, work package,
+and scaffold plan on the bot, then executes block changes through the building
+execution service. Mismatched blocks are broken before placement, scaffolds are
+removed after their targets complete, and material shortages fail before the
+first block change. The skill checkpoint stores blueprint id, revision, package
+id, and grant metadata; restore re-diffs the world before resuming.
+
 ## Soak testing
 
 Short smoke:

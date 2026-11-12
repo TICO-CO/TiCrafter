@@ -3,6 +3,7 @@ import {
     type AgencyStateSnapshot,
     NeedsModel,
     PersonalityModel,
+    WorkingMemoryModel,
 } from '@ticrafter/agency';
 import {
     AGENCY_EPISODE_EVENT,
@@ -45,6 +46,9 @@ export class AgencyStateAdapter {
         const [needs, needsError] = NeedsModel.restore(payload.needs);
         if (needsError) return [null, needsError];
         if (needs === null) return [null, 'needs restore returned null'];
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(payload.workingMemory);
+        if (memoryError) return [null, memoryError];
+        if (workingMemory === null) return [null, 'working memory restore returned null'];
         return AgencyState.restore({
             botId: this.options.botId,
             traits,
@@ -55,6 +59,11 @@ export class AgencyStateAdapter {
             personalStorageId: payload.personalStorageId,
             mood: payload.mood,
             lastDeliberationAt: payload.lastDeliberationAt,
+            workingMemory: {
+                ...workingMemory.snapshot,
+                commitments: [...workingMemory.snapshot.commitments],
+                recentExperiences: [...workingMemory.snapshot.recentExperiences],
+            },
         });
     }
 
@@ -71,6 +80,11 @@ export class AgencyStateAdapter {
                 personalStorageId: state.personalStorageId,
                 mood: state.mood,
                 lastDeliberationAt: state.lastDeliberationAt,
+                workingMemory: {
+                    ...state.workingMemory,
+                    commitments: [...state.workingMemory.commitments],
+                    recentExperiences: [...state.workingMemory.recentExperiences],
+                },
             },
         });
         if (sendError) {

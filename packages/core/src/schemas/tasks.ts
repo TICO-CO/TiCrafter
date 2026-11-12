@@ -23,6 +23,9 @@ export const taskAssignmentSchema = zod.object({
     payload: zod.record(zod.string(), zod.unknown()),
     target: positionSchema.nullable(),
     requiredRole: roleSchema.nullable(),
+    projectId: zod.string().min(1).optional(),
+    structureId: zod.string().min(1).optional(),
+    workPackageId: zod.string().min(1).optional(),
 });
 
 export const botTaskClaimSchema = zod.object({

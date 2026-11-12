@@ -82,6 +82,7 @@ export interface TaskJobMarketPort {
 
 export interface TaskAutonomyOptions {
     botId: string;
+    constructionPrefetch?: (input: SkillInput) => Promise<Result<void, string>>;
     transport: TaskAutonomyTransportPort;
     jobMarket?: TaskJobMarketPort;
     decisions: TaskDecisionPort;
@@ -101,6 +102,7 @@ interface ActiveTask {
     skillId: string;
     input: SkillInput;
     payload: Readonly<Record<string, unknown>>;
+    projectId: string | null;
     fencingToken: number;
     leaseUntil: string | null;
     progress: number;
@@ -159,6 +161,10 @@ export class TaskAutonomy {
 
     get activeTaskPayload(): Readonly<Record<string, unknown>> | null {
         return this.active?.payload ?? null;
+    }
+
+    get activeTaskProjectId(): string | null {
+        return this.active?.projectId ?? null;
     }
 
     resumeTask(resume: SessionResume): boolean {
@@ -341,6 +347,7 @@ export class TaskAutonomy {
             skillId: offer.skillId,
             requiredRole: offer.requiredRole,
             distance: offer.distance,
+            projectId: offer.projectId ?? null,
         };
     }
 
@@ -359,10 +366,18 @@ export class TaskAutonomy {
             });
             return;
         }
-        const [step, runError] = this.options.skills.run(decision.choice.skillId, {
-            ...decision.choice.input,
-            taskId: active.id,
-        });
+        const skillInput: SkillInput = { ...decision.choice.input, taskId: active.id };
+        if (
+            decision.choice.skillId === 'construction' &&
+            this.options.constructionPrefetch !== undefined
+        ) {
+            const [, prefetchError] = await this.options.constructionPrefetch(skillInput);
+            if (prefetchError !== null) {
+                this.failActive(active, 'precondition', { reason: prefetchError });
+                return;
+            }
+        }
+        const [step, runError] = this.options.skills.run(decision.choice.skillId, skillInput);
         if (runError || step === null) {
             this.failActive(active, 'precondition', { reason: runError ?? 'skill returned null' });
             return;
@@ -511,12 +526,19 @@ export class TaskAutonomy {
         const { skillId: _skillId, ...rest } = task.payload;
         const parsed = skillInputSchema.safeParse(rest);
         if (!parsed.success) return null;
+        const payloadProjectId = task.payload.projectId;
+        const projectId =
+            task.projectId ??
+            (typeof payloadProjectId === 'string' && payloadProjectId.length > 0
+                ? payloadProjectId
+                : null);
         return {
             id: task.id,
             title: task.title,
             skillId,
             input: parsed.data,
             payload: task.payload,
+            projectId,
             fencingToken: response.fencingToken,
             leaseUntil: response.leaseUntil,
             progress: 0,

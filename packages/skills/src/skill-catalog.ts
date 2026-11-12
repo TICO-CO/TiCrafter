@@ -3,6 +3,7 @@ import type { Result } from '@ticrafter/core';
 import { BridgeSkill } from './bridge.js';
 import { ClearSkill } from './clear.js';
 import { CollectSkill } from './collect.js';
+import { ConstructionSkill } from './construction.js';
 import { CraftSkill } from './craft.js';
 import { DepositSkill } from './deposit.js';
 import { DigShelterSkill } from './dig-shelter.js';
@@ -34,6 +35,7 @@ export class SkillCatalog {
             new FollowPathSkill(),
             new MineSkill(),
             new CollectSkill(),
+            new ConstructionSkill(),
             new SmeltSkill(),
             new EatSkill(),
             new SleepSkill(),

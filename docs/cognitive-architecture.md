@@ -1,15 +1,17 @@
 # TiCrafter Cognitive Architecture
 
-Status: design proposal. No implementation exists yet.
+Status: implementation in progress. Working memory, focus, interruption, and
+project focus are implemented. Tactical Laya revision guards, strategic intent,
+and planner integration remain.
 
 This document defines the boundary between reflex safety, local agency, tactical
 Laya decisions, working memory, and the optional cloud planner. It is the
 detailed companion to `main.md`; `main.md` remains the normative summary and the
 source for architecture graph references.
 
-`docs/architecture/graph.json` is intentionally unchanged until the planned
-modules exist. `check-component-paths` requires every graph component to resolve
-to a real source file.
+`docs/architecture/graph.json` tracks the implemented module paths.
+`check-component-paths` requires every graph component to resolve to a real
+source file.
 
 ## 1. Purpose
 
@@ -141,6 +143,17 @@ Bounds:
 
 Working memory stores interpretations and outcomes, not world observations.
 World state remains owned by perception and the coordinator.
+
+Implementation:
+
+- `packages/agency/src/working-memory.ts` owns the bounded model and revision.
+- `agent_state` stores working memory as an optional JSON field. Missing fields
+  restore to an empty memory; malformed fields fail closed.
+- The revision increments on every focus, commitment, interruption, and
+  experience change.
+- Project focus survives project sub-work tasks. Survival and other interruption
+  goals may temporarily take focus; completing or abandoning them restores the
+  project focus.
 
 ### Focus
 
@@ -389,6 +402,17 @@ claimed but unbuilt.
 Agency receives project summaries for goal generation. The bot process does not
 open the coordinator database; project state arrives through session resume,
 project responses, and structured update events.
+
+Implemented project-focus behavior:
+
+- an active project sets the working-memory `project` focus;
+- while project focus is active, agency goal generation is limited to
+  interruption goals such as survival, eating, rest, shelter, and night prep;
+- a project task accepted from the job market carries `projectId` and does not
+  replace project focus;
+- project focus is restored from session resume and is cleared when its project
+  is no longer active;
+- a normal job task does not create or clear project focus by itself.
 
 ## 9. Persistence and resume
 

@@ -53,6 +53,49 @@ export interface SkillBuildTarget {
     position: Vec3;
     itemName: string;
     expectedBlockId?: string;
+    properties?: Readonly<Record<string, string>>;
+}
+
+export type SkillConstructionPhase =
+    | 'site-clear'
+    | 'foundation'
+    | 'scaffold'
+    | 'walls'
+    | 'floors'
+    | 'roof'
+    | 'openings'
+    | 'access'
+    | 'interior'
+    | 'decoration'
+    | 'scaffold-removal'
+    | 'cleanup';
+
+export interface SkillConstructionOperation {
+    kind: 'place' | 'break';
+    target: SkillBuildTarget;
+    claimId?: string;
+    grantId?: string;
+    grant?: SkillGrant;
+    structureId?: string;
+    blueprintId?: string;
+    blueprintRevision?: number;
+    workPackageId?: string;
+    fencingToken?: number;
+    phase?: SkillConstructionPhase;
+}
+
+export interface SkillConstructionPlan {
+    blueprintId: string;
+    blueprintRevision: number;
+    workPackageId: string;
+    phase: SkillConstructionPhase | null;
+    operations: readonly SkillConstructionOperation[];
+    scaffoldPositions: readonly Vec3[];
+}
+
+export interface SkillBuildPreparation {
+    status: 'ready' | 'skipped';
+    action: ActionRequest | null;
 }
 
 export interface SkillGrant {
@@ -105,6 +148,22 @@ export interface SkillRepairDiffSource {
     diff(input: SkillInput): Result<SkillRepairDiff, string>;
 }
 
+export interface SkillConstructionSource {
+    resolve(context: SkillContext, input: SkillInput): Result<SkillConstructionPlan, string>;
+}
+
+export interface SkillBuildExecutionPort {
+    prepare(
+        context: SkillContext,
+        operation: SkillConstructionOperation,
+    ): Result<SkillBuildPreparation, string>;
+    complete(
+        context: SkillContext,
+        operation: SkillConstructionOperation,
+        action: ActionOutcome,
+    ): Result<void, string>;
+}
+
 export interface SkillServices {
     spatial?: SkillSpatialPort;
     grants?: SkillGrantPort;
@@ -112,6 +171,8 @@ export interface SkillServices {
     blueprints?: SkillBlueprintSource;
     schematics?: SkillSchematicPipeline;
     repairDiff?: SkillRepairDiffSource;
+    construction?: SkillConstructionSource;
+    buildExecution?: SkillBuildExecutionPort;
 }
 
 export interface SkillWorldView {
@@ -170,6 +231,12 @@ export interface SkillInput {
     plotId?: string;
     schematic?: SkillSchematicRef;
     grant?: SkillGrant;
+    blueprintId?: string;
+    blueprintRevision?: number;
+    workPackageId?: string;
+    structureId?: string;
+    claimId?: string;
+    fencingToken?: number;
 }
 
 export interface SkillProgress {

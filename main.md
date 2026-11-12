@@ -366,7 +366,7 @@ Locked decisions:
 - Templates are motifs and quick sources, not the only building vocabulary.
 - Single-bot arbitrary construction is the first milestone. Multi-bot construction follows.
 - Site adaptation never mutates the canonical blueprint. Preparation and foundation changes belong to the construction plan.
-- Build and project goals are agency focus. A project proposal seeds construction tasks; task execution is sub-work and does not replace project focus.
+- Build and project goals are agency focus. A project proposal seeds construction tasks; task execution is sub-work and does not replace project focus. Agency working memory persists project focus, interruptions, commitments, and the revision used for tactical decisions.
 
 Three layers:
 

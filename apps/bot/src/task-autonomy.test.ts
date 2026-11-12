@@ -34,6 +34,8 @@ const logger = {
 class FakeTransport implements TaskAutonomyTransportPort {
     readonly requests: { type: string; payload: unknown }[] = [];
 
+    constructor(private readonly projectId: string | null = null) {}
+
     request(
         type: string,
         payload: unknown,
@@ -54,6 +56,7 @@ class FakeTransport implements TaskAutonomyTransportPort {
                                 target: null,
                                 requiredRole: 'builder',
                                 distance: 4,
+                                ...(this.projectId === null ? {} : { projectId: this.projectId }),
                             },
                         ],
                     },
@@ -77,9 +80,13 @@ class FakeTransport implements TaskAutonomyTransportPort {
                                 payload: {
                                     skillId: 'navigate',
                                     target: { x: 0, y: 64, z: 4 },
+                                    ...(this.projectId === null
+                                        ? {}
+                                        : { projectId: this.projectId }),
                                 },
                                 target: null,
                                 requiredRole: null,
+                                ...(this.projectId === null ? {} : { projectId: this.projectId }),
                             },
                             fencingToken: 7,
                             leaseUntil: '2026-11-11T10:01:00.000Z',
@@ -139,16 +146,17 @@ class FakeDecision implements TaskDecisionPort {
 class FakeSkills implements TaskSkillPort {
     readonly runs: { skillId: string; input: SkillInput }[] = [];
     activeSkillId: string | null = null;
+    status: 'running' | 'completed' = 'completed';
 
     run(skillId: string, input: SkillInput): Result<SkillStep, string> {
         this.runs.push({ skillId, input });
-        this.activeSkillId = null;
+        this.activeSkillId = this.status === 'running' ? skillId : null;
         return [
             {
                 run: { skillId, state: {} },
-                status: 'completed',
+                status: this.status,
                 action: null,
-                progress: { done: 1, total: 1, label: 'done' },
+                progress: { done: this.status === 'running' ? 0 : 1, total: 1, label: 'done' },
                 failure: null,
             },
             null,
@@ -213,6 +221,7 @@ describe('TaskAutonomy', () => {
                 context: () => ({
                     role: 'builder',
                     activeGoal: false,
+                    projectFocusId: null,
                     needs: NeedsModel.create()[0] as NeedsModel,
                     traits: PersonalityModel.fromBotIndex(0),
                 }),
@@ -229,6 +238,37 @@ describe('TaskAutonomy', () => {
         expect(transport.requests.some((request) => request.type === TASK_CLAIM)).toBe(false);
         expect(skills.runs[0]?.input.taskId).toBe('task-1');
         expect(transport.requests.some((request) => request.type === TASK_COMPLETE)).toBe(true);
+    });
+
+    it('marks accepted project sub-work without replacing project focus', async () => {
+        const transport = new FakeTransport('project-1');
+        const decisions = new FakeDecision();
+        const skills = new FakeSkills();
+        skills.status = 'running';
+        const autonomy = new TaskAutonomy({
+            botId: 'bot.one',
+            transport,
+            decisions,
+            skills,
+            snapshot: { read: () => snapshot },
+            logger,
+            jobMarket: {
+                context: () => ({
+                    role: 'builder',
+                    activeGoal: false,
+                    projectFocusId: 'project-1',
+                    needs: NeedsModel.create()[0] as NeedsModel,
+                    traits: PersonalityModel.fromBotIndex(0),
+                }),
+            },
+            tickMilliseconds: 1000,
+        });
+
+        autonomy.start();
+        await wait(20);
+        autonomy.stop();
+
+        expect(autonomy.activeTaskProjectId).toBe('project-1');
     });
 
     it('restores a resumed task without claiming a new one', async () => {

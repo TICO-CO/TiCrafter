@@ -2,6 +2,7 @@ import type {
     AgencySnapshot,
     HomeStatus,
     NightIntent,
+    ProjectSummary,
     SnapshotBoundingBox,
 } from '@ticrafter/agency';
 import type { Result } from '@ticrafter/core';
@@ -26,6 +27,7 @@ export interface AgencySnapshotSourceOptions {
     bot: Bot;
     world: WorldCacheAdapter;
     home?: () => AgencyHomeSnapshot | null;
+    project?: () => ProjectSummary | null;
     nightIntent?: () => NightIntent | null;
     now?: () => Date;
 }
@@ -76,6 +78,7 @@ export class AgencySnapshotSource {
                 armorPieces: this.armorPieces(bot),
                 armorInventoryPieces: this.armorInventoryPieces(inventory),
                 nightIntent: this.options.nightIntent?.() ?? null,
+                project: this.options.project?.() ?? null,
             },
             null,
         ];

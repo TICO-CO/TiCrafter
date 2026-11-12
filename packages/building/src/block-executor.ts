@@ -15,11 +15,19 @@ export interface BlockExecutorOptions {
     clock?: BuildingClock;
 }
 
-export interface BlockExecution {
-    handleId: string;
+export interface PreparedBlockExecution {
     change: BlockChange;
     action: ActionRequest;
     before: WorldBlockState | null;
+}
+
+export interface BlockExecution extends PreparedBlockExecution {
+    handleId: string;
+}
+
+export interface BlockPrepareResult {
+    status: 'ready' | 'skipped';
+    execution: PreparedBlockExecution | null;
 }
 
 export interface BlockBeginResult {
@@ -53,10 +61,10 @@ export class BlockExecutor {
             options.rateLimitMilliseconds ?? DEFAULT_RATE_LIMIT_MILLISECONDS;
     }
 
-    begin(
+    prepare(
         change: BlockChange,
         snapshot: SafetySnapshot,
-    ): Result<BlockBeginResult, BuildingFailure> {
+    ): Result<BlockPrepareResult, BuildingFailure> {
         const [verification, verificationError] = this.verifier.verifyBefore(change);
         if (verificationError) return [null, verificationError];
         if (verification === null) {
@@ -77,23 +85,44 @@ export class BlockExecutor {
         if (entry === null) {
             return [null, { type: 'JOURNAL_FAILED', message: 'journal returned no entry' }];
         }
-        const [handleId, dispatchError] = this.dispatcher.dispatch(action);
+        this.lastDispatchAt = now;
+        return [
+            {
+                status: 'ready',
+                execution: { change, action, before: verification.actual },
+            },
+            null,
+        ];
+    }
+
+    begin(
+        change: BlockChange,
+        snapshot: SafetySnapshot,
+    ): Result<BlockBeginResult, BuildingFailure> {
+        const [prepared, prepareError] = this.prepare(change, snapshot);
+        if (prepareError) return [null, prepareError];
+        if (prepared === null) {
+            return [null, { type: 'ACTION_REJECTED', message: 'prepare returned no result' }];
+        }
+        if (prepared.status === 'skipped' || prepared.execution === null) {
+            return [{ status: 'skipped', execution: null }, null];
+        }
+        const [handleId, dispatchError] = this.dispatcher.dispatch(prepared.execution.action);
         if (dispatchError) return [null, { type: 'ACTION_REJECTED', message: dispatchError }];
         if (handleId === null) {
             return [null, { type: 'ACTION_REJECTED', message: 'action handle is missing' }];
         }
-        this.lastDispatchAt = now;
         return [
             {
                 status: 'dispatched',
-                execution: { handleId, change, action, before: verification.actual },
+                execution: { ...prepared.execution, handleId },
             },
             null,
         ];
     }
 
     complete(
-        execution: BlockExecution,
+        execution: PreparedBlockExecution,
         outcome: ActionOutcome,
     ): Result<BlockCompletion, BuildingFailure> {
         if (outcome.status !== 'completed') {
@@ -101,7 +130,7 @@ export class BlockExecutor {
                 null,
                 {
                     type: 'ACTION_FAILED',
-                    message: outcome.message ?? `action ${execution.handleId} ${outcome.status}`,
+                    message: outcome.message ?? `block action ${outcome.status}`,
                 },
             ];
         }
@@ -130,7 +159,10 @@ export class BlockExecutor {
         ];
     }
 
-    rollback(execution: BlockExecution, snapshot: SafetySnapshot): Result<string, BuildingFailure> {
+    rollback(
+        execution: PreparedBlockExecution,
+        snapshot: SafetySnapshot,
+    ): Result<string, BuildingFailure> {
         const action = this.rollbackAction(execution);
         const decision = this.safety.evaluate(snapshot, action);
         if (!decision.allowed) return [null, { type: 'SAFETY_VETO', reason: decision.reason }];
@@ -152,12 +184,14 @@ export class BlockExecutor {
             kind: 'place-block',
             position,
             itemName: change.target.state.name,
-            reference: { x: position.x, y: position.y - 1, z: position.z },
-            face: { x: 0, y: 1, z: 0 },
+            expectedBlockId: change.target.state.name,
+            ...(change.target.state.properties === undefined
+                ? {}
+                : { properties: change.target.state.properties }),
         };
     }
 
-    private rollbackAction(execution: BlockExecution): ActionRequest {
+    private rollbackAction(execution: PreparedBlockExecution): ActionRequest {
         const position = this.position(execution.change);
         if (execution.before === null) {
             return {
@@ -170,7 +204,10 @@ export class BlockExecutor {
             kind: 'place-block',
             position,
             itemName: execution.before.name,
-            reference: { x: position.x, y: position.y - 1, z: position.z },
+            expectedBlockId: execution.before.name,
+            ...(execution.before.properties === undefined
+                ? {}
+                : { properties: execution.before.properties }),
         };
     }
 

@@ -1,6 +1,11 @@
 import path from 'node:path';
 
-import { AgencyState, type NightIntent, PersonalityModel } from '@ticrafter/agency';
+import {
+    AgencyState,
+    type NightIntent,
+    PersonalityModel,
+    type ProjectSummary,
+} from '@ticrafter/agency';
 import { DeterministicPolicy, type GuardianReport, LayaClient } from '@ticrafter/brains';
 import {
     attempt,
@@ -44,6 +49,8 @@ import { ActionExecutor } from './action-executor.js';
 import { AgencyRuntime } from './agency-runtime.js';
 import { type AgencyHomeSnapshot, AgencySnapshotSource } from './agency-snapshot-source.js';
 import { AgencyStateAdapter } from './agency-state-adapter.js';
+import { BlueprintFetchClient } from './blueprint-fetch-client.js';
+import { BuildingExecutionService } from './building-execution-service.js';
 import { BuildingSkillServices } from './building-services.js';
 import { BotEventBridge } from './event-bridge.js';
 import { GuardianHook } from './guardian.js';
@@ -92,7 +99,9 @@ export class BotConnection {
     private autonomyPausedReason: string | null = null;
     private pendingResume: SessionResume | null = null;
     private homeSnapshot: AgencyHomeSnapshot | null = null;
+    private projectSummary: ProjectSummary | null = null;
     private role: string | null = null;
+    private buildingServices: BuildingSkillServices | null = null;
     private homeProjectRequested = false;
     private lastReflexAt = 0;
 
@@ -123,6 +132,7 @@ export class BotConnection {
         }
         this.pendingResume = hello.resume ?? null;
         this.homeSnapshot = BotConnection.homeSnapshotFromResume(this.pendingResume);
+        this.projectSummary = BotConnection.projectFromResume(this.pendingResume);
         this.role = this.pendingResume?.role ?? null;
         this.options.logger.info({ epoch: hello.epoch }, 'coordinator accepted session');
 
@@ -212,9 +222,28 @@ export class BotConnection {
                 return sendError ? [null, sendError.type] : [undefined, null];
             },
         };
+        const blueprintFetch = new BlueprintFetchClient(transport, this.options.botId);
+        const buildExecution = new BuildingExecutionService({
+            world,
+            snapshot: () => safetySource.read(),
+            safety: {
+                evaluate: (request) =>
+                    this.guardian?.evaluate(request) ?? {
+                        allowed: false,
+                        reason: 'guardian unavailable',
+                        signals: [],
+                        recovery: { kind: 'safe-mode', reason: 'guardian unavailable' },
+                    },
+            },
+        });
         const [buildingServices, buildingServicesError] = await BuildingSkillServices.create(
             path.resolve(process.cwd(), this.options.config.dataDir),
             world,
+            {
+                documents: blueprintFetch,
+                buildExecution,
+                maxWorkPackageBlocks: this.options.config.building.maxWorkPackageBlocks,
+            },
         );
         if (buildingServicesError) {
             this.options.logger.warn(
@@ -222,6 +251,7 @@ export class BotConnection {
                 'building skill services unavailable',
             );
         }
+        this.buildingServices = buildingServices ?? null;
         const [skills, skillsError] = SkillHost.create({
             source: new BotSkillContextSource(bot, world, buildingServices ?? undefined),
             dispatch: actionExecutor,
@@ -333,6 +363,7 @@ export class BotConnection {
                     bot,
                     world,
                     home: () => this.homeSnapshot,
+                    project: () => this.projectSummary,
                     nightIntent: () => this.nightIntent(),
                 }),
                 skills,
@@ -343,11 +374,13 @@ export class BotConnection {
                     this.autonomyPausedReason !== null ||
                     this.guardian?.emergencyStopActive === true,
                 isJobActive: () => this.taskAutonomy?.hasActiveTask === true,
+                isProjectTaskActive: () => this.taskAutonomy?.activeTaskProjectId !== null,
             },
             state,
         );
         if (runtimeError) return [null, runtimeError];
         if (runtime === null) return [null, 'agency runtime creation returned null'];
+        runtime.syncProjectFocus(this.projectSummary === null ? [] : [this.projectSummary]);
         return [runtime, null];
     }
 
@@ -402,9 +435,12 @@ export class BotConnection {
                 canClaim: () =>
                     this.agencyRuntime?.hasActiveGoal !== true &&
                     this.skills?.activeSkillId === null,
+                constructionPrefetch: (input) =>
+                    this.buildingServices?.prefetch(input) ??
+                    Promise.resolve([null, 'building services are unavailable']),
             });
             this.taskAutonomy = autonomy;
-            if (this.autonomyPausedReason === null) this.applyPendingResume();
+            if (this.autonomyPausedReason === null) void this.applyPendingResume();
             autonomy.start();
             if (this.autonomyPausedReason !== null) autonomy.pause(this.autonomyPausedReason);
             this.agencyRuntime?.start();
@@ -414,7 +450,7 @@ export class BotConnection {
         }
     }
 
-    private applyPendingResume(): void {
+    private async applyPendingResume(): Promise<void> {
         const autonomy = this.taskAutonomy;
         const resume = this.pendingResume;
         if (autonomy === null || resume === null) return;
@@ -440,6 +476,30 @@ export class BotConnection {
             typeof skillId !== 'string'
         ) {
             return;
+        }
+        if (skillId === 'construction') {
+            const blueprintId = resume.task.payload.blueprintId;
+            const blueprintRevision = resume.task.payload.blueprintRevision;
+            if (typeof blueprintId !== 'string' || typeof blueprintRevision !== 'number') {
+                this.options.logger.warn(
+                    { taskId: resume.task.id },
+                    'construction resume is missing blueprint metadata',
+                );
+                this.pendingResume = null;
+                return;
+            }
+            const [, prefetchError] = (await this.buildingServices?.prefetch({
+                blueprintId,
+                blueprintRevision,
+            })) ?? [null, 'building services are unavailable'];
+            if (prefetchError !== null) {
+                this.options.logger.warn(
+                    { error: prefetchError, taskId: resume.task.id },
+                    'construction resume prefetch failed',
+                );
+                this.pendingResume = null;
+                return;
+            }
         }
         const [step, resumeError] = this.skills.resume(skillId, resume.task.id);
         if (resumeError) {
@@ -510,10 +570,45 @@ export class BotConnection {
             status: parsed.data.project.status,
             structureId: parsed.data.project.structureId,
         };
+        this.projectSummary = {
+            id: parsed.data.project.id,
+            title: parsed.data.project.title,
+            kind: parsed.data.project.kind,
+            status: parsed.data.project.status,
+            anchor: parsed.data.project.anchor,
+            bbox: parsed.data.project.bbox,
+            structureId: parsed.data.project.structureId,
+            storageId: parsed.data.project.storageId,
+        };
+        this.agencyRuntime?.syncProjectFocus([this.projectSummary]);
         this.options.logger.info(
             { projectId: parsed.data.project.id },
             'personal home project created',
         );
+    }
+
+    private static projectFromResume(resume: SessionResume | null): ProjectSummary | null {
+        if (resume?.projects === undefined) return null;
+        const project =
+            resume.projects.find(
+                (candidate) =>
+                    candidate.kind === 'home' &&
+                    (candidate.status === 'proposed' || candidate.status === 'active'),
+            ) ??
+            resume.projects.find(
+                (candidate) => candidate.status === 'proposed' || candidate.status === 'active',
+            );
+        if (project === undefined) return null;
+        return {
+            id: project.id,
+            title: project.title,
+            kind: project.kind,
+            status: project.status,
+            anchor: project.anchor,
+            bbox: project.bbox,
+            structureId: project.structureId,
+            storageId: project.storageId,
+        };
     }
 
     private static homeSnapshotFromResume(resume: SessionResume | null): AgencyHomeSnapshot | null {
@@ -559,7 +654,7 @@ export class BotConnection {
     private handleCommand(envelope: Envelope): void {
         if (envelope.kind !== 'request') return;
         if (envelope.type === BOT_SKILL_START) {
-            this.handleSkillStart(envelope.payload);
+            void this.handleSkillStart(envelope.payload);
             return;
         }
         if (envelope.type === BOT_SKILL_CANCEL) {
@@ -587,7 +682,7 @@ export class BotConnection {
         }
     }
 
-    private handleSkillStart(payload: unknown): void {
+    private async handleSkillStart(payload: unknown): Promise<void> {
         const parsed = botSkillStartSchema.safeParse(payload);
         if (!parsed.success) {
             this.options.logger.warn(
@@ -604,6 +699,16 @@ export class BotConnection {
             parsed.data.taskId === undefined
                 ? parsed.data.input
                 : { ...parsed.data.input, taskId: parsed.data.taskId };
+        if (parsed.data.skillId === 'construction' && this.buildingServices !== null) {
+            const [, prefetchError] = await this.buildingServices.prefetch(input);
+            if (prefetchError !== null) {
+                this.options.logger.warn(
+                    { error: prefetchError, skillId: parsed.data.skillId },
+                    'skill start prefetch failed',
+                );
+                return;
+            }
+        }
         const [step, startError] = this.skills.run(parsed.data.skillId, input);
         if (startError) {
             this.options.logger.warn(
@@ -707,7 +812,7 @@ export class BotConnection {
         }
         this.guardian.resumeSafety();
         this.autonomyPausedReason = null;
-        this.applyPendingResume();
+        void this.applyPendingResume();
         this.taskAutonomy?.resume();
         this.options.logger.info({ reason: parsed.data.reason }, 'safety resumed');
     }
@@ -764,7 +869,7 @@ export class BotConnection {
             return;
         }
         this.autonomyPausedReason = null;
-        this.applyPendingResume();
+        void this.applyPendingResume();
         this.taskAutonomy?.resume();
         this.options.logger.info({ reason: parsed.data.reason }, 'autonomy resumed');
     }

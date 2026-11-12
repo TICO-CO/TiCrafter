@@ -242,6 +242,32 @@ describe('BlockExecutor', () => {
         expect(writer.records).toHaveLength(1);
     });
 
+    it('prepares without dispatching and preserves block state', () => {
+        const world = new MutableWorld();
+        const { executor, dispatcher } = createExecutor(world);
+        const change: BlockChange = {
+            ...PLACE_CHANGE,
+            target: {
+                ...TARGET,
+                state: {
+                    name: 'oak_stairs',
+                    properties: { facing: 'north', half: 'bottom', shape: 'straight' },
+                },
+            },
+        };
+
+        const [prepared, prepareError] = executor.prepare(change, SNAPSHOT);
+        expect(prepareError).toBeNull();
+        expect(prepared?.status).toBe('ready');
+        expect(prepared?.execution?.action).toMatchObject({
+            kind: 'place-block',
+            position: { x: 1, y: 64, z: 0 },
+            expectedBlockId: 'oak_stairs',
+            properties: { facing: 'north', half: 'bottom', shape: 'straight' },
+        });
+        expect(dispatcher.requests).toHaveLength(0);
+    });
+
     it('skips blocks that already match', () => {
         const world = new MutableWorld();
         world.set({ x: 1, y: 64, z: 0 }, 'stone');

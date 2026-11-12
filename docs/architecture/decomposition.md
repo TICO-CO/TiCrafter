@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 281  
-**Relations:** 574  
+**Components:** 287  
+**Relations:** 580  
 **Externals:** 5
 
 ## Reading this catalog
@@ -30,9 +30,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
 | `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 12 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
-| `sys.skills` | [Skill Library](#skill-library) | 26 | `packages/skills/src` | 4 |
+| `sys.skills` | [Skill Library](#skill-library) | 27 | `packages/skills/src` | 4 |
 | `sys.building` | [Building](#building) | 35 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 15 | `apps/bot/src` | 1 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 18 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
@@ -40,7 +40,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
 | `sys.brains` | [Brains](#brains) | 4 | `packages/brains/src` | 4 |
-| `sys.agency` | [Agency](#agency) | 14 | `packages/agency/src` | 12 |
+| `sys.agency` | [Agency](#agency) | 16 | `packages/agency/src` | 12 |
 | `sys.toolchain` | [Bootstrap and Toolchain](#bootstrap-and-toolchain) | 5 | `tools` | 1 |
 
 ## Coordinator Runtime
@@ -2927,6 +2927,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `skills.bridge` | Bridge | Place a safe bridge across a gap or obstacle without violating safety rules. | `packages/skills/src/bridge` | 4 |
 | `skills.clear` | Clear | Remove permitted blocks from a work package after grant and safety validation. | `packages/skills/src/clear` | 4 |
 | `skills.place-build` | Place Build | Place blueprint blocks for a work package in support-first order. | `packages/skills/src/place-build` | 4 |
+| `skills.construction` | Construction | Execute an ordered construction plan through verified block changes and scaffold cleanup. | `packages/skills/src/construction` | 6 |
 | `skills.schematic-build` | Schematic Build | Execute a schematic-backed blueprint with diffing and partitioning. | `packages/skills/src/schematic-build` | 4 |
 | `skills.repair` | Repair | Repair a structure by diffing intended blueprint against observed blocks. | `packages/skills/src/repair` | 4 |
 | `skills.harvest-farm` | Harvest Farm | Harvest mature crops from an assigned farm plot. | `packages/skills/src/harvest-farm` | 4 |
@@ -3238,6 +3239,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `skills_place_build_errors_total`
   - `skills_place_build_latency_ms`
+
+### `skills.construction` — Construction
+
+- **Responsibility:** Execute an ordered construction plan through verified block changes and scaffold cleanup.
+- **Owner path:** `packages/skills/src/construction`
+- **Provides:** `skills.construction.interface`
+- **Requires:** `bot-runtime.building-execution-service`, `building.construction-plan-planner`, `building.schematic-diff`, `skill-runtime.context-builder`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Construction restores by re-diffing the world instead of replaying stale coordinates.
+  - Every block change carries claim, grant, blueprint revision, and fencing attribution.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_construction_errors_total`
+  - `skills_construction_latency_ms`
 
 ### `skills.schematic-build` — Schematic Build
 
@@ -4240,6 +4261,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.shelter-inspector` | Shelter Inspector | Inspect the home bounding box for shelter and bed state and find a safe nearby dig site. | `apps/bot/src/shelter-inspector` | 15 |
 | `bot-runtime.reach-rate-guard` | Reach and Rate Guard | Reject impossible reach and enforce configurable action rates. | `apps/bot/src/reach-rate-guard` | 1 |
 | `bot-runtime.action-executor` | Action Executor | Execute only safety-approved place, break, use, attack, and movement actions. | `apps/bot/src/action-executor` | 1 |
+| `bot-runtime.building-execution-service` | Building Execution Service | Prepare, verify, journal, and complete block changes for construction skills. | `apps/bot/src/building-execution-service` | 6 |
+| `bot-runtime.blueprint-fetch-client` | Blueprint Fetch Client | Fetch and cache exact blueprint document revisions from the coordinator. | `apps/bot/src/blueprint-fetch-client` | 6 |
+| `bot-runtime.construction-source` | Construction Source | Derive site, foundation, dependency, package, scaffold, and replacement operations for a fetched blueprint. | `apps/bot/src/construction-source` | 6 |
 | `bot-runtime.state-digest-collector` | State Digest Collector | Collect health, food, time, biome, y-level, target, inventory, hazards, and skill progress. | `apps/bot/src/state-digest-collector` | 1 |
 | `bot-runtime.guardian-hook` | Guardian Hook | Connect the local reflex guardian to the action veto gate on every tick. | `apps/bot/src/guardian-hook` | 1 |
 | `bot-runtime.skill-host` | Skill Host | Host the skill runtime inside the bot process and step active skills. | `apps/bot/src/skill-host` | 1 |
@@ -4387,6 +4411,66 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bot_runtime_action_executor_errors_total`
   - `bot_runtime_action_executor_latency_ms`
+
+### `bot-runtime.building-execution-service` — Building Execution Service
+
+- **Responsibility:** Prepare, verify, journal, and complete block changes for construction skills.
+- **Owner path:** `apps/bot/src/building-execution-service`
+- **Provides:** `bot-runtime.building-execution-service.interface`
+- **Requires:** `building.block-executor`, `building.rollback-journal`, `safety.action-veto-gate`, `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Block changes are verified before and after execution and journaled with attribution.
+  - Claim fencing tokens are required whenever a claim id is present.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `bot_runtime_building_execution_service_errors_total`
+  - `bot_runtime_building_execution_service_latency_ms`
+
+### `bot-runtime.blueprint-fetch-client` — Blueprint Fetch Client
+
+- **Responsibility:** Fetch and cache exact blueprint document revisions from the coordinator.
+- **Owner path:** `apps/bot/src/blueprint-fetch-client`
+- **Provides:** `bot-runtime.blueprint-fetch-client.interface`
+- **Requires:** `transport.message-schema-registry`, `transport.request-correlator`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Blueprint fetches require an exact id and revision and never fall back to the latest revision.
+  - Fetched documents are hash-checked before caching.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_blueprint_fetch_client_errors_total`
+  - `bot_runtime_blueprint_fetch_client_latency_ms`
+
+### `bot-runtime.construction-source` — Construction Source
+
+- **Responsibility:** Derive site, foundation, dependency, package, scaffold, and replacement operations for a fetched blueprint.
+- **Owner path:** `apps/bot/src/construction-source`
+- **Provides:** `bot-runtime.construction-source.interface`
+- **Requires:** `building.construction-plan-planner`, `building.site-planner`, `bot-runtime.world-cache-adapter`, `bot-runtime.blueprint-fetch-client`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Construction planning starts from a cached exact blueprint revision.
+  - Mismatched existing blocks become break-then-place operations.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `bot_runtime_construction_source_errors_total`
+  - `bot_runtime_construction_source_latency_ms`
 
 ### `bot-runtime.state-digest-collector` — State Digest Collector
 
@@ -6058,7 +6142,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `agency.shelter-plan` | Shelter Plan | Generate a bounded support-first shell of blocks for a first shelter. | `packages/agency/src/shelter-plan` | 15 |
 | `agency.night-readiness` | Night Readiness | Assess home, shelter, bed, food, combat, and hostile gaps and emit ordered night preparation actions. | `packages/agency/src/night-readiness` | 15 |
 | `agency.social-engine` | Social Engine | Classify social messages, generate personality-styled replies, and enforce chat rate limits. | `packages/agency/src/social-engine` | 14 |
-| `agency.agency-state` | Agency State | Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot. | `packages/agency/src/agency-state` | 12 |
+| `agency.working-memory` | Working Memory | Track bounded focus, commitments, interruption, recent experience, and tactical revision for continuity across goals and restarts. | `packages/agency/src/working-memory` | 12 |
+| `agency.project-focus` | Project Focus Policy | Keep long-lived project focus as agency focus while allowing bounded survival and routine interruptions. | `packages/agency/src/project-focus` | 13 |
+| `agency.agency-state` | Agency State | Aggregate personality, needs, intention, routine, home, mood, working memory, and deliberation status into one snapshot. | `packages/agency/src/agency-state` | 12 |
 
 ### `agency.personality-model` — Personality Model
 
@@ -6316,12 +6402,54 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `agency_social_engine_errors_total`
   - `agency_social_engine_latency_ms`
 
+### `agency.working-memory` — Working Memory
+
+- **Responsibility:** Track bounded focus, commitments, interruption, recent experience, and tactical revision for continuity across goals and restarts.
+- **Owner path:** `packages/agency/src/working-memory`
+- **Provides:** `agency.working-memory.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#11-autonomy-loop-and-safety`
+- **Milestone:** 12
+- **Invariants:**
+  - The revision increments on every focus, commitment, interruption, and experience change.
+  - Commitments and recent experiences stay within their configured bounds.
+  - Missing persisted working memory restores to an empty memory.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_working_memory_errors_total`
+  - `agency_working_memory_latency_ms`
+
+### `agency.project-focus` — Project Focus Policy
+
+- **Responsibility:** Keep long-lived project focus as agency focus while allowing bounded survival and routine interruptions.
+- **Owner path:** `packages/agency/src/project-focus`
+- **Provides:** `agency.project-focus.interface`
+- **Requires:** `agency.working-memory`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 13
+- **Invariants:**
+  - Project focus never creates a second goal manager.
+  - Project sub-work does not replace project focus.
+  - Survival goals may interrupt project focus and restore it when complete.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_project_focus_errors_total`
+  - `agency_project_focus_latency_ms`
+
 ### `agency.agency-state` — Agency State
 
-- **Responsibility:** Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot.
+- **Responsibility:** Aggregate personality, needs, intention, routine, home, mood, working memory, and deliberation status into one snapshot.
 - **Owner path:** `packages/agency/src/agency-state`
 - **Provides:** `agency.agency-state.interface`
-- **Requires:** `agency.needs-model`, `agency.personality-model`, `agency.intention-manager`, `agency.routine-model`
+- **Requires:** `agency.needs-model`, `agency.personality-model`, `agency.intention-manager`, `agency.routine-model`, `agency.working-memory`
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
 - **Milestone:** 12

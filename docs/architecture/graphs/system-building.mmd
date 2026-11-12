@@ -36,19 +36,20 @@ n123["Construction Plan Planner"]
 n124["Material Procurement Planner"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n198["Spatial Query Engine (World Model and Landmarks)"]
-n187["Rules Store (Shared Infrastructure Plan)"]
-n197["Container Memory (World Model and Landmarks)"]
+n201["Spatial Query Engine (World Model and Landmarks)"]
+n190["Rules Store (Shared Infrastructure Plan)"]
+n200["Container Memory (World Model and Landmarks)"]
 n52["Skill Context Builder (Skill Runtime)"]
 n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n272["Block Changelog Writer (Memory and Persistence)"]
-n182["Structure Store (Shared Infrastructure Plan)"]
-n171["Event Stream (Transport and Protocol)"]
-n262["Bridge (Skill Library)"]
-n263["Clear (Skill Library)"]
-n255["Place Build (Skill Library)"]
-n265["Repair (Skill Library)"]
-n264["Schematic Build (Skill Library)"]
+n276["Block Changelog Writer (Memory and Persistence)"]
+n185["Structure Store (Shared Infrastructure Plan)"]
+n174["Event Stream (Transport and Protocol)"]
+n265["Bridge (Skill Library)"]
+n266["Clear (Skill Library)"]
+n258["Place Build (Skill Library)"]
+n269["Repair (Skill Library)"]
+n268["Schematic Build (Skill Library)"]
+n267["Construction (Skill Library)"]
 n57 -->|depends_on| n63
 n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
@@ -56,24 +57,24 @@ n53 -->|depends_on| n107
 n53 -->|depends_on| n110
 n53 -->|depends_on| n63
 n107 -->|depends_on| n91
-n107 -->|reads| n198
+n107 -->|reads| n201
 n92 -->|depends_on| n91
-n92 -->|depends_on| n187
+n92 -->|depends_on| n190
 n105 -->|depends_on| n91
 n105 -->|depends_on| n104
 n109 -->|depends_on| n57
-n109 -->|writes| n197
+n109 -->|writes| n200
 n108 -->|depends_on| n91
 n108 -->|reads| n52
-n108 -->|reads| n197
+n108 -->|reads| n200
 n106 -->|reads| n56
 n106 -->|depends_on| n105
-n106 -->|reads| n198
-n110 -->|writes| n272
-n110 -->|reads| n182
-n110 -->|subscribes| n171
+n106 -->|reads| n201
+n110 -->|writes| n276
+n110 -->|reads| n185
+n110 -->|subscribes| n174
 n103 -->|depends_on| n91
-n103 -->|reads| n198
+n103 -->|reads| n201
 n102 -->|depends_on| n91
 n98 -->|depends_on| n91
 n96 -->|depends_on| n91
@@ -86,21 +87,21 @@ n99 -->|depends_on| n91
 n97 -->|depends_on| n91
 n100 -->|depends_on| n91
 n104 -->|depends_on| n91
-n104 -->|reads| n182
+n104 -->|reads| n185
 n63 -->|validates| n57
 n63 -->|validates| n53
 n52 -->|reads| n56
-n52 -->|reads| n198
-n262 -->|depends_on| n53
-n263 -->|depends_on| n53
-n263 -->|depends_on| n63
-n255 -->|depends_on| n53
-n255 -->|depends_on| n52
+n52 -->|reads| n201
 n265 -->|depends_on| n53
-n265 -->|depends_on| n103
-n264 -->|depends_on| n53
-n264 -->|depends_on| n105
-n264 -->|depends_on| n104
+n266 -->|depends_on| n53
+n266 -->|depends_on| n63
+n258 -->|depends_on| n53
+n258 -->|depends_on| n52
+n269 -->|depends_on| n53
+n269 -->|depends_on| n103
+n268 -->|depends_on| n53
+n268 -->|depends_on| n105
+n268 -->|depends_on| n104
 n111 -->|depends_on| n91
 n112 -->|depends_on| n91
 n116 -->|depends_on| n112
@@ -118,7 +119,8 @@ n123 -->|depends_on| n122
 n123 -->|depends_on| n124
 n124 -->|depends_on| n108
 n119 -->|depends_on| n111
+n267 -->|depends_on| n123
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n91,n92,n93,n94,n95,n96,n97,n98,n99,n100,n101,n102,n103,n104,n105,n106,n107,n53,n108,n109,n110,n111,n112,n113,n114,n115,n116,n117,n118,n119,n120,n121,n122,n123,n124 internal;
-class n57,n63,n198,n187,n197,n52,n56,n272,n182,n171,n262,n263,n255,n265,n264 external;
+class n57,n63,n201,n190,n200,n52,n56,n276,n185,n174,n265,n266,n258,n269,n268,n267 external;

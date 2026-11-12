@@ -44,7 +44,11 @@ import {
     BotProfileStore,
     BotResumeOrchestrator,
 } from './bots/index.js';
-import { BlueprintDocumentRepository, BlueprintDocumentService } from './building/index.js';
+import {
+    BlueprintCommandHandler,
+    BlueprintDocumentRepository,
+    BlueprintDocumentService,
+} from './building/index.js';
 import { ClaimRepository, ClaimService } from './claims/index.js';
 import {
     BackpressureController,
@@ -334,6 +338,11 @@ export class CoordinatorComposition {
             options.logger,
         );
         const jobCommands = new JobCommandHandler(jobMarket, transport, options.logger);
+        const blueprintCommands = new BlueprintCommandHandler(
+            blueprintDocuments,
+            transport,
+            options.logger,
+        );
         const handshake = new SessionHandshake({
             epoch: options.epoch,
             botNames: options.config.botNames,
@@ -438,6 +447,8 @@ export class CoordinatorComposition {
                 projectCommands.handlePropose(connection, payload, envelope),
             onProjectAbandon: (connection, payload, envelope) =>
                 projectCommands.handleAbandon(connection, payload, envelope),
+            onBlueprintGet: (connection, payload, envelope) =>
+                blueprintCommands.handleGet(connection, payload, envelope),
             onJobOffers: (connection, payload, envelope) =>
                 jobCommands.handleOffers(connection, payload, envelope),
             onJobDecide: (connection, payload, envelope) =>

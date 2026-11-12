@@ -9,6 +9,7 @@ const EXPECTED_SKILLS = [
     'bridge',
     'clear',
     'collect',
+    'construction',
     'craft',
     'deposit',
     'dig-shelter',

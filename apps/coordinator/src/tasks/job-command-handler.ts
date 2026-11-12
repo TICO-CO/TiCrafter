@@ -117,6 +117,8 @@ export class JobCommandHandler {
             target: offer.target,
             requiredRole: offer.requiredRole,
             distance: offer.distance,
+            ...(offer.projectId === undefined ? {} : { projectId: offer.projectId }),
+            ...(offer.structureId === undefined ? {} : { structureId: offer.structureId }),
         };
     }
 
@@ -145,6 +147,15 @@ export class JobCommandHandler {
                 payload: assignment.task.payload,
                 target: assignment.task.target,
                 requiredRole: assignment.task.requiredRole,
+                ...(assignment.task.projectId === undefined
+                    ? {}
+                    : { projectId: assignment.task.projectId }),
+                ...(assignment.task.structureId === undefined
+                    ? {}
+                    : { structureId: assignment.task.structureId }),
+                ...(assignment.task.workPackageId === undefined
+                    ? {}
+                    : { workPackageId: assignment.task.workPackageId }),
             },
             fencingToken: assignment.fencingToken,
             leaseUntil: assignment.leaseUntil,

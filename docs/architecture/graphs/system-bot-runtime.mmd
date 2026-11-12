@@ -6,160 +6,168 @@ n56["World Cache Adapter"]
 n126["Shelter Inspector"]
 n127["Reach and Rate Guard"]
 n57["Action Executor"]
-n128["State Digest Collector"]
+n128["Building Execution Service"]
+n129["Blueprint Fetch Client"]
+n130["Construction Source"]
+n131["State Digest Collector"]
 n58["Guardian Hook"]
 n59["Skill Host"]
-n129["Perception Host"]
+n132["Perception Host"]
 n60["Agent Loop"]
 n61["Chat Adapter"]
-n130["Agency State Adapter"]
+n133["Agency State Adapter"]
 n62["Reconnect Supervisor"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n149["Affordance Enumerator (Brains)"]
-n161["Config Schema Validator (Config and Profiles)"]
+n152["Affordance Enumerator (Brains)"]
+n164["Config Schema Validator (Config and Profiles)"]
 n24(["Minecraft 1.20.1 LAN Server"])
 n70["Deterministic Policy (Brains)"]
-n179["Block Update Listener (Perception)"]
+n182["Block Update Listener (Perception)"]
 n69["Reflex Guardian Loop (Brains)"]
-n167["Profile Resolver (Config and Profiles)"]
-n246["Detector Pipeline (Perception)"]
-n239["Ring Sampler (Perception)"]
-n192["Delta Sync Planner (Bot Registry and Profiles)"]
-n173["Reconnect Supervisor (Transport and Protocol)"]
+n170["Profile Resolver (Config and Profiles)"]
+n249["Detector Pipeline (Perception)"]
+n242["Ring Sampler (Perception)"]
+n195["Delta Sync Planner (Bot Registry and Profiles)"]
+n176["Reconnect Supervisor (Transport and Protocol)"]
 n84["Skill Lifecycle Executor (Skill Runtime)"]
 n85["Skill Tick Scheduler (Skill Runtime)"]
-n171["Event Stream (Transport and Protocol)"]
+n174["Event Stream (Transport and Protocol)"]
 n52["Skill Context Builder (Skill Runtime)"]
 n53["Block Executor (Building)"]
 n109["Container Refill Adapter (Building)"]
 n106["Reachability and Scaffold Planner (Building)"]
 n67["Pause and Resume Controller (Ops and Observability)"]
 n65["Emergency Stop Controller (Autonomy and Safety)"]
-n257["Collect (Skill Library)"]
-n253["Craft (Skill Library)"]
-n235["Deposit (Skill Library)"]
-n259["Eat (Skill Library)"]
-n261["Flee or Defend (Skill Library)"]
-n202["Harvest Farm (Skill Library)"]
-n256["Mine (Skill Library)"]
-n254["Navigate (Skill Library)"]
-n203["Plant Farm (Skill Library)"]
-n260["Sleep (Skill Library)"]
-n258["Smelt (Skill Library)"]
-n238["Withdraw (Skill Library)"]
+n260["Collect (Skill Library)"]
+n256["Craft (Skill Library)"]
+n238["Deposit (Skill Library)"]
+n262["Eat (Skill Library)"]
+n264["Flee or Defend (Skill Library)"]
+n205["Harvest Farm (Skill Library)"]
+n259["Mine (Skill Library)"]
+n257["Navigate (Skill Library)"]
+n206["Plant Farm (Skill Library)"]
+n263["Sleep (Skill Library)"]
+n261["Smelt (Skill Library)"]
+n241["Withdraw (Skill Library)"]
 n33["Bot Process Supervisor (Coordinator Runtime)"]
-n273["Goal Arbiter (Agency)"]
-n274["Intention Manager (Agency)"]
-n228["Agency State (Agency)"]
+n277["Goal Arbiter (Agency)"]
+n278["Intention Manager (Agency)"]
+n231["Agency State (Agency)"]
 n71["Laya Client (Brains)"]
-n275["Social Engine (Agency)"]
-n225["Agency State Store (Bot Registry and Profiles)"]
-n276["Agent Episode Repository (Memory and Persistence)"]
-n266["Entity Targeting (Skill Library)"]
-n267["Equip Gear (Skill Library)"]
-n268["Gather Food (Skill Library)"]
-n269["Gather Wool (Skill Library)"]
-n270["Place Bed (Skill Library)"]
-n271["Dig Shelter (Skill Library)"]
+n279["Social Engine (Agency)"]
+n228["Agency State Store (Bot Registry and Profiles)"]
+n280["Agent Episode Repository (Memory and Persistence)"]
+n270["Entity Targeting (Skill Library)"]
+n271["Equip Gear (Skill Library)"]
+n272["Gather Food (Skill Library)"]
+n273["Gather Wool (Skill Library)"]
+n274["Place Bed (Skill Library)"]
+n275["Dig Shelter (Skill Library)"]
+n267["Construction (Skill Library)"]
+n173["Request Correlator (Transport and Protocol)"]
 n57 -->|depends_on| n54
 n57 -->|depends_on| n127
 n57 -->|depends_on| n63
-n149 -->|depends_on| n56
-n149 -->|depends_on| n69
-n54 -->|depends_on| n161
+n152 -->|depends_on| n56
+n152 -->|depends_on| n69
+n54 -->|depends_on| n164
 n54 -->|depends_on| n24
-n70 -->|depends_on| n149
-n70 -->|depends_on| n128
-n70 -->|subscribes| n171
+n70 -->|depends_on| n152
+n70 -->|depends_on| n131
+n70 -->|subscribes| n174
 n55 -->|depends_on| n54
-n55 -->|delegates_to| n179
+n55 -->|delegates_to| n182
 n58 -->|depends_on| n63
 n58 -->|delegates_to| n69
 n125 -->|depends_on| n54
-n125 -->|depends_on| n167
-n129 -->|depends_on| n246
-n129 -->|depends_on| n239
-n127 -->|depends_on| n161
+n125 -->|depends_on| n170
+n132 -->|depends_on| n249
+n132 -->|depends_on| n242
+n127 -->|depends_on| n164
 n62 -->|depends_on| n54
-n62 -->|delegates_to| n192
-n62 -->|depends_on| n173
+n62 -->|delegates_to| n195
+n62 -->|depends_on| n176
 n59 -->|depends_on| n84
 n59 -->|depends_on| n85
-n128 -->|depends_on| n54
-n128 -->|depends_on| n56
-n128 -->|publishes| n171
+n131 -->|depends_on| n54
+n131 -->|depends_on| n56
+n131 -->|publishes| n174
 n56 -->|depends_on| n55
-n56 -->|delegates_to| n239
+n56 -->|delegates_to| n242
 n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
 n53 -->|depends_on| n63
 n109 -->|depends_on| n57
 n106 -->|reads| n56
-n167 -->|depends_on| n161
+n170 -->|depends_on| n164
 n67 -->|controls| n59
-n67 -->|depends_on| n171
+n67 -->|depends_on| n174
 n63 -->|validates| n57
 n63 -->|validates| n53
 n63 -->|reads| n69
 n65 -->|controls| n57
-n65 -->|depends_on| n171
+n65 -->|depends_on| n174
 n69 -->|controls| n63
 n52 -->|reads| n56
 n84 -->|depends_on| n52
 n85 -->|reads| n69
 n85 -->|depends_on| n84
-n257 -->|depends_on| n57
-n257 -->|depends_on| n256
-n257 -->|depends_on| n254
-n253 -->|depends_on| n57
-n253 -->|depends_on| n52
-n235 -->|depends_on| n57
-n259 -->|depends_on| n57
-n261 -->|depends_on| n57
-n261 -->|depends_on| n254
-n202 -->|depends_on| n57
-n202 -->|depends_on| n254
-n256 -->|depends_on| n57
-n256 -->|depends_on| n254
-n254 -->|depends_on| n57
-n203 -->|depends_on| n57
-n203 -->|depends_on| n254
 n260 -->|depends_on| n57
-n260 -->|depends_on| n254
-n258 -->|depends_on| n57
-n258 -->|depends_on| n254
+n260 -->|depends_on| n259
+n260 -->|depends_on| n257
+n256 -->|depends_on| n57
+n256 -->|depends_on| n52
 n238 -->|depends_on| n57
+n262 -->|depends_on| n57
+n264 -->|depends_on| n57
+n264 -->|depends_on| n257
+n205 -->|depends_on| n57
+n205 -->|depends_on| n257
+n259 -->|depends_on| n57
+n259 -->|depends_on| n257
+n257 -->|depends_on| n57
+n206 -->|depends_on| n57
+n206 -->|depends_on| n257
+n263 -->|depends_on| n57
+n263 -->|depends_on| n257
+n261 -->|depends_on| n57
+n261 -->|depends_on| n257
+n241 -->|depends_on| n57
 n33 -->|controls| n54
-n71 -->|depends_on| n149
+n71 -->|depends_on| n152
 n71 -->|depends_on| n70
-n179 -->|publishes| n171
-n60 -->|depends_on| n273
-n60 -->|depends_on| n274
-n60 -->|depends_on| n228
+n182 -->|publishes| n174
+n60 -->|depends_on| n277
+n60 -->|depends_on| n278
+n60 -->|depends_on| n231
 n60 -->|delegates_to| n71
 n60 -->|delegates_to| n70
-n60 -->|depends_on| n128
+n60 -->|depends_on| n131
 n60 -->|delegates_to| n59
-n61 -->|depends_on| n275
-n61 -->|publishes| n171
-n130 -->|persists_to| n225
-n60 -->|persists_to| n276
-n274 -->|depends_on| n273
-n228 -->|depends_on| n274
-n275 -->|proposes_to| n61
-n225 -->|depends_on| n228
-n266 -->|depends_on| n56
-n267 -->|depends_on| n57
-n268 -->|depends_on| n266
-n268 -->|depends_on| n57
-n268 -->|depends_on| n56
-n269 -->|depends_on| n266
-n269 -->|depends_on| n57
-n269 -->|depends_on| n56
-n270 -->|depends_on| n57
+n61 -->|depends_on| n279
+n61 -->|publishes| n174
+n133 -->|persists_to| n228
+n60 -->|persists_to| n280
+n278 -->|depends_on| n277
+n231 -->|depends_on| n278
+n279 -->|proposes_to| n61
+n228 -->|depends_on| n231
+n270 -->|depends_on| n56
 n271 -->|depends_on| n57
+n272 -->|depends_on| n270
+n272 -->|depends_on| n57
+n272 -->|depends_on| n56
+n273 -->|depends_on| n270
+n273 -->|depends_on| n57
+n273 -->|depends_on| n56
+n274 -->|depends_on| n57
+n275 -->|depends_on| n57
 n126 -->|depends_on| n56
+n267 -->|depends_on| n128
+n130 -->|depends_on| n129
+n129 -->|depends_on| n173
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n54,n125,n55,n56,n126,n127,n57,n128,n58,n59,n129,n60,n61,n130,n62 internal;
-class n63,n149,n161,n70,n179,n69,n167,n246,n239,n192,n173,n84,n85,n171,n52,n53,n109,n106,n67,n65,n257,n253,n235,n259,n261,n202,n256,n254,n203,n260,n258,n238,n33,n273,n274,n228,n71,n275,n225,n276,n266,n267,n268,n269,n270,n271,n24 external;
+class n54,n125,n55,n56,n126,n127,n57,n128,n129,n130,n131,n58,n59,n132,n60,n61,n133,n62 internal;
+class n63,n152,n164,n70,n182,n69,n170,n249,n242,n195,n176,n84,n85,n174,n52,n53,n109,n106,n67,n65,n260,n256,n238,n262,n264,n205,n259,n257,n206,n263,n261,n241,n33,n277,n278,n231,n71,n279,n228,n280,n270,n271,n272,n273,n274,n275,n267,n173,n24 external;

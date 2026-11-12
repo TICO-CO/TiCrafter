@@ -11,6 +11,7 @@ const skillBuildTargetSchema = zod.object({
     position: positionSchema,
     itemName: zod.string().min(1),
     expectedBlockId: zod.string().min(1).optional(),
+    properties: zod.record(zod.string(), zod.string()).optional(),
 });
 
 const skillGrantSchema = zod.object({
@@ -62,6 +63,12 @@ export const skillInputSchema = zod.object({
     plotId: zod.string().min(1).optional(),
     schematic: skillSchematicRefSchema.optional(),
     grant: skillGrantSchema.optional(),
+    blueprintId: zod.string().min(1).optional(),
+    blueprintRevision: zod.number().int().nonnegative().optional(),
+    workPackageId: zod.string().min(1).optional(),
+    structureId: zod.string().min(1).optional(),
+    claimId: zod.string().min(1).optional(),
+    fencingToken: zod.number().int().nonnegative().optional(),
 });
 
 export const botSkillStartSchema = zod.object({

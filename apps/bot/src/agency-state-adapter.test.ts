@@ -31,6 +31,11 @@ function payload(source: AgencyState): AgencyStatePayload {
         personalStorageId: snapshot.personalStorageId,
         mood: snapshot.mood,
         lastDeliberationAt: snapshot.lastDeliberationAt,
+        workingMemory: {
+            ...snapshot.workingMemory,
+            commitments: [...snapshot.workingMemory.commitments],
+            recentExperiences: [...snapshot.workingMemory.recentExperiences],
+        },
     };
 }
 
@@ -69,6 +74,22 @@ describe('agency state adapter', () => {
         expect(restoreError).toBeNull();
         expect(restored?.snapshot.intention?.goalId).toBe(original.snapshot.intention?.goalId);
         expect(restored?.snapshot.needs.levels.hunger).toBe(0.4);
+    });
+
+    it('restores old payloads without working memory', () => {
+        const original = state();
+        expect(original).not.toBeNull();
+        if (original === null) return;
+        const legacy = payload(original);
+        delete legacy.workingMemory;
+        const [restored, restoreError] = new AgencyStateAdapter({
+            botId: 'bot.one',
+            events: new FakeSink(),
+            logger,
+        }).restore(legacy);
+        expect(restoreError).toBeNull();
+        expect(restored?.snapshot.workingMemory.revision).toBe(0);
+        expect(restored?.snapshot.workingMemory.focus).toBeNull();
     });
 
     it('rejects missing needs and emits state and episode events', () => {

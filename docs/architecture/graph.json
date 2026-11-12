@@ -3085,6 +3085,31 @@
                     "template": "tpl.skill"
                 },
                 {
+                    "id": "skills.construction",
+                    "name": "Construction",
+                    "responsibility": "Execute an ordered construction plan through verified block changes and scaffold cleanup.",
+                    "plannedPath": "packages/skills/src/construction",
+                    "provides": ["skills.construction.interface"],
+                    "requires": [
+                        "bot-runtime.building-execution-service",
+                        "building.construction-plan-planner",
+                        "building.schematic-diff",
+                        "skill-runtime.context-builder"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "skills_construction_errors_total",
+                        "skills_construction_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "Construction restores by re-diffing the world instead of replaying stale coordinates.",
+                        "Every block change carries claim, grant, blueprint revision, and fencing attribution."
+                    ]
+                },
+                {
                     "id": "skills.schematic-build",
                     "name": "Schematic Build",
                     "responsibility": "Execute a schematic-backed blueprint with diffing and partitioning.",
@@ -4047,6 +4072,79 @@
                     "template": "tpl.bot-adapter",
                     "invariants": [
                         "The action executor is the only path to mineflayer and enforces reach and action-rate limits."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.building-execution-service",
+                    "name": "Building Execution Service",
+                    "responsibility": "Prepare, verify, journal, and complete block changes for construction skills.",
+                    "plannedPath": "apps/bot/src/building-execution-service",
+                    "provides": ["bot-runtime.building-execution-service.interface"],
+                    "requires": [
+                        "building.block-executor",
+                        "building.rollback-journal",
+                        "safety.action-veto-gate",
+                        "bot-runtime.world-cache-adapter"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_building_execution_service_errors_total",
+                        "bot_runtime_building_execution_service_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage",
+                    "invariants": [
+                        "Block changes are verified before and after execution and journaled with attribution.",
+                        "Claim fencing tokens are required whenever a claim id is present."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.blueprint-fetch-client",
+                    "name": "Blueprint Fetch Client",
+                    "responsibility": "Fetch and cache exact blueprint document revisions from the coordinator.",
+                    "plannedPath": "apps/bot/src/blueprint-fetch-client",
+                    "provides": ["bot-runtime.blueprint-fetch-client.interface"],
+                    "requires": [
+                        "transport.message-schema-registry",
+                        "transport.request-correlator"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_blueprint_fetch_client_errors_total",
+                        "bot_runtime_blueprint_fetch_client_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Blueprint fetches require an exact id and revision and never fall back to the latest revision.",
+                        "Fetched documents are hash-checked before caching."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.construction-source",
+                    "name": "Construction Source",
+                    "responsibility": "Derive site, foundation, dependency, package, scaffold, and replacement operations for a fetched blueprint.",
+                    "plannedPath": "apps/bot/src/construction-source",
+                    "provides": ["bot-runtime.construction-source.interface"],
+                    "requires": [
+                        "building.construction-plan-planner",
+                        "building.site-planner",
+                        "bot-runtime.world-cache-adapter",
+                        "bot-runtime.blueprint-fetch-client"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_construction_source_errors_total",
+                        "bot_runtime_construction_source_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage",
+                    "invariants": [
+                        "Construction planning starts from a cached exact blueprint revision.",
+                        "Mismatched existing blocks become break-then-place operations."
                     ]
                 },
                 {
@@ -5764,16 +5862,59 @@
                     ]
                 },
                 {
+                    "id": "agency.working-memory",
+                    "name": "Working Memory",
+                    "responsibility": "Track bounded focus, commitments, interruption, recent experience, and tactical revision for continuity across goals and restarts.",
+                    "plannedPath": "packages/agency/src/working-memory",
+                    "provides": ["agency.working-memory.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_working_memory_errors_total",
+                        "agency_working_memory_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#11-autonomy-loop-and-safety"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "The revision increments on every focus, commitment, interruption, and experience change.",
+                        "Commitments and recent experiences stay within their configured bounds.",
+                        "Missing persisted working memory restores to an empty memory."
+                    ]
+                },
+                {
+                    "id": "agency.project-focus",
+                    "name": "Project Focus Policy",
+                    "responsibility": "Keep long-lived project focus as agency focus while allowing bounded survival and routine interruptions.",
+                    "plannedPath": "packages/agency/src/project-focus",
+                    "provides": ["agency.project-focus.interface"],
+                    "requires": ["agency.working-memory"],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_project_focus_errors_total",
+                        "agency_project_focus_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 13,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Project focus never creates a second goal manager.",
+                        "Project sub-work does not replace project focus.",
+                        "Survival goals may interrupt project focus and restore it when complete."
+                    ]
+                },
+                {
                     "id": "agency.agency-state",
                     "name": "Agency State",
-                    "responsibility": "Aggregate personality, needs, intention, routine, home, mood, and deliberation status into one snapshot.",
+                    "responsibility": "Aggregate personality, needs, intention, routine, home, mood, working memory, and deliberation status into one snapshot.",
                     "plannedPath": "packages/agency/src/agency-state",
                     "provides": ["agency.agency-state.interface"],
                     "requires": [
                         "agency.needs-model",
                         "agency.personality-model",
                         "agency.intention-manager",
-                        "agency.routine-model"
+                        "agency.routine-model",
+                        "agency.working-memory"
                     ],
                     "ownsState": [],
                     "metrics": [
@@ -12896,6 +13037,32 @@
             "notes": "Agency state aggregates routine state."
         },
         {
+            "id": "rel.0581",
+            "from": "agency.agency-state",
+            "to": "agency.working-memory",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "working memory snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Restore empty working memory when the persisted field is missing.",
+            "notes": "Agency state embeds bounded working memory.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0582",
+            "from": "agency.project-focus",
+            "to": "agency.working-memory",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "focus and interruption state",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Keep the current focus and skip project-focus gating.",
+            "notes": "Project focus is represented in working memory.",
+            "explicit": true
+        },
+        {
             "id": "rel.0531",
             "from": "agency.social-engine",
             "to": "bot-runtime.chat-adapter",
@@ -13464,6 +13631,58 @@
             "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
             "notes": "Shelter Inspector depends on World Cache Adapter.",
             "explicit": false
+        },
+        {
+            "id": "rel.0575",
+            "from": "skills.construction",
+            "to": "bot-runtime.building-execution-service",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "prepared block actions and completion outcomes",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the construction step and preserve the task lease.",
+            "notes": "Construction skill delegates verified block execution.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0576",
+            "from": "skills.construction",
+            "to": "building.construction-plan-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "construction plan and work packages",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the construction step with an execution failure.",
+            "notes": "Construction skill consumes the derived construction plan.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0579",
+            "from": "bot-runtime.construction-source",
+            "to": "bot-runtime.blueprint-fetch-client",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "cached blueprint document",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail construction resolution when the exact revision is not cached.",
+            "notes": "Construction source resolves exact blueprint revisions.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0580",
+            "from": "bot-runtime.blueprint-fetch-client",
+            "to": "transport.request-correlator",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "blueprint fetch request correlation",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return a typed transport failure and leave the cache unchanged.",
+            "notes": "Blueprint fetch requests are correlated over the bot transport.",
+            "explicit": true
         }
     ]
 }

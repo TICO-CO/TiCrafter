@@ -1,4 +1,11 @@
-import { type Intention, NeedsModel, PersonalityModel, type RoutineState } from '@ticrafter/agency';
+import {
+    type Intention,
+    NeedsModel,
+    PersonalityModel,
+    type RoutineState,
+    type WorkingMemory,
+    WorkingMemoryModel,
+} from '@ticrafter/agency';
 import { type AgencyStatePayload, agencyStateSchema, attempt, type Result } from '@ticrafter/core';
 import { type StorageFailure, StorageFailures } from '@ticrafter/memory';
 
@@ -14,6 +21,7 @@ export interface AgencyStateRecord {
     personalStorageId: string | null;
     mood: string;
     lastDeliberationAt: string | null;
+    workingMemory: WorkingMemory;
     updatedAt: string;
 }
 
@@ -58,6 +66,11 @@ export class AgencyStateStore implements AgencyStateStorePort {
         const [needs, needsError] = NeedsModel.restore(snapshot.needs);
         if (needsError) return [null, StorageFailures.from('WRITE_FAILED', needsError)];
         if (needs === null) return [null, StorageFailures.from('WRITE_FAILED', 'needs missing')];
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(snapshot.workingMemory);
+        if (memoryError) return [null, StorageFailures.from('WRITE_FAILED', memoryError)];
+        if (workingMemory === null) {
+            return [null, StorageFailures.from('WRITE_FAILED', 'working memory missing')];
+        }
         return this.save({
             botId,
             traits,
@@ -68,6 +81,7 @@ export class AgencyStateStore implements AgencyStateStorePort {
             personalStorageId: snapshot.personalStorageId,
             mood: snapshot.mood,
             lastDeliberationAt: snapshot.lastDeliberationAt,
+            workingMemory: workingMemory.snapshot,
             updatedAt,
         });
     }
@@ -98,6 +112,7 @@ export class AgencyStateStore implements AgencyStateStorePort {
             personalStorageId: record.personalStorageId,
             mood: record.mood,
             lastDeliberationAt: record.lastDeliberationAt,
+            workingMemory: record.workingMemory,
         };
     }
 
@@ -116,6 +131,11 @@ export class AgencyStateStore implements AgencyStateStorePort {
         const [needs, needsError] = NeedsModel.restore(parsed.data.needs);
         if (needsError) return [null, StorageFailures.from('READ_FAILED', needsError)];
         if (needs === null) return [null, StorageFailures.from('READ_FAILED', 'needs missing')];
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(parsed.data.workingMemory);
+        if (memoryError) return [null, StorageFailures.from('READ_FAILED', memoryError)];
+        if (workingMemory === null) {
+            return [null, StorageFailures.from('READ_FAILED', 'working memory missing')];
+        }
         return [
             {
                 botId: row.bot_id,
@@ -127,6 +147,7 @@ export class AgencyStateStore implements AgencyStateStorePort {
                 personalStorageId: parsed.data.personalStorageId,
                 mood: parsed.data.mood,
                 lastDeliberationAt: parsed.data.lastDeliberationAt,
+                workingMemory: workingMemory.snapshot,
                 updatedAt: row.updated_at,
             },
             null,

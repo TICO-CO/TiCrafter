@@ -159,10 +159,32 @@ export class TaskCommandHandler {
                 payload: lease.task.payload,
                 target: lease.task.target,
                 requiredRole: lease.task.requiredRole,
+                ...TaskCommandHandler.taskMetadata(lease.task.payload),
             },
             fencingToken: lease.fencingToken,
             leaseUntil: lease.leaseUntil,
         };
+    }
+
+    private static taskMetadata(payload: Readonly<Record<string, unknown>>): {
+        projectId?: string;
+        structureId?: string;
+        workPackageId?: string;
+    } {
+        return {
+            ...TaskCommandHandler.metadataField(payload, 'projectId'),
+            ...TaskCommandHandler.metadataField(payload, 'structureId'),
+            ...TaskCommandHandler.metadataField(payload, 'workPackageId'),
+        };
+    }
+
+    private static metadataField(
+        payload: Readonly<Record<string, unknown>>,
+        key: 'projectId' | 'structureId' | 'workPackageId',
+    ): { [K in typeof key]?: string } {
+        const value = payload[key];
+        if (typeof value !== 'string' || value.length === 0) return {};
+        return { [key]: value } as { [K in typeof key]?: string };
     }
 
     private failure(reason: string): BotTaskResponse {

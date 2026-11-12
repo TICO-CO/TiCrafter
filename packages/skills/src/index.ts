@@ -4,6 +4,7 @@ export * from './bridge-plan.js';
 export * from './checkpoint-manager.js';
 export * from './clear.js';
 export * from './collect.js';
+export * from './construction.js';
 export * from './context-builder.js';
 export * from './craft.js';
 export * from './deposit.js';

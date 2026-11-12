@@ -1,4 +1,4 @@
-import { NeedsModel, PersonalityModel } from '@ticrafter/agency';
+import { NeedsModel, PersonalityModel, WorkingMemoryModel } from '@ticrafter/agency';
 import { afterEach, describe, expect, it } from 'bun:test';
 
 import { CoordinatorTestSupport } from '../testing/index.js';
@@ -32,6 +32,7 @@ function record() {
         homeStructureId: null,
         personalStorageId: null,
         mood: 'calm',
+        workingMemory: WorkingMemoryModel.create().snapshot,
         lastDeliberationAt: '2026-11-11T12:00:00.000Z',
         updatedAt: '2026-11-11T12:00:00.000Z',
     };
@@ -53,6 +54,34 @@ describe('agency state store', () => {
         expect(loaded?.needs.levels.hunger).toBe(0.3);
         expect(loaded?.intention?.attempts).toBe(1);
         expect(loaded?.routine.lastRestAt).toBe('2026-11-11T06:00:00.000Z');
+        expect(loaded?.workingMemory.revision).toBe(0);
+    });
+
+    it('restores old rows without working memory', () => {
+        const [database, openError] = CoordinatorTestSupport.openDatabase();
+        expect(openError).toBeNull();
+        if (database === null) return;
+        const store = new AgencyStateStore(database);
+        const saved = record();
+        expect(saved).not.toBeNull();
+        if (saved === null) return;
+        const encoded = {
+            traits: saved.traits.traits,
+            needs: saved.needs.levels,
+            intention: null,
+            routine: saved.routine,
+            homeStructureId: null,
+            personalStorageId: null,
+            mood: 'calm',
+            lastDeliberationAt: null,
+        };
+        database
+            .prepare('INSERT INTO agent_state (bot_id, state_json, updated_at) VALUES (?, ?, ?)')
+            .run(saved.botId, JSON.stringify(encoded), saved.updatedAt);
+        const [loaded, loadError] = store.load(saved.botId);
+        expect(loadError).toBeNull();
+        expect(loaded?.workingMemory.focus).toBeNull();
+        expect(loaded?.workingMemory.revision).toBe(0);
     });
 
     it('stores live snapshots and rejects malformed rows', () => {
