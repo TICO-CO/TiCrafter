@@ -1,7 +1,14 @@
 import { type ActionRequest, assertNever, type Vec3 } from '@ticrafter/core';
 
 import { SafetySignals } from './signals.js';
-import type { RecoveryStep, SafetySignal, SafetySnapshot } from './types.js';
+import type {
+    RecoveryStep,
+    SafetyBoundingBox,
+    SafetyClaimRegion,
+    SafetyGrantRegion,
+    SafetySignal,
+    SafetySnapshot,
+} from './types.js';
 
 export interface SafetyRuleResult {
     signal: SafetySignal;
@@ -54,6 +61,88 @@ export class MaterialBanRule implements SafetyRule {
             default:
                 return assertNever(kind);
         }
+    }
+}
+
+export class ClaimBoundaryRule implements SafetyRule {
+    evaluate(snapshot: SafetySnapshot, request: ActionRequest): SafetyRuleResult | null {
+        const target = this.target(request);
+        if (target === null) return null;
+        const claims = snapshot.world
+            .claims()
+            .filter(
+                (claim) =>
+                    ClaimBoundaryRule.active(claim, snapshot.at) &&
+                    ClaimBoundaryRule.contains(claim.bbox, target.position),
+            );
+        if (claims.some((claim) => claim.ownerBotId === snapshot.botId)) return null;
+        const grant = snapshot.world
+            .grants()
+            .find(
+                (candidate) =>
+                    candidate.granteeBotId === snapshot.botId &&
+                    ClaimBoundaryRule.active(candidate, snapshot.at) &&
+                    ClaimBoundaryRule.contains(candidate.bbox, target.position),
+            );
+        if (grant !== undefined) {
+            if (!grant.allowedOps.includes(target.operation)) {
+                return {
+                    signal: SafetySignals.grantScope(grant.id),
+                    recovery: { kind: 'safe-mode', reason: `grant ${grant.id} operation denied` },
+                };
+            }
+            return null;
+        }
+        const claim = claims[0];
+        if (claim === undefined) return null;
+        return {
+            signal: SafetySignals.claimConflict(claim.id),
+            recovery: { kind: 'safe-mode', reason: `claim ${claim.id} collision` },
+        };
+    }
+
+    private target(
+        request: ActionRequest,
+    ): { operation: 'place' | 'break'; position: Vec3 } | null {
+        const kind = request.kind;
+        switch (kind) {
+            case 'place-block':
+                return { operation: 'place', position: request.position };
+            case 'break-block':
+                return { operation: 'break', position: request.position };
+            case 'move-to':
+            case 'follow-path':
+            case 'use-block':
+            case 'attack':
+            case 'use-entity':
+            case 'equip':
+            case 'consume':
+            case 'craft':
+            case 'collect-drops':
+            case 'transfer':
+            case 'wait':
+                return null;
+            default:
+                return assertNever(kind);
+        }
+    }
+
+    private static active(region: SafetyClaimRegion | SafetyGrantRegion, at: string): boolean {
+        const expiresAt = Date.parse(region.expiresAt);
+        const evaluatedAt = Date.parse(at);
+        if (!Number.isFinite(expiresAt) || !Number.isFinite(evaluatedAt)) return false;
+        return expiresAt > evaluatedAt;
+    }
+
+    private static contains(bbox: SafetyBoundingBox, position: Vec3): boolean {
+        return (
+            position.x >= bbox.min.x &&
+            position.x <= bbox.max.x &&
+            position.y >= bbox.min.y &&
+            position.y <= bbox.max.y &&
+            position.z >= bbox.min.z &&
+            position.z <= bbox.max.z
+        );
     }
 }
 

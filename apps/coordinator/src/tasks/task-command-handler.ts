@@ -7,6 +7,8 @@ import {
     type Envelope,
     type LoggerPort,
     ProtocolEnvelope,
+    type Result,
+    type SafetyContext,
     TASK_RESPONSE,
     type TransportFailure,
 } from '@ticrafter/core';
@@ -15,12 +17,17 @@ import type { ClientConnection, TransportServer } from '../transport/index.js';
 import type { TaskBoard } from './task-board.js';
 import type { TaskFailure, TaskLease, TaskRecord } from './types.js';
 
+export interface TaskSafetyContextPort {
+    context(botId: string, activeClaimId?: string): Result<SafetyContext, string>;
+}
+
 export class TaskCommandHandler {
     constructor(
         private readonly tasks: TaskBoard,
         private readonly transport: TransportServer,
         private readonly logger: LoggerPort,
         private readonly onCompleted?: (task: TaskRecord) => void,
+        private readonly safety?: TaskSafetyContextPort,
     ) {}
 
     handleClaim(connection: ClientConnection, request: BotTaskClaim, envelope: Envelope): void {
@@ -151,6 +158,7 @@ export class TaskCommandHandler {
                 leaseUntil: null,
             };
         }
+        const safety = this.safetyFor(lease);
         return {
             ok: true,
             taskId: lease.task.id,
@@ -162,10 +170,25 @@ export class TaskCommandHandler {
                 target: lease.task.target,
                 requiredRole: lease.task.requiredRole,
                 ...TaskCommandHandler.taskMetadata(lease.task.payload),
+                ...(safety === null ? {} : { safety }),
             },
             fencingToken: lease.fencingToken,
             leaseUntil: lease.leaseUntil,
         };
+    }
+
+    private safetyFor(lease: TaskLease): SafetyContext | null {
+        if (this.safety === undefined) return null;
+        const claimId = lease.task.payload.claimId;
+        const [context, contextError] = this.safety.context(
+            lease.task.claimedBy ?? '',
+            typeof claimId === 'string' ? claimId : undefined,
+        );
+        if (contextError) {
+            this.logger.warn({ error: contextError }, 'task safety context unavailable');
+            return null;
+        }
+        return context;
     }
 
     private static taskMetadata(payload: Readonly<Record<string, unknown>>): {

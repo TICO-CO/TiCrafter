@@ -96,6 +96,16 @@ describe('GrantService', () => {
         expect(grant?.grantedBy).toBe('coordinator');
     });
 
+    it('lists active grants only for the requesting bot', () => {
+        const service = fresh();
+        service.request(request(), now);
+        const [helperGrants, helperError] = service.listActiveForBot('bot.helper', now);
+        expect(helperError).toBeNull();
+        expect(helperGrants?.map((grant) => grant.id)).toEqual(['grant-1']);
+        const [otherGrants] = service.listActiveForBot('bot.other', now);
+        expect(otherGrants).toEqual([]);
+    });
+
     it('denies private structures to non-owners', () => {
         const service = fresh({
             sip: {

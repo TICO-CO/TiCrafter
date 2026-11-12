@@ -2,6 +2,7 @@ import type { ActionRequest } from '@ticrafter/core';
 
 import {
     ActiveBotSupportRule,
+    ClaimBoundaryRule,
     MaterialBanRule,
     ProtectedBboxRule,
     type SafetyRule,
@@ -14,6 +15,7 @@ export class SafetyPolicyEngine {
         private readonly rules: readonly SafetyRule[] = [
             new MaterialBanRule(),
             new ProtectedBboxRule(),
+            new ClaimBoundaryRule(),
             new ActiveBotSupportRule(),
         ],
     ) {}

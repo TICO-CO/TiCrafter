@@ -164,6 +164,34 @@ describe('safety snapshot source', () => {
         expect(snapshot.world.isProtected({ x: 4, y: 64, z: 0 })).toBe(false);
     });
 
+    it('exposes claim and grant regions for collision checks', () => {
+        const state = createBot();
+        const claim = {
+            id: 'claim.other',
+            ownerBotId: 'bot.tibot2',
+            structureId: 'structure.home',
+            bbox: { min: { x: 0, y: 60, z: 0 }, max: { x: 4, y: 70, z: 4 } },
+            expiresAt: '2026-11-12T11:00:00.000Z',
+        };
+        const grant = {
+            id: 'grant.1',
+            granteeBotId: 'bot.tibot1',
+            structureId: 'structure.home',
+            bbox: { min: { x: 0, y: 60, z: 0 }, max: { x: 4, y: 70, z: 4 } },
+            expiresAt: '2026-11-12T11:00:00.000Z',
+            allowedOps: ['place' as const, 'break' as const],
+        };
+        const source = new SafetySnapshotSource(state.bot, worldCache, () => null, {
+            claimsSource: () => [claim],
+            grantsSource: () => [grant],
+        });
+
+        const snapshot = readSnapshot(source);
+
+        expect(snapshot.world.claims()).toEqual([claim]);
+        expect(snapshot.world.grants()).toEqual([grant]);
+    });
+
     it('uses the fixed player inventory size', () => {
         const state = createBot();
         state.inventorySlots.push(null);

@@ -40,13 +40,14 @@ import {
     PLANNER_STRATEGIC_INTENT_EVENT,
     plannerStrategicIntentEventSchema,
     type Result,
+    type SafetyContext,
     type SessionResume,
     SKILL_PROGRESS_EVENT,
     type StrategicIntent,
     type TicrafterConfig,
 } from '@ticrafter/core';
 import { BlockUpdateListener, PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
-import { type EmergencyStopController } from '@ticrafter/safety';
+import { type EmergencyStopController, type SafetyClaim } from '@ticrafter/safety';
 import {
     MemoryCheckpointStore,
     type SkillCheckpointStore,
@@ -114,6 +115,7 @@ export class BotConnection {
     private autonomyStarted = false;
     private autonomyPausedReason: string | null = null;
     private pendingResume: SessionResume | null = null;
+    private safetyContext: SafetyContext | null = null;
     private homeSnapshot: AgencyHomeSnapshot | null = null;
     private projectSummary: ProjectSummary | null = null;
     private role: string | null = null;
@@ -149,6 +151,7 @@ export class BotConnection {
             return [null, hello.reason ?? 'coordinator rejected session'];
         }
         this.pendingResume = hello.resume ?? null;
+        this.safetyContext = this.pendingResume?.safety ?? null;
         this.homeSnapshot = BotConnection.homeSnapshotFromResume(this.pendingResume);
         this.projectSummary = BotConnection.projectFromResume(this.pendingResume);
         this.pendingStrategicIntent = this.pendingResume?.strategicIntent ?? null;
@@ -199,8 +202,9 @@ export class BotConnection {
             {
                 botNames: this.options.config.botNames,
                 allowDestructiveMaterials: false,
-                claimSource: () => this.taskAutonomy?.activeTaskClaim ?? null,
-                protectedBounds: () => this.taskAutonomy?.activeTaskBounds ?? null,
+                claimSource: () => this.activeSafetyClaim(),
+                claimsSource: () => this.currentSafetyContext().claims,
+                grantsSource: () => this.currentSafetyContext().grants,
                 failureSource: () => {
                     const failure = actionPort.lastFailure;
                     const at = actionPort.lastFailureAt;
@@ -688,6 +692,36 @@ export class BotConnection {
             status: project.status,
             structureId: project.structureId,
         };
+    }
+
+    private currentSafetyContext(): SafetyContext {
+        const contexts = [this.safetyContext, this.taskAutonomy?.activeTaskSafety ?? null].filter(
+            (context): context is SafetyContext => context !== null,
+        );
+        const claims = new Map<string, SafetyContext['claims'][number]>();
+        const grants = new Map<string, SafetyContext['grants'][number]>();
+        let activeClaim: SafetyContext['activeClaim'] = null;
+        for (const context of contexts) {
+            if (context.activeClaim !== null && context.activeClaim !== undefined) {
+                activeClaim = context.activeClaim;
+            }
+            for (const claim of context.claims) claims.set(claim.id, claim);
+            for (const grant of context.grants) grants.set(grant.id, grant);
+        }
+        return {
+            ...(activeClaim === null ? {} : { activeClaim }),
+            claims: [...claims.values()],
+            grants: [...grants.values()],
+        };
+    }
+
+    private activeSafetyClaim(): SafetyClaim | null {
+        const context = this.currentSafetyContext();
+        const active = context.activeClaim;
+        if (active !== null && active !== undefined) {
+            return { id: active.id, expiresAt: active.expiresAt };
+        }
+        return this.taskAutonomy?.activeTaskClaim ?? null;
     }
 
     private readTaskSnapshot(): TaskAutonomySnapshot {

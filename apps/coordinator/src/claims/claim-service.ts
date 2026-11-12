@@ -80,6 +80,37 @@ export class ClaimService {
         );
     }
 
+    renewCoordinated(
+        claimId: string,
+        fencingToken: number,
+        now = new Date().toISOString(),
+        leaseTtlMilliseconds = this.options.leaseTtlMilliseconds ?? 30_000,
+    ): Result<ClaimRecord, ClaimFailure> {
+        const [claim, readError] = this.repository.get(claimId);
+        if (readError) return [null, ClaimFailures.storage(readError)];
+        if (claim === null) return [null, ClaimFailures.claimNotFound(claimId)];
+        if (claim.status !== 'active') {
+            return [null, ClaimFailures.invalidStatus(claimId, claim.status)];
+        }
+        if (claim.fencingToken !== fencingToken) {
+            return [null, ClaimFailures.staleToken(claimId, claim.fencingToken, fencingToken)];
+        }
+        if (claim.resourceType !== 'work_package') {
+            return [
+                null,
+                ClaimFailures.invalidClaim('coordinated renewal requires a work package'),
+            ];
+        }
+        const renewed: ClaimRecord = {
+            ...claim,
+            leaseUntil: new Date(Date.parse(now) + leaseTtlMilliseconds).toISOString(),
+            updatedAt: now,
+        };
+        const [, updateError] = this.repository.update(renewed);
+        if (updateError) return [null, ClaimFailures.storage(updateError)];
+        return [renewed, null];
+    }
+
     release(
         claimId: string,
         botId: string,

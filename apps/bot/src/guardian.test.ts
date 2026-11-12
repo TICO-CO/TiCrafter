@@ -28,6 +28,14 @@ class FakeWorld implements SafetyWorldView {
     claimFor(): SafetyClaim | null {
         return null;
     }
+
+    claims() {
+        return [];
+    }
+
+    grants() {
+        return [];
+    }
 }
 
 class FakeSource {

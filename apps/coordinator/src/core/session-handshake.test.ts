@@ -77,6 +77,52 @@ function connection(): ClientConnection {
     };
 }
 
+describe('SessionHandshake safety context', () => {
+    it('delivers active claim and claim regions on resume', () => {
+        const transport = new FakeTransport();
+        const handshake = new SessionHandshake({
+            epoch: 1,
+            botNames: ['TiBot1'],
+            sessions: new SessionManager(),
+            events: { append: () => [1, null] } as unknown as EventLogWriter,
+            transport: transport as unknown as TransportServer,
+            logger,
+            bots: {
+                authenticate: () => [profile, null],
+                markOnline: () => [profile, null],
+                resume: () => [plan, null],
+            },
+            safety: () => [
+                {
+                    activeClaim: {
+                        id: 'claim.self',
+                        ownerBotId: 'bot.tibot1',
+                        bbox: { min: { x: 0, y: 60, z: 0 }, max: { x: 2, y: 70, z: 2 } },
+                        expiresAt: '2026-11-12T10:00:00.000Z',
+                    },
+                    claims: [],
+                    grants: [],
+                },
+                null,
+            ],
+        });
+
+        handshake.handle(
+            connection(),
+            ProtocolEnvelope.create('request', 'session.hello', {
+                botId: 'bot.tibot1',
+                name: 'TiBot1',
+                version: '0.1.0',
+            }),
+        );
+
+        const response = transport.sent[0]?.payload as {
+            resume?: { safety?: { activeClaim?: { id: string } } };
+        };
+        expect(response.resume?.safety?.activeClaim?.id).toBe('claim.self');
+    });
+});
+
 describe('SessionHandshake strategic intent', () => {
     it('delivers the merged per-bot intent on resume', () => {
         const transport = new FakeTransport();

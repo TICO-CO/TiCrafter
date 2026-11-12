@@ -2,6 +2,8 @@ import type { Result, Vec3 } from '@ticrafter/core';
 import type {
     SafetyActiveBot,
     SafetyClaim,
+    SafetyClaimRegion,
+    SafetyGrantRegion,
     SafetySnapshot,
     SafetyWorldView,
 } from '@ticrafter/safety';
@@ -42,6 +44,8 @@ export interface SafetySnapshotSourceOptions {
     allowDestructiveMaterials?: boolean;
     failureSource?: () => { class: string; at: string } | null;
     claimSource?: () => SafetyClaim | null;
+    claimsSource?: () => readonly SafetyClaimRegion[];
+    grantsSource?: () => readonly SafetyGrantRegion[];
     protectedBounds?: () => SafetyBounds | null;
 }
 
@@ -50,6 +54,8 @@ class BotSafetyWorld implements SafetyWorldView {
         private readonly world: WorldCacheAdapter,
         private readonly activeBotsProvider: () => readonly SafetyActiveBot[],
         private readonly claimProvider: () => SafetyClaim | null,
+        private readonly claimsProvider: () => readonly SafetyClaimRegion[],
+        private readonly grantsProvider: () => readonly SafetyGrantRegion[],
         private readonly boundsProvider: () => SafetyBounds | null,
     ) {}
 
@@ -76,6 +82,14 @@ class BotSafetyWorld implements SafetyWorldView {
 
     claimFor(botId: string): SafetyClaim | null {
         return this.claimProvider();
+    }
+
+    claims(): readonly SafetyClaimRegion[] {
+        return this.claimsProvider();
+    }
+
+    grants(): readonly SafetyGrantRegion[] {
+        return this.grantsProvider();
     }
 }
 
@@ -106,6 +120,8 @@ export class SafetySnapshotSource {
             this.worldCache,
             () => this.detectActiveBots(),
             () => this.options.claimSource?.() ?? null,
+            () => this.options.claimsSource?.() ?? [],
+            () => this.options.grantsSource?.() ?? [],
             () => this.options.protectedBounds?.() ?? null,
         );
         return [

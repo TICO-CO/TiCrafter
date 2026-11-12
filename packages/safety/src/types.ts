@@ -16,6 +16,8 @@ export type SafetySignalCode =
     | 'claim.lost'
     | 'action.material-ban'
     | 'action.protected-region'
+    | 'action.claim-conflict'
+    | 'action.grant-scope'
     | 'action.active-bot-support'
     | 'emergency-stop';
 
@@ -35,11 +37,36 @@ export interface SafetyClaim {
     expiresAt: string;
 }
 
+export interface SafetyBoundingBox {
+    min: Vec3;
+    max: Vec3;
+}
+
+export interface SafetyClaimRegion {
+    id: string;
+    ownerBotId: string;
+    structureId?: string;
+    workPackageId?: string;
+    bbox: SafetyBoundingBox;
+    expiresAt: string;
+}
+
+export interface SafetyGrantRegion {
+    id: string;
+    granteeBotId: string;
+    structureId: string;
+    bbox: SafetyBoundingBox;
+    expiresAt: string;
+    allowedOps: readonly ('place' | 'break')[];
+}
+
 export interface SafetyWorldView {
     blockAt(position: Vec3): string | null;
     isProtected(position: Vec3): boolean;
     activeBots(): readonly SafetyActiveBot[];
     claimFor(botId: string): SafetyClaim | null;
+    claims(): readonly SafetyClaimRegion[];
+    grants(): readonly SafetyGrantRegion[];
 }
 
 export type SafetyHostile = HostileThreatObservation;

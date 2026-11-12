@@ -1,11 +1,12 @@
-import type { BlockUpdateMessage, Result } from '@ticrafter/core';
+import type { BlockUpdateMessage, Result, SafetyContext } from '@ticrafter/core';
 
 import type { ClaimService } from '../claims/index.js';
 import type { GrantService } from '../grants/index.js';
 import { SipGeometry, type SipSnapshot, type SipStructure } from '../sip/index.js';
 
 export type ConstructionEditDecision =
-    { authorized: true } | { authorized: false; reason: string; taskId: string | null };
+    | { authorized: true; via: 'owner' | 'helper' | 'unattributed' }
+    | { authorized: false; reason: string; taskId: string | null };
 
 export interface ConstructionEditAuthorizerOptions {
     claims: ClaimService;
@@ -27,7 +28,7 @@ export class ConstructionEditAuthorizer {
         if (snapshotError) return [null, String(snapshotError)];
         if (snapshot === null) return [null, 'sip snapshot missing'];
         const structure = this.structure(snapshot, update);
-        if (structure === null) return [{ authorized: true }, null];
+        if (structure === null) return [{ authorized: true, via: 'unattributed' }, null];
         const attribution = update.attribution;
         if (attribution === undefined) {
             return [
@@ -91,7 +92,7 @@ export class ConstructionEditAuthorizer {
                 null,
             ];
         }
-        if (claim.botId === update.botId) return [{ authorized: true }, null];
+        if (claim.botId === update.botId) return [{ authorized: true, via: 'owner' }, null];
         return this.authorizeHelper(structure, update, operations, attribution);
     }
 
@@ -148,7 +149,76 @@ export class ConstructionEditAuthorizer {
                 null,
             ];
         }
-        return [{ authorized: true }, null];
+        return [{ authorized: true, via: 'helper' }, null];
+    }
+
+    safetyContext(botId: string, activeClaimId?: string): Result<SafetyContext, string> {
+        const now = new Date().toISOString();
+        const [claims, claimError] = this.options.claims.listActive();
+        if (claimError) return [null, claimError.type];
+        if (claims === null) return [null, 'active claims missing'];
+        const [grants, grantError] = this.options.grants.listActiveForBot(botId, now);
+        if (grantError) return [null, grantError.type];
+        if (grants === null) return [null, 'active grants missing'];
+        const active = claims.find((claim) => claim.id === activeClaimId) ?? null;
+        return [
+            {
+                ...(active === null
+                    ? {}
+                    : { activeClaim: ConstructionEditAuthorizer.claimRegion(active) }),
+                claims: claims
+                    .filter(
+                        (claim) =>
+                            claim.id !== activeClaimId &&
+                            claim.botId !== botId &&
+                            claim.leaseUntil > now,
+                    )
+                    .map((claim) => ConstructionEditAuthorizer.claimRegion(claim)),
+                grants: grants.map((grant) => ({
+                    id: grant.id,
+                    granteeBotId: grant.granteeBotId,
+                    structureId: grant.structureId,
+                    bbox: grant.bbox,
+                    expiresAt: grant.expiresAt,
+                    allowedOps: grant.allowedOps.filter(
+                        (operation): operation is 'place' | 'break' =>
+                            operation === 'place' || operation === 'break',
+                    ),
+                })),
+            },
+            null,
+        ];
+    }
+
+    private static claimRegion(claim: {
+        id: string;
+        botId: string;
+        bbox: SipStructure['workPackages'][number]['bbox'];
+        leaseUntil: string;
+        resourceType: string;
+        resourceId: string;
+        payload: Readonly<Record<string, unknown>>;
+    }): SafetyContext['claims'][number] {
+        const structureId =
+            typeof claim.payload.structureId === 'string'
+                ? claim.payload.structureId
+                : claim.resourceType === 'structure'
+                  ? claim.resourceId
+                  : undefined;
+        const workPackageId =
+            typeof claim.payload.workPackageId === 'string'
+                ? claim.payload.workPackageId
+                : claim.resourceType === 'work_package'
+                  ? claim.resourceId
+                  : undefined;
+        return {
+            id: claim.id,
+            ownerBotId: claim.botId,
+            bbox: claim.bbox,
+            expiresAt: claim.leaseUntil,
+            ...(structureId === undefined ? {} : { structureId }),
+            ...(workPackageId === undefined ? {} : { workPackageId }),
+        };
     }
 
     private structure(snapshot: SipSnapshot, update: BlockUpdateMessage): SipStructure | null {

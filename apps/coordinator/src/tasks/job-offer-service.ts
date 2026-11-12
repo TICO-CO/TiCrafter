@@ -1,4 +1,4 @@
-import type { Result } from '@ticrafter/core';
+import type { Result, SafetyContext } from '@ticrafter/core';
 
 import type { TaskRole } from './types.js';
 
@@ -33,6 +33,7 @@ export interface JobTaskAssignment {
     projectId?: string;
     structureId?: string;
     workPackageId?: string;
+    safety?: SafetyContext;
 }
 
 export interface JobAssignment {

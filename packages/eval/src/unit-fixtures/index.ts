@@ -138,6 +138,8 @@ export class EvalFixtures {
                 isProtected: () => false,
                 activeBots: () => [],
                 claimFor: () => null,
+                claims: () => [],
+                grants: () => [],
             },
             ...overrides,
         };

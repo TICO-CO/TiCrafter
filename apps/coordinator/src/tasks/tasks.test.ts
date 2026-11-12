@@ -10,7 +10,7 @@ const now = '2026-11-11T10:00:00.000Z';
 const later = '2026-11-11T10:01:00.000Z';
 
 describe('TaskBoard', () => {
-    const fresh = (): TaskBoard => {
+    const fresh = (claims = TaskFixtures.claims()): TaskBoard => {
         const [database, openError] = CoordinatorTestSupport.openDatabase();
         expect(openError).toBeNull();
         expect(database).not.toBeNull();
@@ -20,7 +20,7 @@ describe('TaskBoard', () => {
             events: new EventLogWriter(coordinatorDatabase),
             transactions: new TransactionManager(coordinatorDatabase),
             world: TaskFixtures.world(),
-            claims: TaskFixtures.claims(),
+            claims,
         });
     };
 
@@ -80,6 +80,60 @@ describe('TaskBoard', () => {
         const [secondLease] = board.claimNext(TaskFixtures.context('bot.two'), now);
         expect(firstLease?.task.id).toBe('task-1');
         expect(secondLease).toBeNull();
+    });
+
+    it('renews the package claim with the task lease', () => {
+        const renewed: string[] = [];
+        const board = fresh({
+            hasActiveOverlap: () => [false, null],
+            renewPackageClaim: (claimId, fencingToken, at, ttl) => {
+                renewed.push(`${claimId}:${fencingToken}:${ttl}:${at}`);
+                return [undefined, null];
+            },
+        });
+        board.create(
+            TaskFixtures.task({
+                payload: { claimId: 'claim.package', fencingToken: 7 },
+            }),
+            now,
+        );
+        const [lease] = board.claimNext(TaskFixtures.context('bot.one'), now);
+        expect(lease?.task.id).toBe('task-1');
+
+        const [result, renewError] = board.renew(
+            'task-1',
+            'bot.one',
+            lease?.fencingToken ?? 0,
+            undefined,
+            later,
+        );
+
+        expect(renewError).toBeNull();
+        expect(result).toBe(true);
+        expect(renewed).toEqual([`claim.package:7:86400000:${later}`]);
+    });
+
+    it('fails task renewal when the package claim is lost', () => {
+        const board = fresh({
+            hasActiveOverlap: () => [false, null],
+            renewPackageClaim: () => [null, 'CLAIM_NOT_FOUND'],
+        });
+        board.create(
+            TaskFixtures.task({
+                payload: { claimId: 'claim.package', fencingToken: 7 },
+            }),
+            now,
+        );
+        const [lease] = board.claimNext(TaskFixtures.context('bot.one'), now);
+        const [result, renewError] = board.renew(
+            'task-1',
+            'bot.one',
+            lease?.fencingToken ?? 0,
+            undefined,
+            later,
+        );
+        expect(result).toBeNull();
+        expect(renewError?.type).toBe('CLAIM_CONFLICT');
     });
 
     it('honours inventory preconditions', () => {

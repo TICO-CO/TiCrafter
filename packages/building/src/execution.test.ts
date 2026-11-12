@@ -146,6 +146,8 @@ const SNAPSHOT: SafetySnapshot = {
         isProtected: () => false,
         activeBots: () => [],
         claimFor: () => null,
+        claims: () => [],
+        grants: () => [],
     },
 };
 

@@ -31,6 +31,14 @@ class FakeWorld implements SafetyWorldView {
     claimFor(): null {
         return null;
     }
+
+    claims() {
+        return [];
+    }
+
+    grants() {
+        return [];
+    }
 }
 
 function snapshot(): SafetySnapshot {

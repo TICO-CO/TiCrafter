@@ -143,6 +143,22 @@ export class SafetySignals {
         };
     }
 
+    static claimConflict(claimId: string): SafetySignal {
+        return {
+            code: 'action.claim-conflict',
+            severity: 'critical',
+            message: `destructive action inside claim ${claimId}`,
+        };
+    }
+
+    static grantScope(grantId: string): SafetySignal {
+        return {
+            code: 'action.grant-scope',
+            severity: 'critical',
+            message: `operation is outside grant ${grantId}`,
+        };
+    }
+
     static activeBotSupport(): SafetySignal {
         return {
             code: 'action.active-bot-support',

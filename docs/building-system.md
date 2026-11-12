@@ -5,8 +5,10 @@ path: blueprint storage and composer, terrain site planning, foundation
 planning, dependency ordering, scaffolding, phase-aware packages, material
 procurement planning and execution, verified execution wiring, exact blueprint
 and construction-plan fetch, coordinator-owned package and procurement tasks,
-per-package claims, helper grants, post-update coordinator verification, repair,
-renovation, and rollback. Full acceptance validation remains.
+per-package claims with task-heartbeat renewal, helper grants, safety snapshots
+with active grant and other-project claim context, post-update coordinator
+verification, repair, renovation, and rollback. Full acceptance validation
+remains.
 
 `docs/architecture/graph.json` tracks the implemented module paths.
 
@@ -147,11 +149,11 @@ Gaps:
   construction path uses `BlockExecutor` through the bot execution service.
 - Projects are private by default. `invite` and `open` projects expose helper
   package tasks; helper claim ownership remains with the project owner.
-- Package claims use project TTL and are not independently renewed.
 - Coordinator authorization is post-update verification. It audits, requeues,
   and stops the offending bot, but cannot undo a block already changed.
-- Safety snapshots include the active task claim and its protected work-package
-  bounds; grants and other projects' claim regions are not yet included.
+- Safety snapshots include active task claims, helper grant regions, and other
+  projects' active claim regions. SIP protected and no-build zones remain
+  coordinator-owned and are not pushed into bot snapshots.
 - Full single-bot acceptance validation remains.
 - Agency build projects already carry project focus; project completion now
   clears focus through the project update event.
@@ -573,16 +575,23 @@ The detailed ownership boundary is in
 ### 12.3 Claims, grants, and fencing
 
 - Each work package is claimed before execution.
+- Package claims are renewed by task lease heartbeats, including helper package
+  tasks whose claims remain project-owned.
 - Every edit carries a claim id and fencing token.
 - Non-owner edits to an active structure require a valid grant.
 - Design revision changes invalidate grants and stale package tasks.
 - Package claims are parented by the structure claim and may overlap only
   inside that claim family.
 - Helper edits use a project-owned package claim and a helper-scoped grant.
+- Bot safety snapshots receive the active task claim, helper grant regions, and
+  other projects' active claim regions. A destructive action inside another
+  project's claim is vetoed unless the bot owns the claim or holds a matching
+  grant operation.
 - The coordinator verifies attributed block updates after the fact, audits
-  rejected edits, requeues the task, and sends a safety stop to the bot.
-- Bot safety snapshots receive the active task claim and protected package bounds;
-  active grant regions and other projects' claim regions remain future work.
+  accepted helper edits and rejected edits, requeues rejected tasks, and sends a
+  safety stop to the bot.
+- Pre-commit construction authorization and automatic undo of rejected edits
+  remain future work.
 
 ### 12.4 Progress and completion
 

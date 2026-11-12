@@ -196,6 +196,16 @@ export class CoordinatorComposition {
             claims: {
                 hasActiveOverlap: (bbox) =>
                     claims === null ? [null, 'claims unavailable'] : claims.hasActiveOverlap(bbox),
+                renewPackageClaim: (claimId, fencingToken, now, leaseTtlMilliseconds) => {
+                    if (claims === null) return [null, 'claims unavailable'];
+                    const [, renewError] = claims.renewCoordinated(
+                        claimId,
+                        fencingToken,
+                        now,
+                        leaseTtlMilliseconds,
+                    );
+                    return renewError === null ? [undefined, null] : [null, renewError.type];
+                },
             },
         });
         const taskAuditor = new TaskIndependenceAuditor({
@@ -407,6 +417,10 @@ export class CoordinatorComposition {
                 events,
                 () => new Date().toISOString(),
                 grants ?? undefined,
+                {
+                    context: (botId, activeClaimId) =>
+                        constructionEdits.safetyContext(botId, activeClaimId),
+                },
             ),
         );
         const botResume = new BotResumeOrchestrator(
@@ -477,8 +491,15 @@ export class CoordinatorComposition {
                 );
             }
         };
-        const taskCommands = new TaskCommandHandler(tasks, transport, options.logger, () =>
-            refreshProjectProgress(),
+        const taskCommands = new TaskCommandHandler(
+            tasks,
+            transport,
+            options.logger,
+            () => refreshProjectProgress(),
+            {
+                context: (botId, activeClaimId) =>
+                    constructionEdits.safetyContext(botId, activeClaimId),
+            },
         );
         const projectCommands = new ProjectCommandHandler(
             projectService,
@@ -515,6 +536,7 @@ export class CoordinatorComposition {
             transport,
             logger: options.logger,
             strategicIntent: (botId) => strategicIntentStore.forBot(botId),
+            safety: (botId, activeClaimId) => constructionEdits.safetyContext(botId, activeClaimId),
             bots: {
                 authenticate: (botId, username, now) =>
                     botIdentity.authenticate(botId, username, now),
@@ -589,7 +611,27 @@ export class CoordinatorComposition {
                         'block changelog write failed',
                     );
                 }
-                if (authorized) return;
+                if (authorized) {
+                    if (decision !== null && decision.authorized && decision.via === 'helper') {
+                        const [, auditError] = events.append({
+                            type: 'construction.edit-authorized',
+                            botId: payload.botId,
+                            actor: 'coordinator',
+                            payload: {
+                                position: payload.block.position,
+                                attribution: payload.attribution ?? null,
+                            },
+                            createdAt: payload.observedAt,
+                        });
+                        if (auditError) {
+                            options.logger.warn(
+                                { error: auditError.type },
+                                'authorized edit audit failed',
+                            );
+                        }
+                    }
+                    return;
+                }
                 const reason = rejectionReason ?? decisionError ?? 'block edit rejected';
                 const taskId = payload.attribution?.taskId;
                 if (taskId !== undefined) {

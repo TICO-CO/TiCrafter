@@ -83,6 +83,12 @@ export interface TaskWorldPort {
 
 export interface TaskClaimPort {
     hasActiveOverlap(bbox: BoundingBox): Result<boolean, string>;
+    renewPackageClaim(
+        claimId: string,
+        fencingToken: number,
+        now: string,
+        leaseTtlMilliseconds: number,
+    ): Result<void, string>;
 }
 
 export interface TaskPreconditionFailure {

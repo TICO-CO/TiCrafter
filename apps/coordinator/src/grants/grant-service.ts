@@ -115,6 +115,35 @@ export class GrantService {
         return this.authorizer.authorize(input, now);
     }
 
+    listActive(): Result<readonly EditGrantRecord[], GrantFailure> {
+        const [grants, listError] = this.repository.listActive();
+        if (listError) return [null, { type: 'STORAGE', failure: listError }];
+        if (grants === null) {
+            return [null, { type: 'INVALID_REQUEST', message: 'active grants missing' }];
+        }
+        return [grants, null];
+    }
+
+    listActiveForBot(
+        botId: string,
+        now = new Date().toISOString(),
+    ): Result<readonly EditGrantRecord[], GrantFailure> {
+        const [grants, listError] = this.listActive();
+        if (listError) return [null, listError];
+        if (grants === null) {
+            return [null, { type: 'INVALID_REQUEST', message: 'active grants missing' }];
+        }
+        return [
+            grants.filter(
+                (grant) =>
+                    grant.epoch === this.options.epoch &&
+                    grant.granteeBotId === botId &&
+                    grant.expiresAt > now,
+            ),
+            null,
+        ];
+    }
+
     revoke(grantId: string, now = new Date().toISOString()): Result<EditGrantRecord, GrantFailure> {
         return this.revoker.revoke(grantId, now);
     }

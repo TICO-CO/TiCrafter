@@ -1,5 +1,6 @@
 import { z as zod } from 'zod';
 
+import { safetyContextSchema } from './safety.js';
 import { inventoryItemSchema, positionSchema, roleSchema } from './shared.js';
 
 export const TASK_CLAIM = 'bot.task.claim';
@@ -26,6 +27,7 @@ export const taskAssignmentSchema = zod.object({
     projectId: zod.string().min(1).optional(),
     structureId: zod.string().min(1).optional(),
     workPackageId: zod.string().min(1).optional(),
+    safety: safetyContextSchema.optional(),
 });
 
 export const botTaskClaimSchema = zod.object({

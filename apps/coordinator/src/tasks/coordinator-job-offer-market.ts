@@ -1,4 +1,4 @@
-import type { Result } from '@ticrafter/core';
+import type { Result, SafetyContext } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
 
 import type { EditGrantRecord, EditRequestInput, GrantFailure } from '../grants/index.js';
@@ -10,6 +10,7 @@ import type {
     JobOfferPort,
 } from './job-offer-service.js';
 import type { TaskBoard } from './task-board.js';
+import type { TaskSafetyContextPort } from './task-command-handler.js';
 import type { TaskRecord } from './types.js';
 
 export interface HelperGrantPort {
@@ -24,6 +25,7 @@ export class CoordinatorJobOfferMarket implements JobOfferPort {
         private readonly events: EventLogWriter,
         private readonly now: () => string = () => new Date().toISOString(),
         private readonly helperGrants?: HelperGrantPort,
+        private readonly safety?: TaskSafetyContextPort,
     ) {}
 
     offers(context: JobOfferContext): Result<readonly JobOffer[], string> {
@@ -65,6 +67,7 @@ export class CoordinatorJobOfferMarket implements JobOfferPort {
         if (payload === null) return [null, 'accepted task payload missing'];
         const offer = this.offer(lease.task, context);
         this.append(context.botId, 'job.accepted', taskId, `accepted ${lease.task.title}`);
+        const safety = this.safetyFor(context.botId, payload.claimId);
         return [
             {
                 offer,
@@ -76,12 +79,23 @@ export class CoordinatorJobOfferMarket implements JobOfferPort {
                     target: lease.task.target,
                     requiredRole: lease.task.requiredRole,
                     ...CoordinatorJobOfferMarket.taskMetadata(lease.task),
+                    ...(safety === null ? {} : { safety }),
                 },
                 fencingToken: lease.fencingToken,
                 leaseUntil: lease.leaseUntil,
             },
             null,
         ];
+    }
+
+    private safetyFor(botId: string, claimId: unknown): SafetyContext | null {
+        if (this.safety === undefined) return null;
+        const [context, contextError] = this.safety.context(
+            botId,
+            typeof claimId === 'string' ? claimId : undefined,
+        );
+        if (contextError) return null;
+        return context;
     }
 
     private acceptPayload(

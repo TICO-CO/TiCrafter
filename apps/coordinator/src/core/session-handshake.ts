@@ -6,6 +6,7 @@ import {
     type LoggerPort,
     ProtocolEnvelope,
     type Result,
+    type SafetyContext,
     SessionAuthenticator,
     type SessionResume,
     type StrategicIntent,
@@ -32,6 +33,7 @@ export interface SessionHandshakeOptions {
     logger: LoggerPort;
     bots: SessionBotRegistry;
     strategicIntent?: (botId: string) => StrategicIntent | null;
+    safety?: (botId: string, activeClaimId?: string) => Result<SafetyContext, string>;
 }
 
 export class SessionHandshake {
@@ -154,6 +156,7 @@ export class SessionHandshake {
         const agency = plan.agency === null ? null : SessionHandshake.agencyPayload(plan.agency);
         const strategicIntent = this.options.strategicIntent?.(botId) ?? null;
         const task = plan.task;
+        const safety = this.safetyPayload(botId, task);
         if (
             task === null ||
             task.leaseToken === null ||
@@ -167,6 +170,7 @@ export class SessionHandshake {
                 role: plan.profile.role,
                 agency,
                 projects: SessionHandshake.projectsPayload(plan),
+                ...(safety === null ? {} : { safety }),
                 strategicIntent,
             };
         }
@@ -186,8 +190,23 @@ export class SessionHandshake {
             role: plan.profile.role,
             agency,
             projects: SessionHandshake.projectsPayload(plan),
+            ...(safety === null ? {} : { safety }),
             strategicIntent,
         };
+    }
+
+    private safetyPayload(botId: string, task: BotResumePlan['task']): SafetyContext | null {
+        if (this.options.safety === undefined) return null;
+        const claimId = task?.payload.claimId;
+        const [context, contextError] = this.options.safety(
+            botId,
+            typeof claimId === 'string' ? claimId : undefined,
+        );
+        if (contextError) {
+            this.options.logger.warn({ error: contextError }, 'session safety context unavailable');
+            return null;
+        }
+        return context;
     }
 
     private static projectsPayload(plan: BotResumePlan): SessionResume['projects'] {

@@ -14,7 +14,7 @@ import type { CoordinatorDatabase } from '../core/index.js';
 import { CoordinatorTestSupport } from '../testing/index.js';
 import type { ClientConnection, TransportServer } from '../transport/index.js';
 import { TaskBoard } from './task-board.js';
-import { TaskCommandHandler } from './task-command-handler.js';
+import { TaskCommandHandler, type TaskSafetyContextPort } from './task-command-handler.js';
 import { TaskFixtures } from './task-fixtures.js';
 
 const now = '2026-11-11T10:00:00.000Z';
@@ -56,7 +56,9 @@ function claim(): BotTaskClaim {
 }
 
 describe('TaskCommandHandler', () => {
-    const fresh = (): {
+    const fresh = (
+        safety?: TaskSafetyContextPort,
+    ): {
         board: TaskBoard;
         handler: TaskCommandHandler;
         transport: FakeTransport;
@@ -75,7 +77,13 @@ describe('TaskCommandHandler', () => {
         return {
             board,
             transport,
-            handler: new TaskCommandHandler(board, transport as unknown as TransportServer, logger),
+            handler: new TaskCommandHandler(
+                board,
+                transport as unknown as TransportServer,
+                logger,
+                undefined,
+                safety,
+            ),
         };
     };
 
@@ -92,6 +100,37 @@ describe('TaskCommandHandler', () => {
         expect(response.ok).toBe(true);
         expect(response.task?.id).toBe('task-1');
         expect(response.fencingToken).not.toBeNull();
+    });
+
+    it('adds safety context to an assigned task', () => {
+        const { board, handler, transport } = fresh({
+            context: (botId, activeClaimId) => [
+                {
+                    ...(activeClaimId === undefined
+                        ? {}
+                        : {
+                              activeClaim: {
+                                  id: activeClaimId,
+                                  ownerBotId: botId,
+                                  bbox: { min: { x: 0, y: 60, z: 0 }, max: { x: 2, y: 70, z: 2 } },
+                                  expiresAt: '2026-11-12T10:00:00.000Z',
+                              },
+                          }),
+                    claims: [],
+                    grants: [],
+                },
+                null,
+            ],
+        });
+        board.create(
+            TaskFixtures.task({ payload: { skillId: 'navigate', claimId: 'claim.package' } }),
+            now,
+        );
+
+        handler.handleClaim(connection(), claim(), { id: 'request-1' } as Envelope);
+
+        const assignment = (transport.sent[0]?.payload as BotTaskResponse).task;
+        expect(assignment?.safety?.activeClaim?.id).toBe('claim.package');
     });
 
     it('does not assign a second task while one is active', () => {

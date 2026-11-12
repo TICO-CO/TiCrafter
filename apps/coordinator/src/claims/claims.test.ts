@@ -149,6 +149,38 @@ describe('ClaimService', () => {
         expect(renewError?.type).toBe('SESSION_INVALID');
     });
 
+    it('renews package claims without a live owner session', () => {
+        const { service } = fresh({ sessions: ClaimFixtures.sessions(false) });
+        const [claim] = service.acquire(ClaimFixtures.input(), now);
+        const [renewed, renewError] = service.renewCoordinated(
+            'claim-1',
+            claim?.fencingToken ?? 0,
+            '2026-11-11T10:00:10.000Z',
+        );
+        expect(renewError).toBeNull();
+        expect(renewed?.leaseUntil).toBe('2026-11-11T10:00:40.000Z');
+    });
+
+    it('rejects coordinated renewal for stale tokens and non-package claims', () => {
+        const { service } = fresh();
+        const [claim] = service.acquire(ClaimFixtures.input(), now);
+        expect(
+            service.renewCoordinated('claim-1', (claim?.fencingToken ?? 0) + 1, now)[1]?.type,
+        ).toBe('STALE_TOKEN');
+        const [structure] = service.acquire(
+            ClaimFixtures.input({
+                id: 'claim-structure',
+                resourceType: 'structure',
+                resourceId: 'structure.home',
+                bbox: ClaimFixtures.bbox(20, 20),
+            }),
+            now,
+        );
+        expect(
+            service.renewCoordinated('claim-structure', structure?.fencingToken ?? 0, now)[1]?.type,
+        ).toBe('INVALID_CLAIM');
+    });
+
     it('expires overdue leases, bumps the token, and requeues the task', () => {
         const { service, requeued } = fresh();
         service.acquire(ClaimFixtures.input({ leaseTtlMilliseconds: 1_000 }), now);

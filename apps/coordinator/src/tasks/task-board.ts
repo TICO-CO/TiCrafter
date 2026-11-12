@@ -30,6 +30,8 @@ export interface TaskBoardOptions {
     claims: TaskClaimPort;
 }
 
+const PACKAGE_CLAIM_TTL_MILLISECONDS = 24 * 60 * 60 * 1000;
+
 export class TaskBoard {
     private readonly repository: TaskRepository;
     private readonly stateMachine: TaskStateMachine;
@@ -168,6 +170,9 @@ export class TaskBoard {
         leaseTtlMilliseconds = 30_000,
         now = new Date().toISOString(),
     ): Result<boolean, TaskFailure> {
+        const [task, taskError] = this.repository.get(taskId);
+        if (taskError) return [null, TaskFailures.storage(taskError)];
+        if (task === null) return [null, TaskFailures.taskNotFound(taskId)];
         const leaseUntil = new Date(Date.parse(now) + leaseTtlMilliseconds).toISOString();
         const [renewed, renewError] = this.repository.renew(
             taskId,
@@ -177,7 +182,19 @@ export class TaskBoard {
             now,
         );
         if (renewError) return [null, TaskFailures.storage(renewError)];
-        return [renewed, null];
+        if (renewed !== true) return [false, null];
+        const claimId = task.payload.claimId;
+        const claimFencingToken = task.payload.fencingToken;
+        if (typeof claimId === 'string' && claimId.length > 0) {
+            const [, claimRenewError] = this.options.claims.renewPackageClaim(
+                claimId,
+                typeof claimFencingToken === 'number' ? claimFencingToken : fencingToken,
+                now,
+                PACKAGE_CLAIM_TTL_MILLISECONDS,
+            );
+            if (claimRenewError) return [null, TaskFailures.claimConflict(taskId)];
+        }
+        return [true, null];
     }
 
     verifyLease(

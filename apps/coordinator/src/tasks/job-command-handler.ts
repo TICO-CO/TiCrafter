@@ -156,6 +156,7 @@ export class JobCommandHandler {
                 ...(assignment.task.workPackageId === undefined
                     ? {}
                     : { workPackageId: assignment.task.workPackageId }),
+                ...(assignment.task.safety === undefined ? {} : { safety: assignment.task.safety }),
             },
             fencingToken: assignment.fencingToken,
             leaseUntil: assignment.leaseUntil,

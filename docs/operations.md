@@ -142,6 +142,15 @@ shortages fail as `missing-item` before the first package block change.
 Construction and procurement checkpoints store plan id, revision, package id,
 and grant metadata; restore re-diffs and re-plans before resuming.
 
+Task lease heartbeats also renew the package claim, including helper tasks whose
+claims remain owned by the project owner. Session resume and task assignments
+carry the active task claim, helper grant regions, and other projects' active
+claim regions; the bot safety gate vetoes destructive actions inside another
+project's claim unless the bot owns the claim or holds a matching grant
+operation. SIP protected and no-build zones stay coordinator-side. The
+coordinator still verifies attributed edits after the update; rejected edits are
+audited, the task is requeued, and the bot receives a safety stop.
+
 ## Soak testing
 
 Short smoke:

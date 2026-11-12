@@ -14,7 +14,9 @@ import { SafetySignals } from './signals.js';
 import { StuckTimeoutEvaluator } from './stuck-evaluator.js';
 import type {
     SafetyClaim,
+    SafetyClaimRegion,
     SafetyEvaluator,
+    SafetyGrantRegion,
     SafetyIncident,
     SafetySignal,
     SafetySnapshot,
@@ -26,6 +28,8 @@ class FakeWorld implements SafetyWorldView {
     blocks = new Map<string, string>();
     bots: { botId: string; position: { x: number; y: number; z: number } }[] = [];
     claim: SafetyClaim | null = null;
+    regions: SafetyClaimRegion[] = [];
+    activeGrants: SafetyGrantRegion[] = [];
 
     blockAt(position: { x: number; y: number; z: number }): string | null {
         return this.blocks.get(`${position.x},${position.y},${position.z}`) ?? 'air';
@@ -41,6 +45,14 @@ class FakeWorld implements SafetyWorldView {
 
     claimFor(): SafetyClaim | null {
         return this.claim;
+    }
+
+    claims(): readonly SafetyClaimRegion[] {
+        return this.regions;
+    }
+
+    grants(): readonly SafetyGrantRegion[] {
+        return this.activeGrants;
     }
 }
 
@@ -257,6 +269,65 @@ describe('claim loss evaluator', () => {
         const claim = { id: 'claim.1', expiresAt: '2026-11-10T12:00:00.000Z' };
         const [signal] = evaluate(new ClaimLossEvaluator(), claimSnapshot(claim, 'invalid-time'));
         expect(signal?.code).toBe('claim.lost');
+    });
+});
+
+describe('claim boundary rule', () => {
+    const claimRegion = (ownerBotId: string) => ({
+        id: `claim.${ownerBotId}`,
+        ownerBotId,
+        bbox: { min: { x: 0, y: 64, z: 0 }, max: { x: 2, y: 66, z: 2 } },
+        expiresAt: '2026-11-10T13:00:00.000Z',
+    });
+    const place = {
+        kind: 'place-block' as const,
+        position: { x: 1, y: 64, z: 1 },
+        itemName: 'stone',
+    };
+
+    it('denies destructive actions inside another bot claim', () => {
+        const world = new FakeWorld();
+        world.regions = [claimRegion('bot.other')];
+        const result = new SafetyPolicyEngine().evaluate(snapshot(world), place);
+        expect(result?.signal.code).toBe('action.claim-conflict');
+    });
+
+    it('allows destructive actions inside an owned claim', () => {
+        const world = new FakeWorld();
+        world.regions = [claimRegion('bot.tibot1')];
+        const result = new SafetyPolicyEngine().evaluate(snapshot(world), place);
+        expect(result).toBeNull();
+    });
+
+    it('allows granted operations and rejects out-of-scope operations', () => {
+        const world = new FakeWorld();
+        world.regions = [claimRegion('bot.other')];
+        world.activeGrants = [
+            {
+                id: 'grant.1',
+                granteeBotId: 'bot.tibot1',
+                structureId: 'structure.home',
+                bbox: { min: { x: 0, y: 64, z: 0 }, max: { x: 2, y: 66, z: 2 } },
+                expiresAt: '2026-11-10T13:00:00.000Z',
+                allowedOps: ['break'],
+            },
+        ];
+        expect(new SafetyPolicyEngine().evaluate(snapshot(world), place)?.signal.code).toBe(
+            'action.grant-scope',
+        );
+        const breakRequest = { kind: 'break-block' as const, position: { x: 1, y: 64, z: 1 } };
+        expect(new SafetyPolicyEngine().evaluate(snapshot(world), breakRequest)).toBeNull();
+    });
+
+    it('ignores expired claims and grants', () => {
+        const world = new FakeWorld();
+        world.regions = [
+            {
+                ...claimRegion('bot.other'),
+                expiresAt: '2026-11-10T11:00:00.000Z',
+            },
+        ];
+        expect(new SafetyPolicyEngine().evaluate(snapshot(world), place)).toBeNull();
     });
 });
 

@@ -18,6 +18,7 @@ import {
     type JobOfferPayload,
     type LoggerPort,
     type Result,
+    type SafetyContext,
     type SessionResume,
     skillInputSchema,
     type StrategicConstraint,
@@ -131,6 +132,7 @@ interface ActiveTask {
     skillId: string;
     input: SkillInput;
     payload: Readonly<Record<string, unknown>>;
+    safety: SafetyContext | null;
     projectId: string | null;
     fencingToken: number;
     leaseUntil: string | null;
@@ -196,6 +198,10 @@ export class TaskAutonomy {
         return this.active?.projectId ?? null;
     }
 
+    get activeTaskSafety(): SafetyContext | null {
+        return this.active?.safety ?? null;
+    }
+
     get activeTaskClaim(): { id: string; expiresAt: string } | null {
         const claimId = this.active?.payload.claimId;
         const expiresAt = this.active?.leaseUntil;
@@ -245,6 +251,7 @@ export class TaskAutonomy {
         });
         if (prepared === null) return false;
         prepared.lastRenewAt = this.now();
+        prepared.safety = resume.safety ?? prepared.safety;
         this.active = prepared;
         return true;
     }
@@ -673,6 +680,7 @@ export class TaskAutonomy {
             skillId,
             input: parsed.data,
             payload: task.payload,
+            safety: task.safety ?? null,
             projectId,
             fencingToken: response.fencingToken,
             leaseUntil: response.leaseUntil,

@@ -11,6 +11,7 @@ export class TaskFixtures {
     static claims(overlapping = false): TaskClaimPort {
         return {
             hasActiveOverlap: () => [overlapping, null],
+            renewPackageClaim: () => [undefined, null],
         };
     }
 
