@@ -68,12 +68,11 @@ export class ConstructionSkill implements Skill {
         if (planResult[1] !== null) return [null, planResult[1]];
         const plan = planResult[0];
         if (plan === null) return [null, 'construction plan returned null'];
-        const missing = Blueprint.missingMaterials(
-            context.inventory,
-            plan.operations
-                .filter((operation) => operation.kind === 'place')
-                .map((operation) => operation.target),
-        );
+        const missing = Blueprint.outstandingNeeds(context, plan.operations)
+            .filter(
+                (need) => SkillSharedUtilities.itemCount(context.inventory, need.item) < need.count,
+            )
+            .map((need) => need.item);
         if (missing.length > 0) {
             return [
                 SkillSharedUtilities.failed(

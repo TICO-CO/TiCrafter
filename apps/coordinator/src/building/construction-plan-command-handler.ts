@@ -52,6 +52,7 @@ export class ConstructionPlanCommandHandler {
                 structureId: document.structureId,
                 blueprintId: document.blueprintId,
                 blueprintRevision: document.blueprintRevision,
+                purpose: document.purpose,
                 plan: document.plan,
                 createdAt: document.createdAt,
             },

@@ -61,14 +61,17 @@ import { type AgencyHomeSnapshot, AgencySnapshotSource } from './agency-snapshot
 import { AgencyStateAdapter } from './agency-state-adapter.js';
 import { BlueprintFetchClient } from './blueprint-fetch-client.js';
 import { BuildingExecutionService } from './building-execution-service.js';
+import { BuildingProcurementService } from './building-procurement-service.js';
 import { BuildingSkillServices } from './building-services.js';
 import { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
+import { ContainerScanner } from './container-scanner.js';
 import { BotEventBridge } from './event-bridge.js';
 import { GoalTieBreakClient } from './goal-tie-break.js';
 import { GuardianHook } from './guardian.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
 import { MineflayerPerceptionSource } from './perception-source.js';
+import { MineflayerProcurementCatalog } from './procurement-catalog.js';
 import { ReachRateGuard } from './reach-rate-guard.js';
 import { SafetySnapshotSource } from './safety-snapshot.js';
 import { BotSkillContextSource } from './skill-context-source.js';
@@ -196,6 +199,8 @@ export class BotConnection {
             {
                 botNames: this.options.config.botNames,
                 allowDestructiveMaterials: false,
+                claimSource: () => this.taskAutonomy?.activeTaskClaim ?? null,
+                protectedBounds: () => this.taskAutonomy?.activeTaskBounds ?? null,
                 failureSource: () => {
                     const failure = actionPort.lastFailure;
                     const at = actionPort.lastFailureAt;
@@ -256,6 +261,11 @@ export class BotConnection {
                     },
             },
         });
+        const containerScanner = new ContainerScanner(bot);
+        const procurement = new BuildingProcurementService(
+            containerScanner,
+            new MineflayerProcurementCatalog(bot),
+        );
         const [buildingServices, buildingServicesError] = await BuildingSkillServices.create(
             path.resolve(process.cwd(), this.options.config.dataDir),
             world,
@@ -263,6 +273,8 @@ export class BotConnection {
                 documents: blueprintFetch,
                 plans: constructionPlanFetch,
                 buildExecution,
+                procurement,
+                containers: containerScanner,
             },
         );
         if (buildingServicesError) {
@@ -483,8 +495,8 @@ export class BotConnection {
                 recordTacticalDecision: (input) =>
                     this.agencyRuntime?.recordTacticalDecision(input),
                 recordTacticalDrop: (input) => this.agencyRuntime?.recordTacticalDrop(input),
-                constructionPrefetch: (input) =>
-                    this.buildingServices?.prefetch(input) ??
+                constructionPrefetch: (input, skillId) =>
+                    this.buildingServices?.prefetch(input, skillId) ??
                     Promise.resolve([null, 'building services are unavailable']),
             });
             this.taskAutonomy = autonomy;
@@ -525,25 +537,28 @@ export class BotConnection {
         ) {
             return;
         }
-        if (skillId === 'construction') {
+        if (skillId === 'construction' || skillId === 'procurement') {
             const planId = resume.task.payload.planId;
             const planRevision = resume.task.payload.planRevision;
             if (typeof planId !== 'string' || typeof planRevision !== 'number') {
                 this.options.logger.warn(
                     { taskId: resume.task.id },
-                    'construction resume is missing plan metadata',
+                    'building resume is missing plan metadata',
                 );
                 this.pendingResume = null;
                 return;
             }
-            const [, prefetchError] = (await this.buildingServices?.prefetch({
-                planId,
-                planRevision,
-            })) ?? [null, 'building services are unavailable'];
+            const [, prefetchError] = (await this.buildingServices?.prefetch(
+                {
+                    planId,
+                    planRevision,
+                },
+                skillId,
+            )) ?? [null, 'building services are unavailable'];
             if (prefetchError !== null) {
                 this.options.logger.warn(
                     { error: prefetchError, taskId: resume.task.id },
-                    'construction resume prefetch failed',
+                    'building resume prefetch failed',
                 );
                 this.pendingResume = null;
                 return;
@@ -795,8 +810,14 @@ export class BotConnection {
             parsed.data.taskId === undefined
                 ? parsed.data.input
                 : { ...parsed.data.input, taskId: parsed.data.taskId };
-        if (parsed.data.skillId === 'construction' && this.buildingServices !== null) {
-            const [, prefetchError] = await this.buildingServices.prefetch(input);
+        if (
+            (parsed.data.skillId === 'construction' || parsed.data.skillId === 'procurement') &&
+            this.buildingServices !== null
+        ) {
+            const [, prefetchError] = await this.buildingServices.prefetch(
+                input,
+                parsed.data.skillId,
+            );
             if (prefetchError !== null) {
                 this.options.logger.warn(
                     { error: prefetchError, skillId: parsed.data.skillId },

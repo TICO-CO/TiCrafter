@@ -15,6 +15,10 @@ export class ProjectConstructionFailures {
         return { type: 'SITE_UNAVAILABLE', message };
     }
 
+    static invalidPlan(message: string): ProjectConstructionFailure {
+        return { type: 'PLAN_FAILED', failure: { type: 'INVALID_CONSTRUCTION_PLAN', message } };
+    }
+
     static planFailed(failure: BuildingFailure): ProjectConstructionFailure {
         return { type: 'PLAN_FAILED', failure };
     }

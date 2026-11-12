@@ -5,6 +5,7 @@ import { RepairSkill } from './repair.js';
 import type {
     SkillBlock,
     SkillBlockState,
+    SkillBuildExecutionPort,
     SkillContext,
     SkillGrant,
     SkillGrantPort,
@@ -60,6 +61,39 @@ class FakeDiff implements SkillRepairDiffSource {
     }
 }
 
+class FakeExecution implements SkillBuildExecutionPort {
+    readonly completed: string[] = [];
+
+    prepare(
+        _context: SkillContext,
+        operation: Parameters<SkillBuildExecutionPort['prepare']>[1],
+    ): Result<{ status: 'ready'; action: ActionRequest }, string> {
+        const position = operation.target.position;
+        if (operation.kind === 'break') {
+            return [{ status: 'ready', action: { kind: 'break-block', position } }, null];
+        }
+        return [
+            {
+                status: 'ready',
+                action: {
+                    kind: 'place-block',
+                    position,
+                    itemName: operation.target.itemName,
+                },
+            },
+            null,
+        ];
+    }
+
+    complete(
+        _context: SkillContext,
+        operation: Parameters<SkillBuildExecutionPort['complete']>[1],
+    ): Result<void, string> {
+        this.completed.push(`${operation.kind}:${key(operation.target.position)}`);
+        return [undefined, null];
+    }
+}
+
 class FakeGrants implements SkillGrantPort {
     valid = true;
     validationError: string | null = null;
@@ -110,7 +144,7 @@ describe('repair skill', () => {
             mismatched: [{ position: { x: 1, y: 64, z: 0 }, itemName: 'oak_planks' }],
         };
         const grants = new FakeGrants();
-        const services = { repairDiff: diff, grants };
+        const services = { repairDiff: diff, grants, buildExecution: new FakeExecution() };
         const skill = new RepairSkill();
         const input = { blocks: [], grant: GRANT };
         const [started] = skill.start(context(world, inventory, services), input);
@@ -153,10 +187,11 @@ describe('repair skill', () => {
                 { position: { x: 2, y: 64, z: 0 }, itemName: 'oak_planks' },
             ],
         };
-        const [canRun, canRunError] = skill.canRun(context(world, inventory), input);
+        const services = { buildExecution: new FakeExecution() };
+        const [canRun, canRunError] = skill.canRun(context(world, inventory, services), input);
         expect(canRunError).toBeNull();
         expect(canRun).toBe(true);
-        const [started] = skill.start(context(world, inventory), input);
+        const [started] = skill.start(context(world, inventory, services), input);
         expect(started?.action).toMatchObject({
             kind: 'place-block',
             position: { x: 1, y: 64, z: 0 },
@@ -172,7 +207,7 @@ describe('repair skill', () => {
             mismatched: [],
         };
         const grants = new FakeGrants();
-        const services = { repairDiff: diff, grants };
+        const services = { repairDiff: diff, grants, buildExecution: new FakeExecution() };
         const skill = new RepairSkill();
 
         const [missingGrant] = skill.start(context(world, [], services), { blocks: [] });
@@ -187,10 +222,10 @@ describe('repair skill', () => {
         expect(invalidGrant?.status).toBe('failed');
         expect(invalidGrant?.failure?.class).toBe('unsafe');
 
-        const [missingService] = skill.start(context(world, [], { repairDiff: diff }), {
-            blocks: [],
-            grant: GRANT,
-        });
+        const [missingService] = skill.start(
+            context(world, [], { repairDiff: diff, buildExecution: new FakeExecution() }),
+            { blocks: [], grant: GRANT },
+        );
         expect(missingService?.status).toBe('failed');
         expect(missingService?.failure?.class).toBe('unsafe');
     });
@@ -215,7 +250,11 @@ describe('repair skill', () => {
             extra: [{ x: 0, y: 64, z: 0 }],
             mismatched: [{ position: { x: 1, y: 64, z: 0 }, itemName: 'oak_planks' }],
         };
-        const services = { repairDiff: diff, grants: new FakeGrants() };
+        const services = {
+            repairDiff: diff,
+            grants: new FakeGrants(),
+            buildExecution: new FakeExecution(),
+        };
         const skill = new RepairSkill();
         const initialState = context(world, inventory, services);
         const [started] = skill.start(initialState, { blocks: [], grant: GRANT });

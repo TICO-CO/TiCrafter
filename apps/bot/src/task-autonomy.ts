@@ -98,7 +98,7 @@ export interface TaskTacticalContext {
 
 export interface TaskAutonomyOptions {
     botId: string;
-    constructionPrefetch?: (input: SkillInput) => Promise<Result<void, string>>;
+    constructionPrefetch?: (input: SkillInput, skillId?: string) => Promise<Result<void, string>>;
     transport: TaskAutonomyTransportPort;
     jobMarket?: TaskJobMarketPort;
     decisions: TaskDecisionPort;
@@ -194,6 +194,44 @@ export class TaskAutonomy {
 
     get activeTaskProjectId(): string | null {
         return this.active?.projectId ?? null;
+    }
+
+    get activeTaskClaim(): { id: string; expiresAt: string } | null {
+        const claimId = this.active?.payload.claimId;
+        const expiresAt = this.active?.leaseUntil;
+        if (typeof claimId !== 'string' || claimId.length === 0) return null;
+        if (typeof expiresAt !== 'string' || expiresAt.length === 0) return null;
+        return { id: claimId, expiresAt };
+    }
+
+    get activeTaskBounds(): {
+        min: { x: number; y: number; z: number };
+        max: { x: number; y: number; z: number };
+    } | null {
+        const bbox = this.active?.payload.bbox;
+        if (typeof bbox !== 'object' || bbox === null) return null;
+        const record = bbox as Record<string, unknown>;
+        const min = TaskAutonomy.position(record.min);
+        const max = TaskAutonomy.position(record.max);
+        if (min === null || max === null) return null;
+        return { min, max };
+    }
+
+    private static position(value: unknown): { x: number; y: number; z: number } | null {
+        if (typeof value !== 'object' || value === null) return null;
+        const record = value as Record<string, unknown>;
+        const { x, y, z } = record;
+        if (
+            typeof x !== 'number' ||
+            typeof y !== 'number' ||
+            typeof z !== 'number' ||
+            !Number.isFinite(x) ||
+            !Number.isFinite(y) ||
+            !Number.isFinite(z)
+        ) {
+            return null;
+        }
+        return { x, y, z };
     }
 
     resumeTask(resume: SessionResume): boolean {
@@ -405,10 +443,14 @@ export class TaskAutonomy {
         });
         const skillInput: SkillInput = { ...applied.choice.input, taskId: active.id };
         if (
-            applied.choice.skillId === 'construction' &&
+            (applied.choice.skillId === 'construction' ||
+                applied.choice.skillId === 'procurement') &&
             this.options.constructionPrefetch !== undefined
         ) {
-            const [, prefetchError] = await this.options.constructionPrefetch(skillInput);
+            const [, prefetchError] = await this.options.constructionPrefetch(
+                skillInput,
+                applied.choice.skillId,
+            );
             if (prefetchError !== null) {
                 this.failActive(active, 'precondition', { reason: prefetchError });
                 return;

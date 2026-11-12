@@ -1,10 +1,11 @@
-import type { ActionRequest, Result, Vec3 } from '@ticrafter/core';
+import type { ActionOutcome, Result, Vec3 } from '@ticrafter/core';
 
 import { Blueprint } from './blueprint.js';
 import type {
     Skill,
     SkillBuildTarget,
     SkillCheckpoint,
+    SkillConstructionOperation,
     SkillContext,
     SkillGrant,
     SkillInput,
@@ -14,15 +15,12 @@ import type {
 } from './types.js';
 import { SkillSharedUtilities } from './utilities.js';
 
-type RepairOperation =
-    | { kind: 'break-block'; position: Vec3 }
-    | { kind: 'place-block'; position: Vec3; target: SkillBuildTarget };
-
 interface RepairState {
-    operations: RepairOperation[];
+    operations: SkillConstructionOperation[];
     cursor: number;
     activeKey: string | null;
     applied: string[];
+    skipped: string[];
     grant: SkillGrant | null;
 }
 
@@ -30,12 +28,16 @@ export class RepairSkill implements Skill {
     readonly id = 'repair';
 
     canRun(context: SkillContext, input: SkillInput): Result<boolean, string> {
+        if (context.services?.buildExecution === undefined) return [false, null];
         if (input.blocks !== undefined) return [true, null];
         if (context.services?.repairDiff !== undefined) return [true, null];
         return [false, null];
     }
 
     plan(context: SkillContext, input: SkillInput): Result<SkillInput, string> {
+        if (context.services?.buildExecution === undefined) {
+            return [null, 'repair requires a build execution service'];
+        }
         if (input.blocks !== undefined) return [input, null];
         if (context.services?.repairDiff !== undefined) return [input, null];
         return [null, 'repair requires blocks or a repair diff source'];
@@ -47,18 +49,30 @@ export class RepairSkill implements Skill {
         if (diff === null) {
             return [this.unsupported('repair requires a diff or a block scan source'), null];
         }
-        const placements = Blueprint.sortSupportFirst(
-            [...diff.missing, ...diff.mismatched],
-            context.position,
-        );
-        const operations: RepairOperation[] = [
-            ...diff.extra.map((position) => ({ kind: 'break-block' as const, position })),
-            ...placements.map((target) => ({
-                kind: 'place-block' as const,
-                position: target.position,
-                target,
-            })),
-        ];
+        if (diff.extra.length > 0) {
+            const grantError = this.validateGrant(context, input.grant ?? null);
+            if (grantError !== null) {
+                return [
+                    SkillSharedUtilities.failed(
+                        { skillId: this.id, state: {} },
+                        'unsafe',
+                        grantError,
+                    ),
+                    null,
+                ];
+            }
+        }
+        const operations = this.operations(context, diff, input);
+        if (operations === null) {
+            return [
+                SkillSharedUtilities.failed(
+                    { skillId: this.id, state: {} },
+                    'target-missing',
+                    'repair target block is unavailable',
+                ),
+                null,
+            ];
+        }
         const run: SkillRun = {
             skillId: this.id,
             state: {
@@ -66,16 +80,22 @@ export class RepairSkill implements Skill {
                 cursor: 0,
                 activeKey: null,
                 applied: [],
+                skipped: [],
                 grant: input.grant ?? null,
             },
         };
-        if (diff.extra.length > 0) {
+        if (operations.some((operation) => operation.kind === 'break')) {
             const grantError = this.validateGrant(context, input.grant ?? null);
             if (grantError !== null) {
                 return [SkillSharedUtilities.failed(run, 'unsafe', grantError), null];
             }
         }
-        const missing = Blueprint.missingMaterials(context.inventory, placements);
+        const missing = Blueprint.missingMaterials(
+            context.inventory,
+            operations
+                .filter((operation) => operation.kind === 'place')
+                .map((operation) => operation.target),
+        );
         if (missing.length > 0) {
             return [
                 SkillSharedUtilities.failed(
@@ -86,7 +106,7 @@ export class RepairSkill implements Skill {
                 null,
             ];
         }
-        return [this.advance(run), null];
+        return [this.advance(context, run), null];
     }
 
     step(context: SkillContext, run: SkillRun): Result<SkillStep, string> {
@@ -110,47 +130,57 @@ export class RepairSkill implements Skill {
         if (context.lastAction?.status === 'cancelled') {
             return [SkillSharedUtilities.cancelled(run, 'repair was cancelled'), null];
         }
-        if (context.lastAction?.status === 'completed' && state.activeKey !== null) {
-            const applied = state.applied.includes(state.activeKey)
-                ? state.applied
-                : [...state.applied, state.activeKey];
-            const nextRun: SkillRun = {
-                skillId: this.id,
-                state: {
-                    ...run.state,
-                    cursor: state.cursor + 1,
-                    activeKey: null,
-                    applied,
-                },
-            };
-            return [this.advance(nextRun), null];
+        if (context.lastAction?.status !== 'completed' || state.activeKey === null) {
+            return [this.advance(context, run), null];
         }
-        if (state.activeKey !== null) {
-            const operation = state.operations.find(
-                (candidate) => this.operationKey(candidate) === state.activeKey,
-            );
-            if (operation === undefined) {
-                return [
-                    SkillSharedUtilities.failed(
-                        run,
-                        'execution-failed',
-                        'repair operation is missing',
-                    ),
-                    null,
-                ];
-            }
+        const operation = this.operationFor(state, state.activeKey);
+        if (operation === null) {
             return [
-                SkillSharedUtilities.running(
+                SkillSharedUtilities.failed(run, 'execution-failed', 'repair operation is missing'),
+                null,
+            ];
+        }
+        const execution = context.services?.buildExecution;
+        if (execution === undefined) {
+            return [
+                SkillSharedUtilities.failed(
                     run,
-                    this.actionFor(operation),
-                    state.applied.length,
-                    state.operations.length,
-                    this.labelFor(operation),
+                    'unsupported',
+                    'build execution service is unavailable',
                 ),
                 null,
             ];
         }
-        return [this.advance(run), null];
+        const [completed, completeError] = execution.complete(
+            context,
+            this.withGrant(operation, state.grant),
+            context.lastAction,
+        );
+        if (completeError !== null) {
+            return [
+                SkillSharedUtilities.failed(run, this.failureClass(completeError), completeError),
+                null,
+            ];
+        }
+        if (completed === null) {
+            return [
+                SkillSharedUtilities.failed(run, 'execution-failed', 'repair completion missing'),
+                null,
+            ];
+        }
+        const applied = state.applied.includes(state.activeKey)
+            ? state.applied
+            : [...state.applied, state.activeKey];
+        const nextRun: SkillRun = {
+            skillId: this.id,
+            state: {
+                ...run.state,
+                cursor: state.cursor + 1,
+                activeKey: null,
+                applied,
+            },
+        };
+        return [this.advance(context, nextRun), null];
     }
 
     cancel(context: SkillContext, run: SkillRun, reason: string): Result<SkillStep, string> {
@@ -158,7 +188,25 @@ export class RepairSkill implements Skill {
     }
 
     checkpoint(context: SkillContext, run: SkillRun): Result<SkillCheckpoint, string> {
-        return [SkillSharedUtilities.checkpoint(context, run), null];
+        const state = this.readState(run);
+        if (state === null) return [null, 'repair checkpoint state is invalid'];
+        return [
+            {
+                botId: context.botId,
+                taskId: context.taskId ?? 'default',
+                skillId: this.id,
+                state: {
+                    operations: state.operations,
+                    cursor: state.cursor,
+                    activeKey: state.activeKey,
+                    applied: state.applied,
+                    skipped: state.skipped,
+                    grant: state.grant,
+                },
+                updatedAt: context.at,
+            },
+            null,
+        ];
     }
 
     restore(context: SkillContext, checkpoint: SkillCheckpoint): Result<SkillRun, string> {
@@ -167,10 +215,21 @@ export class RepairSkill implements Skill {
         if (state === null) return [null, 'checkpoint has an invalid repair state'];
         const remainingBreaks = state.operations
             .slice(state.cursor)
-            .some((operation) => operation.kind === 'break-block');
+            .some((operation) => operation.kind === 'break');
         if (remainingBreaks) {
             const grantError = this.validateGrant(context, state.grant);
             if (grantError !== null) return [null, grantError];
+        }
+        if (state.operations.some((operation) => operation.kind === 'place')) {
+            const missing = Blueprint.missingMaterials(
+                context.inventory,
+                state.operations
+                    .filter((operation) => operation.kind === 'place')
+                    .map((operation) => operation.target),
+            );
+            if (missing.length > 0) {
+                return [null, `missing repair materials: ${missing.join(', ')}`];
+            }
         }
         return [run, null];
     }
@@ -215,6 +274,63 @@ export class RepairSkill implements Skill {
             .map((block) => block.position);
     }
 
+    private operations(
+        context: SkillContext,
+        diff: SkillRepairDiff,
+        input: SkillInput,
+    ): SkillConstructionOperation[] | null {
+        const extras = diff.extra.flatMap((position) => {
+            const actual = context.world.blockStateAt?.(position) ?? {
+                name: context.world.blockAt(position) ?? '',
+                properties: {},
+            };
+            if (actual.name.length === 0) return [];
+            return [
+                this.operation(
+                    'break',
+                    {
+                        position,
+                        itemName: actual.name,
+                        expectedBlockId: actual.name,
+                        ...(Object.keys(actual.properties).length === 0
+                            ? {}
+                            : { properties: actual.properties }),
+                    },
+                    input,
+                ),
+            ];
+        });
+        if (extras.length !== diff.extra.length) return null;
+        const placements = Blueprint.sortSupportFirst(
+            [...diff.missing, ...diff.mismatched],
+            context.position,
+        );
+        return [...extras, ...placements.map((target) => this.operation('place', target, input))];
+    }
+
+    private operation(
+        kind: 'place' | 'break',
+        target: SkillBuildTarget,
+        input: SkillInput,
+    ): SkillConstructionOperation {
+        return {
+            kind,
+            target,
+            ...(input.claimId === undefined ? {} : { claimId: input.claimId }),
+            ...(input.grant === undefined ? {} : { grantId: input.grant.id, grant: input.grant }),
+            ...(input.grant?.fencingToken === undefined
+                ? {}
+                : { grantFencingToken: input.grant.fencingToken }),
+            ...(input.structureId === undefined ? {} : { structureId: input.structureId }),
+            ...(input.blueprintId === undefined ? {} : { blueprintId: input.blueprintId }),
+            ...(input.blueprintRevision === undefined
+                ? {}
+                : { blueprintRevision: input.blueprintRevision }),
+            ...(input.planId === undefined ? {} : { planId: input.planId }),
+            ...(input.fencingToken === undefined ? {} : { fencingToken: input.fencingToken }),
+        };
+    }
+
     private validateGrant(context: SkillContext, grant: SkillGrant | null): string | null {
         if (grant === null) return 'repair grant is required to remove extra blocks';
         const grants = context.services?.grants;
@@ -225,60 +341,118 @@ export class RepairSkill implements Skill {
         return null;
     }
 
-    private advance(run: SkillRun): SkillStep {
+    private advance(context: SkillContext, run: SkillRun): SkillStep {
         const state = this.readState(run);
         if (state === null) {
             return SkillSharedUtilities.failed(run, 'execution-failed', 'repair state is invalid');
         }
-        if (state.cursor >= state.operations.length) {
-            return SkillSharedUtilities.completed(
-                { skillId: this.id, state: { ...run.state, activeKey: null } },
-                `applied ${state.applied.length} repair operations`,
+        let cursor = state.cursor;
+        const skipped = [...state.skipped];
+        while (cursor < state.operations.length) {
+            const operation = state.operations[cursor];
+            if (operation === undefined) break;
+            const key = this.operationKey(operation);
+            const execution = context.services?.buildExecution;
+            if (execution === undefined) {
+                return SkillSharedUtilities.failed(
+                    run,
+                    'unsupported',
+                    'build execution service is unavailable',
+                );
+            }
+            const [preparation, prepareError] = execution.prepare(
+                context,
+                this.withGrant(operation, state.grant),
+            );
+            if (prepareError !== null) {
+                return SkillSharedUtilities.failed(
+                    run,
+                    this.failureClass(prepareError),
+                    prepareError,
+                );
+            }
+            if (preparation === null) {
+                return SkillSharedUtilities.failed(
+                    run,
+                    'execution-failed',
+                    'repair preparation returned null',
+                );
+            }
+            if (preparation.status === 'skipped') {
+                if (!skipped.includes(key)) skipped.push(key);
+                cursor += 1;
+                continue;
+            }
+            if (preparation.action === null) {
+                return SkillSharedUtilities.failed(
+                    run,
+                    'execution-failed',
+                    'repair preparation has no action',
+                );
+            }
+            const nextRun: SkillRun = {
+                skillId: this.id,
+                state: { ...run.state, cursor, activeKey: key, skipped },
+            };
+            return SkillSharedUtilities.running(
+                nextRun,
+                preparation.action,
+                state.applied.length,
+                state.operations.length,
+                this.labelFor(operation),
             );
         }
-        const operation = state.operations[state.cursor];
-        if (operation === undefined) {
-            return SkillSharedUtilities.failed(
-                run,
-                'execution-failed',
-                'repair operation is missing',
-            );
-        }
-        const activeKey = this.operationKey(operation);
-        const nextRun: SkillRun = {
-            skillId: this.id,
-            state: { ...run.state, activeKey },
-        };
-        return SkillSharedUtilities.running(
-            nextRun,
-            this.actionFor(operation),
-            state.applied.length,
-            state.operations.length,
-            this.labelFor(operation),
+        return SkillSharedUtilities.completed(
+            { skillId: this.id, state: { ...run.state, cursor, skipped, activeKey: null } },
+            state.operations.length === 0
+                ? 'repair found no changes'
+                : `completed ${state.applied.length} repair operations`,
         );
     }
 
-    private actionFor(operation: RepairOperation): ActionRequest {
-        if (operation.kind === 'break-block') {
-            return { kind: 'break-block', position: operation.position };
-        }
-        return Blueprint.placementAction(operation.target);
+    private withGrant(
+        operation: SkillConstructionOperation,
+        grant: SkillGrant | null,
+    ): SkillConstructionOperation {
+        if (grant === null) return operation;
+        const fencingToken = grant.fencingToken ?? operation.grantFencingToken;
+        return {
+            ...operation,
+            grantId: grant.id,
+            grant,
+            ...(fencingToken === undefined ? {} : { grantFencingToken: fencingToken }),
+        };
     }
 
-    private labelFor(operation: RepairOperation): string {
-        if (operation.kind === 'break-block') return 'removing extra block';
+    private operationFor(state: RepairState, key: string): SkillConstructionOperation | null {
+        return state.operations.find((operation) => this.operationKey(operation) === key) ?? null;
+    }
+
+    private operationKey(operation: SkillConstructionOperation): string {
+        return `${operation.kind}:${Blueprint.targetKey(operation.target.position)}`;
+    }
+
+    private labelFor(operation: SkillConstructionOperation): string {
+        if (operation.kind === 'break') return 'removing extra block';
         return `replacing ${operation.target.itemName}`;
     }
 
-    private operationKey(operation: RepairOperation): string {
-        return `${operation.kind}:${Blueprint.targetKey(operation.position)}`;
+    private failureClass(message: string): 'unsafe' | 'missing-item' | 'execution-failed' {
+        const lowercase = message.toLowerCase();
+        if (lowercase.includes('safety') || lowercase.includes('grant')) return 'unsafe';
+        if (lowercase.includes('claim') || lowercase.includes('fencing')) return 'unsafe';
+        if (lowercase.includes('missing item')) return 'missing-item';
+        return 'execution-failed';
     }
 
     private readState(run: SkillRun): RepairState | null {
         const operations = this.readOperations(run.state.operations);
         const applied = Blueprint.readKeys(run.state.applied);
+        const skipped = Blueprint.readKeys(run.state.skipped);
         const grantResult = this.readGrant(run.state.grant);
-        if (operations === null || applied === null || grantResult === null) return null;
+        if (operations === null || applied === null || skipped === null || grantResult === null) {
+            return null;
+        }
         const cursor = run.state.cursor;
         if (typeof cursor !== 'number' || !Number.isInteger(cursor)) return null;
         if (cursor < 0 || cursor > operations.length) return null;
@@ -288,26 +462,46 @@ export class RepairSkill implements Skill {
             activeKey = SkillSharedUtilities.readString(activeValue);
             if (activeKey === null) return null;
         }
-        return { operations, cursor, activeKey, applied, grant: grantResult.grant };
+        return { operations, cursor, activeKey, applied, skipped, grant: grantResult.grant };
     }
 
-    private readOperations(value: unknown): RepairOperation[] | null {
+    private readOperations(value: unknown): SkillConstructionOperation[] | null {
         if (!Array.isArray(value)) return null;
-        const operations: RepairOperation[] = [];
+        const operations: SkillConstructionOperation[] = [];
         for (const entry of value) {
             if (!SkillSharedUtilities.isRecord(entry)) return null;
             const kind = SkillSharedUtilities.readString(entry.kind);
-            const position = SkillSharedUtilities.readVec3(entry.position);
-            if (position === null) return null;
-            if (kind === 'break-block') {
-                operations.push({ kind, position });
-                continue;
-            }
-            if (kind !== 'place-block') return null;
             const targets = Blueprint.readTargets([entry.target]);
             const target = targets?.[0];
-            if (target === undefined) return null;
-            operations.push({ kind, position, target });
+            if (kind === null || target === undefined) return null;
+            if (kind !== 'place' && kind !== 'break') return null;
+            const claimId = SkillSharedUtilities.readString(entry.claimId) ?? undefined;
+            const grantResult = this.readGrant(entry.grant);
+            if (grantResult === null) return null;
+            const grant = grantResult.grant;
+            const grantId = SkillSharedUtilities.readString(entry.grantId) ?? undefined;
+            const structureId = SkillSharedUtilities.readString(entry.structureId) ?? undefined;
+            const blueprintId = SkillSharedUtilities.readString(entry.blueprintId) ?? undefined;
+            const planId = SkillSharedUtilities.readString(entry.planId) ?? undefined;
+            const blueprintRevision =
+                typeof entry.blueprintRevision === 'number' ? entry.blueprintRevision : undefined;
+            const grantFencingToken =
+                typeof entry.grantFencingToken === 'number' ? entry.grantFencingToken : undefined;
+            const fencingToken =
+                typeof entry.fencingToken === 'number' ? entry.fencingToken : undefined;
+            operations.push({
+                kind,
+                target,
+                ...(claimId === undefined ? {} : { claimId }),
+                ...(grantId === undefined ? {} : { grantId }),
+                ...(grant === null ? {} : { grant }),
+                ...(structureId === undefined ? {} : { structureId }),
+                ...(blueprintId === undefined ? {} : { blueprintId }),
+                ...(blueprintRevision === undefined ? {} : { blueprintRevision }),
+                ...(planId === undefined ? {} : { planId }),
+                ...(grantFencingToken === undefined ? {} : { grantFencingToken }),
+                ...(fencingToken === undefined ? {} : { fencingToken }),
+            });
         }
         return operations;
     }
@@ -318,10 +512,13 @@ export class RepairSkill implements Skill {
         const id = SkillSharedUtilities.readString(value.id);
         if (id === null) return null;
         const expiresAt = SkillSharedUtilities.readString(value.expiresAt) ?? undefined;
+        const fencingToken =
+            typeof value.fencingToken === 'number' ? value.fencingToken : undefined;
         return {
             grant: {
                 id,
                 ...(expiresAt === undefined ? {} : { expiresAt }),
+                ...(fencingToken === undefined ? {} : { fencingToken }),
             },
         };
     }

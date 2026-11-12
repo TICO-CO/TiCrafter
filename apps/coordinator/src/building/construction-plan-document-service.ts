@@ -2,6 +2,7 @@ import {
     type ConstructionPlan,
     type ConstructionPlanDocument,
     ConstructionPlanDocumentHash,
+    type ConstructionPlanPurpose,
 } from '@ticrafter/building';
 import type { Result } from '@ticrafter/core';
 
@@ -16,6 +17,7 @@ export interface CommitConstructionPlanInput {
     structureId: string;
     blueprintId: string;
     blueprintRevision: number;
+    purpose?: ConstructionPlanPurpose;
     plan: ConstructionPlan;
 }
 
@@ -49,6 +51,7 @@ export class ConstructionPlanDocumentService {
             structureId: input.structureId,
             blueprintId: input.blueprintId,
             blueprintRevision: input.blueprintRevision,
+            purpose: input.purpose ?? 'build',
             plan: input.plan,
             createdAt: this.now(),
         };

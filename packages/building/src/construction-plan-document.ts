@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import { BlueprintDocumentHash } from './blueprint-document.js';
 import type { ConstructionPlan } from './construction-types.js';
 
+export type ConstructionPlanPurpose = 'build' | 'repair' | 'rollback' | 'renovation';
+
 export interface ConstructionPlanDocument {
     id: string;
     revision: number;
@@ -10,6 +12,7 @@ export interface ConstructionPlanDocument {
     structureId: string;
     blueprintId: string;
     blueprintRevision: number;
+    purpose: ConstructionPlanPurpose;
     plan: ConstructionPlan;
     createdAt: string;
 }

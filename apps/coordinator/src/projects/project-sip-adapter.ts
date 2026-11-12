@@ -111,7 +111,7 @@ export class ProjectSipAdapter implements ProjectSipPort {
             metadata: {
                 actor: botId,
                 expectedRevision,
-                idempotencyKey: `project:${projectId}:${action}`,
+                idempotencyKey: `project:${projectId}:${action}:${expectedRevision}`,
             },
             mutations,
         });

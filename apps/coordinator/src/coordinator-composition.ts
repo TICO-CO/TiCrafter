@@ -65,6 +65,8 @@ import {
     ProjectConstructionPlanner,
     ProjectConstructionService,
     ProjectConstructionTaskSeeder,
+    ProjectRepairPlanner,
+    ProjectRollbackPlanner,
 } from './building/index.js';
 import { ClaimRepository, ClaimService } from './claims/index.js';
 import {
@@ -309,6 +311,18 @@ export class CoordinatorComposition {
             maxWorkPackageBlocks: options.config.building.maxWorkPackageBlocks,
         });
         const constructionTasks = new ProjectConstructionTaskSeeder(tasks);
+        const projectRepair = new ProjectRepairPlanner({
+            world: new CoordinatorConstructionWorld(worldModel),
+            blueprints: blueprintDocuments,
+            plans: constructionPlans,
+            maxWorkPackageBlocks: options.config.building.maxWorkPackageBlocks,
+        });
+        const projectRollback = new ProjectRollbackPlanner({
+            changelog: new BlockChangelogReader(options.database),
+            blueprints: blueprintDocuments,
+            plans: constructionPlans,
+            maxWorkPackageBlocks: options.config.building.maxWorkPackageBlocks,
+        });
         const projectConstruction = new ProjectConstructionService(
             constructionPlanner,
             constructionTasks,
@@ -346,6 +360,33 @@ export class CoordinatorComposition {
                 commit: (input) => sip.commit(input),
             }),
             construction: projectConstruction,
+            repair: {
+                prepare: (input) => {
+                    const [artifacts, repairError] = projectRepair.prepare(input);
+                    if (repairError) {
+                        return [null, CoordinatorComposition.describeFailure(repairError)];
+                    }
+                    return [artifacts, null];
+                },
+            },
+            rollback: {
+                prepare: (input) => {
+                    const [artifacts, rollbackError] = projectRollback.prepare(input);
+                    if (rollbackError) {
+                        return [null, CoordinatorComposition.describeFailure(rollbackError)];
+                    }
+                    return [artifacts, null];
+                },
+            },
+            grants: {
+                revokeStructure: (structureId) => {
+                    const [revoked, revokeError] = grantService.revokeForStructure(structureId);
+                    if (revokeError) {
+                        return [null, CoordinatorComposition.describeFailure(revokeError)];
+                    }
+                    return [undefined, null];
+                },
+            },
             logger: options.logger,
         });
         const projectProgress = new ProjectConstructionProgressService({
@@ -628,6 +669,12 @@ export class CoordinatorComposition {
                 projectCommands.handlePropose(connection, payload, envelope),
             onProjectAbandon: (connection, payload, envelope) =>
                 projectCommands.handleAbandon(connection, payload, envelope),
+            onProjectRollback: (connection, payload, envelope) =>
+                projectCommands.handleRollback(connection, payload, envelope),
+            onProjectRepair: (connection, payload, envelope) =>
+                projectCommands.handleRepair(connection, payload, envelope),
+            onProjectRevise: (connection, payload, envelope) =>
+                projectCommands.handleRevise(connection, payload, envelope),
             onBlueprintGet: (connection, payload, envelope) =>
                 blueprintCommands.handleGet(connection, payload, envelope),
             onConstructionPlanGet: (connection, payload, envelope) =>

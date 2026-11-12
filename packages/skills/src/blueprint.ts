@@ -2,8 +2,10 @@ import type { ActionRequest, Result, Vec3 } from '@ticrafter/core';
 
 import type {
     SkillBuildTarget,
+    SkillConstructionOperation,
     SkillContext,
     SkillInventoryItem,
+    SkillMaterialNeed,
     SkillRun,
     SkillStep,
     SkillWorldView,
@@ -87,6 +89,23 @@ export class Blueprint {
             )
             .map(([itemName]) => itemName)
             .sort();
+    }
+
+    static outstandingNeeds(
+        context: SkillContext,
+        operations: readonly SkillConstructionOperation[],
+    ): SkillMaterialNeed[] {
+        const required = new Map<string, number>();
+        operations
+            .filter((operation) => operation.kind === 'place')
+            .filter((operation) => !this.isSatisfied(context.world, operation.target))
+            .forEach((operation) => {
+                const item = operation.target.itemName;
+                required.set(item, (required.get(item) ?? 0) + 1);
+            });
+        return [...required.entries()]
+            .map(([item, count]) => ({ item, count }))
+            .sort((left, right) => left.item.localeCompare(right.item));
     }
 
     static placementAction(target: SkillBuildTarget): ActionRequest {

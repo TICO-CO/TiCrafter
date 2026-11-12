@@ -19,7 +19,10 @@ import {
     BOT_PROJECT_ABANDON,
     BOT_PROJECT_ABANDON_RESPONSE,
     BOT_PROJECT_PROPOSE,
+    BOT_PROJECT_REPAIR,
     BOT_PROJECT_RESPONSE,
+    BOT_PROJECT_REVISE,
+    BOT_PROJECT_ROLLBACK,
     BOT_PROJECT_UPDATE_EVENT,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
@@ -43,7 +46,10 @@ import {
     botProjectAbandonResponseSchema,
     botProjectAbandonSchema,
     botProjectProposeSchema,
+    botProjectRepairSchema,
     botProjectResponseSchema,
+    botProjectReviseSchema,
+    botProjectRollbackSchema,
     botProjectUpdateSchema,
     botSafetyResumeSchema,
     botSafetyStopSchema,
@@ -164,6 +170,9 @@ export class MessageSchemaRegistry {
             .register(BOT_PROJECT_RESPONSE, botProjectResponseSchema)
             .register(BOT_PROJECT_ABANDON, botProjectAbandonSchema)
             .register(BOT_PROJECT_ABANDON_RESPONSE, botProjectAbandonResponseSchema)
+            .register(BOT_PROJECT_REPAIR, botProjectRepairSchema)
+            .register(BOT_PROJECT_REVISE, botProjectReviseSchema)
+            .register(BOT_PROJECT_ROLLBACK, botProjectRollbackSchema)
             .register(BOT_PROJECT_UPDATE_EVENT, botProjectUpdateSchema)
             .register(BOT_JOB_OFFERS, botJobOffersSchema)
             .register(BOT_JOB_OFFERS_RESPONSE, botJobOffersResponseSchema)

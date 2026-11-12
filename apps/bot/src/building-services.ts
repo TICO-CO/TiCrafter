@@ -24,6 +24,7 @@ import type {
     SkillBuildTarget,
     SkillConstructionSource,
     SkillInput,
+    SkillProcurementPort,
     SkillRepairDiff,
     SkillRepairDiffSource,
     SkillSchematicPipeline,
@@ -34,6 +35,7 @@ import type {
 import type { BlueprintFetchClient } from './blueprint-fetch-client.js';
 import type { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
 import { ConstructionSource } from './construction-source.js';
+import type { ContainerScanner } from './container-scanner.js';
 
 const TEMPLATE_PREFIX = 'template:';
 const SCHEMATIC_EXTENSION = '.schem';
@@ -80,6 +82,8 @@ export interface BuildingSkillServicesOptions {
     documents?: BlueprintFetchClient;
     plans?: ConstructionPlanFetchClient;
     buildExecution?: SkillBuildExecutionPort;
+    procurement?: SkillProcurementPort;
+    containers?: ContainerScanner;
 }
 
 export class BuildingSkillServices implements SkillServices {
@@ -88,8 +92,10 @@ export class BuildingSkillServices implements SkillServices {
     readonly repairDiff: SkillRepairDiffSource;
     readonly construction: SkillConstructionSource | undefined;
     readonly buildExecution: SkillBuildExecutionPort | undefined;
+    readonly procurement: SkillProcurementPort | undefined;
     private readonly documents: BlueprintFetchClient | undefined;
     private readonly plans: ConstructionPlanFetchClient | undefined;
+    private readonly containers: ContainerScanner | undefined;
 
     private constructor(
         catalog: BuildingBlueprintCatalog,
@@ -107,11 +113,13 @@ export class BuildingSkillServices implements SkillServices {
                       world,
                   });
         this.buildExecution = options.buildExecution;
+        this.procurement = options.procurement;
         this.documents = options.documents;
         this.plans = options.plans;
+        this.containers = options.containers;
     }
 
-    async prefetch(input: SkillInput): Promise<Result<void, string>> {
+    async prefetch(input: SkillInput, skillId?: string): Promise<Result<void, string>> {
         if (input.planId === undefined || input.planRevision === undefined) {
             return [null, 'construction requires a plan id and revision'];
         }
@@ -121,6 +129,10 @@ export class BuildingSkillServices implements SkillServices {
         const [document, fetchError] = await this.plans.fetch(input.planId, input.planRevision);
         if (fetchError !== null) return [null, fetchError];
         if (document === null) return [null, 'construction plan document returned null'];
+        if (skillId === 'procurement' && this.containers !== undefined) {
+            const [, containerError] = await this.containers.refresh();
+            if (containerError !== null) return [null, containerError];
+        }
         return [undefined, null];
     }
 

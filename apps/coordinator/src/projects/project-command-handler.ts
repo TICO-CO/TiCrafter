@@ -4,7 +4,10 @@ import {
     type BotProjectAbandon,
     type BotProjectAbandonResponse,
     type BotProjectPropose,
+    type BotProjectRepair,
     type BotProjectResponse,
+    type BotProjectRevise,
+    type BotProjectRollback,
     type Envelope,
     type LoggerPort,
     type ProjectRecordPayload,
@@ -42,6 +45,109 @@ export class ProjectCommandHandler {
             anchor: request.anchor,
             bbox: request.bbox,
             storagePosition: request.storagePosition ?? null,
+            ...(request.collaboration === undefined
+                ? {}
+                : { collaboration: request.collaboration }),
+            ...(request.autoAcceptCompatibleHelpers === undefined
+                ? {}
+                : { autoAcceptCompatibleHelpers: request.autoAcceptCompatibleHelpers }),
+        });
+        if (projectError) {
+            this.reply(
+                connection,
+                envelope,
+                BOT_PROJECT_RESPONSE,
+                this.failure(this.describe(projectError)),
+            );
+            return;
+        }
+        if (project === null) {
+            this.reply(connection, envelope, BOT_PROJECT_RESPONSE, this.failure('project missing'));
+            return;
+        }
+        this.reply(connection, envelope, BOT_PROJECT_RESPONSE, {
+            ok: true,
+            project: ProjectCommandHandler.project(project),
+        });
+    }
+
+    handleRepair(
+        connection: ClientConnection,
+        request: BotProjectRepair,
+        envelope: Envelope,
+    ): void {
+        const botId = connection.botId;
+        if (botId === undefined) {
+            this.reply(connection, envelope, BOT_PROJECT_RESPONSE, this.failure('bot is offline'));
+            return;
+        }
+        const [project, projectError] = this.projects.repair(request.projectId, botId);
+        if (projectError) {
+            this.reply(
+                connection,
+                envelope,
+                BOT_PROJECT_RESPONSE,
+                this.failure(this.describe(projectError)),
+            );
+            return;
+        }
+        if (project === null) {
+            this.reply(connection, envelope, BOT_PROJECT_RESPONSE, this.failure('project missing'));
+            return;
+        }
+        this.reply(connection, envelope, BOT_PROJECT_RESPONSE, {
+            ok: true,
+            project: ProjectCommandHandler.project(project),
+        });
+    }
+
+    handleRollback(
+        connection: ClientConnection,
+        request: BotProjectRollback,
+        envelope: Envelope,
+    ): void {
+        const botId = connection.botId;
+        if (botId === undefined) {
+            this.reply(connection, envelope, BOT_PROJECT_RESPONSE, this.failure('bot is offline'));
+            return;
+        }
+        const [project, projectError] = this.projects.rollback(request.projectId, botId);
+        if (projectError) {
+            this.reply(
+                connection,
+                envelope,
+                BOT_PROJECT_RESPONSE,
+                this.failure(this.describe(projectError)),
+            );
+            return;
+        }
+        if (project === null) {
+            this.reply(connection, envelope, BOT_PROJECT_RESPONSE, this.failure('project missing'));
+            return;
+        }
+        this.reply(connection, envelope, BOT_PROJECT_RESPONSE, {
+            ok: true,
+            project: ProjectCommandHandler.project(project),
+        });
+    }
+
+    handleRevise(
+        connection: ClientConnection,
+        request: BotProjectRevise,
+        envelope: Envelope,
+    ): void {
+        const botId = connection.botId;
+        if (botId === undefined) {
+            this.reply(connection, envelope, BOT_PROJECT_RESPONSE, this.failure('bot is offline'));
+            return;
+        }
+        const [project, projectError] = this.projects.revise({
+            projectId: request.projectId,
+            botId,
+            ...(request.title === undefined ? {} : { title: request.title }),
+            ...(request.kind === undefined ? {} : { kind: request.kind }),
+            ...(request.anchor === undefined ? {} : { anchor: request.anchor }),
+            ...(request.bbox === undefined ? {} : { bbox: request.bbox }),
             ...(request.collaboration === undefined
                 ? {}
                 : { collaboration: request.collaboration }),

@@ -6,6 +6,10 @@ export const BOT_PROJECT_PROPOSE = 'bot.project.propose';
 export const BOT_PROJECT_RESPONSE = 'bot.project.response';
 export const BOT_PROJECT_ABANDON = 'bot.project.abandon';
 export const BOT_PROJECT_ABANDON_RESPONSE = 'bot.project.abandon.response';
+export const BOT_PROJECT_REPLY = 'bot.project.repair';
+export const BOT_PROJECT_REPAIR = 'bot.project.repair';
+export const BOT_PROJECT_ROLLBACK = 'bot.project.rollback';
+export const BOT_PROJECT_REVISE = 'bot.project.revise';
 export const BOT_PROJECT_UPDATE_EVENT = 'bot.project.update';
 
 export const projectKindSchema = zod.enum(['home', 'storage', 'build']);
@@ -44,6 +48,25 @@ export const botProjectProposeSchema = zod.object({
     anchor: positionSchema,
     bbox: boundingBoxSchema,
     storagePosition: positionSchema.nullable().optional(),
+    collaboration: projectCollaborationSchema.optional(),
+    autoAcceptCompatibleHelpers: zod.boolean().optional(),
+});
+
+export const botProjectRepairSchema = zod.object({
+    projectId: zod.string().min(1),
+});
+
+export const botProjectRollbackSchema = zod.object({
+    projectId: zod.string().min(1),
+});
+
+export const botProjectReviseSchema = zod.object({
+    botId: zod.string().min(1),
+    projectId: zod.string().min(1),
+    title: zod.string().min(1).optional(),
+    kind: projectKindSchema.optional(),
+    anchor: positionSchema.optional(),
+    bbox: boundingBoxSchema.optional(),
     collaboration: projectCollaborationSchema.optional(),
     autoAcceptCompatibleHelpers: zod.boolean().optional(),
 });
@@ -92,5 +115,8 @@ export type BotProjectPropose = zod.infer<typeof botProjectProposeSchema>;
 export type BotProjectResponse = zod.infer<typeof botProjectResponseSchema>;
 export type BotProjectAbandon = zod.infer<typeof botProjectAbandonSchema>;
 export type BotProjectAbandonResponse = zod.infer<typeof botProjectAbandonResponseSchema>;
+export type BotProjectRepair = zod.infer<typeof botProjectRepairSchema>;
+export type BotProjectRollback = zod.infer<typeof botProjectRollbackSchema>;
+export type BotProjectRevise = zod.infer<typeof botProjectReviseSchema>;
 export type BotProjectUpdate = zod.infer<typeof botProjectUpdateSchema>;
 export type ProjectRecordPayload = zod.infer<typeof projectRecordSchema>;

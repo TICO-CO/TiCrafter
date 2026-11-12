@@ -3,10 +3,10 @@
 Status: implementation in progress. Steps 1–5 exist for the single-structure
 path: blueprint storage and composer, terrain site planning, foundation
 planning, dependency ordering, scaffolding, phase-aware packages, material
-procurement planning, verified execution wiring, exact blueprint and
-construction-plan fetch, coordinator-owned package tasks, per-package claims,
-helper grants, and post-update coordinator verification. Repair, renovation,
-and rollback remain.
+procurement planning and execution, verified execution wiring, exact blueprint
+and construction-plan fetch, coordinator-owned package and procurement tasks,
+per-package claims, helper grants, post-update coordinator verification, repair,
+renovation, and rollback. Full acceptance validation remains.
 
 `docs/architecture/graph.json` tracks the implemented module paths.
 
@@ -97,11 +97,23 @@ Current pieces:
   scaffold planning with reserved blueprint positions.
 - `packages/building/src/rollback-journal.ts`: before/after records and inverse
   operations.
+- `packages/building/src/repair-plan-planner.ts`: diff-driven repair plan with
+  extras-first removal and support-aware placement.
+- `packages/building/src/rollback-plan-planner.ts`: attributed changelog
+  inversion into top-down rollback packages.
 - `packages/skills/src/blueprint.ts`: direct multi-target placement skill.
 - `packages/skills/src/schematic-build.ts`: schematic-to-target pipeline.
 - `packages/skills/src/construction.ts`: verified construction execution with
   material preflight, replacement breaks, scaffold cleanup, and restore by
   re-diffing.
+- `packages/skills/src/procurement.ts`: task-seeded material procurement with
+  container withdrawals, crafting, gathering, and bounded re-planning.
+- `apps/bot/src/building-procurement-service.ts`: inventory, container, and
+  catalog adapter over the procurement planner.
+- `apps/bot/src/container-scanner.ts`: bounded nearby-container content
+  snapshots used by procurement.
+- `apps/bot/src/procurement-catalog.ts`: mineflayer recipe and gather-source
+  catalog.
 - `packages/core/src/schemas/blueprint.ts`: exact blueprint fetch request and
   response schemas.
 - `apps/coordinator/src/building/blueprint-command-handler.ts`: coordinator
@@ -109,8 +121,13 @@ Current pieces:
 - `apps/bot/src/blueprint-fetch-client.ts`: exact revision fetch and cache.
 - `apps/coordinator/src/building/project-construction-planner.ts`: coordinator
   site, foundation, scaffold, package, and plan-document generation.
-- `apps/coordinator/src/building/project-construction-task-seeder.ts`: one task
-  per plan package plus cleanup.
+- `apps/coordinator/src/building/project-construction-task-seeder.ts`: one
+  procurement task per material-bearing package, one task per plan package,
+  and cleanup.
+- `apps/coordinator/src/building/project-repair-planner.ts`: latest-blueprint
+  and latest-plan repair preparation.
+- `apps/coordinator/src/building/project-rollback-planner.ts`: authorized
+  changelog rollback preparation.
 - `apps/coordinator/src/building/construction-edit-authorizer.ts`: coordinator
   verification of attributed owner and helper edits.
 - `apps/coordinator/src/projects/project-construction-progress.ts`: package
@@ -133,9 +150,9 @@ Gaps:
 - Package claims use project TTL and are not independently renewed.
 - Coordinator authorization is post-update verification. It audits, requeues,
   and stops the offending bot, but cannot undo a block already changed.
-- Safety snapshots do not yet include active grants or package-claim regions.
-- Design revision changes do not yet cancel stale package tasks.
-- Material procurement, repair, renovation, and rollback remain.
+- Safety snapshots include the active task claim and its protected work-package
+  bounds; grants and other projects' claim regions are not yet included.
+- Full single-bot acceptance validation remains.
 - Agency build projects already carry project focus; project completion now
   clears focus through the project update event.
 
@@ -434,7 +451,11 @@ The material plan covers:
 - reservations that prevent multi-bot races
 
 A package does not start until its required materials are available or a
-procurement task is created.
+procurement task is created. Procurement tasks run before their package task,
+withdraw from nearby containers, craft missing materials when recipes and
+ingredients are available, and gather missing raw materials from resource
+blocks. They re-plan after each action and fail closed as `missing-item` when a
+need has no resolvable recipe or source.
 
 ### 10.5 Scaffolding
 
@@ -535,7 +556,9 @@ database.
 5. The coordinator stores the blueprint and construction-plan documents.
 6. The structure is upserted in SIP with namespaced package IDs.
 7. The structure claim and per-package claims are acquired.
-8. One construction task is seeded per package, plus a cleanup task when needed.
+8. One procurement task is seeded per material-bearing package and one
+   construction task per package, plus a cleanup task when needed. Construction
+   tasks depend on their procurement task and predecessor packages.
 9. Private projects remain owner-only; invite and open projects expose helper
    tasks and auto-issue scoped grants on accept.
 10. The project remains agency focus; the bot claims matching construction tasks
@@ -558,7 +581,8 @@ The detailed ownership boundary is in
 - Helper edits use a project-owned package claim and a helper-scoped grant.
 - The coordinator verifies attributed block updates after the fact, audits
   rejected edits, requeues the task, and sends a safety stop to the bot.
-- Bot safety snapshots do not yet receive active grant or package-claim state.
+- Bot safety snapshots receive the active task claim and protected package bounds;
+  active grant regions and other projects' claim regions remain future work.
 
 ### 12.4 Progress and completion
 
@@ -760,7 +784,9 @@ Planned order:
 7. multi-bot coordination
 8. architecture graph update, generated docs, ops runbook, and evaluation
 
-Steps 1–5 are implemented for the single-structure and helper-package path. Step 6 remains: repair, renovation, rollback, and full acceptance validation.
+Steps 1–5 are implemented for the single-structure and helper-package path,
+including repair, renovation, rollback, safety claim context, and task-seeded
+material procurement execution. Full acceptance validation remains.
 
 The single-bot acceptance gate lands after step 5.
 

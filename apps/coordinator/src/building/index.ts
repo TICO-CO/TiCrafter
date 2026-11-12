@@ -14,3 +14,5 @@ export * from './project-construction-failures.js';
 export * from './project-construction-planner.js';
 export * from './project-construction-service.js';
 export * from './project-construction-task-seeder.js';
+export * from './project-repair-planner.js';
+export * from './project-rollback-planner.js';

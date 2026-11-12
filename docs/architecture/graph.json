@@ -3,7 +3,7 @@
         "title": "TiCrafter Architecture Graph",
         "version": "1.3.0",
         "generatedFrom": "main.md",
-        "updated": "2026-11-11",
+        "updated": "2026-11-12",
         "description": "Canonical decomposition of TiCrafter systems, owned components, state ownership, typed relations, templates, tunables, and process boundaries.",
         "relationTypes": [
             "depends_on",
@@ -3130,6 +3130,27 @@
                     ]
                 },
                 {
+                    "id": "skills.procurement",
+                    "name": "Procurement",
+                    "responsibility": "Resolve package material needs and execute withdrawals, crafting, and gathering before the construction package starts.",
+                    "plannedPath": "packages/skills/src/procurement",
+                    "provides": ["skills.procurement.interface"],
+                    "requires": [
+                        "bot-runtime.building-procurement-service",
+                        "building.material-procurement-planner",
+                        "skill-runtime.context-builder"
+                    ],
+                    "ownsState": [],
+                    "metrics": ["skills_procurement_errors_total", "skills_procurement_latency_ms"],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "Procurement fails closed as missing-item when a need has no resolvable recipe or source.",
+                        "Procurement re-plans after every action and never edits blueprint structure blocks."
+                    ]
+                },
+                {
                     "id": "skills.schematic-build",
                     "name": "Schematic Build",
                     "responsibility": "Execute a schematic-backed blueprint with diffing and partitioning.",
@@ -3966,6 +3987,48 @@
                     "sourceRefs": ["main.md#10-building-three-layers"],
                     "milestone": 6,
                     "template": "tpl.validator"
+                },
+                {
+                    "id": "building.repair-plan-planner",
+                    "name": "Repair Plan Planner",
+                    "responsibility": "Diff a stored blueprint against the world and produce an ordered repair construction plan.",
+                    "plannedPath": "packages/building/src/repair-plan-planner",
+                    "provides": ["building.repair-plan-planner.interface"],
+                    "requires": [
+                        "building.blueprint-ir",
+                        "building.schematic-diff",
+                        "building.construction-dependency-graph",
+                        "building.work-package-planner"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_repair_plan_planner_errors_total",
+                        "building_repair_plan_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
+                },
+                {
+                    "id": "building.rollback-plan-planner",
+                    "name": "Rollback Plan Planner",
+                    "responsibility": "Invert attributed block changelog records into an ordered rollback construction plan.",
+                    "plannedPath": "packages/building/src/rollback-plan-planner",
+                    "provides": ["building.rollback-plan-planner.interface"],
+                    "requires": [
+                        "building.blueprint-ir",
+                        "building.construction-dependency-graph",
+                        "building.work-package-planner",
+                        "building.rollback-journal"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_rollback_plan_planner_errors_total",
+                        "building_rollback_plan_planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage"
                 }
             ]
         },
@@ -4207,6 +4270,66 @@
                     "invariants": [
                         "Construction starts from a cached exact construction plan revision.",
                         "Mismatched existing blocks become break-then-place operations."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.building-procurement-service",
+                    "name": "Building Procurement Service",
+                    "responsibility": "Adapt bot inventory, container snapshots, and the procurement catalog into a deterministic material procurement plan.",
+                    "plannedPath": "apps/bot/src/building-procurement-service",
+                    "provides": ["bot-runtime.building-procurement-service.interface"],
+                    "requires": [
+                        "bot-runtime.container-scanner",
+                        "bot-runtime.procurement-catalog"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_building_procurement_service_errors_total",
+                        "bot_runtime_building_procurement_service_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Procurement plans reconcile inventory, container contents, recipes, and gather sources without mutating the world."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.container-scanner",
+                    "name": "Container Scanner",
+                    "responsibility": "Snapshot nearby container contents for material preflight and procurement.",
+                    "plannedPath": "apps/bot/src/container-scanner",
+                    "provides": ["bot-runtime.container-scanner.interface"],
+                    "requires": ["bot-runtime.world-cache-adapter"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_container_scanner_errors_total",
+                        "bot_runtime_container_scanner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Container scans are bounded in distance and count and fail closed on unreadable containers."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.procurement-catalog",
+                    "name": "Procurement Catalog",
+                    "responsibility": "Map missing materials to recipes and gather sources for procurement execution.",
+                    "plannedPath": "apps/bot/src/procurement-catalog",
+                    "provides": ["bot-runtime.procurement-catalog.interface"],
+                    "requires": ["bot-runtime.world-cache-adapter"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_procurement_catalog_errors_total",
+                        "bot_runtime_procurement_catalog_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Unknown recipes and gather sources return null instead of guessing."
                     ]
                 },
                 {
@@ -13971,6 +14094,188 @@
             "criticality": "soft",
             "failureBehavior": "Keep the goal outcome and skip the mood or trait update.",
             "notes": "Reflection runs after completion or abandonment.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0594",
+            "from": "building.repair-plan-planner",
+            "to": "building.blueprint-ir",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.blueprint-ir",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.repair-plan-planner depends on building.blueprint-ir.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0595",
+            "from": "building.repair-plan-planner",
+            "to": "building.schematic-diff",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.schematic-diff",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.repair-plan-planner depends on building.schematic-diff.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0596",
+            "from": "building.repair-plan-planner",
+            "to": "building.construction-dependency-graph",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.construction-dependency-graph",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.repair-plan-planner depends on building.construction-dependency-graph.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0597",
+            "from": "building.repair-plan-planner",
+            "to": "building.work-package-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.work-package-planner",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.repair-plan-planner depends on building.work-package-planner.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0598",
+            "from": "building.rollback-plan-planner",
+            "to": "building.blueprint-ir",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.blueprint-ir",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.rollback-plan-planner depends on building.blueprint-ir.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0599",
+            "from": "building.rollback-plan-planner",
+            "to": "building.construction-dependency-graph",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.construction-dependency-graph",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.rollback-plan-planner depends on building.construction-dependency-graph.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0600",
+            "from": "building.rollback-plan-planner",
+            "to": "building.work-package-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.work-package-planner",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.rollback-plan-planner depends on building.work-package-planner.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0601",
+            "from": "building.rollback-plan-planner",
+            "to": "building.rollback-journal",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for building.rollback-journal",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "building.rollback-plan-planner depends on building.rollback-journal.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0602",
+            "from": "skills.procurement",
+            "to": "bot-runtime.building-procurement-service",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "inventory, container, and catalog plan",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
+            "notes": "Procurement skill delegates material planning.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0603",
+            "from": "skills.procurement",
+            "to": "building.material-procurement-planner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "material procurement plan",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
+            "notes": "Procurement skill consumes shortages, withdrawals, crafting, and gathering.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0605",
+            "from": "bot-runtime.building-procurement-service",
+            "to": "bot-runtime.container-scanner",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "container contents snapshot",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
+            "notes": "Procurement resolves container coverage from scanned contents.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0606",
+            "from": "bot-runtime.building-procurement-service",
+            "to": "bot-runtime.procurement-catalog",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "recipes and gather sources",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
+            "notes": "Procurement resolves crafting and gathering requirements.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0607",
+            "from": "bot-runtime.container-scanner",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "nearby block queries",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
+            "notes": "Container scanner uses local world state.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0608",
+            "from": "bot-runtime.procurement-catalog",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "block and item registry",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
+            "notes": "Procurement catalog uses local registries and recipes.",
             "explicit": true
         }
     ]

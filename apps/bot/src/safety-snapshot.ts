@@ -21,6 +21,7 @@ const MOVEMENT_SKILLS = new Set([
     'clear',
     'harvest-farm',
     'plant-farm',
+    'procurement',
     'smelt',
     'deposit',
     'withdraw',
@@ -31,16 +32,25 @@ const INVENTORY_TOTAL_SLOTS = 36;
 const FALLING_THRESHOLD = 1.5;
 const STUCK_MOVEMENT_THRESHOLD = 0.05;
 
+export interface SafetyBounds {
+    min: Vec3;
+    max: Vec3;
+}
+
 export interface SafetySnapshotSourceOptions {
     botNames?: readonly string[];
     allowDestructiveMaterials?: boolean;
     failureSource?: () => { class: string; at: string } | null;
+    claimSource?: () => SafetyClaim | null;
+    protectedBounds?: () => SafetyBounds | null;
 }
 
 class BotSafetyWorld implements SafetyWorldView {
     constructor(
         private readonly world: WorldCacheAdapter,
         private readonly activeBotsProvider: () => readonly SafetyActiveBot[],
+        private readonly claimProvider: () => SafetyClaim | null,
+        private readonly boundsProvider: () => SafetyBounds | null,
     ) {}
 
     blockAt(position: Vec3): string | null {
@@ -48,7 +58,16 @@ class BotSafetyWorld implements SafetyWorldView {
     }
 
     isProtected(position: Vec3): boolean {
-        return false;
+        const bounds = this.boundsProvider();
+        if (bounds === null) return false;
+        return (
+            position.x >= bounds.min.x &&
+            position.x <= bounds.max.x &&
+            position.y >= bounds.min.y &&
+            position.y <= bounds.max.y &&
+            position.z >= bounds.min.z &&
+            position.z <= bounds.max.z
+        );
     }
 
     activeBots(): readonly SafetyActiveBot[] {
@@ -56,7 +75,7 @@ class BotSafetyWorld implements SafetyWorldView {
     }
 
     claimFor(botId: string): SafetyClaim | null {
-        return null;
+        return this.claimProvider();
     }
 }
 
@@ -83,7 +102,12 @@ export class SafetySnapshotSource {
         const skillId = this.activeSkillId();
         const inventory = this.bot.inventory.items();
         const fallDistance = this.fallDistance();
-        this.world ??= new BotSafetyWorld(this.worldCache, () => this.detectActiveBots());
+        this.world ??= new BotSafetyWorld(
+            this.worldCache,
+            () => this.detectActiveBots(),
+            () => this.options.claimSource?.() ?? null,
+            () => this.options.protectedBounds?.() ?? null,
+        );
         return [
             {
                 botId: `bot.${this.bot.username.toLowerCase()}`,
@@ -102,7 +126,7 @@ export class SafetySnapshotSource {
                 inventoryTotalSlots: INVENTORY_TOTAL_SLOTS,
                 hostiles: this.hostileScanner.scan(position),
                 activeSkillId: skillId,
-                claimTrackingEnabled: false,
+                claimTrackingEnabled: this.options.claimSource !== undefined,
                 allowDestructiveMaterials: this.options.allowDestructiveMaterials ?? false,
                 world: this.world,
             },

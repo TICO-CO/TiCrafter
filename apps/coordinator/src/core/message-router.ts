@@ -10,6 +10,9 @@ import {
     BOT_JOB_OFFERS,
     BOT_PROJECT_ABANDON,
     BOT_PROJECT_PROPOSE,
+    BOT_PROJECT_REPAIR,
+    BOT_PROJECT_REVISE,
+    BOT_PROJECT_ROLLBACK,
     type BotAgencyEpisodeMessage,
     botAgencyEpisodeSchema,
     type BotAgencyStateMessage,
@@ -27,6 +30,12 @@ import {
     botProjectAbandonSchema,
     type BotProjectPropose,
     botProjectProposeSchema,
+    type BotProjectRepair,
+    botProjectRepairSchema,
+    type BotProjectRevise,
+    botProjectReviseSchema,
+    type BotProjectRollback,
+    botProjectRollbackSchema,
     type BotTaskClaim,
     botTaskClaimSchema,
     type BotTaskComplete,
@@ -84,6 +93,21 @@ export interface MessageRouterOptions {
     onProjectAbandon?: (
         connection: ClientConnection,
         payload: BotProjectAbandon,
+        envelope: Envelope,
+    ) => void;
+    onProjectRepair?: (
+        connection: ClientConnection,
+        payload: BotProjectRepair,
+        envelope: Envelope,
+    ) => void;
+    onProjectRollback?: (
+        connection: ClientConnection,
+        payload: BotProjectRollback,
+        envelope: Envelope,
+    ) => void;
+    onProjectRevise?: (
+        connection: ClientConnection,
+        payload: BotProjectRevise,
         envelope: Envelope,
     ) => void;
     onBlueprintGet?: (
@@ -237,6 +261,36 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId ?? '');
             this.options.onProjectPropose?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_REPAIR) {
+            const parsed = botProjectRepairSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid project repair');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onProjectRepair?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_ROLLBACK) {
+            const parsed = botProjectRollbackSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid project rollback');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onProjectRollback?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_REVISE) {
+            const parsed = botProjectReviseSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid project revise');
+                return;
+            }
+            this.options.sessions.touch(connection.botId ?? '');
+            this.options.onProjectRevise?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_ABANDON) {

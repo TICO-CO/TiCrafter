@@ -17,6 +17,7 @@ const MOVEMENT_SKILLS = [
     'clear',
     'harvest-farm',
     'plant-farm',
+    'procurement',
     'smelt',
     'deposit',
     'withdraw',
@@ -142,6 +143,25 @@ describe('safety snapshot source', () => {
         expect(readSnapshot(source).targetUnreachableMilliseconds).toBe(0);
         failure = { class: 'no-path', at: 'not-a-date' };
         expect(readSnapshot(source).targetUnreachableMilliseconds).toBe(0);
+    });
+
+    it('exposes active claim tracking and protects the active structure bounds', () => {
+        const state = createBot();
+        const claim = { id: 'claim.1', expiresAt: '2026-11-12T11:00:00.000Z' };
+        const source = new SafetySnapshotSource(state.bot, worldCache, () => null, {
+            claimSource: () => claim,
+            protectedBounds: () => ({
+                min: { x: -2, y: 60, z: -2 },
+                max: { x: 2, y: 70, z: 2 },
+            }),
+        });
+
+        const snapshot = readSnapshot(source);
+
+        expect(snapshot.claimTrackingEnabled).toBe(true);
+        expect(snapshot.world.claimFor('bot.tibot1')).toEqual(claim);
+        expect(snapshot.world.isProtected({ x: 0, y: 64, z: 0 })).toBe(true);
+        expect(snapshot.world.isProtected({ x: 4, y: 64, z: 0 })).toBe(false);
     });
 
     it('uses the fixed player inventory size', () => {

@@ -26,6 +26,7 @@ const EXPECTED_SKILLS = [
     'place-bed',
     'place-build',
     'plant-farm',
+    'procurement',
     'repair',
     'schematic-build',
     'sleep',

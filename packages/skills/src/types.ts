@@ -102,6 +102,31 @@ export interface SkillBuildPreparation {
     action: ActionRequest | null;
 }
 
+export interface SkillMaterialNeed {
+    item: string;
+    count: number;
+}
+
+export type SkillProcurementAction =
+    | { kind: 'withdraw'; container: Vec3; item: string; count: number }
+    | { kind: 'craft'; item: string; count: number; ingredients: readonly SkillMaterialNeed[] }
+    | { kind: 'gather'; item: string; count: number; source: string };
+
+export interface SkillProcurementPlan {
+    actions: readonly SkillProcurementAction[];
+    shortages: readonly SkillMaterialNeed[];
+    blocked: boolean;
+}
+
+export interface SkillProcurementPort {
+    plan(input: {
+        needs: readonly SkillMaterialNeed[];
+        inventory: readonly SkillInventoryItem[];
+        position: Vec3;
+    }): Result<SkillProcurementPlan, string>;
+    record?(input: { action: SkillProcurementAction; status: 'completed' | 'failed' }): void;
+}
+
 export interface SkillGrant {
     id: string;
     expiresAt?: string;
@@ -178,6 +203,7 @@ export interface SkillServices {
     repairDiff?: SkillRepairDiffSource;
     construction?: SkillConstructionSource;
     buildExecution?: SkillBuildExecutionPort;
+    procurement?: SkillProcurementPort;
 }
 
 export interface SkillWorldView {

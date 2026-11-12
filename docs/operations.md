@@ -131,12 +131,16 @@ Bots fetch blueprint documents by exact id and revision with
 `bot.blueprint.get`; the coordinator replies with `bot.blueprint.response`.
 Missing revisions fail closed and are never replaced with the latest revision.
 
-The `construction` skill derives the site, foundation, dependency, work package,
-and scaffold plan on the bot, then executes block changes through the building
-execution service. Mismatched blocks are broken before placement, scaffolds are
-removed after their targets complete, and material shortages fail before the
-first block change. The skill checkpoint stores blueprint id, revision, package
-id, and grant metadata; restore re-diffs the world before resuming.
+The coordinator owns site, foundation, dependency, work-package, and scaffold
+planning. Bots fetch the exact construction plan revision, execute the
+`procurement` task for each material-bearing package, then execute block changes
+through the building execution service. Procurement withdraws from nearby
+containers, crafts when recipes and ingredients are available, and gathers raw
+materials from resource blocks. Mismatched blocks are broken before placement,
+scaffolds are removed after their targets complete, and unresolved material
+shortages fail as `missing-item` before the first package block change.
+Construction and procurement checkpoints store plan id, revision, package id,
+and grant metadata; restore re-diffs and re-plans before resuming.
 
 ## Soak testing
 

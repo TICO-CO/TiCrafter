@@ -20,6 +20,7 @@ import { NavigateSkill } from './navigate.js';
 import { PlaceBedSkill } from './place-bed.js';
 import { PlaceBuildSkill } from './place-build.js';
 import { PlantFarmSkill } from './plant-farm.js';
+import { ProcurementSkill } from './procurement.js';
 import { SkillRegistry } from './registry.js';
 import { RepairSkill } from './repair.js';
 import { SchematicBuildSkill } from './schematic-build.js';
@@ -36,6 +37,7 @@ export class SkillCatalog {
             new MineSkill(),
             new CollectSkill(),
             new ConstructionSkill(),
+            new ProcurementSkill(),
             new SmeltSkill(),
             new EatSkill(),
             new SleepSkill(),

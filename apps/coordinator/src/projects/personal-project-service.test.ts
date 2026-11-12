@@ -63,6 +63,7 @@ const fakeConstruction = (): ProjectConstructionPort => ({
             structureId: input.structureId,
             blueprintId: blueprint.id,
             blueprintRevision: 1,
+            purpose: 'build',
             createdAt: now,
             plan: {
                 id: `plan.${input.structureId}`,
@@ -131,6 +132,7 @@ const fakeConstruction = (): ProjectConstructionPort => ({
     },
     seedTasks: () => [['task.project.project-1.package.0'], null],
     cancelTasks: () => [undefined, null],
+    cancelProjectTasks: () => [undefined, null],
 });
 
 const projectInput = (botId: string, id = 'project-1') => ({
@@ -202,6 +204,12 @@ describe('PersonalProjectService', () => {
             events: new EventLogWriter(coordinatorDatabase),
             sip,
             construction: fakeConstruction(),
+            repair: {
+                prepare: (input) => fakeConstruction().prepare({ ...input, kind: 'home' }),
+            },
+            rollback: {
+                prepare: (input) => fakeConstruction().prepare({ ...input, kind: 'home' }),
+            },
             logger: {
                 debug: () => undefined,
                 info: () => undefined,
@@ -236,6 +244,38 @@ describe('PersonalProjectService', () => {
         service.propose(projectInput(profile.botId));
         const [, duplicateError] = service.propose(projectInput(profile.botId, 'project-2'));
         expect(duplicateError?.type).toBe('PROJECT_EXISTS');
+    });
+
+    it('revises a project blueprint, plan, and task set', () => {
+        const { service, projects, profile } = fresh();
+        service.propose(projectInput(profile.botId));
+        const [revised, reviseError] = service.revise({
+            projectId: 'project-1',
+            botId: profile.botId,
+            title: 'Renovated Home',
+        });
+        expect(reviseError).toBeNull();
+        expect(revised?.title).toBe('Renovated Home');
+        expect(revised?.status).toBe('active');
+        expect(projects.get('project-1')[0]?.title).toBe('Renovated Home');
+    });
+
+    it('repairs a project from the latest blueprint diff', () => {
+        const { service, profile } = fresh();
+        service.propose(projectInput(profile.botId));
+        const [repaired, repairError] = service.repair('project-1', profile.botId);
+        expect(repairError).toBeNull();
+        expect(repaired?.status).toBe('active');
+        expect(repaired?.claims).toHaveLength(2);
+    });
+
+    it('rolls back a project using inverse construction changes', () => {
+        const { service, profile } = fresh();
+        service.propose(projectInput(profile.botId));
+        const [rolledBack, rollbackError] = service.rollback('project-1', profile.botId);
+        expect(rollbackError).toBeNull();
+        expect(rolledBack?.status).toBe('active');
+        expect(rolledBack?.claims).toHaveLength(2);
     });
 
     it('abandons a project and releases claims and home state', () => {

@@ -79,6 +79,49 @@ export class BlockChangelogReader {
         return [changes, null];
     }
 
+    listByPlan(planId: string, limit = 10000): Result<StoredBlockChange[], StorageFailure> {
+        const [changes, error] = attempt(() => {
+            const rows = this.database
+                .prepare(
+                    `SELECT ${columns}
+                     FROM block_changelog
+                     WHERE plan_id = ? AND authorized = 1 ORDER BY id ASC LIMIT ?`,
+                )
+                .all(planId, limit) as BlockChangeRow[];
+            return rows.map((row) => BlockChangelogReader.decode(row));
+        });
+        if (error) {
+            return [null, StorageFailures.from('READ_FAILED', error)];
+        }
+        if (changes === null) {
+            return [null, StorageFailures.from('READ_FAILED', 'Block changes missing')];
+        }
+        return [changes, null];
+    }
+
+    listByStructure(
+        structureId: string,
+        limit = 10000,
+    ): Result<StoredBlockChange[], StorageFailure> {
+        const [changes, error] = attempt(() => {
+            const rows = this.database
+                .prepare(
+                    `SELECT ${columns}
+                     FROM block_changelog
+                     WHERE structure_id = ? AND authorized = 1 ORDER BY id ASC LIMIT ?`,
+                )
+                .all(structureId, limit) as BlockChangeRow[];
+            return rows.map((row) => BlockChangelogReader.decode(row));
+        });
+        if (error) {
+            return [null, StorageFailures.from('READ_FAILED', error)];
+        }
+        if (changes === null) {
+            return [null, StorageFailures.from('READ_FAILED', 'Block changes missing')];
+        }
+        return [changes, null];
+    }
+
     private static decode(row: BlockChangeRow): StoredBlockChange {
         return {
             id: row.id,

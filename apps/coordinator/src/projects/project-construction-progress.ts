@@ -88,6 +88,7 @@ export class ProjectConstructionProgressService {
             (task) =>
                 task.status === 'completed' &&
                 task.payload.projectId === project.id &&
+                task.payload.skillId === 'construction' &&
                 typeof task.payload.workPackageId === 'string',
         );
         completedTasks.forEach((task) => {

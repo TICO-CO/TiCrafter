@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 591  
+**Relations:** 605  
 **State owners:** 23  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 22 |
-| `depends_on` | 409 |
+| `depends_on` | 423 |
 | `observes` | 8 |
 | `persists_to` | 2 |
 | `proposes_to` | 7 |
@@ -138,8 +138,8 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Skill Runtime` | `Shared Infrastructure Plan` | 1 | reads×1 |
 | `Skill Runtime` | `Transport and Protocol` | 2 | publishes×2 |
 | `Skill Runtime` | `World Model and Landmarks` | 2 | reads×1, depends_on×1 |
-| `Skill Library` | `Bot Runtime and Mineflayer Adapter` | 21 | depends_on×21 |
-| `Skill Library` | `Building` | 9 | depends_on×9 |
+| `Skill Library` | `Bot Runtime and Mineflayer Adapter` | 22 | depends_on×22 |
+| `Skill Library` | `Building` | 10 | depends_on×10 |
 | `Skill Library` | `Autonomy and Safety` | 2 | depends_on×2 |
 | `Skill Library` | `Shared Infrastructure Plan` | 3 | depends_on×3 |
 | `Skill Library` | `Skill Runtime` | 4 | depends_on×4 |
@@ -620,6 +620,8 @@ None.
 | `rel.0573` | `skills.dig-shelter` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Dig Shelter depends on Action Executor. |
 | `rel.0575` | `skills.construction` | `depends_on` | `bot-runtime.building-execution-service` | `in-process` | sync | hard | prepared block actions and completion outcomes | Fail the construction step and preserve the task lease. | Construction skill delegates verified block execution. |
 | `rel.0576` | `skills.construction` | `depends_on` | `building.construction-plan-planner` | `in-process` | sync | hard | construction plan and work packages | Fail the construction step with an execution failure. | Construction skill consumes the derived construction plan. |
+| `rel.0602` | `skills.procurement` | `depends_on` | `bot-runtime.building-procurement-service` | `in-process` | sync | hard | inventory, container, and catalog plan | Fail the procurement step and preserve the package task dependency. | Procurement skill delegates material planning. |
+| `rel.0603` | `skills.procurement` | `depends_on` | `building.material-procurement-planner` | `in-process` | sync | hard | material procurement plan | Fail the procurement step and preserve the package task dependency. | Procurement skill consumes shortages, withdrawals, crafting, and gathering. |
 
 ## Building relations
 
@@ -679,6 +681,14 @@ None.
 | `rel.0548` | `building.material-procurement-planner` | `depends_on` | `building.material-preflight` | `in-process` | sync | hard | depends on payload for building.material-preflight | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Material Procurement Planner depends on building.material-preflight. |
 | `rel.0549` | `building.site-planner` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | depends on payload for Construction Plan Types | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Site Planner depends on Construction Plan Types. |
 | `rel.0591` | `building.construction-plan-document` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | construction plan and package manifest | Reject the plan document and keep the last stored revision. | Plan documents persist construction plan types. |
+| `rel.0594` | `building.repair-plan-planner` | `depends_on` | `building.blueprint-ir` | `in-process` | sync | hard | depends on payload for building.blueprint-ir | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.repair-plan-planner depends on building.blueprint-ir. |
+| `rel.0595` | `building.repair-plan-planner` | `depends_on` | `building.schematic-diff` | `in-process` | sync | hard | depends on payload for building.schematic-diff | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.repair-plan-planner depends on building.schematic-diff. |
+| `rel.0596` | `building.repair-plan-planner` | `depends_on` | `building.construction-dependency-graph` | `in-process` | sync | hard | depends on payload for building.construction-dependency-graph | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.repair-plan-planner depends on building.construction-dependency-graph. |
+| `rel.0597` | `building.repair-plan-planner` | `depends_on` | `building.work-package-planner` | `in-process` | sync | hard | depends on payload for building.work-package-planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.repair-plan-planner depends on building.work-package-planner. |
+| `rel.0598` | `building.rollback-plan-planner` | `depends_on` | `building.blueprint-ir` | `in-process` | sync | hard | depends on payload for building.blueprint-ir | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.rollback-plan-planner depends on building.blueprint-ir. |
+| `rel.0599` | `building.rollback-plan-planner` | `depends_on` | `building.construction-dependency-graph` | `in-process` | sync | hard | depends on payload for building.construction-dependency-graph | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.rollback-plan-planner depends on building.construction-dependency-graph. |
+| `rel.0600` | `building.rollback-plan-planner` | `depends_on` | `building.work-package-planner` | `in-process` | sync | hard | depends on payload for building.work-package-planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.rollback-plan-planner depends on building.work-package-planner. |
+| `rel.0601` | `building.rollback-plan-planner` | `depends_on` | `building.rollback-journal` | `in-process` | sync | hard | depends on payload for building.rollback-journal | Reject the operation, keep the last committed state, and surface a typed error to the caller. | building.rollback-plan-planner depends on building.rollback-journal. |
 
 ## Bot Runtime and Mineflayer Adapter relations
 
@@ -728,6 +738,10 @@ None.
 | `rel.0592` | `bot-runtime.construction-plan-fetch-client` | `depends_on` | `transport.request-correlator` | `in-process` | sync | hard | construction plan fetch request correlation | Return a typed transport failure and leave the cache unchanged. | Plan fetch requests are correlated over the bot transport. |
 | `rel.0593` | `bot-runtime.construction-source` | `depends_on` | `bot-runtime.construction-plan-fetch-client` | `in-process` | sync | hard | cached construction plan document | Fail construction resolution when the exact plan revision is not cached. | Construction source consumes stored plan packages. |
 | `rel.0590` | `bot-runtime.agent-loop` | `depends_on` | `agency.reflection` | `in-process` | sync | soft | goal outcome | Keep the goal outcome and skip the mood or trait update. | Reflection runs after completion or abandonment. |
+| `rel.0605` | `bot-runtime.building-procurement-service` | `depends_on` | `bot-runtime.container-scanner` | `in-process` | sync | hard | container contents snapshot | Fail the procurement step and preserve the package task dependency. | Procurement resolves container coverage from scanned contents. |
+| `rel.0606` | `bot-runtime.building-procurement-service` | `depends_on` | `bot-runtime.procurement-catalog` | `in-process` | sync | hard | recipes and gather sources | Fail the procurement step and preserve the package task dependency. | Procurement resolves crafting and gathering requirements. |
+| `rel.0607` | `bot-runtime.container-scanner` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | nearby block queries | Fail the procurement step and preserve the package task dependency. | Container scanner uses local world state. |
+| `rel.0608` | `bot-runtime.procurement-catalog` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | block and item registry | Fail the procurement step and preserve the package task dependency. | Procurement catalog uses local registries and recipes. |
 
 ## Autonomy and Safety relations
 

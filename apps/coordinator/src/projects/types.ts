@@ -128,6 +128,42 @@ export interface ProjectConstructionPort {
     }): Result<ProjectConstructionArtifacts, string>;
     seedTasks(input: ProjectConstructionTaskInput): Result<readonly string[], string>;
     cancelTasks(taskIds: readonly string[]): Result<void, string>;
+    cancelProjectTasks(projectId: string): Result<void, string>;
+}
+
+export interface ProjectRepairPort {
+    prepare(input: {
+        projectId: string;
+        structureId: string;
+        botId: string;
+        anchor: SipBlockPosition;
+        bbox: SipBoundingBox;
+    }): Result<ProjectConstructionArtifacts | null, string>;
+}
+
+export interface ProjectRollbackPort {
+    prepare(input: {
+        projectId: string;
+        structureId: string;
+        botId: string;
+        anchor: SipBlockPosition;
+        bbox: SipBoundingBox;
+    }): Result<ProjectConstructionArtifacts | null, string>;
+}
+
+export interface ProjectGrantPort {
+    revokeStructure(structureId: string): Result<void, string>;
+}
+
+export interface ReviseProjectInput {
+    projectId: string;
+    botId: string;
+    title?: string;
+    kind?: PersonalProjectKind;
+    anchor?: SipBlockPosition;
+    bbox?: SipBoundingBox;
+    collaboration?: SipCollaborationPolicy;
+    autoAcceptCompatibleHelpers?: boolean;
 }
 
 export interface ProjectBotPort {

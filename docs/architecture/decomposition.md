@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 294  
-**Relations:** 591  
+**Components:** 300  
+**Relations:** 605  
 **Externals:** 5
 
 ## Reading this catalog
@@ -30,9 +30,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
 | `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 13 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
-| `sys.skills` | [Skill Library](#skill-library) | 27 | `packages/skills/src` | 4 |
-| `sys.building` | [Building](#building) | 36 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 20 | `apps/bot/src` | 1 |
+| `sys.skills` | [Skill Library](#skill-library) | 28 | `packages/skills/src` | 4 |
+| `sys.building` | [Building](#building) | 38 | `packages/building/src` | 6 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 23 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
@@ -2949,6 +2949,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `skills.clear` | Clear | Remove permitted blocks from a work package after grant and safety validation. | `packages/skills/src/clear` | 4 |
 | `skills.place-build` | Place Build | Place blueprint blocks for a work package in support-first order. | `packages/skills/src/place-build` | 4 |
 | `skills.construction` | Construction | Execute an ordered construction plan through verified block changes and scaffold cleanup. | `packages/skills/src/construction` | 6 |
+| `skills.procurement` | Procurement | Resolve package material needs and execute withdrawals, crafting, and gathering before the construction package starts. | `packages/skills/src/procurement` | 6 |
 | `skills.schematic-build` | Schematic Build | Execute a schematic-backed blueprint with diffing and partitioning. | `packages/skills/src/schematic-build` | 4 |
 | `skills.repair` | Repair | Repair a structure by diffing intended blueprint against observed blocks. | `packages/skills/src/repair` | 4 |
 | `skills.harvest-farm` | Harvest Farm | Harvest mature crops from an assigned farm plot. | `packages/skills/src/harvest-farm` | 4 |
@@ -3281,6 +3282,26 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `skills_construction_errors_total`
   - `skills_construction_latency_ms`
 
+### `skills.procurement` — Procurement
+
+- **Responsibility:** Resolve package material needs and execute withdrawals, crafting, and gathering before the construction package starts.
+- **Owner path:** `packages/skills/src/procurement`
+- **Provides:** `skills.procurement.interface`
+- **Requires:** `bot-runtime.building-procurement-service`, `building.material-procurement-planner`, `skill-runtime.context-builder`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Procurement fails closed as missing-item when a need has no resolvable recipe or source.
+  - Procurement re-plans after every action and never edits blueprint structure blocks.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_procurement_errors_total`
+  - `skills_procurement_latency_ms`
+
 ### `skills.schematic-build` — Schematic Build
 
 - **Responsibility:** Execute a schematic-backed blueprint with diffing and partitioning.
@@ -3555,6 +3576,8 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `building.construction-plan-planner` | Construction Plan Planner | Combine site, foundation, blueprint, scaffold, and package planning into one ordered construction plan. | `packages/building/src/construction-plan-planner` | 6 |
 | `building.construction-plan-document` | Construction Plan Document | Version, hash, and persist site-adapted construction plans with namespaced package identity. | `packages/building/src/construction-plan-document` | 6 |
 | `building.material-procurement-planner` | Material Procurement Planner | Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures. | `packages/building/src/material-procurement-planner` | 6 |
+| `building.repair-plan-planner` | Repair Plan Planner | Diff a stored blueprint against the world and produce an ordered repair construction plan. | `packages/building/src/repair-plan-planner` | 6 |
+| `building.rollback-plan-planner` | Rollback Plan Planner | Invert attributed block changelog records into an ordered rollback construction plan. | `packages/building/src/rollback-plan-planner` | 6 |
 
 ### `building.blueprint-ir` — Blueprint IR
 
@@ -4274,6 +4297,46 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `building_material_procurement_planner_errors_total`
   - `building_material_procurement_planner_latency_ms`
 
+### `building.repair-plan-planner` — Repair Plan Planner
+
+- **Responsibility:** Diff a stored blueprint against the world and produce an ordered repair construction plan.
+- **Owner path:** `packages/building/src/repair-plan-planner`
+- **Provides:** `building.repair-plan-planner.interface`
+- **Requires:** `building.blueprint-ir`, `building.schematic-diff`, `building.construction-dependency-graph`, `building.work-package-planner`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_repair_plan_planner_errors_total`
+  - `building_repair_plan_planner_latency_ms`
+
+### `building.rollback-plan-planner` — Rollback Plan Planner
+
+- **Responsibility:** Invert attributed block changelog records into an ordered rollback construction plan.
+- **Owner path:** `packages/building/src/rollback-plan-planner`
+- **Provides:** `building.rollback-plan-planner.interface`
+- **Requires:** `building.blueprint-ir`, `building.construction-dependency-graph`, `building.work-package-planner`, `building.rollback-journal`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Building is support-first and idempotent; blocks already correct are skipped.
+  - No load-bearing block of an occupied structure is removed without a valid grant.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_rollback_plan_planner_errors_total`
+  - `building_rollback_plan_planner_latency_ms`
+
 ---
 
 ## Bot Runtime and Mineflayer Adapter
@@ -4307,6 +4370,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.blueprint-fetch-client` | Blueprint Fetch Client | Fetch and cache exact blueprint document revisions from the coordinator. | `apps/bot/src/blueprint-fetch-client` | 6 |
 | `bot-runtime.construction-plan-fetch-client` | Construction Plan Fetch Client | Fetch and cache exact construction plan revisions from the coordinator. | `apps/bot/src/construction-plan-fetch-client` | 6 |
 | `bot-runtime.construction-source` | Construction Source | Derive package, cleanup, and replacement operations from a fetched exact construction plan. | `apps/bot/src/construction-source` | 6 |
+| `bot-runtime.building-procurement-service` | Building Procurement Service | Adapt bot inventory, container snapshots, and the procurement catalog into a deterministic material procurement plan. | `apps/bot/src/building-procurement-service` | 6 |
+| `bot-runtime.container-scanner` | Container Scanner | Snapshot nearby container contents for material preflight and procurement. | `apps/bot/src/container-scanner` | 6 |
+| `bot-runtime.procurement-catalog` | Procurement Catalog | Map missing materials to recipes and gather sources for procurement execution. | `apps/bot/src/procurement-catalog` | 6 |
 | `bot-runtime.state-digest-collector` | State Digest Collector | Collect health, food, time, biome, y-level, target, inventory, hazards, and skill progress. | `apps/bot/src/state-digest-collector` | 1 |
 | `bot-runtime.guardian-hook` | Guardian Hook | Connect the local reflex guardian to the action veto gate on every tick. | `apps/bot/src/guardian-hook` | 1 |
 | `bot-runtime.skill-host` | Skill Host | Host the skill runtime inside the bot process and step active skills. | `apps/bot/src/skill-host` | 1 |
@@ -4535,6 +4601,63 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bot_runtime_construction_source_errors_total`
   - `bot_runtime_construction_source_latency_ms`
+
+### `bot-runtime.building-procurement-service` — Building Procurement Service
+
+- **Responsibility:** Adapt bot inventory, container snapshots, and the procurement catalog into a deterministic material procurement plan.
+- **Owner path:** `apps/bot/src/building-procurement-service`
+- **Provides:** `bot-runtime.building-procurement-service.interface`
+- **Requires:** `bot-runtime.container-scanner`, `bot-runtime.procurement-catalog`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Procurement plans reconcile inventory, container contents, recipes, and gather sources without mutating the world.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_building_procurement_service_errors_total`
+  - `bot_runtime_building_procurement_service_latency_ms`
+
+### `bot-runtime.container-scanner` — Container Scanner
+
+- **Responsibility:** Snapshot nearby container contents for material preflight and procurement.
+- **Owner path:** `apps/bot/src/container-scanner`
+- **Provides:** `bot-runtime.container-scanner.interface`
+- **Requires:** `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Container scans are bounded in distance and count and fail closed on unreadable containers.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_container_scanner_errors_total`
+  - `bot_runtime_container_scanner_latency_ms`
+
+### `bot-runtime.procurement-catalog` — Procurement Catalog
+
+- **Responsibility:** Map missing materials to recipes and gather sources for procurement execution.
+- **Owner path:** `apps/bot/src/procurement-catalog`
+- **Provides:** `bot-runtime.procurement-catalog.interface`
+- **Requires:** `bot-runtime.world-cache-adapter`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Unknown recipes and gather sources return null instead of guessing.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_procurement_catalog_errors_total`
+  - `bot_runtime_procurement_catalog_latency_ms`
 
 ### `bot-runtime.state-digest-collector` — State Digest Collector
 

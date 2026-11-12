@@ -133,6 +133,7 @@ export const constructionPlanDocumentSchema = zod.object({
     structureId: zod.string().min(1),
     blueprintId: zod.string().min(1),
     blueprintRevision: zod.number().int().nonnegative(),
+    purpose: zod.enum(['build', 'repair', 'rollback', 'renovation']),
     plan: constructionPlanSchema,
     createdAt: zod.string().min(1),
 });

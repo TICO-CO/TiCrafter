@@ -18,12 +18,17 @@ import type {
     ProjectBotPort,
     ProjectClaimPort,
     ProjectClaimReference,
+    ProjectConstructionArtifacts,
     ProjectConstructionPort,
     ProjectEpisodePort,
     ProjectEventPort,
     ProjectFailure,
+    ProjectGrantPort,
+    ProjectRepairPort,
+    ProjectRollbackPort,
     ProjectSipPort,
     ProposeProjectInput,
+    ReviseProjectInput,
 } from './types.js';
 
 export interface PersonalProjectServiceOptions {
@@ -35,6 +40,9 @@ export interface PersonalProjectServiceOptions {
     events: ProjectEventPort;
     sip: ProjectSipPort;
     construction: ProjectConstructionPort;
+    grants?: ProjectGrantPort;
+    repair?: ProjectRepairPort;
+    rollback?: ProjectRollbackPort;
     logger: LoggerPort;
     now?: () => string;
     id?: () => string;
@@ -162,7 +170,7 @@ export class PersonalProjectService {
             claims,
         });
         if (taskError || taskIds === null) {
-            this.rollback(record, now, taskIds ?? []);
+            this.rollbackSetup(record, now, taskIds ?? []);
             return [null, ProjectFailures.taskFailed(taskError ?? 'tasks missing')];
         }
         const [, profileSaveError] = this.options.bots.save({
@@ -171,7 +179,7 @@ export class PersonalProjectService {
             updatedAt: now,
         });
         if (profileSaveError) {
-            this.rollback(record, now, taskIds);
+            this.rollbackSetup(record, now, taskIds);
             return [null, ProjectFailures.profileFailed(profileSaveError.message)];
         }
         const [, agencyError] = this.assignAgency(
@@ -182,11 +190,236 @@ export class PersonalProjectService {
             now,
         );
         if (agencyError) {
-            this.rollback(record, now, taskIds);
+            this.rollbackSetup(record, now, taskIds);
             return [null, agencyError];
         }
         this.recordProposal(record, now);
         return [record, null];
+    }
+
+    revise(input: ReviseProjectInput): Result<PersonalProjectRecord, ProjectFailure> {
+        const [project, readError] = this.options.projects.get(input.projectId);
+        if (readError) return [null, ProjectFailures.storage(readError)];
+        if (project === null) {
+            return [null, ProjectFailures.projectNotFound(input.projectId)];
+        }
+        if (project.botId !== input.botId) {
+            return [null, ProjectFailures.ownerMismatch(project.id, input.botId)];
+        }
+        const structureId = project.structureId;
+        if (structureId === null) {
+            return [null, ProjectFailures.invalidProject('project has no structure')];
+        }
+        const kind = input.kind ?? project.kind;
+        const title = input.title ?? project.title;
+        const anchor = input.anchor ?? project.anchor;
+        const bbox = input.bbox ?? project.bbox;
+        const [artifacts, constructionError] = this.options.construction.prepare({
+            projectId: project.id,
+            structureId,
+            botId: project.botId,
+            kind,
+            anchor,
+            bbox,
+        });
+        if (constructionError) {
+            return [null, ProjectFailures.constructionFailed(constructionError)];
+        }
+        if (artifacts === null) {
+            return [null, ProjectFailures.constructionFailed('construction artifacts missing')];
+        }
+        return this.replaceWithArtifacts(project, artifacts, {
+            title,
+            kind,
+            collaboration: input.collaboration ?? 'private',
+            autoAcceptCompatibleHelpers: input.autoAcceptCompatibleHelpers ?? false,
+            eventType: 'project.revised',
+        });
+    }
+
+    repair(projectId: string, botId: string): Result<PersonalProjectRecord, ProjectFailure> {
+        const [project, readError] = this.options.projects.get(projectId);
+        if (readError) return [null, ProjectFailures.storage(readError)];
+        if (project === null) return [null, ProjectFailures.projectNotFound(projectId)];
+        if (project.botId !== botId) {
+            return [null, ProjectFailures.ownerMismatch(projectId, botId)];
+        }
+        const structureId = project.structureId;
+        if (structureId === null) {
+            return [null, ProjectFailures.invalidProject('project has no structure')];
+        }
+        if (this.options.repair === undefined) {
+            return [null, ProjectFailures.constructionFailed('repair planner unavailable')];
+        }
+        const [artifacts, repairError] = this.options.repair.prepare({
+            projectId,
+            structureId,
+            botId,
+            anchor: project.anchor,
+            bbox: project.bbox,
+        });
+        if (repairError) {
+            return [null, ProjectFailures.constructionFailed(repairError)];
+        }
+        if (artifacts === null) return [project, null];
+        return this.replaceWithArtifacts(project, artifacts, {
+            title: project.title,
+            kind: project.kind,
+            collaboration: 'private',
+            autoAcceptCompatibleHelpers: false,
+            eventType: 'project.repair',
+        });
+    }
+
+    rollback(projectId: string, botId: string): Result<PersonalProjectRecord, ProjectFailure> {
+        const [project, readError] = this.options.projects.get(projectId);
+        if (readError) return [null, ProjectFailures.storage(readError)];
+        if (project === null) return [null, ProjectFailures.projectNotFound(projectId)];
+        if (project.botId !== botId) {
+            return [null, ProjectFailures.ownerMismatch(projectId, botId)];
+        }
+        const structureId = project.structureId;
+        if (structureId === null) {
+            return [null, ProjectFailures.invalidProject('project has no structure')];
+        }
+        if (this.options.rollback === undefined) {
+            return [null, ProjectFailures.constructionFailed('rollback planner unavailable')];
+        }
+        const [artifacts, rollbackError] = this.options.rollback.prepare({
+            projectId,
+            structureId,
+            botId,
+            anchor: project.anchor,
+            bbox: project.bbox,
+        });
+        if (rollbackError) {
+            return [null, ProjectFailures.constructionFailed(rollbackError)];
+        }
+        if (artifacts === null) return [project, null];
+        return this.replaceWithArtifacts(project, artifacts, {
+            title: project.title,
+            kind: project.kind,
+            collaboration: 'private',
+            autoAcceptCompatibleHelpers: false,
+            eventType: 'project.rollback',
+        });
+    }
+
+    private replaceWithArtifacts(
+        project: PersonalProjectRecord,
+        artifacts: ProjectConstructionArtifacts,
+        options: {
+            title: string;
+            kind: ProposeProjectInput['kind'];
+            collaboration: 'private' | 'invite' | 'open';
+            autoAcceptCompatibleHelpers: boolean;
+            eventType: string;
+        },
+    ): Result<PersonalProjectRecord, ProjectFailure> {
+        const structureId = project.structureId;
+        if (structureId === null) {
+            return [null, ProjectFailures.invalidProject('project has no structure')];
+        }
+        const now = this.now();
+        const [, cancelError] = this.options.construction.cancelProjectTasks(project.id);
+        if (cancelError) return [null, ProjectFailures.taskFailed(cancelError)];
+        const [, grantError] = this.options.grants?.revokeStructure(structureId) ?? [
+            undefined,
+            null,
+        ];
+        if (grantError) return [null, ProjectFailures.invalidProject(String(grantError))];
+        const retained = project.claims.filter((claim) => claim.resourceType === 'container');
+        const stale = project.claims.filter((claim) => claim.resourceType !== 'container');
+        this.releaseClaims(project.botId, [...stale].reverse(), now);
+        const packages = ConstructionPackageManifest.packages(artifacts.plan.plan);
+        const revisionInput: ProposeProjectInput = {
+            id: project.id,
+            botId: project.botId,
+            title: options.title,
+            kind: options.kind,
+            anchor: project.anchor,
+            bbox: project.bbox,
+            collaboration: options.collaboration,
+            autoAcceptCompatibleHelpers: options.autoAcceptCompatibleHelpers,
+        };
+        const [family, familyError] = this.acquireClaims(
+            revisionInput,
+            structureId,
+            project.storageId,
+            packages,
+            artifacts.bbox,
+            now,
+            artifacts.plan.revision,
+        );
+        if (familyError) return [null, familyError];
+        if (family === null) return [null, ProjectFailures.claimFailed('claims missing')];
+        const claims = [...family, ...retained];
+        const [, sipError] = this.options.sip.propose({
+            projectId: project.id,
+            botId: project.botId,
+            kind: options.kind,
+            anchor: artifacts.plan.plan.anchor,
+            rotation: artifacts.plan.plan.rotation,
+            bbox: artifacts.bbox,
+            structureId,
+            blueprintRef: artifacts.blueprint.id,
+            designRevision: artifacts.blueprint.revision,
+            materialsNeeded: artifacts.plan.plan.materials,
+            workPackages: packages.map((workPackage) => ({
+                id: workPackage.id,
+                bbox: workPackage.bbox,
+                status: 'planned',
+                claimedBy: null,
+            })),
+            collaboration: options.collaboration,
+            autoAcceptCompatibleHelpers: options.autoAcceptCompatibleHelpers,
+            storageId: null,
+            storagePosition: null,
+        });
+        if (sipError) {
+            this.releaseClaims(project.botId, family, now);
+            return [null, ProjectFailures.sipFailed(sipError)];
+        }
+        const revised: PersonalProjectRecord = {
+            ...project,
+            title: options.title,
+            kind: options.kind,
+            status: 'active',
+            anchor: artifacts.plan.plan.anchor,
+            bbox: artifacts.bbox,
+            claims,
+            reason: null,
+            updatedAt: now,
+        };
+        const [, updateError] = this.options.projects.update(revised);
+        if (updateError) return [null, ProjectFailures.storage(updateError)];
+        const [taskIds, taskError] = this.options.construction.seedTasks({
+            projectId: project.id,
+            structureId,
+            title: options.title,
+            botId: project.botId,
+            ownerBotId: project.botId,
+            collaboration: options.collaboration,
+            blueprint: artifacts.blueprint,
+            plan: artifacts.plan,
+            claims,
+        });
+        if (taskError || taskIds === null) {
+            this.releaseClaims(project.botId, family, now);
+            return [null, ProjectFailures.taskFailed(taskError ?? 'tasks missing')];
+        }
+        this.appendEvent(
+            project.botId,
+            options.eventType,
+            {
+                projectId: project.id,
+                structureId,
+                designRevision: artifacts.blueprint.revision,
+                planRevision: artifacts.plan.revision,
+            },
+            now,
+        );
+        return [revised, null];
     }
 
     abandon(
@@ -281,10 +514,12 @@ export class PersonalProjectService {
         packages: readonly PlannedWorkPackage[],
         projectBbox: SipBoundingBox,
         now: string,
+        claimRevision?: number,
     ): Result<readonly ProjectClaimReference[], ProjectFailure> {
+        const revisionSuffix = claimRevision === undefined ? '' : `.r${claimRevision}`;
         const structureClaim = this.options.claims.acquire(
             {
-                id: `claim.project.${input.id}.structure`,
+                id: `claim.project.${input.id}${revisionSuffix}.structure`,
                 resourceType: 'structure',
                 resourceId: structureId,
                 bbox: projectBbox,
@@ -313,7 +548,7 @@ export class PersonalProjectService {
             if (workPackage === undefined) continue;
             const packageClaim = this.options.claims.acquire(
                 {
-                    id: `claim.project.${input.id}.package.${index}`,
+                    id: `claim.project.${input.id}${revisionSuffix}.package.${index}`,
                     resourceType: 'work_package',
                     resourceId: workPackage.id,
                     bbox: workPackage.bbox,
@@ -355,7 +590,7 @@ export class PersonalProjectService {
         if (SipGeometry.contains(projectBbox, storageBox)) return [claims, null];
         const storageClaim = this.options.claims.acquire(
             {
-                id: `claim.project.${input.id}.storage`,
+                id: `claim.project.${input.id}${revisionSuffix}.storage`,
                 resourceType: 'container',
                 resourceId: storageId,
                 bbox: storageBox,
@@ -436,7 +671,7 @@ export class PersonalProjectService {
         return [undefined, null];
     }
 
-    private rollback(
+    private rollbackSetup(
         record: PersonalProjectRecord,
         now: string,
         taskIds: readonly string[] = [],

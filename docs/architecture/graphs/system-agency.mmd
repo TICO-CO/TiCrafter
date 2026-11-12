@@ -1,61 +1,61 @@
 flowchart LR
-n305["Personality Model"]
-n306["Needs Model"]
-n307["Goal Catalog"]
-n308["Goal Generator"]
-n282["Goal Arbiter"]
-n283["Intention Manager"]
-n309["Routine Model"]
-n310["Item Knowledge"]
-n311["Night Preparation Config"]
-n312["Shelter Strategy"]
-n313["Shelter Plan"]
-n314["Night Readiness"]
-n284["Social Engine"]
-n315["Working Memory"]
-n316["Project Focus Policy"]
-n236["Agency State"]
-n317["Strategic Intent Policy"]
-n286["Reflection"]
+n311["Personality Model"]
+n312["Needs Model"]
+n313["Goal Catalog"]
+n314["Goal Generator"]
+n288["Goal Arbiter"]
+n289["Intention Manager"]
+n315["Routine Model"]
+n316["Item Knowledge"]
+n317["Night Preparation Config"]
+n318["Shelter Strategy"]
+n319["Shelter Plan"]
+n320["Night Readiness"]
+n290["Social Engine"]
+n321["Working Memory"]
+n322["Project Focus Policy"]
+n241["Agency State"]
+n323["Strategic Intent Policy"]
+n292["Reflection"]
 n60["Agent Loop (Bot Runtime and Mineflayer Adapter)"]
 n61["Chat Adapter (Bot Runtime and Mineflayer Adapter)"]
-n233["Agency State Store (Bot Registry and Profiles)"]
-n136["Goal Tie-Break (Bot Runtime and Mineflayer Adapter)"]
-n60 -->|depends_on| n282
-n60 -->|depends_on| n283
-n60 -->|depends_on| n236
-n61 -->|depends_on| n284
-n308 -->|depends_on| n307
-n308 -->|depends_on| n306
-n308 -->|depends_on| n305
-n282 -->|depends_on| n308
-n282 -->|depends_on| n306
-n282 -->|depends_on| n305
-n283 -->|depends_on| n282
-n284 -->|depends_on| n305
-n236 -->|depends_on| n306
-n236 -->|depends_on| n305
-n236 -->|depends_on| n283
-n236 -->|depends_on| n309
-n236 -->|depends_on| n315
-n316 -->|depends_on| n315
-n284 -->|proposes_to| n61
-n233 -->|depends_on| n236
-n314 -->|depends_on| n310
-n314 -->|depends_on| n311
-n314 -->|depends_on| n309
+n238["Agency State Store (Bot Registry and Profiles)"]
+n141["Goal Tie-Break (Bot Runtime and Mineflayer Adapter)"]
+n60 -->|depends_on| n288
+n60 -->|depends_on| n289
+n60 -->|depends_on| n241
+n61 -->|depends_on| n290
 n314 -->|depends_on| n313
 n314 -->|depends_on| n312
-n312 -->|depends_on| n311
-n308 -->|depends_on| n311
-n308 -->|depends_on| n314
-n308 -->|depends_on| n309
-n317 -->|depends_on| n282
-n317 -->|depends_on| n315
-n60 -->|depends_on| n136
-n136 -->|depends_on| n282
-n60 -->|depends_on| n286
+n314 -->|depends_on| n311
+n288 -->|depends_on| n314
+n288 -->|depends_on| n312
+n288 -->|depends_on| n311
+n289 -->|depends_on| n288
+n290 -->|depends_on| n311
+n241 -->|depends_on| n312
+n241 -->|depends_on| n311
+n241 -->|depends_on| n289
+n241 -->|depends_on| n315
+n241 -->|depends_on| n321
+n322 -->|depends_on| n321
+n290 -->|proposes_to| n61
+n238 -->|depends_on| n241
+n320 -->|depends_on| n316
+n320 -->|depends_on| n317
+n320 -->|depends_on| n315
+n320 -->|depends_on| n319
+n320 -->|depends_on| n318
+n318 -->|depends_on| n317
+n314 -->|depends_on| n317
+n314 -->|depends_on| n320
+n314 -->|depends_on| n315
+n323 -->|depends_on| n288
+n323 -->|depends_on| n321
+n60 -->|depends_on| n141
+n141 -->|depends_on| n288
+n60 -->|depends_on| n292
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n305,n306,n307,n308,n282,n283,n309,n310,n311,n312,n313,n314,n284,n315,n316,n236,n317,n286 internal;
-class n60,n61,n233,n136 external;
+class n311,n312,n313,n314,n288,n289,n315,n316,n317,n318,n319,n320,n290,n321,n322,n241,n323,n292 internal;
+class n60,n61,n238,n141 external;

@@ -221,4 +221,11 @@ export const migrations: Migration[] = [
       ALTER TABLE block_changelog ADD COLUMN rejection_reason TEXT;
     `,
     },
+    {
+        version: 13,
+        name: 'construction-plan-purpose',
+        sql: `
+      ALTER TABLE construction_plans ADD COLUMN purpose TEXT NOT NULL DEFAULT 'build';
+    `,
+    },
 ];

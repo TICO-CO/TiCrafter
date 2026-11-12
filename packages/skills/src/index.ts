@@ -28,6 +28,7 @@ export * from './place-bed.js';
 export * from './place-build.js';
 export * from './plant-farm.js';
 export * from './preemption-handler.js';
+export * from './procurement.js';
 export * from './progress-reporter.js';
 export * from './registry.js';
 export * from './repair.js';

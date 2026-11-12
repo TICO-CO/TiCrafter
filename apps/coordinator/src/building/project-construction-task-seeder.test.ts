@@ -32,6 +32,7 @@ const plan: ConstructionPlanDocument = {
     structureId: 'structure-1',
     blueprintId: blueprint.id,
     blueprintRevision: 1,
+    purpose: 'build',
     createdAt: now,
     plan: {
         id: 'plan.structure-1',
@@ -131,15 +132,27 @@ describe('ProjectConstructionTaskSeeder', () => {
         });
         expect(error).toBeNull();
         expect(taskIds).toEqual([
+            'task.project.project-1.procurement.0',
             'task.project.project-1.package.0',
+            'task.project.project-1.procurement.1',
             'task.project.project-1.package.1',
         ]);
+        const foundationProcurement = board.get('task.project.project-1.procurement.0')[0];
         const foundation = board.get('task.project.project-1.package.0')[0];
+        const wallsProcurement = board.get('task.project.project-1.procurement.1')[0];
         const walls = board.get('task.project.project-1.package.1')[0];
-        expect(foundation?.dependencies).toEqual([]);
-        expect(walls?.dependencies).toEqual(['task.project.project-1.package.0']);
+        expect(foundationProcurement?.dependencies).toEqual([]);
+        expect(foundation?.dependencies).toEqual(['task.project.project-1.procurement.0']);
+        expect(wallsProcurement?.dependencies).toEqual(['task.project.project-1.package.0']);
+        expect(walls?.dependencies).toEqual([
+            'task.project.project-1.package.0',
+            'task.project.project-1.procurement.1',
+        ]);
+        expect(foundationProcurement?.payload.skillId).toBe('procurement');
+        expect(foundation?.payload.skillId).toBe('construction');
         expect(foundation?.payload.visibleTo).toBe('helpers');
         expect(walls?.payload.planId).toBe('plan.structure-1');
         expect(walls?.payload.claimId).toBe('claim-1');
+        expect(wallsProcurement?.payload.claimId).toBe(undefined);
     });
 });

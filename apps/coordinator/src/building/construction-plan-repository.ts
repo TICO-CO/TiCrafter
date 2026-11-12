@@ -2,6 +2,7 @@ import {
     type ConstructionPlan,
     type ConstructionPlanDocument,
     ConstructionPlanDocumentHash,
+    type ConstructionPlanPurpose,
 } from '@ticrafter/building';
 import { attempt, type Result } from '@ticrafter/core';
 import { type StorageFailure, StorageFailures } from '@ticrafter/memory';
@@ -15,12 +16,13 @@ interface ConstructionPlanRow {
     structure_id: string;
     blueprint_id: string;
     blueprint_revision: number;
+    purpose: string;
     plan_json: string;
     created_at: string;
 }
 
 const columnList = `
-    id, revision, hash, structure_id, blueprint_id, blueprint_revision, plan_json, created_at
+    id, revision, hash, structure_id, blueprint_id, blueprint_revision, purpose, plan_json, created_at
 `;
 
 export class ConstructionPlanRepository {
@@ -32,8 +34,8 @@ export class ConstructionPlanRepository {
                 .prepare(
                     `INSERT INTO construction_plans (
                         id, revision, hash, structure_id, blueprint_id, blueprint_revision,
-                        plan_json, created_at
-                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                        purpose, plan_json, created_at
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 )
                 .run(
                     document.id,
@@ -42,6 +44,7 @@ export class ConstructionPlanRepository {
                     document.structureId,
                     document.blueprintId,
                     document.blueprintRevision,
+                    document.purpose,
                     JSON.stringify(document.plan),
                     document.createdAt,
                 );
@@ -90,6 +93,7 @@ export class ConstructionPlanRepository {
             structureId: row.structure_id,
             blueprintId: row.blueprint_id,
             blueprintRevision: row.blueprint_revision,
+            purpose: parsePurpose(row.purpose),
             plan,
             createdAt: row.created_at,
         };
@@ -105,4 +109,9 @@ export class ConstructionPlanRepository {
         }
         return [{ ...content, hash: row.hash }, null];
     }
+}
+
+function parsePurpose(value: string): ConstructionPlanPurpose {
+    if (value === 'repair' || value === 'rollback' || value === 'renovation') return value;
+    return 'build';
 }

@@ -39,6 +39,10 @@ export class ProjectConstructionService implements ProjectConstructionPort {
         return this.tasks.cancelTasks(taskIds);
     }
 
+    cancelProjectTasks(projectId: string): Result<void, string> {
+        return this.tasks.cancelProjectTasks(projectId);
+    }
+
     private static describe(failure: {
         type: string;
         message?: string;

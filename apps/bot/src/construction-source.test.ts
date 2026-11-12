@@ -115,6 +115,7 @@ const content = {
     structureId: 'structure.home',
     blueprintId: 'blueprint.home',
     blueprintRevision: 4,
+    purpose: 'build' as const,
     plan,
     createdAt: '2026-11-12T10:00:00.000Z',
 };
