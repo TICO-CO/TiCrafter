@@ -6,6 +6,7 @@ export const BOT_PROJECT_PROPOSE = 'bot.project.propose';
 export const BOT_PROJECT_RESPONSE = 'bot.project.response';
 export const BOT_PROJECT_ABANDON = 'bot.project.abandon';
 export const BOT_PROJECT_ABANDON_RESPONSE = 'bot.project.abandon.response';
+export const BOT_PROJECT_UPDATE_EVENT = 'bot.project.update';
 
 export const projectKindSchema = zod.enum(['home', 'storage', 'build']);
 
@@ -16,6 +17,8 @@ export const projectStatusSchema = zod.enum([
     'abandoned',
     'failed',
 ]);
+
+export const projectCollaborationSchema = zod.enum(['private', 'invite', 'open']);
 
 export const resumeProjectSchema = zod.object({
     id: zod.string().min(1),
@@ -41,6 +44,8 @@ export const botProjectProposeSchema = zod.object({
     anchor: positionSchema,
     bbox: boundingBoxSchema,
     storagePosition: positionSchema.nullable().optional(),
+    collaboration: projectCollaborationSchema.optional(),
+    autoAcceptCompatibleHelpers: zod.boolean().optional(),
 });
 
 export const projectRecordSchema = zod.object({
@@ -71,6 +76,11 @@ export const botProjectAbandonSchema = zod.object({
     reason: zod.string().min(1),
 });
 
+export const botProjectUpdateSchema = zod.object({
+    botId: zod.string().min(1),
+    project: projectRecordSchema,
+});
+
 export const botProjectAbandonResponseSchema = zod.object({
     ok: zod.boolean(),
     project: projectRecordSchema.nullable(),
@@ -82,4 +92,5 @@ export type BotProjectPropose = zod.infer<typeof botProjectProposeSchema>;
 export type BotProjectResponse = zod.infer<typeof botProjectResponseSchema>;
 export type BotProjectAbandon = zod.infer<typeof botProjectAbandonSchema>;
 export type BotProjectAbandonResponse = zod.infer<typeof botProjectAbandonResponseSchema>;
+export type BotProjectUpdate = zod.infer<typeof botProjectUpdateSchema>;
 export type ProjectRecordPayload = zod.infer<typeof projectRecordSchema>;

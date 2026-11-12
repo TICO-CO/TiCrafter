@@ -1,67 +1,67 @@
 flowchart LR
-n223["Grant Repository"]
-n199["Collaboration Policy Evaluator"]
-n197["Compatibility Checker"]
-n198["Design Revision Guard"]
-n156["Grant Issuer"]
-n222["Grant Revoker"]
-n224["Owner Offline Policy"]
-n169["Grant Expiry"]
-n178["Arbitration Adapter"]
-n195["Delta Sync Planner (Bot Registry and Profiles)"]
+n228["Grant Repository"]
+n204["Collaboration Policy Evaluator"]
+n202["Compatibility Checker"]
+n203["Design Revision Guard"]
+n161["Grant Issuer"]
+n227["Grant Revoker"]
+n229["Owner Offline Policy"]
+n174["Grant Expiry"]
+n183["Arbitration Adapter"]
+n200["Delta Sync Planner (Bot Registry and Profiles)"]
 n29["Command Router (Coordinator Runtime)"]
 n32["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n174["Event Stream (Transport and Protocol)"]
-n219["Claim Repository (Claims and Leases)"]
-n190["Rules Store (Shared Infrastructure Plan)"]
-n185["Structure Store (Shared Infrastructure Plan)"]
-n191["SIP Revision Manager (Shared Infrastructure Plan)"]
-n160["Transaction Manager (Memory and Persistence)"]
-n153["Fencing Token Authority (Claims and Leases)"]
-n172["Presence Tracker (Bot Registry and Profiles)"]
-n217["Bot Profile Store (Bot Registry and Profiles)"]
+n179["Event Stream (Transport and Protocol)"]
+n224["Claim Repository (Claims and Leases)"]
+n195["Rules Store (Shared Infrastructure Plan)"]
+n190["Structure Store (Shared Infrastructure Plan)"]
+n196["SIP Revision Manager (Shared Infrastructure Plan)"]
+n165["Transaction Manager (Memory and Persistence)"]
+n158["Fencing Token Authority (Claims and Leases)"]
+n177["Presence Tracker (Bot Registry and Profiles)"]
+n222["Bot Profile Store (Bot Registry and Profiles)"]
 n50["Planner Arbitration Handler (Cloud Planner Advisor)"]
-n195 -->|depends_on| n217
-n195 -->|reads| n223
-n195 -->|reads| n191
-n172 -->|depends_on| n217
-n217 -->|depends_on| n160
-n219 -->|depends_on| n160
-n153 -->|depends_on| n160
-n29 -->|controls| n156
-n32 -->|delegates_to| n169
-n32 -->|depends_on| n160
-n178 -->|depends_on| n197
-n178 -->|publishes| n174
-n197 -->|reads| n219
-n197 -->|depends_on| n223
-n197 -->|depends_on| n190
-n197 -->|depends_on| n185
-n198 -->|depends_on| n223
-n198 -->|controls| n222
-n198 -->|reads| n191
-n169 -->|writes| n223
-n156 -->|depends_on| n197
-n156 -->|depends_on| n198
-n156 -->|writes| n223
-n156 -->|depends_on| n199
-n223 -->|depends_on| n160
-n222 -->|depends_on| n153
-n222 -->|writes| n223
-n224 -->|reads| n172
-n224 -->|reads| n217
-n224 -->|depends_on| n197
-n199 -->|depends_on| n223
-n199 -->|depends_on| n185
-n50 -->|reads| n197
-n50 -->|proposes_to| n156
-n50 -->|subscribes| n174
-n191 -->|publishes| n198
-n191 -->|depends_on| n160
-n191 -->|depends_on| n190
-n190 -->|depends_on| n160
-n185 -->|depends_on| n160
+n200 -->|depends_on| n222
+n200 -->|reads| n228
+n200 -->|reads| n196
+n177 -->|depends_on| n222
+n222 -->|depends_on| n165
+n224 -->|depends_on| n165
+n158 -->|depends_on| n165
+n29 -->|controls| n161
+n32 -->|delegates_to| n174
+n32 -->|depends_on| n165
+n183 -->|depends_on| n202
+n183 -->|publishes| n179
+n202 -->|reads| n224
+n202 -->|depends_on| n228
+n202 -->|depends_on| n195
+n202 -->|depends_on| n190
+n203 -->|depends_on| n228
+n203 -->|controls| n227
+n203 -->|reads| n196
+n174 -->|writes| n228
+n161 -->|depends_on| n202
+n161 -->|depends_on| n203
+n161 -->|writes| n228
+n161 -->|depends_on| n204
+n228 -->|depends_on| n165
+n227 -->|depends_on| n158
+n227 -->|writes| n228
+n229 -->|reads| n177
+n229 -->|reads| n222
+n229 -->|depends_on| n202
+n204 -->|depends_on| n228
+n204 -->|depends_on| n190
+n50 -->|reads| n202
+n50 -->|proposes_to| n161
+n50 -->|subscribes| n179
+n196 -->|publishes| n203
+n196 -->|depends_on| n165
+n196 -->|depends_on| n195
+n195 -->|depends_on| n165
+n190 -->|depends_on| n165
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n223,n199,n197,n198,n156,n222,n224,n169,n178 internal;
-class n195,n29,n32,n174,n219,n190,n185,n191,n160,n153,n172,n217,n50 external;
+class n228,n204,n202,n203,n161,n227,n229,n174,n183 internal;
+class n200,n29,n32,n179,n224,n195,n190,n196,n165,n158,n177,n222,n50 external;

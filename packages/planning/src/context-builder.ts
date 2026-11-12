@@ -1,4 +1,4 @@
-import type { Result } from '@ticrafter/core';
+import { type Result, STRATEGIC_CONSTRAINTS } from '@ticrafter/core';
 
 import type { PlannerFailure } from './failures.js';
 import type { PlannerPosition } from './plan-schema.js';
@@ -15,6 +15,7 @@ export interface PlannerContextBuilderOptions {
     allowedSkills: readonly string[];
     maxContextCharacters: number;
     reserveTasksPerBot?: number;
+    strategicIntentEnabled?: boolean;
     now?: () => number;
 }
 
@@ -74,6 +75,7 @@ export class PlannerContextBuilder {
                     examplePosition,
                     onlineBots,
                     this.options.reserveTasksPerBot ?? 0,
+                    this.options.strategicIntentEnabled === true,
                 ),
             },
             { role: 'user', content: `Plan request: ${serialized}` },
@@ -94,6 +96,7 @@ export class PlannerContextBuilder {
         position: PlannerPosition,
         onlineBots: number,
         reserveTasksPerBot: number,
+        strategicIntentEnabled: boolean,
     ): string {
         const example = JSON.stringify({
             schemaVersion: 1,
@@ -128,6 +131,23 @@ export class PlannerContextBuilder {
             ],
             cancelTaskIds: [],
             blueprints: [],
+            ...(strategicIntentEnabled
+                ? {
+                      strategicIntent: {
+                          planId: 'plan-example',
+                          primaryGoal: { kind: 'gather', weight: 0.6 },
+                          secondaryGoals: [{ kind: 'build-shelter', weight: 0.4 }],
+                          constraints: ['prioritize-safety'],
+                          perBot: [
+                              {
+                                  botId: 'bot-example',
+                                  priorityModifiers: { gather: 0.2 },
+                                  constraints: ['prefer-local-work'],
+                              },
+                          ],
+                      },
+                  }
+                : {}),
             recovery: { mode: 'continue', notes: '' },
             notes: '',
         });
@@ -155,6 +175,14 @@ export class PlannerContextBuilder {
             'Do not emit blueprints unless inventory covers every listed material; propose gathering or crafting tasks first.',
             'All positions must avoid context.sip.protectedBboxes and context.sip.noBuildZones.',
             'Never emit block placement commands. Only propose SIP mutations and tasks.',
+            ...(strategicIntentEnabled
+                ? [
+                      'strategicIntent must use supported agency goal kinds and project kinds home, storage, or build.',
+                      `strategicIntent constraints must come from: ${STRATEGIC_CONSTRAINTS.join(', ')}.`,
+                      'strategicIntent perBot entries must reference online bot IDs from context.bots.',
+                      'strategicIntent blueprintRef must resolve through the building template catalog.',
+                  ]
+                : []),
             'Use the provided context values instead of the example values.',
             `Example plan shape: ${example}`,
         ].join('\n');

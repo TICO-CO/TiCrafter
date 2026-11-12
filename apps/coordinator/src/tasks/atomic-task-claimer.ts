@@ -2,6 +2,7 @@ import type { Result } from '@ticrafter/core';
 import type { EventLogWriter, TransactionManager } from '@ticrafter/memory';
 
 import { type TaskDag, TaskDagResolver } from './dag-resolver.js';
+import { TaskFailures } from './failures.js';
 import type { TaskPreconditionEvaluator } from './precondition-evaluator.js';
 import { TaskPriorityScheduler } from './priority-scheduler.js';
 import type { TaskRepository } from './task-repository.js';
@@ -25,9 +26,9 @@ export class AtomicTaskClaimer {
         const [result, transactionError] = this.transactions.run<
             Result<TaskLease | null, TaskFailure>
         >(() => this.claimInside(context, now));
-        if (transactionError) return [null, { type: 'STORAGE', failure: transactionError }];
+        if (transactionError) return [null, TaskFailures.storage(transactionError)];
         if (result === null) {
-            return [null, { type: 'CLAIM_CONFLICT', taskId: 'unknown' }];
+            return [null, TaskFailures.claimConflict('unknown')];
         }
         const [lease, claimError] = result;
         if (claimError) return [null, claimError];
@@ -42,9 +43,9 @@ export class AtomicTaskClaimer {
         const [result, transactionError] = this.transactions.run<
             Result<TaskLease | null, TaskFailure>
         >(() => this.claimTaskInside(taskId, context, now));
-        if (transactionError) return [null, { type: 'STORAGE', failure: transactionError }];
+        if (transactionError) return [null, TaskFailures.storage(transactionError)];
         if (result === null) {
-            return [null, { type: 'CLAIM_CONFLICT', taskId }];
+            return [null, TaskFailures.claimConflict(taskId)];
         }
         return result;
     }
@@ -56,9 +57,9 @@ export class AtomicTaskClaimer {
         const [result, transactionError] = this.transactions.run<
             Result<readonly TaskRecord[], TaskFailure>
         >(() => this.offerableInside(context, now));
-        if (transactionError) return [null, { type: 'STORAGE', failure: transactionError }];
+        if (transactionError) return [null, TaskFailures.storage(transactionError)];
         if (result === null) {
-            return [null, { type: 'CLAIM_CONFLICT', taskId: 'unknown' }];
+            return [null, TaskFailures.claimConflict('unknown')];
         }
         return result;
     }
@@ -70,7 +71,7 @@ export class AtomicTaskClaimer {
         if (context.activeTaskCount > 0) return [null, null];
         const [ranked, rankedError] = this.offerableInside(context, now);
         if (rankedError) return [null, rankedError];
-        if (ranked === null) return [null, { type: 'MALFORMED_TASK', message: 'offers missing' }];
+        if (ranked === null) return [null, TaskFailures.malformedTask('offers missing')];
         for (const task of ranked) {
             const lease = this.claimOne(task, context.botId, now);
             if (lease[1]) return [null, lease[1]];
@@ -87,7 +88,7 @@ export class AtomicTaskClaimer {
         if (context.activeTaskCount > 0) return [null, null];
         const [ranked, rankedError] = this.offerableInside(context, now);
         if (rankedError) return [null, rankedError];
-        if (ranked === null) return [null, { type: 'MALFORMED_TASK', message: 'offers missing' }];
+        if (ranked === null) return [null, TaskFailures.malformedTask('offers missing')];
         const task = ranked.find((candidate) => candidate.id === taskId);
         if (task === undefined) return [null, null];
         return this.claimOne(task, context.botId, now);
@@ -98,15 +99,15 @@ export class AtomicTaskClaimer {
         now: string,
     ): Result<readonly TaskRecord[], TaskFailure> {
         const [tasks, listError] = this.repository.list();
-        if (listError) return [null, { type: 'STORAGE', failure: listError }];
-        if (tasks === null) return [null, { type: 'MALFORMED_TASK', message: 'task list missing' }];
+        if (listError) return [null, TaskFailures.storage(listError)];
+        if (tasks === null) return [null, TaskFailures.malformedTask('task list missing')];
         const [dag, dagError] = TaskDagResolver.build(tasks);
         if (dagError) return [null, dagError];
-        if (dag === null) return [null, { type: 'MALFORMED_TASK', message: 'task DAG missing' }];
+        if (dag === null) return [null, TaskFailures.malformedTask('task DAG missing')];
         const [promoted, promoteError] = this.promoteReady(tasks, dag, context.botId, now);
         if (promoteError) return [null, promoteError];
         if (promoted === null) {
-            return [null, { type: 'MALFORMED_TASK', message: 'promoted tasks missing' }];
+            return [null, TaskFailures.malformedTask('promoted tasks missing')];
         }
         const candidates = promoted.filter(
             (task) =>
@@ -127,6 +128,7 @@ export class AtomicTaskClaimer {
     }
 
     private visibleTo(task: TaskRecord, botId: string): boolean {
+        if (task.payload.visibleTo === 'helpers') return true;
         const ownerBotId = task.payload.ownerBotId;
         if (typeof ownerBotId !== 'string') return true;
         return ownerBotId === botId;
@@ -167,11 +169,11 @@ export class AtomicTaskClaimer {
         now: string,
     ): Result<TaskLease | null, TaskFailure> {
         const [token, tokenError] = this.repository.nextLeaseToken();
-        if (tokenError) return [null, { type: 'STORAGE', failure: tokenError }];
-        if (token === null) return [null, { type: 'MALFORMED_TASK', message: 'token missing' }];
+        if (tokenError) return [null, TaskFailures.storage(tokenError)];
+        if (token === null) return [null, TaskFailures.malformedTask('token missing')];
         const leaseUntil = new Date(Date.parse(now) + this.leaseTtlMilliseconds).toISOString();
         const [claimed, claimError] = this.repository.claim(task.id, botId, leaseUntil, token, now);
-        if (claimError) return [null, { type: 'STORAGE', failure: claimError }];
+        if (claimError) return [null, TaskFailures.storage(claimError)];
         if (claimed !== true) return [null, null];
         const [, eventError] = this.events.append({
             botId,
@@ -186,7 +188,7 @@ export class AtomicTaskClaimer {
             actor: botId,
             createdAt: now,
         });
-        if (eventError) return [null, { type: 'STORAGE', failure: eventError }];
+        if (eventError) return [null, TaskFailures.storage(eventError)];
         return [
             {
                 task: {

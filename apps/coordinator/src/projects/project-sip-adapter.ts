@@ -22,11 +22,26 @@ export class ProjectSipAdapter implements ProjectSipPort {
         botId: string;
         kind: 'home' | 'storage' | 'build';
         anchor: { x: number; y: number; z: number };
+        rotation: number;
         bbox: {
             min: { x: number; y: number; z: number };
             max: { x: number; y: number; z: number };
         };
         structureId: string;
+        blueprintRef: string;
+        designRevision: number;
+        materialsNeeded: readonly { item: string; count: number }[];
+        workPackages: readonly {
+            id: string;
+            bbox: {
+                min: { x: number; y: number; z: number };
+                max: { x: number; y: number; z: number };
+            };
+            status: 'planned' | 'claimed' | 'building' | 'complete' | 'failed' | 'abandoned';
+            claimedBy: string | null;
+        }[];
+        collaboration: 'private' | 'invite' | 'open';
+        autoAcceptCompatibleHelpers: boolean;
         storageId: string | null;
         storagePosition: { x: number; y: number; z: number } | null;
     }): Result<void, string> {
@@ -36,24 +51,17 @@ export class ProjectSipAdapter implements ProjectSipPort {
         const structure: SipStructure = {
             id: input.structureId,
             type: input.kind === 'storage' ? 'storage' : 'house',
-            blueprintRef: input.kind === 'storage' ? 'template:storage' : 'template:house',
+            blueprintRef: input.blueprintRef,
             anchor: input.anchor,
-            rotation: 0,
+            rotation: input.rotation,
             status: 'claimed',
             ownerBotIds: [input.botId],
-            designRevision: 1,
-            collaboration: 'private',
-            autoAcceptCompatibleHelpers: false,
+            designRevision: input.designRevision,
+            collaboration: input.collaboration,
+            autoAcceptCompatibleHelpers: input.autoAcceptCompatibleHelpers,
             progress: 0,
-            materialsNeeded: [],
-            workPackages: [
-                {
-                    id: `work.${input.projectId}.main`,
-                    bbox: input.bbox,
-                    status: 'claimed',
-                    claimedBy: input.botId,
-                },
-            ],
+            materialsNeeded: [...input.materialsNeeded],
+            workPackages: input.workPackages.map((workPackage) => ({ ...workPackage })),
         };
         const mutations: SipMutation[] = [{ kind: 'structure.upsert', structure }];
         if (input.storageId !== null && input.storagePosition !== null) {

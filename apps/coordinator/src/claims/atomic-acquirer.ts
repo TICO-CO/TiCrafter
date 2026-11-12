@@ -2,6 +2,7 @@ import type { Result } from '@ticrafter/core';
 import type { TransactionManager } from '@ticrafter/memory';
 
 import type { ClaimRepository } from './claim-repository.js';
+import { ClaimFailures } from './failures.js';
 import type { FencingTokenAuthority } from './fencing-token-authority.js';
 import { ClaimOverlapChecker } from './overlap-margin-checker.js';
 import type { AcquireClaimInput, ClaimFailure, ClaimRecord } from './types.js';
@@ -22,9 +23,9 @@ export class AtomicClaimAcquirer {
         const [result, transactionError] = this.transactions.run<Result<ClaimRecord, ClaimFailure>>(
             () => this.acquireInside(input, now),
         );
-        if (transactionError) return [null, { type: 'STORAGE', failure: transactionError }];
+        if (transactionError) return [null, ClaimFailures.storage(transactionError)];
         if (result === null) {
-            return [null, { type: 'INVALID_CLAIM', message: 'transaction returned null' }];
+            return [null, ClaimFailures.invalidClaim('transaction returned null')];
         }
         const [claim, claimError] = result;
         if (claimError) return [null, claimError];
@@ -40,26 +41,32 @@ export class AtomicClaimAcquirer {
             input.resourceId.trim().length === 0 ||
             input.botId.trim().length === 0
         ) {
-            return [null, { type: 'INVALID_CLAIM', message: 'claim identity is required' }];
+            return [null, ClaimFailures.invalidClaim('claim identity is required')];
         }
         const [existing, existingError] = this.repository.get(input.id);
-        if (existingError) return [null, { type: 'STORAGE', failure: existingError }];
+        if (existingError) return [null, ClaimFailures.storage(existingError)];
         if (existing !== null) {
-            return [null, { type: 'INVALID_CLAIM', message: `duplicate claim ${input.id}` }];
+            return [null, ClaimFailures.invalidClaim(`duplicate claim ${input.id}`)];
         }
         const [active, activeError] = this.repository.listActive();
-        if (activeError) return [null, { type: 'STORAGE', failure: activeError }];
-        if (active === null) return [null, { type: 'MALFORMED_CLAIM', message: 'claims missing' }];
-        const [, overlapError] = ClaimOverlapChecker.check(input.bbox, active, this.overlapMargin);
+        if (activeError) return [null, ClaimFailures.storage(activeError)];
+        if (active === null) return [null, ClaimFailures.malformedClaim('claims missing')];
+        const [, overlapError] = ClaimOverlapChecker.check(
+            input.bbox,
+            active,
+            this.overlapMargin,
+            null,
+            input.parentClaimId ?? null,
+        );
         if (overlapError) return [null, overlapError];
         const [token, tokenError] = this.authority.next();
         if (tokenError) return [null, tokenError];
         if (token === null) {
-            return [null, { type: 'MALFORMED_CLAIM', message: 'fencing token missing' }];
+            return [null, ClaimFailures.malformedClaim('fencing token missing')];
         }
         const ttl = input.leaseTtlMilliseconds ?? this.defaultLeaseTtlMilliseconds;
         if (!Number.isFinite(ttl) || ttl <= 0) {
-            return [null, { type: 'INVALID_CLAIM', message: 'invalid lease ttl' }];
+            return [null, ClaimFailures.invalidClaim('invalid lease ttl')];
         }
         const record: ClaimRecord = {
             id: input.id,
@@ -71,13 +78,14 @@ export class AtomicClaimAcquirer {
             fencingToken: token,
             status: 'active',
             taskId: input.taskId ?? null,
+            parentClaimId: input.parentClaimId ?? null,
             epoch: this.authority.epoch,
             payload: input.payload ?? {},
             createdAt: now,
             updatedAt: now,
         };
         const [, insertError] = this.repository.insert(record);
-        if (insertError) return [null, { type: 'STORAGE', failure: insertError }];
+        if (insertError) return [null, ClaimFailures.storage(insertError)];
         return [record, null];
     }
 }

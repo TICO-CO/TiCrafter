@@ -1,5 +1,6 @@
 export * from './agency.js';
 export * from './blueprint.js';
+export * from './construction-plan.js';
 export * from './coordinator.js';
 export * from './decision.js';
 export * from './envelope.js';
@@ -8,6 +9,7 @@ export * from './projects.js';
 export * from './safety.js';
 export * from './session.js';
 export * from './skills.js';
+export * from './strategic-intent.js';
 export * from './tasks.js';
 export * from './telemetry.js';
 export * from './world.js';

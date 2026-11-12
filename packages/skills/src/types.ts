@@ -76,6 +76,8 @@ export interface SkillConstructionOperation {
     claimId?: string;
     grantId?: string;
     grant?: SkillGrant;
+    grantFencingToken?: number;
+    planId?: string;
     structureId?: string;
     blueprintId?: string;
     blueprintRevision?: number;
@@ -87,6 +89,8 @@ export interface SkillConstructionOperation {
 export interface SkillConstructionPlan {
     blueprintId: string;
     blueprintRevision: number;
+    planId: string;
+    planRevision: number;
     workPackageId: string;
     phase: SkillConstructionPhase | null;
     operations: readonly SkillConstructionOperation[];
@@ -101,6 +105,7 @@ export interface SkillBuildPreparation {
 export interface SkillGrant {
     id: string;
     expiresAt?: string;
+    fencingToken?: number;
 }
 
 export interface SkillSchematicRef {
@@ -235,8 +240,11 @@ export interface SkillInput {
     blueprintRevision?: number;
     workPackageId?: string;
     structureId?: string;
+    planId?: string;
+    planRevision?: number;
     claimId?: string;
     fencingToken?: number;
+    grantFencingToken?: number;
 }
 
 export interface SkillProgress {

@@ -15,6 +15,7 @@ export interface ClaimRow {
     bbox_json: string;
     status: string;
     task_id: string | null;
+    parent_claim_id: string | null;
     epoch: number;
     payload_json: string;
     updated_at: string;
@@ -55,6 +56,7 @@ export class ClaimCodec {
             fencingToken: row.fencing_token,
             status: row.status as ClaimStatus,
             taskId: row.task_id,
+            parentClaimId: row.parent_claim_id,
             epoch: row.epoch,
             payload: JSON.parse(row.payload_json) as Readonly<Record<string, unknown>>,
             createdAt: row.created_at,

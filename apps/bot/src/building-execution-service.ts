@@ -10,7 +10,13 @@ import {
     type WorldBlockQueryPort,
     type WorldBlockState,
 } from '@ticrafter/building';
-import type { ActionDispatchPort, ActionOutcome, ActionRequest, Result } from '@ticrafter/core';
+import type {
+    ActionDispatchPort,
+    ActionOutcome,
+    ActionRequest,
+    BlockUpdateAttribution,
+    Result,
+} from '@ticrafter/core';
 import type { SafetyDecision, SafetySnapshot } from '@ticrafter/safety';
 import type {
     SkillBuildExecutionPort,
@@ -72,6 +78,13 @@ class MemoryBlockChangelog implements BlockChangelogPort {
     }
 }
 
+interface PositionedAttribution {
+    attribution: BlockUpdateAttribution;
+    expiresAt: number;
+}
+
+const ATTRIBUTION_TTL_MILLISECONDS = 60_000;
+
 export interface BuildingExecutionServiceOptions {
     world: WorldCacheAdapter;
     snapshot: () => Result<SafetySnapshot, string>;
@@ -83,6 +96,7 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
     private readonly verifier: BlockVerifier;
     private readonly journal: MemoryBlockChangelog;
     private readonly executor: BlockExecutor;
+    private readonly attributions = new Map<string, PositionedAttribution>();
 
     constructor(private readonly options: BuildingExecutionServiceOptions) {
         this.verifier = new BlockVerifier(new BotBuildingWorld(options.world));
@@ -110,15 +124,14 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
         const [snapshot, snapshotError] = this.options.snapshot();
         if (snapshotError) return [null, snapshotError];
         if (snapshot === null) return [null, 'safety snapshot returned null'];
-        const [prepared, prepareError] = this.executor.prepare(
-            this.changeFor(context, operation),
-            snapshot,
-        );
+        const change = this.changeFor(context, operation);
+        const [prepared, prepareError] = this.executor.prepare(change, snapshot);
         if (prepareError) return [null, BuildingExecutionService.describe(prepareError)];
         if (prepared === null) return [null, 'block prepare returned null'];
         if (prepared.status === 'skipped' || prepared.execution === null) {
             return [{ status: 'skipped', action: null }, null];
         }
+        this.remember(context, operation, change);
         return [{ status: 'ready', action: prepared.execution.action }, null];
     }
 
@@ -127,9 +140,10 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
         operation: SkillConstructionOperation,
         action: ActionOutcome,
     ): Result<void, string> {
+        const change = this.changeFor(context, operation);
         const [completion, completionError] = this.executor.complete(
             {
-                change: this.changeFor(context, operation),
+                change,
                 action: action.request,
                 before: null,
             },
@@ -137,11 +151,56 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
         );
         if (completionError) return [null, BuildingExecutionService.describe(completionError)];
         if (completion === null) return [null, 'block completion returned null'];
+        this.remember(context, operation, change);
         return [undefined, null];
     }
 
     get changelog(): readonly BlockChangeRecord[] {
         return this.journal.list();
+    }
+
+    attributionFor(position: { x: number; y: number; z: number }): BlockUpdateAttribution | null {
+        const key = BuildingExecutionService.key(position);
+        const entry = this.attributions.get(key);
+        if (entry === undefined) return null;
+        if (entry.expiresAt < Date.now()) {
+            this.attributions.delete(key);
+            return null;
+        }
+        return entry.attribution;
+    }
+
+    private remember(
+        context: SkillContext,
+        operation: SkillConstructionOperation,
+        change: BlockChange,
+    ): void {
+        this.attributions.set(BuildingExecutionService.key(change.target), {
+            attribution: {
+                ...(change.structureId === undefined ? {} : { structureId: change.structureId }),
+                ...(context.taskId === undefined ? {} : { taskId: context.taskId }),
+                ...(change.claimId === undefined ? {} : { claimId: change.claimId }),
+                ...(change.grantId === undefined ? {} : { grantId: change.grantId }),
+                ...(change.grantFencingToken === undefined
+                    ? {}
+                    : { grantFencingToken: change.grantFencingToken }),
+                ...(change.blueprintId === undefined ? {} : { blueprintId: change.blueprintId }),
+                ...(change.blueprintRevision === undefined
+                    ? {}
+                    : { blueprintRevision: change.blueprintRevision }),
+                ...(change.workPackageId === undefined
+                    ? {}
+                    : { workPackageId: change.workPackageId }),
+                ...(change.planId === undefined ? {} : { planId: change.planId }),
+                ...(change.fencingToken === undefined ? {} : { fencingToken: change.fencingToken }),
+                ...(operation.phase === undefined ? {} : { phase: operation.phase }),
+            },
+            expiresAt: Date.now() + ATTRIBUTION_TTL_MILLISECONDS,
+        });
+    }
+
+    private static key(position: { x: number; y: number; z: number }): string {
+        return `${position.x},${position.y},${position.z}`;
     }
 
     private validate(operation: SkillConstructionOperation): string | null {
@@ -157,6 +216,12 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
                 Date.parse(operation.grant.expiresAt) <= Date.now()
             ) {
                 return 'construction grant is expired';
+            }
+            if (operation.grant.fencingToken === undefined) {
+                return 'construction grant fencing token is required';
+            }
+            if (operation.grantFencingToken !== operation.grant.fencingToken) {
+                return 'construction grant fencing token mismatch';
             }
         }
         return null;
@@ -179,6 +244,10 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
             },
             ...(operation.claimId === undefined ? {} : { claimId: operation.claimId }),
             ...(operation.grantId === undefined ? {} : { grantId: operation.grantId }),
+            ...(operation.grantFencingToken === undefined
+                ? {}
+                : { grantFencingToken: operation.grantFencingToken }),
+            ...(operation.planId === undefined ? {} : { planId: operation.planId }),
             ...(operation.structureId === undefined ? {} : { structureId: operation.structureId }),
             ...(operation.blueprintId === undefined ? {} : { blueprintId: operation.blueprintId }),
             ...(operation.blueprintRevision === undefined

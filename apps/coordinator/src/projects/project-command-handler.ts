@@ -42,6 +42,12 @@ export class ProjectCommandHandler {
             anchor: request.anchor,
             bbox: request.bbox,
             storagePosition: request.storagePosition ?? null,
+            ...(request.collaboration === undefined
+                ? {}
+                : { collaboration: request.collaboration }),
+            ...(request.autoAcceptCompatibleHelpers === undefined
+                ? {}
+                : { autoAcceptCompatibleHelpers: request.autoAcceptCompatibleHelpers }),
         });
         if (projectError) {
             this.reply(
@@ -160,6 +166,8 @@ export class ProjectCommandHandler {
                 return `${failure.type}: ${failure.botId}`;
             case 'INVALID_PROJECT':
             case 'CLAIM_FAILED':
+            case 'CONSTRUCTION_FAILED':
+            case 'TASK_FAILED':
             case 'SIP_FAILED':
             case 'PROFILE_FAILED':
             case 'AGENCY_FAILED':

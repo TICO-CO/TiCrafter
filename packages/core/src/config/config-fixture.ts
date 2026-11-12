@@ -25,6 +25,15 @@ const defaultConfig: Record<string, unknown> = {
         cacheDirectory: 'models/laya',
         modelDirectory: '',
         providerTemperatures: { nextAction: 1, danger: 1, shouldContinue: 1 },
+        tactical: {
+            enabled: true,
+            mode: 'background',
+            deadlineMilliseconds: 1200,
+            minimumIntervalMilliseconds: 1000,
+            maxDecisionsPerMinute: 4,
+            skipSingleAffordance: true,
+            circuitBreakerFailureCount: 3,
+        },
     },
     planner: {
         enabled: false,
@@ -38,6 +47,7 @@ const defaultConfig: Record<string, unknown> = {
         maxRepairAttempts: 2,
         maxContextCharacters: 48000,
         reserveTasksPerBot: 1,
+        strategicIntent: { enabled: true, maxBotOverrides: 8 },
     },
     logging: { level: 'info' },
     agency: {
@@ -47,6 +57,9 @@ const defaultConfig: Record<string, unknown> = {
         chatRatePerMinute: 5,
         needDecayPerMinute: 0.02,
         committedGoalBonus: 0.15,
+        workingMemory: { maxCommitments: 4, maxExperiences: 8 },
+        goalTieBreak: { enabled: false, closeScore: 0.12 },
+        reflection: { enabled: true, maxTraitDelta: 0.01 },
         nightPrep: {
             enabled: true,
             duskLeadTicks: 3000,
@@ -75,12 +88,14 @@ const profiles: Record<string, Record<string, unknown>> = {
         hardwareProfile: 'home-min',
         botCount: 4,
         laya: { executionProviders: ['cpu'], threads: 3 },
+        decision: { tactical: { mode: 'background' } },
         building: { maxStructureBlocks: 4000, maxWorkPackageBlocks: 128 },
     },
     'home-full': {
         hardwareProfile: 'home-full',
         botCount: 8,
         laya: { executionProviders: ['webgpu', 'cpu'], threads: 8 },
+        decision: { tactical: { mode: 'blocking' } },
         building: { maxStructureBlocks: 12000, maxWorkPackageBlocks: 256 },
     },
 };

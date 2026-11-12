@@ -13,16 +13,28 @@ import {
     NightPrepDefaults,
     NightReadinessModel,
     type ProjectSummary,
+    ReflectionModel,
+    type ReflectionResult,
     RoutineModel,
+    StrategicIntentPolicy,
     type WorkingMemory,
     type WorkingMemoryFocus,
     WorkingMemoryModel,
 } from '@ticrafter/agency';
-import { type LoggerPort, type Result, skillInputSchema } from '@ticrafter/core';
+import {
+    attemptAsync,
+    type LoggerPort,
+    type Result,
+    skillInputSchema,
+    type StrategicConstraint,
+    type StrategicGoalKind,
+    type StrategicIntent,
+} from '@ticrafter/core';
 import type { SkillInput, SkillProgressEvent, SkillStep } from '@ticrafter/skills';
 
 import type { AgencyEpisodeInput } from './agency-state-adapter.js';
 import { AgentLoop } from './agent-loop.js';
+import type { GoalTieBreakPort } from './goal-tie-break.js';
 
 const DEFAULT_MAXIMUM_ATTEMPTS = 2;
 const DEFAULT_TELEMETRY_MILLISECONDS = 5000;
@@ -45,6 +57,18 @@ export interface AgencyRuntimeConfig {
     goalCadenceMilliseconds: number;
     needDecayPerMinute: number;
     committedGoalBonus: number;
+    workingMemory?: {
+        maxCommitments: number;
+        maxExperiences: number;
+    };
+    goalTieBreak?: {
+        enabled: boolean;
+        closeScore: number;
+    };
+    reflection?: {
+        enabled: boolean;
+        maxTraitDelta: number;
+    };
     nightPrep?: NightPrepConfig;
 }
 
@@ -58,6 +82,7 @@ export interface AgencyRuntimeOptions {
     isPaused?: () => boolean;
     isJobActive?: () => boolean;
     isProjectTaskActive?: () => boolean;
+    goalTieBreak?: GoalTieBreakPort;
     now?: () => number;
     maximumAttempts?: number;
     telemetryMilliseconds?: number;
@@ -89,6 +114,7 @@ export class AgencyRuntime {
     private lastPersistAt = 0;
     private lastNightReadinessKey: string | null = null;
     private launching = false;
+    private ticking = false;
     private project: ProjectSummary | null = null;
 
     private constructor(
@@ -109,7 +135,13 @@ export class AgencyRuntime {
             intentions: new IntentionManager(),
             snapshots: { read: () => this.readSnapshot() },
             focus: () => this.focus,
+            strategicIntent: () => this.strategicIntent,
             nightPrep: options.config.nightPrep,
+            tieBreak: options.goalTieBreak,
+            tieBreakEnabled: options.config.goalTieBreak?.enabled === true,
+            tacticalContext: () => this.tacticalContext(),
+            recordTacticalDecision: (input) => this.recordTacticalDecision(input),
+            recordTacticalDrop: (input) => this.recordTacticalDrop(input),
         });
     }
 
@@ -119,6 +151,7 @@ export class AgencyRuntime {
     ): Result<AgencyRuntime, string> {
         const [arbiter, arbiterError] = GoalArbiter.create({
             commitmentBonus: options.config.committedGoalBonus,
+            closeScore: options.config.goalTieBreak?.closeScore,
         });
         if (arbiterError) return [null, arbiterError];
         if (arbiter === null) return [null, 'goal arbiter returned null'];
@@ -147,6 +180,76 @@ export class AgencyRuntime {
 
     get focus(): WorkingMemoryFocus | null {
         return this.state.snapshot.workingMemory.focus;
+    }
+
+    get strategicIntent(): StrategicIntent | null {
+        return this.state.snapshot.workingMemory.strategicIntent ?? null;
+    }
+
+    setStrategicIntent(strategicIntent: StrategicIntent | null): void {
+        const memory = this.memory();
+        const next = memory.withStrategicIntent(strategicIntent);
+        if (next === memory) return;
+        this.commitMemory(next);
+    }
+
+    recordTacticalDecision(input: {
+        choiceId: string;
+        source: 'laya' | 'fallback' | 'deterministic';
+        revision: number;
+        at: string;
+    }): void {
+        this.commitMemory(
+            this.memory().withTacticalDecision({
+                choiceId: input.choiceId,
+                source: input.source,
+                revision: input.revision,
+                at: input.at,
+            }),
+        );
+    }
+
+    recordTacticalDrop(input: {
+        choiceId: string;
+        revision: number;
+        reason: string;
+        at: string;
+    }): void {
+        this.commitMemory(
+            this.memory().withExperience({
+                event: `tactical.decision.dropped:${input.choiceId}`,
+                outcome: `${input.reason} at revision ${input.revision}`,
+                at: input.at,
+            }),
+        );
+    }
+
+    tacticalContext(): {
+        revision: number;
+        focus: WorkingMemoryFocus | null;
+        commitments: WorkingMemory['commitments'];
+        recentExperiences: WorkingMemory['recentExperiences'];
+        interruption: WorkingMemory['interruption'];
+        strategicGoal: { kind: StrategicGoalKind; weight: number } | null;
+        strategicConstraints: readonly StrategicConstraint[];
+    } {
+        const memory = this.memory();
+        const primary = StrategicIntentPolicy.primaryForBot(
+            memory.strategicIntent,
+            this.options.botId,
+        );
+        return {
+            revision: memory.revision,
+            focus: memory.focus,
+            commitments: memory.commitments,
+            recentExperiences: memory.recentExperiences,
+            interruption: memory.interruption,
+            strategicGoal: primary === null ? null : { kind: primary.kind, weight: primary.weight },
+            strategicConstraints: StrategicIntentPolicy.constraintsFor(
+                memory.strategicIntent,
+                this.options.botId,
+            ),
+        };
     }
 
     get projectFocus(): ProjectSummary | null {
@@ -260,7 +363,7 @@ export class AgencyRuntime {
         if (goals === null) return [null, 'goal generation returned null'];
         const goal = goals.find((candidate) => candidate.id === intention.goalId) ?? null;
         if (goal === null || !this.canRestore(goal, state.snapshot)) {
-            this.abandonRestored(intention, 'infeasible');
+            this.abandonRestored(goal, intention, 'infeasible');
             return [undefined, null];
         }
         const [restored, restoreError] = this.agent.restore(goal, intention);
@@ -281,7 +384,7 @@ export class AgencyRuntime {
         return [undefined, null];
     }
 
-    tick(nowMilliseconds = this.now()): Result<AgencyTickReport, string> {
+    async tick(nowMilliseconds = this.now()): Promise<Result<AgencyTickReport, string>> {
         if (!this.options.config.enabled) {
             return [{ action: 'disabled', goalId: null }, null];
         }
@@ -314,7 +417,7 @@ export class AgencyRuntime {
         if (this.options.skills.activeSkillId !== null) {
             return [{ action: 'busy', goalId: null }, null];
         }
-        const [tick, tickError] = this.agent.tick(now);
+        const [tick, tickError] = await this.agent.tick(now);
         if (tickError) return [null, tickError];
         if (tick === null) {
             if (this.focus?.kind === 'project') {
@@ -470,6 +573,7 @@ export class AgencyRuntime {
         if (intention === null) return [null, 'intention complete returned null'];
         const need = goalNeedFor(goal.kind);
         this.state = this.state.withIntention(null).satisfyNeed(need, NEED_SATISFACTION);
+        const reflection = this.applyReflection(goal, intention, 'completed', null, now);
         this.restoreProjectFocus(now);
         if (goal.kind === 'eat' || goal.kind === 'rest') {
             this.state = this.state.withRoutine(
@@ -487,7 +591,7 @@ export class AgencyRuntime {
             kind: 'goal.completed',
             summary: `Completed ${goal.label}`,
             position: snapshot.position,
-            payload: { kind: goal.kind },
+            payload: { kind: goal.kind, reflection: AgencyRuntime.reflectionPayload(reflection) },
             at: now,
         });
         return [{ action: 'completed', goalId: goal.id }, null];
@@ -498,19 +602,69 @@ export class AgencyRuntime {
         reason: AbandonmentReason,
         now: string,
     ): Result<AgencyTickReport, string> {
-        const [, abandonError] = this.agent.abandon(reason, now);
+        const [intention, abandonError] = this.agent.abandon(reason, now);
         if (abandonError) return [null, abandonError];
+        if (intention === null) return [null, 'intention abandon returned null'];
         this.state = this.state.withIntention(null);
+        const reflection = this.applyReflection(goal, intention, 'abandoned', reason, now);
         this.restoreProjectFocus(now);
         this.persist(this.now(), true);
         this.options.persistence.episode({
             goalId: goal.id,
             kind: 'goal.abandoned',
             summary: `Abandoned ${goal.label}: ${reason}`,
-            payload: { kind: goal.kind, reason },
+            payload: {
+                kind: goal.kind,
+                reason,
+                reflection: AgencyRuntime.reflectionPayload(reflection),
+            },
             at: now,
         });
         return [{ action: 'abandoned', goalId: goal.id }, null];
+    }
+
+    private applyReflection(
+        goal: Goal,
+        intention: Intention,
+        outcome: 'completed' | 'abandoned',
+        reason: AbandonmentReason | null,
+        now: string,
+    ): ReflectionResult | null {
+        const config = this.options.config.reflection;
+        if (config?.enabled === false) return null;
+        const [reflection, reflectionError] = ReflectionModel.reflect(
+            {
+                goal,
+                intention,
+                outcome,
+                reason,
+                traits: this.state.snapshot.traits,
+            },
+            { maxTraitDelta: config?.maxTraitDelta },
+        );
+        if (reflectionError) {
+            this.options.logger.warn({ error: reflectionError }, 'agency reflection failed');
+            return null;
+        }
+        if (reflection === null) return null;
+        this.state = this.state.withTraits(reflection.traits).withMood(reflection.mood);
+        this.state = this.state.withWorkingMemory(
+            this.memory().withExperience({
+                event: `goal.${outcome}:${goal.kind}`,
+                outcome: reflection.summary,
+                at: now,
+            }).snapshot,
+        );
+        return reflection;
+    }
+
+    private static reflectionPayload(reflection: ReflectionResult | null) {
+        if (reflection === null) return null;
+        return {
+            mood: reflection.mood,
+            summary: reflection.summary,
+            traitDeltas: reflection.traitDeltas,
+        };
     }
 
     private applyAgencyFocus(goalId: string, label: string, at: string): void {
@@ -550,8 +704,11 @@ export class AgencyRuntime {
     }
 
     private memory(): WorkingMemoryModel {
-        const [memory] = WorkingMemoryModel.restore(this.state.snapshot.workingMemory);
-        return memory ?? WorkingMemoryModel.create();
+        const [memory] = WorkingMemoryModel.restore(
+            this.state.snapshot.workingMemory,
+            this.options.config.workingMemory,
+        );
+        return memory ?? WorkingMemoryModel.create(this.options.config.workingMemory);
     }
 
     private commitMemory(memory: WorkingMemoryModel): void {
@@ -608,14 +765,25 @@ export class AgencyRuntime {
         );
     }
 
-    private abandonRestored(intention: Intention, reason: AbandonmentReason): void {
+    private abandonRestored(
+        goal: Goal | null,
+        intention: Intention,
+        reason: AbandonmentReason,
+    ): void {
+        const now = new Date(this.now()).toISOString();
+        const reflection =
+            goal === null ? null : this.applyReflection(goal, intention, 'abandoned', reason, now);
         this.state = this.state.withIntention(null);
         this.persist(this.now(), true);
         this.options.persistence.episode({
             goalId: intention.goalId,
             kind: 'goal.abandoned',
             summary: `Abandoned ${intention.label}: ${reason}`,
-            payload: { reason },
+            payload: {
+                reason,
+                reflection: AgencyRuntime.reflectionPayload(reflection),
+            },
+            at: now,
         });
     }
 
@@ -698,7 +866,14 @@ export class AgencyRuntime {
     }
 
     private tickSafely(): void {
-        const [, tickError] = this.tick();
-        if (tickError) this.options.logger.warn({ error: tickError }, 'agency tick failed');
+        if (this.ticking) return;
+        this.ticking = true;
+        void attemptAsync(() => this.tick())
+            .then(([, tickError]) => {
+                if (tickError) this.options.logger.warn({ error: tickError }, 'agency tick failed');
+            })
+            .finally(() => {
+                this.ticking = false;
+            });
     }
 }

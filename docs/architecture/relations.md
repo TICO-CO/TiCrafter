@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 580  
+**Relations:** 591  
 **State owners:** 23  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 22 |
-| `depends_on` | 398 |
+| `depends_on` | 409 |
 | `observes` | 8 |
 | `persists_to` | 2 |
 | `proposes_to` | 7 |
@@ -151,7 +151,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Building` | `Skill Runtime` | 1 | reads×1 |
 | `Building` | `Transport and Protocol` | 1 | subscribes×1 |
 | `Building` | `World Model and Landmarks` | 5 | reads×4, writes×1 |
-| `Bot Runtime and Mineflayer Adapter` | `Agency` | 4 | depends_on×4 |
+| `Bot Runtime and Mineflayer Adapter` | `Agency` | 6 | depends_on×6 |
 | `Bot Runtime and Mineflayer Adapter` | `Bot Registry and Profiles` | 2 | delegates_to×1, persists_to×1 |
 | `Bot Runtime and Mineflayer Adapter` | `Brains` | 3 | delegates_to×3 |
 | `Bot Runtime and Mineflayer Adapter` | `Config and Profiles` | 3 | depends_on×3 |
@@ -159,7 +159,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Bot Runtime and Mineflayer Adapter` | `Perception` | 4 | delegates_to×2, depends_on×2 |
 | `Bot Runtime and Mineflayer Adapter` | `Autonomy and Safety` | 2 | depends_on×2 |
 | `Bot Runtime and Mineflayer Adapter` | `Skill Runtime` | 3 | depends_on×2, delegates_to×1 |
-| `Bot Runtime and Mineflayer Adapter` | `Transport and Protocol` | 4 | depends_on×2, publishes×2 |
+| `Bot Runtime and Mineflayer Adapter` | `Transport and Protocol` | 5 | depends_on×3, publishes×2 |
 | `Autonomy and Safety` | `Bot Runtime and Mineflayer Adapter` | 2 | validates×1, controls×1 |
 | `Autonomy and Safety` | `Brains` | 1 | reads×1 |
 | `Autonomy and Safety` | `Building` | 1 | validates×1 |
@@ -190,6 +190,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Laya Training` | `Memory and Persistence` | 2 | reads×2 |
 | `Brains` | `Bot Runtime and Mineflayer Adapter` | 2 | depends_on×2 |
 | `Brains` | `Bot Registry and Profiles` | 1 | reads×1 |
+| `Brains` | `Config and Profiles` | 1 | depends_on×1 |
 | `Brains` | `Autonomy and Safety` | 7 | controls×1, depends_on×6 |
 | `Brains` | `Skill Runtime` | 1 | depends_on×1 |
 | `Brains` | `Transport and Protocol` | 2 | subscribes×1, depends_on×1 |
@@ -527,6 +528,7 @@ None.
 | `rel.0283` | `planner.trigger-evaluator` | `delegates_to` | `planner.context-builder` | `in-process` | sync | soft | planning trigger | Fall back to deterministic policy or the last good plan and record the downgrade. | Triggers start a planning request. |
 | `rel.0284` | `planner.trigger-evaluator` | `reads` | `sip.revision-manager` | `in-process` | sync | soft | reads payload for SIP Revision Manager | Fall back to deterministic policy or the last good plan and record the downgrade. | Planner Trigger Evaluator reads SIP Revision Manager. |
 | `rel.0285` | `planner.trigger-evaluator` | `reads` | `tasks.dead-letter-manager` | `in-process` | sync | soft | reads payload for Dead Letter Manager | Fall back to deterministic policy or the last good plan and record the downgrade. | Planner Trigger Evaluator reads Dead Letter Manager. |
+| `rel.0583` | `planner.strategic-intent-store` | `depends_on` | `planner.plan-cache` | `in-process` | sync | hard | plan cache | Use the deterministic fallback and record the downgrade. | Strategic Intent Store reads the latest validated plan. |
 
 ## Skill Runtime relations
 
@@ -676,6 +678,7 @@ None.
 | `rel.0547` | `building.construction-plan-planner` | `depends_on` | `building.material-procurement-planner` | `in-process` | sync | hard | depends on payload for Material Procurement Planner | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Construction Plan Planner depends on Material Procurement Planner. |
 | `rel.0548` | `building.material-procurement-planner` | `depends_on` | `building.material-preflight` | `in-process` | sync | hard | depends on payload for building.material-preflight | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Material Procurement Planner depends on building.material-preflight. |
 | `rel.0549` | `building.site-planner` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | depends on payload for Construction Plan Types | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Site Planner depends on Construction Plan Types. |
+| `rel.0591` | `building.construction-plan-document` | `depends_on` | `building.construction-types` | `in-process` | sync | hard | construction plan and package manifest | Reject the plan document and keep the last stored revision. | Plan documents persist construction plan types. |
 
 ## Bot Runtime and Mineflayer Adapter relations
 
@@ -720,6 +723,11 @@ None.
 | `rel.0574` | `bot-runtime.shelter-inspector` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | depends on payload for World Cache Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Shelter Inspector depends on World Cache Adapter. |
 | `rel.0579` | `bot-runtime.construction-source` | `depends_on` | `bot-runtime.blueprint-fetch-client` | `in-process` | sync | hard | cached blueprint document | Fail construction resolution when the exact revision is not cached. | Construction source resolves exact blueprint revisions. |
 | `rel.0580` | `bot-runtime.blueprint-fetch-client` | `depends_on` | `transport.request-correlator` | `in-process` | sync | hard | blueprint fetch request correlation | Return a typed transport failure and leave the cache unchanged. | Blueprint fetch requests are correlated over the bot transport. |
+| `rel.0588` | `bot-runtime.agent-loop` | `depends_on` | `bot-runtime.goal-tie-break` | `in-process` | sync | soft | close goal candidates | Use the deterministic goal arbiter winner and record the tactical drop. | Goal tie-break is gated off until the behavioral evaluation passes. |
+| `rel.0589` | `bot-runtime.goal-tie-break` | `depends_on` | `agency.goal-arbiter` | `in-process` | sync | hard | ranked close candidates | Use the deterministic goal arbiter winner. | The tie-break adapter only accepts arbiter candidates. |
+| `rel.0592` | `bot-runtime.construction-plan-fetch-client` | `depends_on` | `transport.request-correlator` | `in-process` | sync | hard | construction plan fetch request correlation | Return a typed transport failure and leave the cache unchanged. | Plan fetch requests are correlated over the bot transport. |
+| `rel.0593` | `bot-runtime.construction-source` | `depends_on` | `bot-runtime.construction-plan-fetch-client` | `in-process` | sync | hard | cached construction plan document | Fail construction resolution when the exact plan revision is not cached. | Construction source consumes stored plan packages. |
+| `rel.0590` | `bot-runtime.agent-loop` | `depends_on` | `agency.reflection` | `in-process` | sync | soft | goal outcome | Keep the goal outcome and skip the mood or trait update. | Reflection runs after completion or abandonment. |
 
 ## Autonomy and Safety relations
 
@@ -875,6 +883,8 @@ None.
 | `rel.0477` | `brains.laya-client` | `depends_on` | `brains.affordance-enumerator` | `in-process` | sync | hard | affordances | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Affordance Enumerator. |
 | `rel.0478` | `brains.laya-client` | `depends_on` | `transport.ws-codec` | `ws` | sync | hard | decision request frames | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Laya Client depends on WebSocket Codec. |
 | `rel.0479` | `brains.laya-client` | `depends_on` | `brains.deterministic-policy` | `in-process` | sync | hard | timeout fallback | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Deterministic Policy. |
+| `rel.0584` | `brains.laya-client` | `depends_on` | `brains.tactical-policy` | `in-process` | sync | hard | tactical policy | Use the deterministic fallback and record the downgrade. | Laya Client applies tactical profile and rate policy. |
+| `rel.0585` | `brains.tactical-policy` | `depends_on` | `config.config-schema-validator` | `in-process` | sync | hard | tactical config | Use the deterministic fallback and record the downgrade. | Tactical policy is configured by profile. |
 
 ## Agency relations
 
@@ -904,6 +914,8 @@ None.
 | `rel.0556` | `agency.goal-generator` | `depends_on` | `agency.night-prep-config` | `in-process` | sync | hard | depends on payload for Night Preparation Config | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Night Preparation Config. |
 | `rel.0557` | `agency.goal-generator` | `depends_on` | `agency.night-readiness` | `in-process` | sync | hard | depends on payload for Night Readiness | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Night Readiness. |
 | `rel.0558` | `agency.goal-generator` | `depends_on` | `agency.routine-model` | `in-process` | sync | hard | depends on payload for Routine Model | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Routine Model. |
+| `rel.0586` | `agency.strategic-intent` | `depends_on` | `agency.goal-arbiter` | `in-process` | sync | hard | priority adjustments | Use the deterministic fallback and record the downgrade. | Strategic intent biases goal utility before arbitration. |
+| `rel.0587` | `agency.strategic-intent` | `depends_on` | `agency.working-memory` | `in-process` | sync | hard | latest intent | Use the deterministic fallback and record the downgrade. | Strategic intent is stored in working memory. |
 
 ## Bootstrap and Toolchain relations
 

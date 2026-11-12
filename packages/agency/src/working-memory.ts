@@ -1,4 +1,4 @@
-import type { Result } from '@ticrafter/core';
+import { type Result, type StrategicIntent, strategicIntentSchema } from '@ticrafter/core';
 
 import type {
     WorkingMemory,
@@ -12,25 +12,48 @@ import type {
 export const MAXIMUM_COMMITMENTS = 4;
 export const MAXIMUM_RECENT_EXPERIENCES = 8;
 
-export class WorkingMemoryModel {
-    private constructor(readonly snapshot: WorkingMemory) {}
+export interface WorkingMemoryBounds {
+    maxCommitments: number;
+    maxExperiences: number;
+}
 
-    static create(): WorkingMemoryModel {
-        return new WorkingMemoryModel({
-            revision: 0,
-            focus: null,
-            commitments: [],
-            interruption: null,
-            recentExperiences: [],
-            lastTacticalDecision: null,
-        });
+const DEFAULT_BOUNDS: WorkingMemoryBounds = {
+    maxCommitments: MAXIMUM_COMMITMENTS,
+    maxExperiences: MAXIMUM_RECENT_EXPERIENCES,
+};
+
+export class WorkingMemoryModel {
+    private constructor(
+        readonly snapshot: WorkingMemory,
+        private readonly bounds: WorkingMemoryBounds,
+    ) {}
+
+    static create(input: Partial<WorkingMemoryBounds> = {}): WorkingMemoryModel {
+        const bounds = WorkingMemoryModel.bounds(input);
+        return new WorkingMemoryModel(
+            {
+                revision: 0,
+                focus: null,
+                commitments: [],
+                interruption: null,
+                recentExperiences: [],
+                lastTacticalDecision: null,
+                strategicIntent: null,
+            },
+            bounds,
+        );
     }
 
-    static restore(input: WorkingMemory | null | undefined): Result<WorkingMemoryModel, string> {
-        if (input === null || input === undefined) return [WorkingMemoryModel.create(), null];
-        const validationError = WorkingMemoryModel.validate(input);
+    static restore(
+        input: WorkingMemory | null | undefined,
+        bounds: Partial<WorkingMemoryBounds> = {},
+    ): Result<WorkingMemoryModel, string> {
+        if (input === null || input === undefined) return [WorkingMemoryModel.create(bounds), null];
+        const normalized = WorkingMemoryModel.normalize(input);
+        const resolvedBounds = WorkingMemoryModel.bounds(bounds);
+        const validationError = WorkingMemoryModel.validate(normalized, resolvedBounds);
         if (validationError !== null) return [null, validationError];
-        return [new WorkingMemoryModel(input), null];
+        return [new WorkingMemoryModel(normalized, resolvedBounds), null];
     }
 
     get revision(): number {
@@ -57,6 +80,10 @@ export class WorkingMemoryModel {
         return this.snapshot.lastTacticalDecision;
     }
 
+    get strategicIntent(): StrategicIntent | null {
+        return this.snapshot.strategicIntent ?? null;
+    }
+
     withFocus(focus: WorkingMemoryFocus): WorkingMemoryModel {
         return this.next({ focus: { ...focus } });
     }
@@ -76,8 +103,8 @@ export class WorkingMemoryModel {
     }
 
     withCommitment(commitment: WorkingMemoryCommitment): Result<WorkingMemoryModel, string> {
-        if (this.snapshot.commitments.length >= MAXIMUM_COMMITMENTS) {
-            return [null, `working memory already has ${MAXIMUM_COMMITMENTS} commitments`];
+        if (this.snapshot.commitments.length >= this.bounds.maxCommitments) {
+            return [null, `working memory already has ${this.bounds.maxCommitments} commitments`];
         }
         if (commitment.id.length === 0) return [null, 'commitment id is required'];
         if (commitment.description.length === 0) {
@@ -103,7 +130,7 @@ export class WorkingMemoryModel {
     withExperience(experience: WorkingMemoryExperience): WorkingMemoryModel {
         return this.next({
             recentExperiences: [...this.snapshot.recentExperiences, { ...experience }].slice(
-                -MAXIMUM_RECENT_EXPERIENCES,
+                -this.bounds.maxExperiences,
             ),
         });
     }
@@ -112,22 +139,47 @@ export class WorkingMemoryModel {
         return this.next({ lastTacticalDecision: { ...decision } });
     }
 
-    private next(changes: Partial<WorkingMemory>): WorkingMemoryModel {
-        return new WorkingMemoryModel({
-            ...this.snapshot,
-            ...changes,
-            revision: this.snapshot.revision + 1,
-        });
+    withStrategicIntent(strategicIntent: StrategicIntent | null): WorkingMemoryModel {
+        if (this.snapshot.strategicIntent?.planId === strategicIntent?.planId) return this;
+        return this.next({ strategicIntent });
     }
 
-    private static validate(input: WorkingMemory): string | null {
+    private next(changes: Partial<WorkingMemory>): WorkingMemoryModel {
+        return new WorkingMemoryModel(
+            {
+                ...this.snapshot,
+                ...changes,
+                revision: this.snapshot.revision + 1,
+            },
+            this.bounds,
+        );
+    }
+
+    private static bounds(input: Partial<WorkingMemoryBounds>): WorkingMemoryBounds {
+        return {
+            maxCommitments: input.maxCommitments ?? DEFAULT_BOUNDS.maxCommitments,
+            maxExperiences: input.maxExperiences ?? DEFAULT_BOUNDS.maxExperiences,
+        };
+    }
+
+    private static normalize(input: WorkingMemory): WorkingMemory {
+        const strategicIntent = input.strategicIntent ?? null;
+        return {
+            ...input,
+            commitments: [...input.commitments],
+            recentExperiences: [...input.recentExperiences],
+            strategicIntent,
+        };
+    }
+
+    private static validate(input: WorkingMemory, bounds: WorkingMemoryBounds): string | null {
         if (!Number.isInteger(input.revision) || input.revision < 0) {
             return 'working memory revision must be a non-negative integer';
         }
         const focusError = WorkingMemoryModel.validateFocus(input.focus);
         if (focusError !== null) return focusError;
-        if (input.commitments.length > MAXIMUM_COMMITMENTS) {
-            return `working memory exceeds ${MAXIMUM_COMMITMENTS} commitments`;
+        if (input.commitments.length > bounds.maxCommitments) {
+            return `working memory exceeds ${bounds.maxCommitments} commitments`;
         }
         const commitmentError = input.commitments.find(
             (commitment) => commitment.id.length === 0 || commitment.description.length === 0,
@@ -135,13 +187,15 @@ export class WorkingMemoryModel {
         if (commitmentError !== undefined) return 'working memory commitment is invalid';
         const interruptionError = WorkingMemoryModel.validateInterruption(input.interruption);
         if (interruptionError !== null) return interruptionError;
-        if (input.recentExperiences.length > MAXIMUM_RECENT_EXPERIENCES) {
-            return `working memory exceeds ${MAXIMUM_RECENT_EXPERIENCES} recent experiences`;
+        if (input.recentExperiences.length > bounds.maxExperiences) {
+            return `working memory exceeds ${bounds.maxExperiences} recent experiences`;
         }
         const experienceError = input.recentExperiences.find(
             (experience) => experience.event.length === 0 || experience.outcome.length === 0,
         );
         if (experienceError !== undefined) return 'working memory experience is invalid';
+        const intentError = WorkingMemoryModel.validateStrategicIntent(input.strategicIntent);
+        if (intentError !== null) return intentError;
         const decision = input.lastTacticalDecision;
         if (decision !== null) {
             if (decision.choiceId.length === 0) {
@@ -151,6 +205,16 @@ export class WorkingMemoryModel {
                 return 'working memory tactical revision must be a non-negative integer';
             }
         }
+        return null;
+    }
+
+    private static validateStrategicIntent(
+        strategicIntent: StrategicIntent | null | undefined,
+    ): string | null {
+        if (strategicIntent === null) return null;
+        const parsed = strategicIntentSchema.safeParse(strategicIntent);
+        if (!parsed.success)
+            return `working memory strategic intent is invalid: ${parsed.error.message}`;
         return null;
     }
 

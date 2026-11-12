@@ -8,7 +8,7 @@ import { NeedsModel } from './needs-model.js';
 import { PersonalityModel } from './personality-model.js';
 import { RoutineModel } from './routine-model.js';
 import { SocialEngine } from './social-engine.js';
-import type { AgencySnapshot, SocialContext } from './types.js';
+import type { AgencySnapshot, Goal, SocialContext } from './types.js';
 import { WorkingMemoryModel } from './working-memory.js';
 
 function snapshot(overrides: Partial<AgencySnapshot> = {}): AgencySnapshot {
@@ -132,6 +132,48 @@ describe('agency', () => {
         const [selection, selectionError] = arbiter.select(goals, needs, personality, null);
         expect(selectionError).toBeNull();
         expect(selection?.goal.kind).toBe('eat');
+    });
+
+    it('exposes close candidates for a Laya goal tie-break', () => {
+        const traits = PersonalityModel.fromBotIndex(0);
+        const makeGoal = (id: string): Goal => ({
+            id,
+            kind: 'explore',
+            label: id,
+            priority: 50,
+            source: 'need',
+            target: null,
+            steps: [{ skillId: 'explore', label: 'Explore', input: {} }],
+            expectedValue: 0.5,
+            estimatedCost: 0.1,
+            estimatedRisk: 0.1,
+            deadline: null,
+        });
+        const [arbiter, arbiterError] = GoalArbiter.create();
+        expect(arbiterError).toBeNull();
+        if (arbiter === null) return;
+        const [selection, selectionError] = arbiter.select(
+            [makeGoal('goal:first'), makeGoal('goal:second')],
+            NeedsModel.defaults(),
+            traits,
+            null,
+        );
+        expect(selectionError).toBeNull();
+        expect(selection?.layaShouldAdvise).toBe(true);
+        expect(selection?.closeCandidates).toHaveLength(2);
+        const [strictArbiter] = GoalArbiter.create({ closeScore: 0 });
+        if (strictArbiter === null) return;
+        const [strict] = strictArbiter.select(
+            [makeGoal('goal:first'), makeGoal('goal:second')],
+            NeedsModel.defaults(),
+            traits,
+            null,
+        );
+        expect(strict?.layaShouldAdvise).toBe(false);
+    });
+
+    it('rejects an invalid close score', () => {
+        expect(GoalArbiter.create({ closeScore: 2 })[1]).not.toBeNull();
     });
 
     it('tracks intention completion and abandonment', () => {

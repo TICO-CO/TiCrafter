@@ -2,6 +2,7 @@ export * from './atomic-task-claimer.js';
 export * from './coordinator-job-offer-market.js';
 export * from './dag-resolver.js';
 export * from './dead-letter-manager.js';
+export * from './failures.js';
 export * from './job-command-handler.js';
 export * from './job-offer-service.js';
 export * from './precondition-evaluator.js';

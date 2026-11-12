@@ -13,6 +13,7 @@ export interface BlockChange {
     target: BlueprintBlock;
     claimId?: string;
     grantId?: string;
+    grantFencingToken?: number;
     planId?: string;
     structureId?: string;
     blueprintId?: string;

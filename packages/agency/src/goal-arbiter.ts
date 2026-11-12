@@ -29,30 +29,43 @@ export function goalNeedFor(kind: GoalKind): NeedName {
     return KIND_NEEDS[kind];
 }
 
-const CLOSE_SCORE = 0.12;
+const DEFAULT_CLOSE_SCORE = 0.12;
 const DEFAULT_COMMITMENT_BONUS = 0.15;
 
 export interface GoalArbiterOptions {
     commitmentBonus?: number;
+    closeScore?: number;
+}
+
+export interface GoalCandidate {
+    goal: Goal;
+    score: number;
 }
 
 export interface GoalSelection {
     goal: Goal;
     score: number;
     layaShouldAdvise: boolean;
+    closeCandidates: readonly GoalCandidate[];
 }
 
 export class GoalArbiter {
     private readonly commitmentBonus: number;
+    private readonly closeScore: number;
 
     private constructor(options: GoalArbiterOptions) {
         this.commitmentBonus = options.commitmentBonus ?? DEFAULT_COMMITMENT_BONUS;
+        this.closeScore = options.closeScore ?? DEFAULT_CLOSE_SCORE;
     }
 
     static create(options: GoalArbiterOptions = {}): Result<GoalArbiter, string> {
         const commitmentBonus = options.commitmentBonus ?? DEFAULT_COMMITMENT_BONUS;
         if (!Number.isFinite(commitmentBonus) || commitmentBonus < 0 || commitmentBonus > 1) {
             return [null, 'commitmentBonus must be between 0 and 1'];
+        }
+        const closeScore = options.closeScore ?? DEFAULT_CLOSE_SCORE;
+        if (!Number.isFinite(closeScore) || closeScore < 0 || closeScore > 1) {
+            return [null, 'closeScore must be between 0 and 1'];
         }
         return [new GoalArbiter(options), null];
     }
@@ -73,12 +86,17 @@ export class GoalArbiter {
         const best = scored[0];
         const runnerUp = scored[1];
         if (best === undefined) return [null, 'goal scores missing'];
+        const layaShouldAdvise =
+            runnerUp !== undefined && best.score - runnerUp.score < this.closeScore;
+        const closeCandidates = layaShouldAdvise
+            ? scored.filter((candidate) => best.score - candidate.score < this.closeScore)
+            : [best];
         return [
             {
                 goal: best.goal,
                 score: best.score,
-                layaShouldAdvise:
-                    runnerUp !== undefined && best.score - runnerUp.score < CLOSE_SCORE,
+                layaShouldAdvise,
+                closeCandidates,
             },
             null,
         ];

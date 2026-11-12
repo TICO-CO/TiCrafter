@@ -4,6 +4,7 @@ import {
     type Goal,
     GoalArbiter,
     type GoalGenerator,
+    type GoalSelection,
     type Intention,
     IntentionManager,
     type NeedsModel,
@@ -12,9 +13,12 @@ import {
     ProjectFocusPolicy,
     RoutineModel,
     type RoutineState,
+    StrategicIntentPolicy,
     type WorkingMemoryFocus,
 } from '@ticrafter/agency';
-import type { Result } from '@ticrafter/core';
+import type { Result, StrategicIntent } from '@ticrafter/core';
+
+import type { GoalTieBreakContext, GoalTieBreakPort } from './goal-tie-break.js';
 
 export interface AgentLoopSnapshotPort {
     read(): Result<
@@ -35,7 +39,23 @@ export interface AgentLoopOptions {
     intentions: IntentionManager;
     snapshots: AgentLoopSnapshotPort;
     focus?: () => WorkingMemoryFocus | null;
+    strategicIntent?: () => StrategicIntent | null;
     nightPrep?: NightPrepConfig;
+    tieBreak?: GoalTieBreakPort;
+    tieBreakEnabled?: boolean;
+    tacticalContext?: () => GoalTieBreakContext;
+    recordTacticalDecision?: (input: {
+        choiceId: string;
+        source: 'laya' | 'fallback' | 'deterministic';
+        revision: number;
+        at: string;
+    }) => void;
+    recordTacticalDrop?: (input: {
+        choiceId: string;
+        revision: number;
+        reason: string;
+        at: string;
+    }) => void;
 }
 
 export interface AgentLoopTick {
@@ -59,7 +79,7 @@ export class AgentLoop {
         return this.activeGoal;
     }
 
-    tick(now: string): Result<AgentLoopTick | null, string> {
+    async tick(now: string): Promise<Result<AgentLoopTick | null, string>> {
         const active = this.options.intentions.intention;
         if (active !== null) {
             if (this.activeGoal === null) return [null, 'active intention has no goal'];
@@ -91,10 +111,15 @@ export class AgentLoop {
         if (goalError) return [null, goalError];
         if (goals === null) return [null, 'goal generation returned null'];
         const focus = this.options.focus?.() ?? null;
-        const candidates =
+        const filtered =
             focus?.kind === 'project'
                 ? goals.filter((goal) => ProjectFocusPolicy.allowsGoal(goal.kind))
                 : goals;
+        const candidates = StrategicIntentPolicy.applyToGoals(
+            filtered,
+            this.options.strategicIntent?.() ?? null,
+            this.options.botId,
+        );
         if (candidates.length === 0) return [null, null];
         const [selection, selectionError] = this.options.arbiter.select(
             candidates,
@@ -104,20 +129,91 @@ export class AgentLoop {
         );
         if (selectionError) return [null, selectionError];
         if (selection === null) return [null, 'goal arbitration returned null'];
-        const [intention, intentionError] = this.options.intentions.begin(selection.goal, now);
+        const [selectedGoal, consultedLaya] = await this.tieBreak(state, selection, now);
+        const [intention, intentionError] = this.options.intentions.begin(selectedGoal, now);
         if (intentionError) return [null, intentionError];
         if (intention === null) return [null, 'intention creation returned null'];
-        this.activeGoal = selection.goal;
+        this.activeGoal = selectedGoal;
         return [
             {
                 intention,
-                goal: selection.goal,
-                goalId: selection.goal.id,
-                consultLaya: selection.layaShouldAdvise,
+                goal: selectedGoal,
+                goalId: selectedGoal.id,
+                consultLaya: consultedLaya,
                 phase,
             },
             null,
         ];
+    }
+
+    private async tieBreak(
+        state: {
+            snapshot: AgencySnapshot;
+            needs: NeedsModel;
+            traits: PersonalityModel;
+            routine: RoutineState;
+        },
+        selection: GoalSelection,
+        now: string,
+    ): Promise<[Goal, boolean]> {
+        if (
+            this.options.tieBreakEnabled !== true ||
+            !selection.layaShouldAdvise ||
+            selection.closeCandidates.length < 2 ||
+            this.options.tieBreak === undefined ||
+            this.options.tacticalContext === undefined
+        ) {
+            return [selection.goal, false];
+        }
+        const before = this.options.tacticalContext();
+        const [outcome, outcomeError] = await this.options.tieBreak.decide({
+            botId: this.options.botId,
+            at: now,
+            snapshot: state.snapshot,
+            selected: selection.goal,
+            candidates: selection.closeCandidates,
+            tactical: before,
+        });
+        if (outcomeError || outcome === null) {
+            this.options.recordTacticalDecision?.({
+                choiceId: `goal:${selection.goal.id}`,
+                source: 'deterministic',
+                revision: before.revision,
+                at: now,
+            });
+            return [selection.goal, true];
+        }
+        const after = this.options.tacticalContext();
+        if (
+            after.revision !== before.revision ||
+            AgentLoop.focusKey(after.focus) !== AgentLoop.focusKey(before.focus)
+        ) {
+            this.options.recordTacticalDrop?.({
+                choiceId: outcome.choiceId,
+                revision: before.revision,
+                reason: 'working memory focus or revision changed',
+                at: now,
+            });
+            this.options.recordTacticalDecision?.({
+                choiceId: `goal:${selection.goal.id}`,
+                source: 'fallback',
+                revision: before.revision,
+                at: now,
+            });
+            return [selection.goal, true];
+        }
+        this.options.recordTacticalDecision?.({
+            choiceId: outcome.choiceId,
+            source: outcome.source,
+            revision: before.revision,
+            at: now,
+        });
+        return [outcome.goal, true];
+    }
+
+    private static focusKey(focus: WorkingMemoryFocus | null): string | null {
+        if (focus === null) return null;
+        return `${focus.kind}:${focus.id}`;
     }
 
     restore(goal: Goal, intention: Intention): Result<Intention, string> {

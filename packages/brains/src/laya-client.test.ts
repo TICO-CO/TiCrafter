@@ -10,6 +10,7 @@ import { describe, expect, it } from 'bun:test';
 import type { Affordance } from './affordance-enumerator.js';
 import { DeterministicPolicy, type PolicyState } from './deterministic-policy.js';
 import { type DecisionTransportPort, LayaClient } from './laya-client.js';
+import { TacticalDecisionPolicy } from './tactical-policy.js';
 
 const affordances: readonly Affordance[] = [
     {
@@ -69,12 +70,29 @@ function response(choiceId: string, confidence: number, source: 'laya' | 'fallba
 }
 
 class FakeTransport implements DecisionTransportPort {
+    calls = 0;
+
     constructor(private readonly result: Result<Envelope, TransportFailure>) {}
 
     async request(): Promise<Result<Envelope, TransportFailure>> {
+        this.calls += 1;
         return this.result;
     }
 }
+
+const tactical = (
+    overrides: Partial<ConstructorParameters<typeof TacticalDecisionPolicy>[0]> = {},
+) =>
+    new TacticalDecisionPolicy({
+        enabled: true,
+        mode: 'blocking',
+        deadlineMilliseconds: 1000,
+        minimumIntervalMilliseconds: 0,
+        maxDecisionsPerMinute: 10,
+        skipSingleAffordance: true,
+        circuitBreakerFailureCount: 3,
+        ...overrides,
+    });
 
 describe('LayaClient', () => {
     const client = (result: Result<Envelope, TransportFailure>) =>
@@ -114,6 +132,106 @@ describe('LayaClient', () => {
         );
         expect(decisionError).toBeNull();
         expect(decision?.source).toBe('fallback');
+    });
+
+    it('skips Laya when tactical decisions are disabled or only one affordance exists', async () => {
+        const disabledTransport = new FakeTransport([response('mine:0', 0.9), null]);
+        const [disabled] = await new LayaClient({
+            transport: disabledTransport,
+            timeoutMilliseconds: 100,
+            minimumConfidence: 0.6,
+            policy: new DeterministicPolicy(),
+            tactical: tactical({ enabled: false }),
+        }).decide(request(), affordances, state);
+        expect(disabled?.source).toBe('fallback');
+        expect(disabledTransport.calls).toBe(0);
+
+        const singleTransport = new FakeTransport([response('mine:0', 0.9), null]);
+        const [single] = await new LayaClient({
+            transport: singleTransport,
+            timeoutMilliseconds: 100,
+            minimumConfidence: 0.6,
+            policy: new DeterministicPolicy(),
+            tactical: tactical(),
+        }).decide(request(), [affordances[0] as Affordance], state);
+        expect(single?.source).toBe('fallback');
+        expect(singleTransport.calls).toBe(0);
+    });
+
+    it('returns a background advisory at the next decision', async () => {
+        const transport = new FakeTransport([response('mine:0', 0.9), null]);
+        const client = new LayaClient({
+            transport,
+            timeoutMilliseconds: 100,
+            minimumConfidence: 0.6,
+            policy: new DeterministicPolicy(),
+            tactical: tactical({ mode: 'background' }),
+        });
+        const [first] = await client.decide(request(), affordances, state);
+        expect(first?.source).toBe('fallback');
+        expect(transport.calls).toBe(1);
+        await Promise.resolve();
+        await Promise.resolve();
+        const [second] = await client.decide(request(), affordances, state);
+        expect(second?.source).toBe('laya');
+        expect(second?.choice.id).toBe('mine:0');
+    });
+
+    it('discards a background advisory after the working-memory revision changes', async () => {
+        const transport = new FakeTransport([response('mine:0', 0.9), null]);
+        const client = new LayaClient({
+            transport,
+            timeoutMilliseconds: 100,
+            minimumConfidence: 0.6,
+            policy: new DeterministicPolicy(),
+            tactical: tactical({ mode: 'background' }),
+        });
+        await client.decide(request(), affordances, state);
+        await Promise.resolve();
+        await Promise.resolve();
+        const stale = request();
+        stale.digest.workingMemoryRevision = 2;
+        const [decision] = await client.decide(stale, affordances, state);
+        expect(decision?.source).toBe('fallback');
+        expect(transport.calls).toBe(2);
+    });
+
+    it('keeps background task and goal advisories separate', async () => {
+        const transport = new FakeTransport([response('mine:0', 0.9), null]);
+        const client = new LayaClient({
+            transport,
+            timeoutMilliseconds: 100,
+            minimumConfidence: 0.6,
+            policy: new DeterministicPolicy(),
+            tactical: tactical({ mode: 'background' }),
+        });
+        const taskRequest = request();
+        taskRequest.digest.decisionKind = 'task';
+        await client.decide(taskRequest, affordances, state);
+        await Promise.resolve();
+        await Promise.resolve();
+        const goalRequest = request();
+        goalRequest.digest.decisionKind = 'goal';
+        const [decision] = await client.decide(goalRequest, affordances, state);
+        expect(decision?.source).toBe('fallback');
+        expect(transport.calls).toBe(2);
+    });
+
+    it('opens the circuit breaker after repeated failures', async () => {
+        const transport = new FakeTransport([null, { type: 'DISCONNECTED', message: 'timeout' }]);
+        const client = new LayaClient({
+            transport,
+            timeoutMilliseconds: 100,
+            minimumConfidence: 0.6,
+            policy: new DeterministicPolicy(),
+            tactical: tactical({ circuitBreakerFailureCount: 2 }),
+        });
+        await client.decide(request(), affordances, state);
+        await client.decide(request(), affordances, state);
+        expect(transport.calls).toBe(2);
+        const [blocked] = await client.decide(request(), affordances, state);
+        expect(blocked?.source).toBe('fallback');
+        expect(transport.calls).toBe(2);
     });
 
     it('falls back for an unknown choice id', async () => {

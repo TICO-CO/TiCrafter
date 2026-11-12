@@ -2,6 +2,7 @@ import type { Result } from '@ticrafter/core';
 
 import type { ClaimRepository } from './claim-repository.js';
 import type { ClaimContentionMetrics } from './contention-metrics.js';
+import { ClaimFailures } from './failures.js';
 import type { ClaimFailure, ClaimRecord, ClaimStatus, ClaimTaskPort } from './types.js';
 
 export class ClaimReleaser {
@@ -37,22 +38,14 @@ export class ClaimReleaser {
         now: string,
     ): Result<ClaimRecord, ClaimFailure> {
         const [claim, readError] = this.repository.get(claimId);
-        if (readError) return [null, { type: 'STORAGE', failure: readError }];
-        if (claim === null) return [null, { type: 'CLAIM_NOT_FOUND', claimId }];
+        if (readError) return [null, ClaimFailures.storage(readError)];
+        if (claim === null) return [null, ClaimFailures.claimNotFound(claimId)];
         if (claim.status !== 'active') {
-            return [null, { type: 'INVALID_STATUS', claimId, status: claim.status }];
+            return [null, ClaimFailures.invalidStatus(claimId, claim.status)];
         }
-        if (claim.botId !== botId) return [null, { type: 'OWNER_MISMATCH', claimId, botId }];
+        if (claim.botId !== botId) return [null, ClaimFailures.ownerMismatch(claimId, botId)];
         if (claim.fencingToken !== fencingToken) {
-            return [
-                null,
-                {
-                    type: 'STALE_TOKEN',
-                    claimId,
-                    expected: claim.fencingToken,
-                    actual: fencingToken,
-                },
-            ];
+            return [null, ClaimFailures.staleToken(claimId, claim.fencingToken, fencingToken)];
         }
         if (status === 'released' && claim.taskId !== null) {
             const [, requeueError] = this.tasks.requeue(
@@ -62,14 +55,7 @@ export class ClaimReleaser {
                 now,
             );
             if (requeueError) {
-                return [
-                    null,
-                    {
-                        type: 'TASK_REQUEUE_FAILED',
-                        taskId: claim.taskId,
-                        message: String(requeueError),
-                    },
-                ];
+                return [null, ClaimFailures.taskRequeueFailed(claim.taskId, String(requeueError))];
             }
         }
         const released: ClaimRecord = {
@@ -79,7 +65,7 @@ export class ClaimReleaser {
             updatedAt: now,
         };
         const [, updateError] = this.repository.update(released);
-        if (updateError) return [null, { type: 'STORAGE', failure: updateError }];
+        if (updateError) return [null, ClaimFailures.storage(updateError)];
         this.metrics.recordLeaseChurn();
         return [released, null];
     }

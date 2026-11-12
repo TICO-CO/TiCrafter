@@ -108,6 +108,7 @@ function createRuntime(
         skills?: FakeSkills;
         snapshot?: AgencySnapshot;
         project?: ProjectSummary | null;
+        reflection?: { enabled: boolean; maxTraitDelta: number };
     } = {},
 ): RuntimeFixture | null {
     const skills = options.skills ?? new FakeSkills();
@@ -135,6 +136,7 @@ function createRuntime(
                 goalCadenceMilliseconds: 1000,
                 needDecayPerMinute: 0.02,
                 committedGoalBonus: 0.15,
+                reflection: options.reflection ?? { enabled: false, maxTraitDelta: 0.01 },
             },
             isJobActive: options.isJobActive,
             isProjectTaskActive: options.isProjectTaskActive,
@@ -153,12 +155,12 @@ function createRuntime(
 }
 
 describe('agency runtime', () => {
-    it('selects a goal, starts its skill, and completes it', () => {
+    it('selects a goal, starts its skill, and completes it', async () => {
         const created = createRuntime();
         expect(created).not.toBeNull();
         if (created === null) return;
         const { runtime, skills, persistence } = created;
-        const [report, tickError] = runtime.tick(1000);
+        const [report, tickError] = await runtime.tick(1000);
         expect(tickError).toBeNull();
         expect(report?.action).toBe('running');
         expect(skills.runs[0]?.skillId).toBe('eat');
@@ -182,7 +184,41 @@ describe('agency runtime', () => {
         );
     });
 
-    it('reports night readiness when dusk starts', () => {
+    it('reflects a completed goal into mood and bounded traits', async () => {
+        const created = createRuntime({
+            reflection: { enabled: true, maxTraitDelta: 0.05 },
+        });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime, skills, persistence } = created;
+        const before = runtime.traits.weight('orderliness');
+        await runtime.tick(1000);
+        const goalId = persistence.episodes[0]?.goalId;
+        if (goalId === null || goalId === undefined) return;
+        skills.activeSkillId = null;
+        runtime.observeProgress({
+            botId: 'bot.one',
+            taskId: goalId,
+            at: '2026-11-11T12:00:01.000Z',
+            skillId: 'eat',
+            status: 'completed',
+            progress: { done: 1, total: 1, label: 'eaten' },
+        });
+        expect(runtime.traits.weight('orderliness') > before).toBe(true);
+        expect(persistence.saves.at(-1)?.state.mood).toBe('content');
+        expect(
+            runtime.workingMemory.recentExperiences.some(
+                (experience) => experience.event === 'goal.completed:eat',
+            ),
+        ).toBe(true);
+        const completed = persistence.episodes.find((episode) => episode.kind === 'goal.completed');
+        expect(
+            (completed?.payload as { reflection?: { mood?: string } } | undefined)?.reflection
+                ?.mood,
+        ).toBe('content');
+    });
+
+    it('reports night readiness when dusk starts', async () => {
         const created = createRuntime({
             snapshot: snapshot({
                 timeOfDay: 17_500,
@@ -195,7 +231,7 @@ describe('agency runtime', () => {
         expect(created).not.toBeNull();
         if (created === null) return;
         const { runtime, persistence } = created;
-        const [, tickError] = runtime.tick(1000);
+        const [, tickError] = await runtime.tick(1000);
         expect(tickError).toBeNull();
         const readiness = persistence.episodes.find(
             (episode) => episode.kind === 'night.readiness',
@@ -203,35 +239,35 @@ describe('agency runtime', () => {
         expect(readiness === undefined).toBe(false);
     });
 
-    it('skips deliberation while a job is active or autonomy is paused', () => {
+    it('skips deliberation while a job is active or autonomy is paused', async () => {
         const working = createRuntime({ isJobActive: () => true });
         expect(working).not.toBeNull();
         if (working === null) return;
-        expect(working.runtime.tick(1000)[0]?.action).toBe('job');
+        expect((await working.runtime.tick(1000))[0]?.action).toBe('job');
         const paused = createRuntime({ isPaused: () => true });
         expect(paused).not.toBeNull();
         if (paused === null) return;
-        expect(paused.runtime.tick(1000)[0]?.action).toBe('paused');
+        expect((await paused.runtime.tick(1000))[0]?.action).toBe('paused');
         expect(paused.skills.runs).toHaveLength(0);
     });
 
-    it('retries then abandons a failing goal', () => {
+    it('retries then abandons a failing goal', async () => {
         const skills = new FakeSkills();
         skills.result = skillStep('failed', 'target-missing');
         const created = createRuntime({ skills });
         expect(created).not.toBeNull();
         if (created === null) return;
         const { runtime, persistence } = created;
-        expect(runtime.tick(1000)[0]?.action).toBe('retry');
-        expect(runtime.tick(1000)[0]?.action).toBe('retry');
-        expect(runtime.tick(1000)[0]?.action).toBe('abandoned');
+        expect((await runtime.tick(1000))[0]?.action).toBe('retry');
+        expect((await runtime.tick(1000))[0]?.action).toBe('retry');
+        expect((await runtime.tick(1000))[0]?.action).toBe('abandoned');
         expect(runtime.hasActiveGoal).toBe(false);
         expect(persistence.episodes.some((episode) => episode.kind === 'goal.abandoned')).toBe(
             true,
         );
     });
 
-    it('restores a persisted intention when its goal still exists', () => {
+    it('restores a persisted intention when its goal still exists', async () => {
         const intention: Intention = {
             goalId: 'goal:eat:eat-food-to-restore-hunger',
             label: 'Eat food to restore hunger',
@@ -247,7 +283,7 @@ describe('agency runtime', () => {
         const [, restoreError] = runtime.restore();
         expect(restoreError).toBeNull();
         expect(runtime.hasActiveGoal).toBe(true);
-        expect(runtime.tick(1000)[0]?.action).toBe('running');
+        expect((await runtime.tick(1000))[0]?.action).toBe('running');
         expect(skills.runs[0]?.skillId).toBe('eat');
     });
 });
@@ -264,7 +300,7 @@ const project: ProjectSummary = {
 };
 
 describe('agency runtime project focus', () => {
-    it('keeps project focus instead of selecting optional goals', () => {
+    it('keeps project focus instead of selecting optional goals', async () => {
         const created = createRuntime({
             project,
             snapshot: snapshot({ food: 20, inventory: [] }),
@@ -273,13 +309,13 @@ describe('agency runtime project focus', () => {
         if (created === null) return;
         const { runtime, skills } = created;
         expect(runtime.focus?.kind).toBe('project');
-        const [report, tickError] = runtime.tick(1000);
+        const [report, tickError] = await runtime.tick(1000);
         expect(tickError).toBeNull();
         expect(report?.action).toBe('project');
         expect(skills.runs).toHaveLength(0);
     });
 
-    it('reports project sub-work without replacing project focus', () => {
+    it('reports project sub-work without replacing project focus', async () => {
         const created = createRuntime({
             project,
             isProjectTaskActive: () => true,
@@ -288,11 +324,11 @@ describe('agency runtime project focus', () => {
         expect(created).not.toBeNull();
         if (created === null) return;
         const { runtime } = created;
-        expect(runtime.tick(1000)[0]?.action).toBe('project');
+        expect((await runtime.tick(1000))[0]?.action).toBe('project');
         expect(runtime.focus?.kind).toBe('project');
     });
 
-    it('lets survival interrupt and restores project focus on completion', () => {
+    it('lets survival interrupt and restores project focus on completion', async () => {
         const created = createRuntime({
             project,
             snapshot: snapshot({ food: 20, inventory: [], hostiles: ['zombie'] }),
@@ -300,7 +336,7 @@ describe('agency runtime project focus', () => {
         expect(created).not.toBeNull();
         if (created === null) return;
         const { runtime, skills, persistence } = created;
-        const [report, tickError] = runtime.tick(1000);
+        const [report, tickError] = await runtime.tick(1000);
         expect(tickError).toBeNull();
         expect(report?.action).toBe('running');
         expect(skills.runs[0]?.skillId).toBe('flee-defend');

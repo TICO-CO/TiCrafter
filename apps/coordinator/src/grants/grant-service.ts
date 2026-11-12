@@ -95,6 +95,7 @@ export class GrantService {
             bbox: input.bbox,
             snapshot,
             claims,
+            ...(input.allowClaimIds === undefined ? {} : { allowedClaimIds: input.allowClaimIds }),
         };
         if (decision.kind === 'owner-offline') {
             return this.issueOffline(input, structure, compatibility, now);
@@ -116,6 +117,45 @@ export class GrantService {
 
     revoke(grantId: string, now = new Date().toISOString()): Result<EditGrantRecord, GrantFailure> {
         return this.revoker.revoke(grantId, now);
+    }
+
+    revokeForTask(
+        taskId: string,
+        now = new Date().toISOString(),
+    ): Result<readonly EditGrantRecord[], GrantFailure> {
+        const [active, listError] = this.repository.listActive();
+        if (listError) return [null, { type: 'STORAGE', failure: listError }];
+        if (active === null) {
+            return [null, { type: 'INVALID_REQUEST', message: 'active grants missing' }];
+        }
+        return this.revokeMatching(active, now, (grant) => grant.taskId === taskId);
+    }
+
+    revokeForStructure(
+        structureId: string,
+        now = new Date().toISOString(),
+    ): Result<readonly EditGrantRecord[], GrantFailure> {
+        const [active, listError] = this.repository.listActiveForStructure(structureId);
+        if (listError) return [null, { type: 'STORAGE', failure: listError }];
+        if (active === null) {
+            return [null, { type: 'INVALID_REQUEST', message: 'active grants missing' }];
+        }
+        return this.revokeMatching(active, now, () => true);
+    }
+
+    private revokeMatching(
+        grants: readonly EditGrantRecord[],
+        now: string,
+        matches: (grant: EditGrantRecord) => boolean,
+    ): Result<readonly EditGrantRecord[], GrantFailure> {
+        const revoked: EditGrantRecord[] = [];
+        for (const grant of grants) {
+            if (!matches(grant)) continue;
+            const [record, revokeError] = this.revoker.revoke(grant.id, now);
+            if (revokeError) return [null, revokeError];
+            if (record !== null) revoked.push(record);
+        }
+        return [revoked, null];
     }
 
     expire(now = new Date().toISOString()): Result<readonly EditGrantRecord[], GrantFailure> {

@@ -17,7 +17,9 @@ interface BlockChangeRow {
     before_json: string | null;
     after_json: string | null;
     grant_id: string | null;
+    grant_fencing_token: number | null;
     claim_id: string | null;
+    task_id: string | null;
     structure_id: string | null;
     blueprint_id: string | null;
     blueprint_revision: number | null;
@@ -25,13 +27,15 @@ interface BlockChangeRow {
     plan_id: string | null;
     fencing_token: number | null;
     phase: string | null;
+    authorized: number;
+    rejection_reason: string | null;
     created_at: string;
 }
 
 const columns = `
-    id, bot_id, x, y, z, before_json, after_json, grant_id, claim_id,
-    structure_id, blueprint_id, blueprint_revision, work_package_id,
-    plan_id, fencing_token, phase, created_at
+    id, bot_id, x, y, z, before_json, after_json, grant_id, grant_fencing_token,
+    claim_id, task_id, structure_id, blueprint_id, blueprint_revision, work_package_id,
+    plan_id, fencing_token, phase, authorized, rejection_reason, created_at
 `;
 
 export class BlockChangelogReader {
@@ -83,7 +87,11 @@ export class BlockChangelogReader {
             ...(row.before_json === null ? {} : { before: JSON.parse(row.before_json) as unknown }),
             ...(row.after_json === null ? {} : { after: JSON.parse(row.after_json) as unknown }),
             ...(row.grant_id === null ? {} : { grantId: row.grant_id }),
+            ...(row.grant_fencing_token === null
+                ? {}
+                : { grantFencingToken: row.grant_fencing_token }),
             ...(row.claim_id === null ? {} : { claimId: row.claim_id }),
+            ...(row.task_id === null ? {} : { taskId: row.task_id }),
             ...(row.structure_id === null ? {} : { structureId: row.structure_id }),
             ...(row.blueprint_id === null ? {} : { blueprintId: row.blueprint_id }),
             ...(row.blueprint_revision === null
@@ -93,6 +101,14 @@ export class BlockChangelogReader {
             ...(row.plan_id === null ? {} : { planId: row.plan_id }),
             ...(row.fencing_token === null ? {} : { fencingToken: row.fencing_token }),
             ...(row.phase === null ? {} : { phase: row.phase }),
+            ...(row.authorized === 0
+                ? {
+                      authorized: false,
+                      ...(row.rejection_reason === null
+                          ? {}
+                          : { rejectionReason: row.rejection_reason }),
+                  }
+                : {}),
             createdAt: row.created_at,
         };
     }

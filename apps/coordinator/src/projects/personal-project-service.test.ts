@@ -1,4 +1,5 @@
 import { NeedsModel, PersonalityModel, WorkingMemoryModel } from '@ticrafter/agency';
+import type { BlueprintDocument, ConstructionPlanDocument } from '@ticrafter/building';
 import { AgentEpisodeRepository, EventLogWriter, TransactionManager } from '@ticrafter/memory';
 import { afterEach, describe, expect, it } from 'bun:test';
 
@@ -13,7 +14,7 @@ import type { CoordinatorDatabase } from '../core/index.js';
 import { CoordinatorTestSupport } from '../testing/index.js';
 import { PersonalProjectService } from './personal-project-service.js';
 import { PersonalProjectRepository } from './project-repository.js';
-import type { ProjectSipPort } from './types.js';
+import type { ProjectConstructionPort, ProjectSipPort } from './types.js';
 
 const now = '2026-11-12T10:00:00.000Z';
 
@@ -31,6 +32,106 @@ class FakeSip implements ProjectSipPort {
         return [undefined, null];
     }
 }
+
+const fakeConstruction = (): ProjectConstructionPort => ({
+    prepare: (input: {
+        structureId: string;
+        bbox: {
+            min: { x: number; y: number; z: number };
+            max: { x: number; y: number; z: number };
+        };
+    }) => {
+        const blueprint: BlueprintDocument = {
+            id: 'blueprint.project.project-1',
+            revision: 1,
+            hash: 'blueprint-hash',
+            source: 'composed',
+            provenance: { createdBy: 'bot.tibot1', createdAt: now },
+            blueprint: {
+                id: 'blueprint.project.project-1',
+                anchor: input.bbox.min,
+                rotation: 0,
+                blocks: [],
+                materials: [],
+                constraints: [],
+            },
+        };
+        const plan: ConstructionPlanDocument = {
+            id: `plan.${input.structureId}`,
+            revision: 1,
+            hash: 'plan-hash',
+            structureId: input.structureId,
+            blueprintId: blueprint.id,
+            blueprintRevision: 1,
+            createdAt: now,
+            plan: {
+                id: `plan.${input.structureId}`,
+                blueprintId: blueprint.id,
+                anchor: input.bbox.min,
+                rotation: 0,
+                translation: { x: 0, y: 0, z: 0 },
+                site: {
+                    anchor: input.bbox.min,
+                    translation: { x: 0, y: 0, z: 0 },
+                    rotation: 0,
+                    bounds: input.bbox,
+                    clearance: [],
+                    access: { kind: 'none', from: null, to: input.bbox.min, length: 0 },
+                    foundationMode: 'level',
+                    foundationFillDepth: 0,
+                    foundationCutDepth: 0,
+                    score: 1,
+                    rationale: [],
+                },
+                foundation: {
+                    mode: 'level',
+                    targetY: input.bbox.min.y,
+                    maximumFillDepth: 0,
+                    changes: [],
+                    materials: [],
+                    rationale: [],
+                },
+                changes: [
+                    {
+                        kind: 'place',
+                        block: {
+                            x: input.bbox.min.x,
+                            y: input.bbox.min.y,
+                            z: input.bbox.min.z,
+                            state: { name: 'oak_planks' },
+                            priority: 1,
+                        },
+                        phase: 'walls',
+                        reason: 'blueprint',
+                        dependsOn: [],
+                    },
+                ],
+                order: [`${input.bbox.min.x},${input.bbox.min.y},${input.bbox.min.z}`],
+                dependencies: [],
+                scaffolds: [],
+                unreachable: [],
+                phases: ['walls'],
+                materials: [{ item: 'oak_planks', count: 1 }],
+                workPackages: [
+                    {
+                        id: `plan.${input.structureId}:layers:walls:0`,
+                        bbox: input.bbox,
+                        blockKeys: [`${input.bbox.min.x},${input.bbox.min.y},${input.bbox.min.z}`],
+                        strategy: 'layers',
+                        status: 'planned',
+                        phase: 'walls',
+                        materials: [{ item: 'oak_planks', count: 1 }],
+                        scaffoldPositions: [],
+                        predecessorIds: [],
+                    },
+                ],
+            },
+        };
+        return [{ blueprint, plan, bbox: input.bbox }, null];
+    },
+    seedTasks: () => [['task.project.project-1.package.0'], null],
+    cancelTasks: () => [undefined, null],
+});
 
 const projectInput = (botId: string, id = 'project-1') => ({
     id,
@@ -100,6 +201,7 @@ describe('PersonalProjectService', () => {
             episodes: new AgentEpisodeRepository(coordinatorDatabase),
             events: new EventLogWriter(coordinatorDatabase),
             sip,
+            construction: fakeConstruction(),
             logger: {
                 debug: () => undefined,
                 info: () => undefined,
@@ -119,14 +221,14 @@ describe('PersonalProjectService', () => {
         const [project, projectError] = service.propose(projectInput(profile.botId));
         expect(projectError).toBeNull();
         expect(project?.status).toBe('active');
-        expect(project?.claims).toHaveLength(1);
+        expect(project?.claims).toHaveLength(2);
         expect(sip.proposed).toEqual(['project-1']);
         expect(projects.get('project-1')[0]?.structureId).toBe('structure.project.project-1');
         expect(profiles.get(profile.botId)[0]?.homeStructureId).toBe('structure.project.project-1');
         expect(agency.load(profile.botId)[0]?.personalStorageId).toBe(
             'container.project.project-1',
         );
-        expect(claims.listActive()[0]).toHaveLength(1);
+        expect(claims.listActive()[0]).toHaveLength(2);
     });
 
     it('rejects a second home project for the same bot', () => {

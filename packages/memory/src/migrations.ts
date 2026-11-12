@@ -197,4 +197,28 @@ export const migrations: Migration[] = [
       ALTER TABLE block_changelog ADD COLUMN phase TEXT;
     `,
     },
+    {
+        version: 12,
+        name: 'building-construction-plans',
+        sql: `
+      CREATE TABLE IF NOT EXISTS construction_plans (
+        id TEXT NOT NULL,
+        revision INTEGER NOT NULL,
+        hash TEXT NOT NULL,
+        structure_id TEXT NOT NULL,
+        blueprint_id TEXT NOT NULL,
+        blueprint_revision INTEGER NOT NULL,
+        plan_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (id, revision)
+      );
+      CREATE INDEX IF NOT EXISTS idx_construction_plans_structure
+        ON construction_plans(structure_id, revision);
+      ALTER TABLE claims ADD COLUMN parent_claim_id TEXT;
+      ALTER TABLE block_changelog ADD COLUMN task_id TEXT;
+      ALTER TABLE block_changelog ADD COLUMN grant_fencing_token INTEGER;
+      ALTER TABLE block_changelog ADD COLUMN authorized INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE block_changelog ADD COLUMN rejection_reason TEXT;
+    `,
+    },
 ];

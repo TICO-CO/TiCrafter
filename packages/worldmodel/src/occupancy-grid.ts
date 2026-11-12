@@ -2,7 +2,7 @@ import type { Result } from '@ticrafter/core';
 
 import type { ChunkStorePort } from './chunk-version-store.js';
 import { WorldFailures } from './failures.js';
-import type { BlockPosition, ChunkBlockObservation, WorldFailure } from './types.js';
+import type { BlockPosition, BoundingBox, ChunkBlockObservation, WorldFailure } from './types.js';
 
 export class SparseOccupancyGrid {
     private blocks: Map<string, ChunkBlockObservation> | null = null;
@@ -30,6 +30,18 @@ export class SparseOccupancyGrid {
         return [block?.solid ?? false, null];
     }
 
+    blocksInBox(bounds: BoundingBox): Result<readonly ChunkBlockObservation[], WorldFailure> {
+        const [loaded, loadError] = this.ensureLoaded();
+        if (loadError) return [null, loadError];
+        if (loaded === null) {
+            return [null, WorldFailures.storageFailed('occupancy grid returned null')];
+        }
+        const blocks = [...loaded.values()].filter((block) =>
+            SparseOccupancyGrid.inside(bounds, block.position),
+        );
+        return [blocks, null];
+    }
+
     invalidate(): void {
         this.blocks = null;
     }
@@ -53,5 +65,16 @@ export class SparseOccupancyGrid {
 
     private static key(position: BlockPosition): string {
         return `${position.x}:${position.y}:${position.z}`;
+    }
+
+    private static inside(bounds: BoundingBox, position: BlockPosition): boolean {
+        return (
+            position.x >= bounds.min.x &&
+            position.x <= bounds.max.x &&
+            position.y >= bounds.min.y &&
+            position.y <= bounds.max.y &&
+            position.z >= bounds.min.z &&
+            position.z <= bounds.max.z
+        );
     }
 }

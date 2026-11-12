@@ -5,6 +5,7 @@ import {
     type BlockUpdateMessage,
     blockUpdateSchema,
     BOT_BLUEPRINT_GET,
+    BOT_CONSTRUCTION_PLAN_GET,
     BOT_JOB_DECIDE,
     BOT_JOB_OFFERS,
     BOT_PROJECT_ABANDON,
@@ -15,6 +16,8 @@ import {
     botAgencyStateSchema,
     type BotBlueprintGet,
     botBlueprintGetSchema,
+    type BotConstructionPlanGet,
+    botConstructionPlanGetSchema,
     botHeartbeatSchema,
     type BotJobDecide,
     botJobDecideSchema,
@@ -86,6 +89,11 @@ export interface MessageRouterOptions {
     onBlueprintGet?: (
         connection: ClientConnection,
         payload: BotBlueprintGet,
+        envelope: Envelope,
+    ) => void;
+    onConstructionPlanGet?: (
+        connection: ClientConnection,
+        payload: BotConstructionPlanGet,
         envelope: Envelope,
     ) => void;
     onJobOffers?: (connection: ClientConnection, payload: BotJobOffers, envelope: Envelope) => void;
@@ -206,6 +214,19 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onBlueprintGet?.(connection, parsed.data, envelope);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_CONSTRUCTION_PLAN_GET) {
+            const parsed = botConstructionPlanGetSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn(
+                    { botId: connection.botId },
+                    'invalid construction plan request',
+                );
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onConstructionPlanGet?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request' && envelope.type === BOT_PROJECT_PROPOSE) {

@@ -92,6 +92,8 @@ function plan(operations: readonly SkillConstructionOperation[]): SkillConstruct
     return {
         blueprintId: 'blueprint.home',
         blueprintRevision: 2,
+        planId: 'plan.home',
+        planRevision: 1,
         workPackageId: 'package.walls',
         phase: 'walls',
         operations,

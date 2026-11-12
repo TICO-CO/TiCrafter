@@ -7,7 +7,7 @@ import type { ClaimRecord, ClaimStatus } from './types.js';
 
 const columnList = `
     id, resource, owner_bot_id, lease_expires_at, fencing_token, created_at,
-    resource_type, bbox_json, status, task_id, epoch, payload_json, updated_at
+    resource_type, bbox_json, status, task_id, parent_claim_id, epoch, payload_json, updated_at
 `;
 
 interface TokenRow {
@@ -23,9 +23,9 @@ export class ClaimRepository {
                 .prepare(
                     `INSERT INTO claims (
                         id, resource, owner_bot_id, lease_expires_at, fencing_token,
-                        created_at, resource_type, bbox_json, status, task_id, epoch,
-                        payload_json, updated_at
-                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        created_at, resource_type, bbox_json, status, task_id, parent_claim_id,
+                        epoch, payload_json, updated_at
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 )
                 .run(
                     record.id,
@@ -38,6 +38,7 @@ export class ClaimRepository {
                     ClaimCodec.encodeBbox(record.bbox),
                     record.status,
                     record.taskId,
+                    record.parentClaimId,
                     record.epoch,
                     ClaimCodec.encodePayload(record.payload),
                     record.updatedAt,
@@ -54,7 +55,7 @@ export class ClaimRepository {
                     `UPDATE claims SET
                         resource = ?, owner_bot_id = ?, lease_expires_at = ?,
                         fencing_token = ?, resource_type = ?, bbox_json = ?, status = ?,
-                        task_id = ?, epoch = ?, payload_json = ?, updated_at = ?
+                        task_id = ?, parent_claim_id = ?, epoch = ?, payload_json = ?, updated_at = ?
                      WHERE id = ?`,
                 )
                 .run(
@@ -66,6 +67,7 @@ export class ClaimRepository {
                     ClaimCodec.encodeBbox(record.bbox),
                     record.status,
                     record.taskId,
+                    record.parentClaimId,
                     record.epoch,
                     ClaimCodec.encodePayload(record.payload),
                     record.updatedAt,

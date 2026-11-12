@@ -1,3 +1,4 @@
+import { strategicIntentSchema } from '@ticrafter/core';
 import { z as zod } from 'zod';
 
 const positionSchema = zod.strictObject({
@@ -218,6 +219,7 @@ export const plannerPlanSchema = zod.strictObject({
     tasks: zod.array(plannerTaskSchema).default([]),
     cancelTaskIds: zod.array(zod.string().min(1)).default([]),
     blueprints: zod.array(plannerBlueprintSchema).default([]),
+    strategicIntent: strategicIntentSchema.optional(),
     recovery: zod.strictObject({
         mode: zod.enum(['continue', 'retry', 'safe_mode', 'stop']),
         notes: zod.string().default(''),

@@ -10,6 +10,8 @@ import {
     BOT_AUTONOMY_RESUME,
     BOT_BLUEPRINT_GET,
     BOT_BLUEPRINT_RESPONSE,
+    BOT_CONSTRUCTION_PLAN_GET,
+    BOT_CONSTRUCTION_PLAN_RESPONSE,
     BOT_JOB_DECIDE,
     BOT_JOB_DECIDE_RESPONSE,
     BOT_JOB_OFFERS,
@@ -18,6 +20,7 @@ import {
     BOT_PROJECT_ABANDON_RESPONSE,
     BOT_PROJECT_PROPOSE,
     BOT_PROJECT_RESPONSE,
+    BOT_PROJECT_UPDATE_EVENT,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
@@ -29,6 +32,8 @@ import {
     botAutonomyResumeSchema,
     botBlueprintGetSchema,
     botBlueprintResponseSchema,
+    botConstructionPlanGetSchema,
+    botConstructionPlanResponseSchema,
     botEventSchema,
     botHeartbeatSchema,
     botJobDecideResponseSchema,
@@ -39,6 +44,7 @@ import {
     botProjectAbandonSchema,
     botProjectProposeSchema,
     botProjectResponseSchema,
+    botProjectUpdateSchema,
     botSafetyResumeSchema,
     botSafetyStopSchema,
     botSkillCancelSchema,
@@ -64,6 +70,8 @@ import {
     envelopeSchema,
     LANDMARK_CANDIDATE_EVENT,
     landmarkCandidateSchema,
+    PLANNER_STRATEGIC_INTENT_EVENT,
+    plannerStrategicIntentEventSchema,
     PROTOCOL_VERSION,
     sessionHelloResponseSchema,
     sessionHelloSchema,
@@ -140,8 +148,11 @@ export class MessageSchemaRegistry {
             .register(BOT_SAFETY_STOP, botSafetyStopSchema)
             .register(BOT_AUTONOMY_PAUSE, botAutonomyPauseSchema)
             .register(BOT_AUTONOMY_RESUME, botAutonomyResumeSchema)
+            .register(PLANNER_STRATEGIC_INTENT_EVENT, plannerStrategicIntentEventSchema)
             .register(BOT_BLUEPRINT_GET, botBlueprintGetSchema)
             .register(BOT_BLUEPRINT_RESPONSE, botBlueprintResponseSchema)
+            .register(BOT_CONSTRUCTION_PLAN_GET, botConstructionPlanGetSchema)
+            .register(BOT_CONSTRUCTION_PLAN_RESPONSE, botConstructionPlanResponseSchema)
             .register(DECISION_REQUEST, decisionRequestSchema)
             .register(DECISION_RESPONSE, decisionResponseSchema)
             .register(TASK_CLAIM, botTaskClaimSchema)
@@ -153,6 +164,7 @@ export class MessageSchemaRegistry {
             .register(BOT_PROJECT_RESPONSE, botProjectResponseSchema)
             .register(BOT_PROJECT_ABANDON, botProjectAbandonSchema)
             .register(BOT_PROJECT_ABANDON_RESPONSE, botProjectAbandonResponseSchema)
+            .register(BOT_PROJECT_UPDATE_EVENT, botProjectUpdateSchema)
             .register(BOT_JOB_OFFERS, botJobOffersSchema)
             .register(BOT_JOB_OFFERS_RESPONSE, botJobOffersResponseSchema)
             .register(BOT_JOB_DECIDE, botJobDecideSchema)

@@ -44,6 +44,7 @@ export interface EditRequestInput {
     bbox: SipBoundingBox;
     materialConstraints?: readonly SipMaterialNeed[];
     taskId?: string | null;
+    allowClaimIds?: readonly string[];
     ttlMilliseconds?: number;
 }
 
@@ -104,5 +105,6 @@ export interface CompatibilityInput {
     bbox: SipBoundingBox;
     snapshot: SipSnapshot;
     claims: readonly ClaimRecord[];
+    allowedClaimIds?: readonly string[];
     allowCompletedWork: boolean;
 }

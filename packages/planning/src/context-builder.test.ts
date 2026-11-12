@@ -43,6 +43,22 @@ describe('PlannerContextBuilder', () => {
         expect(systemPrompt?.includes('"schemaVersion":1')).toBe(true);
     });
 
+    it('includes strategic intent requirements when enabled', () => {
+        const builder = new PlannerContextBuilder({
+            source: new FakePlannerContextSource(),
+            allowedSkills: ['explore', 'navigate'],
+            maxContextCharacters: 48_000,
+            strategicIntentEnabled: true,
+        });
+        const [prompt, promptError] = builder.build(plannerTrigger());
+        expect(promptError).toBeNull();
+        const systemPrompt = prompt?.messages.find((message) => message.role === 'system')?.content;
+        expect(systemPrompt?.includes('strategicIntent must use supported agency goal kinds')).toBe(
+            true,
+        );
+        expect(systemPrompt?.includes('"strategicIntent"')).toBe(true);
+    });
+
     it('uses context revision and bot position in the prompt example', () => {
         const context = plannerContext({
             sip: { ...plannerContext().sip, revision: 7 },

@@ -56,6 +56,7 @@ const claim = (overrides: Partial<ClaimRecord> = {}): ClaimRecord => ({
     fencingToken: 4,
     status: 'active',
     taskId: null,
+    parentClaimId: null,
     epoch: 7,
     payload: {},
     createdAt: now,

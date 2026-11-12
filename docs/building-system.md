@@ -1,10 +1,12 @@
 # TiCrafter Building System
 
-Status: implementation in progress. Steps 1–4 exist: blueprint storage and
-composer, terrain site planning, foundation planning, dependency ordering,
-scaffolding, phase-aware packages, material procurement planning, verified
-execution wiring, exact blueprint fetch, and the construction skill. Coordinator
-lifecycle remains.
+Status: implementation in progress. Steps 1–5 exist for the single-structure
+path: blueprint storage and composer, terrain site planning, foundation
+planning, dependency ordering, scaffolding, phase-aware packages, material
+procurement planning, verified execution wiring, exact blueprint and
+construction-plan fetch, coordinator-owned package tasks, per-package claims,
+helper grants, and post-update coordinator verification. Repair, renovation,
+and rollback remain.
 
 `docs/architecture/graph.json` tracks the implemented module paths.
 
@@ -63,6 +65,8 @@ Current pieces:
   bounds, rotation, translation, and work-package types.
 - `packages/building/src/blueprint-document.ts`: document revisions, hashes,
   sources, provenance, and construction phases.
+- `packages/building/src/construction-plan-document.ts`: versioned, hashed
+  construction-plan documents.
 - `packages/building/src/blueprint-composer.ts`: deterministic brief-to-
   blueprint composition with layout, shell, roof, openings, and interior.
 - `packages/building/src/blueprint-source-resolver.ts`: template, composed,
@@ -103,32 +107,37 @@ Current pieces:
 - `apps/coordinator/src/building/blueprint-command-handler.ts`: coordinator
   blueprint fetch handler.
 - `apps/bot/src/blueprint-fetch-client.ts`: exact revision fetch and cache.
-- `apps/bot/src/construction-source.ts`: bot-side site, foundation, package,
-  scaffold, and replacement operation derivation.
+- `apps/coordinator/src/building/project-construction-planner.ts`: coordinator
+  site, foundation, scaffold, package, and plan-document generation.
+- `apps/coordinator/src/building/project-construction-task-seeder.ts`: one task
+  per plan package plus cleanup.
+- `apps/coordinator/src/building/construction-edit-authorizer.ts`: coordinator
+  verification of attributed owner and helper edits.
+- `apps/coordinator/src/projects/project-construction-progress.ts`: package
+  progress, project completion, claim release, and grant revocation.
+- `apps/bot/src/construction-plan-fetch-client.ts`: exact plan revision fetch
+  and cache.
+- `apps/bot/src/construction-source.ts`: stored-plan package and cleanup
+  operation derivation with live-world replacement checks.
 - `apps/bot/src/building-execution-service.ts`: verified, safety-vetted,
-  journaled block preparation and completion.
+  journaled block preparation, completion, and live block attribution.
 - `apps/bot/src/building-services.ts`: template and `.schem` catalog plus
   construction and blueprint services for bots.
 
 Gaps:
 
 - Legacy `place-build` and `schematic-build` still use direct placement; the
-  new construction path uses `BlockExecutor` through the bot execution service.
-- Coordinator lifecycle still needs to seed construction tasks with blueprint,
-  package, claim, grant, and fencing metadata.
-- SIP structures store `blueprintRef` without a stored blueprint payload.
-- Work packages are derived on the bot for construction but are not yet
-  persisted, claimed, or scheduled by the coordinator.
-- Claims and grants are not wired into bot safety snapshots; construction
-  validates grant and fencing metadata when supplied.
-- Agency build projects now carry working-memory project focus, including
-  interruption/resume and project sub-work handling. Project task seeding and
-  progress-driven project completion remain.
-- Project proposals create claims and SIP structures but do not yet create
-  construction tasks, so a proposed project can remain claimed but unbuilt.
-- The bot-side construction journal carries plan, structure, package,
-  design-revision, and fencing-token attribution, but live block-update events
-  do not yet forward that attribution to the coordinator changelog.
+  construction path uses `BlockExecutor` through the bot execution service.
+- Projects are private by default. `invite` and `open` projects expose helper
+  package tasks; helper claim ownership remains with the project owner.
+- Package claims use project TTL and are not independently renewed.
+- Coordinator authorization is post-update verification. It audits, requeues,
+  and stops the offending bot, but cannot undo a block already changed.
+- Safety snapshots do not yet include active grants or package-claim regions.
+- Design revision changes do not yet cancel stale package tasks.
+- Material procurement, repair, renovation, and rollback remain.
+- Agency build projects already carry project focus; project completion now
+  clears focus through the project update event.
 
 ## 5. Terminology
 
@@ -508,22 +517,29 @@ The coordinator owns blueprint documents in SQLite:
 - provenance
 - created timestamp
 
-Bots fetch blueprints by id and revision and cache them locally. Bot processes
-do not open the coordinator database.
+The coordinator also owns construction-plan documents keyed by `planId` and
+`revision`. A plan records the site, foundation, ordered changes, scaffolds,
+materials, and namespaced work packages.
+
+Bots fetch blueprints and construction plans by exact id and revision, verify
+their hashes, and cache them locally. Bot processes do not open the coordinator
+database.
 
 ### 12.2 Proposal and commit flow
 
 1. A bot or planner submits a blueprint or project request.
 2. The coordinator validates zones, overlap, size, and material feasibility.
 3. The composer produces or validates the blueprint.
-4. The coordinator stores the document and assigns a design revision.
-5. The structure is upserted in SIP.
-6. Work packages are partitioned.
-7. Construction tasks are created and carry `projectId` and `structureId`
-   metadata.
-8. Claims and grants are issued for package execution.
-9. The project remains agency focus; the bot claims matching construction tasks
-   as sub-work without replacing that focus.
+4. The coordinator runs site, foundation, scaffold, dependency, and package
+   planning against observed terrain.
+5. The coordinator stores the blueprint and construction-plan documents.
+6. The structure is upserted in SIP with namespaced package IDs.
+7. The structure claim and per-package claims are acquired.
+8. One construction task is seeded per package, plus a cleanup task when needed.
+9. Private projects remain owner-only; invite and open projects expose helper
+   tasks and auto-issue scoped grants on accept.
+10. The project remains agency focus; the bot claims matching construction tasks
+    as sub-work without replacing that focus.
 
 Project proposal alone is not a build. A proposed project without seeded
 construction tasks is incomplete design.
@@ -537,8 +553,12 @@ The detailed ownership boundary is in
 - Every edit carries a claim id and fencing token.
 - Non-owner edits to an active structure require a valid grant.
 - Design revision changes invalidate grants and stale package tasks.
-- Bot safety snapshots receive the active structure bbox, protected regions,
-  claim, grant, and fencing token.
+- Package claims are parented by the structure claim and may overlap only
+  inside that claim family.
+- Helper edits use a project-owned package claim and a helper-scoped grant.
+- The coordinator verifies attributed block updates after the fact, audits
+  rejected edits, requeues the task, and sends a safety stop to the bot.
+- Bot safety snapshots do not yet receive active grant or package-claim state.
 
 ### 12.4 Progress and completion
 
@@ -740,7 +760,7 @@ Planned order:
 7. multi-bot coordination
 8. architecture graph update, generated docs, ops runbook, and evaluation
 
-Steps 1–4 are implemented. Step 5 is next.
+Steps 1–5 are implemented for the single-structure and helper-package path. Step 6 remains: repair, renovation, rollback, and full acceptance validation.
 
 The single-bot acceptance gate lands after step 5.
 

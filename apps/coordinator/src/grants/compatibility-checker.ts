@@ -77,10 +77,12 @@ export class GrantCompatibilityChecker {
     }
 
     private validateClaims(input: CompatibilityInput): Result<void, GrantFailure> {
+        const allowed = new Set(input.allowedClaimIds ?? []);
         const claimIds = input.claims
             .filter(
                 (claim) =>
                     claim.botId !== input.requesterBotId &&
+                    allowed.has(claim.id) === false &&
                     SipGeometry.overlaps(claim.bbox, input.bbox),
             )
             .map((claim) => claim.id);

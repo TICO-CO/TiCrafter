@@ -1,8 +1,9 @@
 # TiCrafter Cognitive Architecture
 
-Status: implementation in progress. Working memory, focus, interruption, and
-project focus are implemented. Tactical Laya revision guards, strategic intent,
-and planner integration remain.
+Status: implemented. Working memory, focus, interruption, project focus, tactical
+Laya revision guards, tactical profile policy, strategic intent, planner
+integration, agency goal tie-break, and reflection are implemented. Goal
+tie-break is disabled by default until the behavioral evaluation gate passes.
 
 This document defines the boundary between reflex safety, local agency, tactical
 Laya decisions, working memory, and the optional cloud planner. It is the
@@ -65,6 +66,7 @@ Agency owns:
 - commitments and interruption policy;
 - project focus;
 - job acceptance policy;
+- reflection and bounded personality updates;
 - episode recording.
 
 Agency may ask Laya for advice, but agency decides when advice is applicable.
@@ -96,7 +98,7 @@ skills, pathfinding, or mineflayer directly.
 
 ## 4. Working memory
 
-Proposed shape:
+Shape:
 
 ```ts
 interface WorkingMemory {
@@ -154,6 +156,8 @@ Implementation:
 - Project focus survives project sub-work tasks. Survival and other interruption
   goals may temporarily take focus; completing or abandoning them restores the
   project focus.
+- Tactical decisions record their source, choice, and working-memory revision.
+  Stale results are dropped and recorded as recent experiences.
 
 ### Focus
 
@@ -218,7 +222,8 @@ Decision points:
 - skill failure;
 - lease near expiry;
 - completion boundary;
-- agency goal tie-break, after evaluation is enabled.
+- agency goal tie-break, only when the evaluation gate has enabled it and the
+  top scores are close.
 
 Fast paths:
 
@@ -284,6 +289,28 @@ must never be dropped.
   repeated timeouts or low-confidence results.
 - A background result never cancels an active skill.
 
+### Implementation
+
+- `config.decision.tactical` selects enabling, mode, deadline, minimum interval,
+  per-minute cap, single-affordance skipping, and circuit-breaker threshold.
+- `packages/brains/src/tactical-policy.ts` enforces those limits per bot.
+- `packages/brains/src/laya-client.ts` runs blocking decisions or background
+  advisory. Background results apply only at a later safe decision boundary.
+- Decision digests carry focus, revision, commitments, recent experiences,
+  interruption, and strategic intent. Optional context is dropped before the
+  revision or legal affordances.
+- Task execution compares the request focus and revision after the await and
+  falls back deterministically when either changed.
+- Agency goal tie-break sends only close candidate goals to Laya. It runs only
+  when `agency.goalTieBreak.enabled` is true. `home-min` background mode keeps
+  the deterministic winner and never blocks the agency tick; `home-full`
+  blocking mode may wait for the short tactical deadline.
+- Goal and task decisions are tagged with a decision kind, so a background
+  advisory from one path cannot apply to the other.
+- A goal tie-break result is applied only when its revision and focus still
+  match; otherwise the deterministic arbiter winner is used and the drop is
+  recorded as a recent experience.
+
 ### Commitment behavior
 
 Laya does not choose the highest-scoring action on every call. It chooses among:
@@ -301,7 +328,7 @@ threshold. This is the main defense against behavioral thrash.
 The cloud planner emits structured strategic intent, not natural-language
 instructions.
 
-Proposed schema:
+Schema:
 
 ```ts
 interface StrategicIntent {
@@ -349,6 +376,21 @@ Rules:
 - If the planner is disabled or unavailable, bots use the last validated intent,
   then deterministic local defaults.
 
+### Implementation
+
+- `packages/core/src/schemas/strategic-intent.ts` owns the shared schema, goal
+  kinds, project kinds, constraint allowlist, and update event.
+- `packages/planning/src/semantic-validator.ts` validates bot IDs, goal kinds,
+  project kinds, blueprint references, modifiers, constraints, and override
+  caps.
+- `packages/planning/src/strategic-intent-store.ts` keeps the latest validated
+  intent beside the cached planner plan, merges per-bot overrides, and restores
+  the last good intent on startup.
+- `packages/agency/src/strategic-intent.ts` applies bounded priority bias and
+  exposes constraints to the tactical digest.
+- Bots persist the latest intent in working memory and apply it at the next goal
+  boundary.
+
 ## 7. Routine and night preparation
 
 Routine is a prior, not a script. Evening opens a preparation window; the bot
@@ -388,13 +430,15 @@ Flow:
 
 1. Strategic intent or local initiative selects a project goal.
 2. Agency proposes a personal project through the coordinator.
-3. The coordinator creates the project, claims, and SIP structure.
-4. The coordinator seeds a construction task for the project work package.
-5. The task is offered through the job market.
-6. The bot accepts the matching task while retaining project focus.
-7. The construction or schematic-build skill executes the task.
-8. Progress reconciliation updates structure and project state.
-9. The project completes when the work package and final diff complete.
+3. The coordinator composes and stores the blueprint and construction plan.
+4. The coordinator creates the project, structure claim family, and SIP packages.
+5. The coordinator seeds one construction task per package plus cleanup.
+6. The task is offered through the job market; private projects stay owner-only.
+7. Invite and open projects expose helper tasks and auto-issue scoped grants.
+8. The bot accepts the matching task while retaining project focus.
+9. The construction skill executes the exact stored plan package.
+10. Progress reconciliation updates structure and project state.
+11. The project completes when every package task and cleanup complete.
 
 Project proposal alone is not enough. Without task seeding, a project remains
 claimed but unbuilt.
@@ -449,9 +493,10 @@ rules.
 - No project task may edit outside its claim, grant, and fencing token.
 - All destructive actions remain reversible and audited.
 
-## 11. Planned configuration
+## 11. Configuration
 
-These keys are planned, not implemented.
+Tactical, working-memory, goal tie-break, reflection, and strategic-intent keys
+are implemented.
 
 - `decision.tactical.enabled`
 - `decision.tactical.mode`: `background` or `blocking`
@@ -460,8 +505,12 @@ These keys are planned, not implemented.
 - `decision.tactical.maxDecisionsPerMinute`
 - `decision.tactical.skipSingleAffordance`
 - `decision.tactical.circuitBreakerFailureCount`
-- `agency.workingMemory.maxCommitments`
-- `agency.workingMemory.maxExperiences`
+- `agency.workingMemory.maxCommitments` (default 4)
+- `agency.workingMemory.maxExperiences` (default 8)
+- `agency.goalTieBreak.enabled` (default false)
+- `agency.goalTieBreak.closeScore` (default 0.12)
+- `agency.reflection.enabled` (default true)
+- `agency.reflection.maxTraitDelta` (default 0.01)
 - `planner.strategicIntent.enabled`
 - `planner.strategicIntent.maxBotOverrides`
 - `training.traceEnabled`
@@ -469,7 +518,9 @@ These keys are planned, not implemented.
 Profile defaults:
 
 - `home-min`: background advisory, strict interval and circuit breaker;
-- `home-full`: blocking tactical at safe boundaries with a short deadline.
+- `home-full`: blocking tactical at safe boundaries with a short deadline;
+- both profiles: goal tie-break remains off until the behavioral evaluation gate
+  passes; reflection is local and deterministic.
 
 ## 12. Evaluation gates
 
@@ -477,12 +528,15 @@ Behavior:
 
 - interruption and resume survive restart;
 - stale Laya results never overwrite newer focus;
+- close goal tie-break falls back deterministically when disabled, stale, or
+  below the confidence gate;
 - task lease is preserved through interruption;
 - no goal oscillation beyond the configured switch rate;
 - project focus survives while project tasks run;
 - project proposal produces a task and completes;
 - planner disabled still yields autonomous behavior;
-- cloud unavailable uses last-good intent or local defaults.
+- cloud unavailable uses last-good intent or local defaults;
+- reflection changes mood and bounded traits without blocking goal completion.
 
 Performance:
 
@@ -540,13 +594,43 @@ Phase 3 documentation:
 - agency tie-break;
 - reflection and bounded personality updates.
 
-## 15. Open questions
+## 15. Reflection and bounded personality updates
 
-- Exact minimum interval and deadline values for `home-min`.
-- Whether the first strategic intent version exposes constraints as a fixed
-  allowlist or a small policy language.
+Reflection is local and deterministic. It runs after a goal completes or is
+abandoned, never during guardian reactions, and never calls a model.
+
+Reflection outputs:
+
+- a mood string;
+- bounded personality trait deltas;
+- a short outcome summary.
+
+Rules:
+
+- completion produces a positive mood and a small increase in the trait
+  associated with the goal kind;
+- unsafe abandonment increases caution and produces a wary mood;
+- infeasible abandonment produces frustration and a bounded patience change;
+- preemption, expiry, claim conflict, and social rejection map to their own mood
+  and bounded trait change;
+- every trait stays within `0..1`;
+- each reflection applies at most `agency.reflection.maxTraitDelta`;
+- reflection failure is logged and never blocks goal completion or abandonment.
+
+The outcome episode records the reflection payload. Working memory also records
+the reflection as a recent experience so the tactical digest can use it.
+Reflection does not override the guardian, intention safety, commitments,
+strategic intent validation, or task leases.
+
+Implementation:
+
+- `packages/agency/src/reflection.ts` owns the deterministic reflection policy.
+- `packages/agency/src/personality-model.ts` applies bounded trait adjustments.
+- `apps/bot/src/agency-runtime.ts` runs reflection on completion, abandonment,
+  and restored-intention abandonment.
+
+## 16. Open questions
+
 - Whether project tasks should be seeded by the project service or by a separate
   project task seeder.
-- How much recent experience Laya can use before token cost outweighs benefit.
 - When to enable agency goal tie-break beyond the first evaluation.
-- Whether reflection can change mood only, or also bounded priority modifiers.

@@ -8,6 +8,7 @@ import {
     type Result,
     SessionAuthenticator,
     type SessionResume,
+    type StrategicIntent,
     type TransportFailure,
 } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
@@ -30,6 +31,7 @@ export interface SessionHandshakeOptions {
     transport: TransportServer;
     logger: LoggerPort;
     bots: SessionBotRegistry;
+    strategicIntent?: (botId: string) => StrategicIntent | null;
 }
 
 export class SessionHandshake {
@@ -114,9 +116,7 @@ export class SessionHandshake {
                     accepted: true,
                     epoch: this.options.epoch,
                     resume:
-                        resumePlan === null
-                            ? undefined
-                            : SessionHandshake.resumePayload(resumePlan),
+                        resumePlan === null ? undefined : this.resumePayload(resumePlan, bot.botId),
                 },
                 { replyTo: request.id },
             ),
@@ -150,8 +150,9 @@ export class SessionHandshake {
         }
     }
 
-    private static resumePayload(plan: BotResumePlan): SessionResume {
+    private resumePayload(plan: BotResumePlan, botId: string): SessionResume {
         const agency = plan.agency === null ? null : SessionHandshake.agencyPayload(plan.agency);
+        const strategicIntent = this.options.strategicIntent?.(botId) ?? null;
         const task = plan.task;
         if (
             task === null ||
@@ -166,6 +167,7 @@ export class SessionHandshake {
                 role: plan.profile.role,
                 agency,
                 projects: SessionHandshake.projectsPayload(plan),
+                strategicIntent,
             };
         }
         return {
@@ -184,6 +186,7 @@ export class SessionHandshake {
             role: plan.profile.role,
             agency,
             projects: SessionHandshake.projectsPayload(plan),
+            strategicIntent,
         };
     }
 

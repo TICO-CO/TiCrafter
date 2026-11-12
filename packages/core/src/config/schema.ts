@@ -51,6 +51,15 @@ export const configSchema = zod
                 danger: zod.number().positive(),
                 shouldContinue: zod.number().positive(),
             }),
+            tactical: zod.object({
+                enabled: zod.boolean(),
+                mode: zod.enum(['background', 'blocking']),
+                deadlineMilliseconds: zod.number().int().positive(),
+                minimumIntervalMilliseconds: zod.number().int().nonnegative(),
+                maxDecisionsPerMinute: zod.number().int().positive(),
+                skipSingleAffordance: zod.boolean(),
+                circuitBreakerFailureCount: zod.number().int().min(1),
+            }),
         }),
         planner: zod.object({
             enabled: zod.boolean(),
@@ -64,6 +73,10 @@ export const configSchema = zod
             maxRepairAttempts: zod.number().int().min(0).max(2),
             maxContextCharacters: zod.number().int().positive(),
             reserveTasksPerBot: zod.number().int().min(0).max(8),
+            strategicIntent: zod.object({
+                enabled: zod.boolean(),
+                maxBotOverrides: zod.number().int().min(0).max(8),
+            }),
         }),
         agency: zod.object({
             enabled: zod.boolean(),
@@ -72,6 +85,18 @@ export const configSchema = zod
             chatRatePerMinute: zod.number().int().min(0).max(30),
             needDecayPerMinute: zod.number().min(0).max(1),
             committedGoalBonus: zod.number().min(0).max(1),
+            workingMemory: zod.object({
+                maxCommitments: zod.number().int().min(1).max(16),
+                maxExperiences: zod.number().int().min(1).max(32),
+            }),
+            goalTieBreak: zod.object({
+                enabled: zod.boolean(),
+                closeScore: zod.number().min(0).max(1),
+            }),
+            reflection: zod.object({
+                enabled: zod.boolean(),
+                maxTraitDelta: zod.number().min(0).max(0.1),
+            }),
             nightPrep: zod.object({
                 enabled: zod.boolean(),
                 duskLeadTicks: zod.number().int().nonnegative(),

@@ -1,126 +1,126 @@
 flowchart LR
-n184["Zone Store"]
-n185["Structure Store"]
-n186["Road Store"]
-n187["Farm Store"]
-n188["Container Registry"]
-n189["Path Graph Store"]
-n190["Rules Store"]
-n191["SIP Revision Manager"]
-n192["Spatial Overlap Validator"]
-n193["Dependency Validator"]
-n194["SIP Mutation Proposer"]
-n157["SIP Transactional Committer"]
-n163["SIP Reconciliation Engine"]
-n195["Delta Sync Planner (Bot Registry and Profiles)"]
-n168["Resume Orchestrator (Bot Registry and Profiles)"]
-n92["Blueprint Validator (Building)"]
-n110["Rollback Journal (Building)"]
-n104["Work Package Partitioner (Building)"]
-n196["Overlap Margin Checker (Claims and Leases)"]
+n189["Zone Store"]
+n190["Structure Store"]
+n191["Road Store"]
+n192["Farm Store"]
+n193["Container Registry"]
+n194["Path Graph Store"]
+n195["Rules Store"]
+n196["SIP Revision Manager"]
+n197["Spatial Overlap Validator"]
+n198["Dependency Validator"]
+n199["SIP Mutation Proposer"]
+n162["SIP Transactional Committer"]
+n168["SIP Reconciliation Engine"]
+n200["Delta Sync Planner (Bot Registry and Profiles)"]
+n173["Resume Orchestrator (Bot Registry and Profiles)"]
+n93["Blueprint Validator (Building)"]
+n111["Rollback Journal (Building)"]
+n105["Work Package Partitioner (Building)"]
+n201["Overlap Margin Checker (Claims and Leases)"]
 n29["Command Router (Coordinator Runtime)"]
 n31["Global Scheduler (Coordinator Runtime)"]
 n32["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n197["Compatibility Checker (Edit Grants and Collaboration)"]
-n198["Design Revision Guard (Edit Grants and Collaboration)"]
-n199["Collaboration Policy Evaluator (Edit Grants and Collaboration)"]
-n147["SIP Dump (Ops and Observability)"]
-n145["Status Aggregator (Ops and Observability)"]
+n202["Compatibility Checker (Edit Grants and Collaboration)"]
+n203["Design Revision Guard (Edit Grants and Collaboration)"]
+n204["Collaboration Policy Evaluator (Edit Grants and Collaboration)"]
+n151["SIP Dump (Ops and Observability)"]
+n149["Status Aggregator (Ops and Observability)"]
 n42["Planner Context Builder (Cloud Planner Advisor)"]
 n51["Keep Last Good Fallback (Cloud Planner Advisor)"]
 n45["Planner Semantic Validator (Cloud Planner Advisor)"]
 n47["SIP Mutation Translator (Cloud Planner Advisor)"]
 n43["Planner Trigger Evaluator (Cloud Planner Advisor)"]
-n140["Protected BBox Rule (Autonomy and Safety)"]
-n143["Safety Policy Engine (Autonomy and Safety)"]
-n160["Transaction Manager (Memory and Persistence)"]
-n200["Container Memory (World Model and Landmarks)"]
-n201["Spatial Query Engine (World Model and Landmarks)"]
-n202["World Reconciler (World Model and Landmarks)"]
-n203["Plan Tagging (World Model and Landmarks)"]
+n144["Protected BBox Rule (Autonomy and Safety)"]
+n147["Safety Policy Engine (Autonomy and Safety)"]
+n165["Transaction Manager (Memory and Persistence)"]
+n205["Container Memory (World Model and Landmarks)"]
+n206["Spatial Query Engine (World Model and Landmarks)"]
+n207["World Reconciler (World Model and Landmarks)"]
+n208["Plan Tagging (World Model and Landmarks)"]
 n52["Skill Context Builder (Skill Runtime)"]
-n204["Follow Path (Skill Library)"]
-n205["Harvest Farm (Skill Library)"]
-n206["Plant Farm (Skill Library)"]
-n195 -->|reads| n191
-n168 -->|depends_on| n195
-n168 -->|delegates_to| n163
-n92 -->|depends_on| n190
-n110 -->|reads| n185
-n104 -->|reads| n185
-n196 -->|depends_on| n192
-n29 -->|controls| n157
+n209["Follow Path (Skill Library)"]
+n210["Harvest Farm (Skill Library)"]
+n211["Plant Farm (Skill Library)"]
+n200 -->|reads| n196
+n173 -->|depends_on| n200
+n173 -->|delegates_to| n168
+n93 -->|depends_on| n195
+n111 -->|reads| n190
+n105 -->|reads| n190
+n201 -->|depends_on| n197
+n29 -->|controls| n162
 n31 -->|delegates_to| n43
-n31 -->|delegates_to| n163
+n31 -->|delegates_to| n168
+n32 -->|depends_on| n173
+n32 -->|depends_on| n165
 n32 -->|depends_on| n168
-n32 -->|depends_on| n160
-n32 -->|depends_on| n163
-n197 -->|depends_on| n190
-n197 -->|depends_on| n185
-n198 -->|reads| n191
-n199 -->|depends_on| n185
-n147 -->|depends_on| n191
-n145 -->|reads| n191
-n42 -->|reads| n191
-n42 -->|reads| n201
-n51 -->|reads| n191
-n45 -->|depends_on| n193
-n45 -->|reads| n190
-n45 -->|reads| n201
-n47 -->|proposes_to| n194
+n202 -->|depends_on| n195
+n202 -->|depends_on| n190
+n203 -->|reads| n196
+n204 -->|depends_on| n190
+n151 -->|depends_on| n196
+n149 -->|reads| n196
+n42 -->|reads| n196
+n42 -->|reads| n206
+n51 -->|reads| n196
+n45 -->|depends_on| n198
+n45 -->|reads| n195
+n45 -->|reads| n206
+n47 -->|proposes_to| n199
 n43 -->|delegates_to| n42
-n43 -->|reads| n191
-n140 -->|reads| n190
-n143 -->|depends_on| n140
-n143 -->|reads| n190
-n143 -->|reads| n201
-n188 -->|depends_on| n160
-n188 -->|depends_on| n200
-n193 -->|depends_on| n188
-n193 -->|depends_on| n187
-n193 -->|depends_on| n189
-n193 -->|depends_on| n186
-n193 -->|depends_on| n185
-n193 -->|reads| n201
-n187 -->|depends_on| n160
-n194 -->|depends_on| n193
-n194 -->|depends_on| n191
-n194 -->|depends_on| n192
-n189 -->|depends_on| n160
-n163 -->|depends_on| n187
-n163 -->|depends_on| n186
-n163 -->|depends_on| n185
-n163 -->|depends_on| n157
-n163 -->|depends_on| n202
-n191 -->|publishes| n198
-n191 -->|depends_on| n160
-n191 -->|depends_on| n190
-n191 -->|publishes| n203
-n186 -->|depends_on| n160
-n190 -->|depends_on| n160
-n192 -->|reads| n190
-n192 -->|depends_on| n185
-n192 -->|depends_on| n184
-n185 -->|depends_on| n160
-n157 -->|depends_on| n160
-n157 -->|writes| n188
-n157 -->|writes| n187
-n157 -->|writes| n189
-n157 -->|depends_on| n191
-n157 -->|writes| n186
-n157 -->|writes| n190
-n157 -->|writes| n185
-n157 -->|writes| n184
-n184 -->|depends_on| n160
-n52 -->|reads| n191
-n52 -->|reads| n201
-n204 -->|depends_on| n189
-n205 -->|depends_on| n187
-n206 -->|depends_on| n187
-n200 -->|reads| n188
-n201 -->|reads| n189
-n202 -->|depends_on| n201
+n43 -->|reads| n196
+n144 -->|reads| n195
+n147 -->|depends_on| n144
+n147 -->|reads| n195
+n147 -->|reads| n206
+n193 -->|depends_on| n165
+n193 -->|depends_on| n205
+n198 -->|depends_on| n193
+n198 -->|depends_on| n192
+n198 -->|depends_on| n194
+n198 -->|depends_on| n191
+n198 -->|depends_on| n190
+n198 -->|reads| n206
+n192 -->|depends_on| n165
+n199 -->|depends_on| n198
+n199 -->|depends_on| n196
+n199 -->|depends_on| n197
+n194 -->|depends_on| n165
+n168 -->|depends_on| n192
+n168 -->|depends_on| n191
+n168 -->|depends_on| n190
+n168 -->|depends_on| n162
+n168 -->|depends_on| n207
+n196 -->|publishes| n203
+n196 -->|depends_on| n165
+n196 -->|depends_on| n195
+n196 -->|publishes| n208
+n191 -->|depends_on| n165
+n195 -->|depends_on| n165
+n197 -->|reads| n195
+n197 -->|depends_on| n190
+n197 -->|depends_on| n189
+n190 -->|depends_on| n165
+n162 -->|depends_on| n165
+n162 -->|writes| n193
+n162 -->|writes| n192
+n162 -->|writes| n194
+n162 -->|depends_on| n196
+n162 -->|writes| n191
+n162 -->|writes| n195
+n162 -->|writes| n190
+n162 -->|writes| n189
+n189 -->|depends_on| n165
+n52 -->|reads| n196
+n52 -->|reads| n206
+n209 -->|depends_on| n194
+n210 -->|depends_on| n192
+n211 -->|depends_on| n192
+n205 -->|reads| n193
+n206 -->|reads| n194
+n207 -->|depends_on| n206
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n184,n185,n186,n187,n188,n189,n190,n191,n192,n193,n194,n157,n163 internal;
-class n195,n168,n92,n110,n104,n196,n29,n31,n32,n197,n198,n199,n147,n145,n42,n51,n45,n47,n43,n140,n143,n160,n200,n201,n202,n203,n52,n204,n205,n206 external;
+class n189,n190,n191,n192,n193,n194,n195,n196,n197,n198,n199,n162,n168 internal;
+class n200,n173,n93,n111,n105,n201,n29,n31,n32,n202,n203,n204,n151,n149,n42,n51,n45,n47,n43,n144,n147,n165,n205,n206,n207,n208,n52,n209,n210,n211 external;

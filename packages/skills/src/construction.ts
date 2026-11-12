@@ -19,6 +19,8 @@ import { SkillSharedUtilities } from './utilities.js';
 interface ConstructionState {
     blueprintId: string;
     blueprintRevision: number;
+    planId: string;
+    planRevision: number;
     workPackageId: string;
     phase: SkillConstructionPhase | null;
     operations: SkillConstructionOperation[];
@@ -36,7 +38,9 @@ export class ConstructionSkill implements Skill {
     canRun(context: SkillContext, input: SkillInput): Result<boolean, string> {
         if (context.services?.construction === undefined) return [false, null];
         if (context.services.buildExecution === undefined) return [false, null];
-        if (input.blueprintId === undefined) return [false, null];
+        if (input.planId === undefined) return [false, null];
+        if (input.planRevision === undefined) return [false, null];
+        if (input.workPackageId === undefined) return [false, null];
         return [true, null];
     }
 
@@ -47,11 +51,14 @@ export class ConstructionSkill implements Skill {
         if (context.services.buildExecution === undefined) {
             return [null, 'construction requires a build execution service'];
         }
-        if (input.blueprintId === undefined) {
-            return [null, 'construction requires a blueprint id'];
+        if (input.planId === undefined) {
+            return [null, 'construction requires a plan id'];
         }
-        if (input.blueprintRevision === undefined) {
-            return [null, 'construction requires a blueprint revision'];
+        if (input.planRevision === undefined) {
+            return [null, 'construction requires a plan revision'];
+        }
+        if (input.workPackageId === undefined) {
+            return [null, 'construction requires a work package id'];
         }
         return [input, null];
     }
@@ -170,6 +177,8 @@ export class ConstructionSkill implements Skill {
                 state: {
                     blueprintId: state.blueprintId,
                     blueprintRevision: state.blueprintRevision,
+                    planId: state.planId,
+                    planRevision: state.planRevision,
                     workPackageId: state.workPackageId,
                     grant: state.grant,
                 },
@@ -182,10 +191,14 @@ export class ConstructionSkill implements Skill {
     restore(context: SkillContext, checkpoint: SkillCheckpoint): Result<SkillRun, string> {
         const blueprintId = SkillSharedUtilities.readString(checkpoint.state.blueprintId);
         const blueprintRevision = checkpoint.state.blueprintRevision;
+        const planId = SkillSharedUtilities.readString(checkpoint.state.planId);
+        const planRevision = checkpoint.state.planRevision;
         const workPackageId = SkillSharedUtilities.readString(checkpoint.state.workPackageId);
         if (
             blueprintId === null ||
             typeof blueprintRevision !== 'number' ||
+            planId === null ||
+            typeof planRevision !== 'number' ||
             workPackageId === null
         ) {
             return [null, 'construction checkpoint is invalid'];
@@ -201,6 +214,8 @@ export class ConstructionSkill implements Skill {
         const input: SkillInput = {
             blueprintId,
             blueprintRevision,
+            planId,
+            planRevision,
             workPackageId,
             ...(grant === null ? {} : { grant }),
             ...(checkpoint.taskId.length === 0 ? {} : { taskId: checkpoint.taskId }),
@@ -309,6 +324,8 @@ export class ConstructionSkill implements Skill {
         return {
             blueprintId: plan.blueprintId,
             blueprintRevision: plan.blueprintRevision,
+            planId: plan.planId,
+            planRevision: plan.planRevision,
             workPackageId: plan.workPackageId,
             phase: plan.phase,
             operations: plan.operations,
@@ -324,6 +341,8 @@ export class ConstructionSkill implements Skill {
     private readState(run: SkillRun): ConstructionState | null {
         const blueprintId = SkillSharedUtilities.readString(run.state.blueprintId);
         const blueprintRevision = run.state.blueprintRevision;
+        const planId = SkillSharedUtilities.readString(run.state.planId);
+        const planRevision = run.state.planRevision;
         const workPackageId = SkillSharedUtilities.readString(run.state.workPackageId);
         const operations = this.readOperations(run.state.operations);
         const scaffoldPositions = this.readPositions(run.state.scaffoldPositions);
@@ -334,6 +353,8 @@ export class ConstructionSkill implements Skill {
         if (
             blueprintId === null ||
             typeof blueprintRevision !== 'number' ||
+            planId === null ||
+            typeof planRevision !== 'number' ||
             workPackageId === null ||
             operations === null ||
             scaffoldPositions === null ||
@@ -355,6 +376,8 @@ export class ConstructionSkill implements Skill {
         return {
             blueprintId,
             blueprintRevision,
+            planId,
+            planRevision,
             workPackageId,
             phase,
             operations,
@@ -385,6 +408,11 @@ export class ConstructionSkill implements Skill {
             if (entry.grant !== null && entry.grant !== undefined && grant === null) return null;
             const structureId = SkillSharedUtilities.readString(entry.structureId) ?? undefined;
             const blueprintId = SkillSharedUtilities.readString(entry.blueprintId) ?? undefined;
+            const planId = SkillSharedUtilities.readString(entry.planId) ?? undefined;
+            const planRevision =
+                typeof entry.planRevision === 'number' ? entry.planRevision : undefined;
+            const grantFencingToken =
+                typeof entry.grantFencingToken === 'number' ? entry.grantFencingToken : undefined;
             const workPackageId = SkillSharedUtilities.readString(entry.workPackageId) ?? undefined;
             const blueprintRevision =
                 typeof entry.blueprintRevision === 'number' ? entry.blueprintRevision : undefined;
@@ -399,7 +427,10 @@ export class ConstructionSkill implements Skill {
                 ...(grant === null ? {} : { grant }),
                 ...(structureId === undefined ? {} : { structureId }),
                 ...(blueprintId === undefined ? {} : { blueprintId }),
+                ...(planId === undefined ? {} : { planId }),
+                ...(planRevision === undefined ? {} : { planRevision }),
                 ...(workPackageId === undefined ? {} : { workPackageId }),
+                ...(grantFencingToken === undefined ? {} : { grantFencingToken }),
                 ...(blueprintRevision === undefined ? {} : { blueprintRevision }),
                 ...(fencingToken === undefined ? {} : { fencingToken }),
             });
@@ -447,7 +478,13 @@ export class ConstructionSkill implements Skill {
         const id = SkillSharedUtilities.readString(value.id);
         if (id === null) return null;
         const expiresAt = SkillSharedUtilities.readString(value.expiresAt) ?? undefined;
-        return { id, ...(expiresAt === undefined ? {} : { expiresAt }) };
+        const fencingToken =
+            typeof value.fencingToken === 'number' ? value.fencingToken : undefined;
+        return {
+            id,
+            ...(expiresAt === undefined ? {} : { expiresAt }),
+            ...(fencingToken === undefined ? {} : { fencingToken }),
+        };
     }
 
     private operationFor(state: ConstructionState, key: string): SkillConstructionOperation | null {

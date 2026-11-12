@@ -1,54 +1,59 @@
 flowchart LR
 n69["Reflex Guardian Loop"]
-n152["Affordance Enumerator"]
+n156["Affordance Enumerator"]
 n70["Deterministic Policy"]
 n71["Laya Client"]
+n157["Tactical Decision Policy"]
 n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n83["Skill Registry (Skill Runtime)"]
-n131["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
-n226["Behavior Profile Manager (Bot Registry and Profiles)"]
-n174["Event Stream (Transport and Protocol)"]
+n84["Skill Registry (Skill Runtime)"]
+n134["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
+n231["Behavior Profile Manager (Bot Registry and Profiles)"]
+n179["Event Stream (Transport and Protocol)"]
 n58["Guardian Hook (Bot Runtime and Mineflayer Adapter)"]
 n39["Confidence Calibrator (Laya Decision Service)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n139["Claim Loss Evaluator (Autonomy and Safety)"]
-n134["Hazard Evaluator (Autonomy and Safety)"]
-n136["Hunger Evaluator (Autonomy and Safety)"]
-n138["Inventory Evaluator (Autonomy and Safety)"]
-n135["Mob Threat Evaluator (Autonomy and Safety)"]
-n137["Stuck and Timeout Evaluator (Autonomy and Safety)"]
-n85["Skill Tick Scheduler (Skill Runtime)"]
-n167["WebSocket Codec (Transport and Protocol)"]
+n143["Claim Loss Evaluator (Autonomy and Safety)"]
+n138["Hazard Evaluator (Autonomy and Safety)"]
+n140["Hunger Evaluator (Autonomy and Safety)"]
+n142["Inventory Evaluator (Autonomy and Safety)"]
+n139["Mob Threat Evaluator (Autonomy and Safety)"]
+n141["Stuck and Timeout Evaluator (Autonomy and Safety)"]
+n86["Skill Tick Scheduler (Skill Runtime)"]
+n172["WebSocket Codec (Transport and Protocol)"]
 n60["Agent Loop (Bot Runtime and Mineflayer Adapter)"]
-n152 -->|depends_on| n56
-n152 -->|depends_on| n69
-n152 -->|depends_on| n83
-n70 -->|depends_on| n152
-n70 -->|depends_on| n131
-n70 -->|reads| n226
-n70 -->|subscribes| n174
+n169["Config Schema Validator (Config and Profiles)"]
+n156 -->|depends_on| n56
+n156 -->|depends_on| n69
+n156 -->|depends_on| n84
+n70 -->|depends_on| n156
+n70 -->|depends_on| n134
+n70 -->|reads| n231
+n70 -->|subscribes| n179
 n58 -->|depends_on| n63
 n58 -->|delegates_to| n69
-n131 -->|depends_on| n56
-n131 -->|publishes| n174
+n134 -->|depends_on| n56
+n134 -->|publishes| n179
 n39 -->|proposes_to| n70
+n39 -->|depends_on| n169
 n63 -->|reads| n69
 n69 -->|controls| n63
-n69 -->|depends_on| n139
-n69 -->|depends_on| n134
-n69 -->|depends_on| n136
+n69 -->|depends_on| n143
 n69 -->|depends_on| n138
-n69 -->|depends_on| n135
-n69 -->|depends_on| n137
-n85 -->|reads| n69
-n174 -->|depends_on| n167
-n71 -->|depends_on| n152
-n71 -->|depends_on| n167
+n69 -->|depends_on| n140
+n69 -->|depends_on| n142
+n69 -->|depends_on| n139
+n69 -->|depends_on| n141
+n86 -->|reads| n69
+n179 -->|depends_on| n172
+n71 -->|depends_on| n156
+n71 -->|depends_on| n172
 n71 -->|depends_on| n70
 n60 -->|delegates_to| n71
 n60 -->|delegates_to| n70
-n60 -->|depends_on| n131
+n60 -->|depends_on| n134
+n71 -->|depends_on| n157
+n157 -->|depends_on| n169
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n69,n152,n70,n71 internal;
-class n56,n83,n131,n226,n174,n58,n39,n63,n139,n134,n136,n138,n135,n137,n85,n167,n60 external;
+class n69,n156,n70,n71,n157 internal;
+class n56,n84,n134,n231,n179,n58,n39,n63,n143,n138,n140,n142,n139,n141,n86,n172,n60,n169 external;

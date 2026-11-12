@@ -4,7 +4,7 @@ import { NeedsModel } from './needs-model.js';
 import { PersonalityModel } from './personality-model.js';
 import { RoutineModel } from './routine-model.js';
 import type { Intention, NeedName, RoutineState, WorkingMemory } from './types.js';
-import { WorkingMemoryModel } from './working-memory.js';
+import { type WorkingMemoryBounds, WorkingMemoryModel } from './working-memory.js';
 
 export interface AgencyStateSnapshot {
     botId: string;
@@ -29,6 +29,7 @@ export class AgencyState {
         intention?: Intention | null;
         routine?: RoutineState;
         timeOfDay?: number | null;
+        workingMemory?: Partial<WorkingMemoryBounds>;
     }): Result<AgencyState, string> {
         if (input.botId.length === 0) return [null, 'botId is required'];
         const [traits, traitsError] = input.traits
@@ -50,18 +51,24 @@ export class AgencyState {
                 personalStorageId: null,
                 mood: 'calm',
                 lastDeliberationAt: null,
-                workingMemory: WorkingMemoryModel.create().snapshot,
+                workingMemory: WorkingMemoryModel.create(input.workingMemory).snapshot,
             }),
             null,
         ];
     }
 
-    static restore(input: AgencyStateSnapshot): Result<AgencyState, string> {
+    static restore(
+        input: AgencyStateSnapshot,
+        workingMemoryBounds?: Partial<WorkingMemoryBounds>,
+    ): Result<AgencyState, string> {
         if (input.botId.length === 0) return [null, 'botId is required'];
         if (input.mood.length === 0) return [null, 'mood is required'];
         const intentionError = AgencyState.validateIntention(input.intention);
         if (intentionError !== null) return [null, intentionError];
-        const [workingMemory, memoryError] = WorkingMemoryModel.restore(input.workingMemory);
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(
+            input.workingMemory,
+            workingMemoryBounds,
+        );
         if (memoryError) return [null, memoryError];
         if (workingMemory === null) return [null, 'working memory returned null'];
         return [new AgencyState({ ...input, workingMemory: workingMemory.snapshot }), null];
@@ -95,6 +102,10 @@ export class AgencyState {
 
     withMood(mood: string): AgencyState {
         return new AgencyState({ ...this.snapshot, mood });
+    }
+
+    withTraits(traits: PersonalityModel): AgencyState {
+        return new AgencyState({ ...this.snapshot, traits });
     }
 
     withWorkingMemory(workingMemory: WorkingMemory): AgencyState {

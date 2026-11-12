@@ -6,6 +6,7 @@ export * from './claim-releaser.js';
 export * from './claim-repository.js';
 export * from './claim-service.js';
 export * from './contention-metrics.js';
+export * from './failures.js';
 export * from './fencing-token-authority.js';
 export * from './lease-heartbeat.js';
 export * from './lease-reaper.js';

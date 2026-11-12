@@ -1,6 +1,7 @@
 import { z as zod } from 'zod';
 
 import { positionSchema } from './shared.js';
+import { strategicIntentSchema } from './strategic-intent.js';
 
 export const BOT_AUTONOMY_PAUSE = 'bot.autonomy.pause';
 export const BOT_AUTONOMY_RESUME = 'bot.autonomy.resume';
@@ -83,10 +84,11 @@ export const workingMemoryTacticalDecisionSchema = zod.object({
 export const workingMemorySchema = zod.object({
     revision: zod.number().int().nonnegative(),
     focus: workingMemoryFocusSchema.nullable(),
-    commitments: zod.array(workingMemoryCommitmentSchema).max(4),
+    commitments: zod.array(workingMemoryCommitmentSchema).max(16),
     interruption: workingMemoryInterruptionSchema.nullable(),
-    recentExperiences: zod.array(workingMemoryExperienceSchema).max(8),
+    recentExperiences: zod.array(workingMemoryExperienceSchema).max(32),
     lastTacticalDecision: workingMemoryTacticalDecisionSchema.nullable(),
+    strategicIntent: strategicIntentSchema.nullable().optional(),
 });
 
 export const agencyStateSchema = zod.object({

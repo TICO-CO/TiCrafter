@@ -13,13 +13,14 @@ import {
 
 import type { ClientConnection, TransportServer } from '../transport/index.js';
 import type { TaskBoard } from './task-board.js';
-import type { TaskFailure, TaskLease } from './types.js';
+import type { TaskFailure, TaskLease, TaskRecord } from './types.js';
 
 export class TaskCommandHandler {
     constructor(
         private readonly tasks: TaskBoard,
         private readonly transport: TransportServer,
         private readonly logger: LoggerPort,
+        private readonly onCompleted?: (task: TaskRecord) => void,
     ) {}
 
     handleClaim(connection: ClientConnection, request: BotTaskClaim, envelope: Envelope): void {
@@ -93,11 +94,12 @@ export class TaskCommandHandler {
             this.reply(connection, envelope, this.failure(this.describe(leaseError)));
             return;
         }
-        const [, completeError] = this.tasks.complete(request.taskId, request.botId);
+        const [completed, completeError] = this.tasks.complete(request.taskId, request.botId);
         if (completeError) {
             this.reply(connection, envelope, this.failure(this.describe(completeError)));
             return;
         }
+        if (completed !== null) this.onCompleted?.(completed);
         this.reply(connection, envelope, {
             ok: true,
             taskId: request.taskId,

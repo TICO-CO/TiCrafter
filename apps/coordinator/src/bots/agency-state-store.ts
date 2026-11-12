@@ -36,8 +36,18 @@ export interface AgencyStateStorePort {
     save(record: AgencyStateRecord): Result<void, StorageFailure>;
 }
 
+export interface AgencyStateStoreOptions {
+    workingMemory?: {
+        maxCommitments: number;
+        maxExperiences: number;
+    };
+}
+
 export class AgencyStateStore implements AgencyStateStorePort {
-    constructor(private readonly database: CoordinatorDatabase) {}
+    constructor(
+        private readonly database: CoordinatorDatabase,
+        private readonly options: AgencyStateStoreOptions = {},
+    ) {}
 
     load(botId: string): Result<AgencyStateRecord | null, StorageFailure> {
         const [row, error] = attempt<AgencyStateRow | undefined, unknown>(
@@ -66,7 +76,10 @@ export class AgencyStateStore implements AgencyStateStorePort {
         const [needs, needsError] = NeedsModel.restore(snapshot.needs);
         if (needsError) return [null, StorageFailures.from('WRITE_FAILED', needsError)];
         if (needs === null) return [null, StorageFailures.from('WRITE_FAILED', 'needs missing')];
-        const [workingMemory, memoryError] = WorkingMemoryModel.restore(snapshot.workingMemory);
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(
+            snapshot.workingMemory,
+            this.options.workingMemory,
+        );
         if (memoryError) return [null, StorageFailures.from('WRITE_FAILED', memoryError)];
         if (workingMemory === null) {
             return [null, StorageFailures.from('WRITE_FAILED', 'working memory missing')];
@@ -131,7 +144,10 @@ export class AgencyStateStore implements AgencyStateStorePort {
         const [needs, needsError] = NeedsModel.restore(parsed.data.needs);
         if (needsError) return [null, StorageFailures.from('READ_FAILED', needsError)];
         if (needs === null) return [null, StorageFailures.from('READ_FAILED', 'needs missing')];
-        const [workingMemory, memoryError] = WorkingMemoryModel.restore(parsed.data.workingMemory);
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(
+            parsed.data.workingMemory,
+            this.options.workingMemory,
+        );
         if (memoryError) return [null, StorageFailures.from('READ_FAILED', memoryError)];
         if (workingMemory === null) {
             return [null, StorageFailures.from('READ_FAILED', 'working memory missing')];

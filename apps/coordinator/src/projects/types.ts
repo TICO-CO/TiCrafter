@@ -1,9 +1,16 @@
+import type { BlueprintDocument, ConstructionPlanDocument } from '@ticrafter/building';
 import type { Result } from '@ticrafter/core';
 import type { StorageFailure } from '@ticrafter/memory';
 
 import type { AgencyStateRecord } from '../bots/index.js';
 import type { BotProfile } from '../bots/index.js';
-import type { SipBlockPosition, SipBoundingBox } from '../sip/index.js';
+import type {
+    SipBlockPosition,
+    SipBoundingBox,
+    SipCollaborationPolicy,
+    SipMaterialNeed,
+    SipWorkPackage,
+} from '../sip/index.js';
 
 export type PersonalProjectKind = 'home' | 'storage' | 'build';
 
@@ -12,6 +19,8 @@ export type PersonalProjectStatus = 'proposed' | 'active' | 'completed' | 'aband
 export interface ProjectClaimReference {
     claimId: string;
     fencingToken: number;
+    resourceId?: string;
+    resourceType?: 'structure' | 'work_package' | 'container';
 }
 
 export interface PersonalProjectRecord {
@@ -38,16 +47,19 @@ export interface ProposeProjectInput {
     anchor: SipBlockPosition;
     bbox: SipBoundingBox;
     storagePosition?: SipBlockPosition | null;
+    collaboration?: SipCollaborationPolicy;
+    autoAcceptCompatibleHelpers?: boolean;
 }
 
 export interface ProjectClaimPort {
     acquire(
         input: {
             id: string;
-            resourceType: 'structure' | 'container';
+            resourceType: 'structure' | 'work_package' | 'container';
             resourceId: string;
             bbox: SipBoundingBox;
             botId: string;
+            parentClaimId?: string | null;
             payload?: Readonly<Record<string, unknown>>;
             leaseTtlMilliseconds?: number;
         },
@@ -67,8 +79,15 @@ export interface ProjectSipPort {
         botId: string;
         kind: PersonalProjectKind;
         anchor: SipBlockPosition;
+        rotation: number;
         bbox: SipBoundingBox;
         structureId: string;
+        blueprintRef: string;
+        designRevision: number;
+        materialsNeeded: readonly SipMaterialNeed[];
+        workPackages: readonly SipWorkPackage[];
+        collaboration: SipCollaborationPolicy;
+        autoAcceptCompatibleHelpers: boolean;
         storageId: string | null;
         storagePosition: SipBlockPosition | null;
     }): Result<void, string>;
@@ -78,6 +97,37 @@ export interface ProjectSipPort {
         structureId: string | null;
         storageId: string | null;
     }): Result<void, string>;
+}
+
+export interface ProjectConstructionArtifacts {
+    blueprint: BlueprintDocument;
+    plan: ConstructionPlanDocument;
+    bbox: SipBoundingBox;
+}
+
+export interface ProjectConstructionTaskInput {
+    projectId: string;
+    structureId: string;
+    title: string;
+    botId: string;
+    ownerBotId: string;
+    collaboration: SipCollaborationPolicy;
+    blueprint: BlueprintDocument;
+    plan: ConstructionPlanDocument;
+    claims: readonly ProjectClaimReference[];
+}
+
+export interface ProjectConstructionPort {
+    prepare(input: {
+        projectId: string;
+        structureId: string;
+        botId: string;
+        kind: PersonalProjectKind;
+        anchor: SipBlockPosition;
+        bbox: SipBoundingBox;
+    }): Result<ProjectConstructionArtifacts, string>;
+    seedTasks(input: ProjectConstructionTaskInput): Result<readonly string[], string>;
+    cancelTasks(taskIds: readonly string[]): Result<void, string>;
 }
 
 export interface ProjectBotPort {
@@ -122,6 +172,8 @@ export type ProjectFailure =
     | { type: 'OWNER_MISMATCH'; projectId: string; botId: string }
     | { type: 'BOT_NOT_FOUND'; botId: string }
     | { type: 'CLAIM_FAILED'; message: string }
+    | { type: 'CONSTRUCTION_FAILED'; message: string }
+    | { type: 'TASK_FAILED'; message: string }
     | { type: 'SIP_FAILED'; message: string }
     | { type: 'PROFILE_FAILED'; message: string }
     | { type: 'AGENCY_FAILED'; message: string };

@@ -1,92 +1,92 @@
 flowchart LR
-n181["Observation Ingestor"]
-n232["Chunk Version Store"]
-n233["Sparse Occupancy Grid"]
-n234["Merge Conflict Resolver"]
-n235["Confidence Decay"]
-n236["Landmark Registry"]
-n237["Detector Result Integrator"]
-n203["Plan Tagging"]
-n201["Spatial Query Engine"]
-n200["Container Memory"]
-n202["World Reconciler"]
-n107["Block Verifier (Building)"]
-n109["Container Refill Adapter (Building)"]
-n108["Material Preflight (Building)"]
-n106["Reachability and Scaffold Planner (Building)"]
-n103["Schematic Diff (Building)"]
+n186["Observation Ingestor"]
+n237["Chunk Version Store"]
+n238["Sparse Occupancy Grid"]
+n239["Merge Conflict Resolver"]
+n240["Confidence Decay"]
+n241["Landmark Registry"]
+n242["Detector Result Integrator"]
+n208["Plan Tagging"]
+n206["Spatial Query Engine"]
+n205["Container Memory"]
+n207["World Reconciler"]
+n108["Block Verifier (Building)"]
+n110["Container Refill Adapter (Building)"]
+n109["Material Preflight (Building)"]
+n107["Reachability and Scaffold Planner (Building)"]
+n104["Schematic Diff (Building)"]
 n42["Planner Context Builder (Cloud Planner Advisor)"]
 n45["Planner Semantic Validator (Cloud Planner Advisor)"]
-n141["Active Bot Support Rule (Autonomy and Safety)"]
-n143["Safety Policy Engine (Autonomy and Safety)"]
-n188["Container Registry (Shared Infrastructure Plan)"]
-n193["Dependency Validator (Shared Infrastructure Plan)"]
-n163["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
-n191["SIP Revision Manager (Shared Infrastructure Plan)"]
+n145["Active Bot Support Rule (Autonomy and Safety)"]
+n147["Safety Policy Engine (Autonomy and Safety)"]
+n193["Container Registry (Shared Infrastructure Plan)"]
+n198["Dependency Validator (Shared Infrastructure Plan)"]
+n168["SIP Reconciliation Engine (Shared Infrastructure Plan)"]
+n196["SIP Revision Manager (Shared Infrastructure Plan)"]
 n52["Skill Context Builder (Skill Runtime)"]
-n88["Skill Restore Validator (Skill Runtime)"]
-n238["Deposit (Skill Library)"]
-n239["Explore (Skill Library)"]
-n240["Skill Shared Utilities (Skill Library)"]
-n241["Withdraw (Skill Library)"]
-n209["Precondition Evaluator (Task Board)"]
-n174["Event Stream (Transport and Protocol)"]
-n160["Transaction Manager (Memory and Persistence)"]
-n159["Message Schema Registry (Transport and Protocol)"]
-n189["Path Graph Store (Shared Infrastructure Plan)"]
-n107 -->|reads| n201
-n109 -->|writes| n200
-n108 -->|reads| n52
-n108 -->|reads| n200
-n106 -->|reads| n201
-n103 -->|reads| n201
-n42 -->|reads| n191
-n42 -->|reads| n201
-n45 -->|depends_on| n193
-n45 -->|reads| n201
-n141 -->|reads| n201
-n143 -->|depends_on| n141
-n143 -->|reads| n201
-n188 -->|depends_on| n160
-n188 -->|depends_on| n200
-n193 -->|depends_on| n188
-n193 -->|depends_on| n189
-n193 -->|reads| n201
-n189 -->|depends_on| n160
-n163 -->|depends_on| n202
-n191 -->|depends_on| n160
-n191 -->|publishes| n203
-n52 -->|reads| n191
-n52 -->|reads| n201
-n88 -->|depends_on| n201
-n238 -->|depends_on| n200
-n239 -->|depends_on| n201
-n240 -->|depends_on| n52
-n240 -->|depends_on| n201
-n241 -->|depends_on| n200
-n209 -->|reads| n201
-n174 -->|publishes| n181
-n232 -->|depends_on| n160
-n235 -->|depends_on| n232
-n235 -->|writes| n236
-n200 -->|reads| n188
-n200 -->|depends_on| n236
-n237 -->|writes| n236
-n237 -->|depends_on| n234
-n236 -->|depends_on| n160
-n234 -->|writes| n232
-n234 -->|depends_on| n235
-n181 -->|subscribes| n174
-n181 -->|reads| n159
-n181 -->|writes| n232
-n233 -->|depends_on| n232
-n203 -->|depends_on| n236
-n201 -->|reads| n189
-n201 -->|depends_on| n236
-n201 -->|depends_on| n233
-n202 -->|depends_on| n236
-n202 -->|depends_on| n201
+n89["Skill Restore Validator (Skill Runtime)"]
+n243["Deposit (Skill Library)"]
+n244["Explore (Skill Library)"]
+n245["Skill Shared Utilities (Skill Library)"]
+n246["Withdraw (Skill Library)"]
+n214["Precondition Evaluator (Task Board)"]
+n179["Event Stream (Transport and Protocol)"]
+n165["Transaction Manager (Memory and Persistence)"]
+n164["Message Schema Registry (Transport and Protocol)"]
+n194["Path Graph Store (Shared Infrastructure Plan)"]
+n108 -->|reads| n206
+n110 -->|writes| n205
+n109 -->|reads| n52
+n109 -->|reads| n205
+n107 -->|reads| n206
+n104 -->|reads| n206
+n42 -->|reads| n196
+n42 -->|reads| n206
+n45 -->|depends_on| n198
+n45 -->|reads| n206
+n145 -->|reads| n206
+n147 -->|depends_on| n145
+n147 -->|reads| n206
+n193 -->|depends_on| n165
+n193 -->|depends_on| n205
+n198 -->|depends_on| n193
+n198 -->|depends_on| n194
+n198 -->|reads| n206
+n194 -->|depends_on| n165
+n168 -->|depends_on| n207
+n196 -->|depends_on| n165
+n196 -->|publishes| n208
+n52 -->|reads| n196
+n52 -->|reads| n206
+n89 -->|depends_on| n206
+n243 -->|depends_on| n205
+n244 -->|depends_on| n206
+n245 -->|depends_on| n52
+n245 -->|depends_on| n206
+n246 -->|depends_on| n205
+n214 -->|reads| n206
+n179 -->|publishes| n186
+n237 -->|depends_on| n165
+n240 -->|depends_on| n237
+n240 -->|writes| n241
+n205 -->|reads| n193
+n205 -->|depends_on| n241
+n242 -->|writes| n241
+n242 -->|depends_on| n239
+n241 -->|depends_on| n165
+n239 -->|writes| n237
+n239 -->|depends_on| n240
+n186 -->|subscribes| n179
+n186 -->|reads| n164
+n186 -->|writes| n237
+n238 -->|depends_on| n237
+n208 -->|depends_on| n241
+n206 -->|reads| n194
+n206 -->|depends_on| n241
+n206 -->|depends_on| n238
+n207 -->|depends_on| n241
+n207 -->|depends_on| n206
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n181,n232,n233,n234,n235,n236,n237,n203,n201,n200,n202 internal;
-class n107,n109,n108,n106,n103,n42,n45,n141,n143,n188,n193,n163,n191,n52,n88,n238,n239,n240,n241,n209,n174,n160,n159,n189 external;
+class n186,n237,n238,n239,n240,n241,n242,n208,n206,n205,n207 internal;
+class n108,n110,n109,n107,n104,n42,n45,n145,n147,n193,n198,n168,n196,n52,n89,n243,n244,n245,n246,n214,n179,n165,n164,n194 external;

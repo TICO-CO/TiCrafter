@@ -1,14 +1,24 @@
+import type { PlannedWorkPackage } from '@ticrafter/building';
 import type { LoggerPort, Result } from '@ticrafter/core';
-import type { StorageFailure } from '@ticrafter/memory';
+import { type StorageFailure, StorageFailures } from '@ticrafter/memory';
 
 import type { AgencyStateRecord } from '../bots/index.js';
-import { type SipBlockPosition, type SipBoundingBox, SipGeometry } from '../sip/index.js';
+import { ConstructionPackageManifest } from '../building/index.js';
+import {
+    type SipBlockPosition,
+    type SipBoundingBox,
+    SipGeometry,
+    type SipWorkPackage,
+} from '../sip/index.js';
+import { ProjectFailures } from './failures.js';
 import { PersonalProjectRepository } from './project-repository.js';
 import type {
     PersonalProjectRecord,
     ProjectAgencyPort,
     ProjectBotPort,
     ProjectClaimPort,
+    ProjectClaimReference,
+    ProjectConstructionPort,
     ProjectEpisodePort,
     ProjectEventPort,
     ProjectFailure,
@@ -24,6 +34,7 @@ export interface PersonalProjectServiceOptions {
     episodes: ProjectEpisodePort;
     events: ProjectEventPort;
     sip: ProjectSipPort;
+    construction: ProjectConstructionPort;
     logger: LoggerPort;
     now?: () => string;
     id?: () => string;
@@ -44,38 +55,74 @@ export class PersonalProjectService {
         const validation = PersonalProjectService.validate(input);
         if (validation !== null) return [null, validation];
         const [existing, existingError] = this.options.projects.get(input.id);
-        if (existingError) return [null, { type: 'STORAGE', failure: existingError }];
-        if (existing !== null) return [null, { type: 'PROJECT_EXISTS', projectId: input.id }];
+        if (existingError) return [null, ProjectFailures.storage(existingError)];
+        if (existing !== null) return [null, ProjectFailures.projectExists(input.id)];
         const [duplicateHome, duplicateError] = this.duplicateHome(input);
         if (duplicateError) return [null, duplicateError];
         if (duplicateHome) {
-            return [null, { type: 'PROJECT_EXISTS', projectId: `home:${input.botId}` }];
+            return [null, ProjectFailures.projectExists(`home:${input.botId}`)];
         }
         const [profile, profileError] = this.options.bots.get(input.botId);
-        if (profileError) return [null, { type: 'STORAGE', failure: profileError }];
-        if (profile === null) return [null, { type: 'BOT_NOT_FOUND', botId: input.botId }];
+        if (profileError) return [null, ProjectFailures.storage(profileError)];
+        if (profile === null) return [null, ProjectFailures.botNotFound(input.botId)];
         const now = this.now();
         const structureId = `structure.project.${input.id}`;
         const storageId =
             input.storagePosition === undefined || input.storagePosition === null
                 ? null
                 : `container.project.${input.id}`;
-        const [claims, claimError] = this.acquireClaims(input, structureId, storageId, now);
-        if (claimError) return [null, claimError];
-        if (claims === null) return [null, { type: 'CLAIM_FAILED', message: 'claims missing' }];
-        const [, sipError] = this.options.sip.propose({
+        const [artifacts, constructionError] = this.options.construction.prepare({
             projectId: input.id,
+            structureId,
             botId: input.botId,
             kind: input.kind,
             anchor: input.anchor,
             bbox: input.bbox,
+        });
+        if (constructionError) {
+            return [null, ProjectFailures.constructionFailed(constructionError)];
+        }
+        if (artifacts === null) {
+            return [null, ProjectFailures.constructionFailed('construction artifacts missing')];
+        }
+        const packages = ConstructionPackageManifest.packages(artifacts.plan.plan);
+        const [claims, claimError] = this.acquireClaims(
+            input,
             structureId,
+            storageId,
+            packages,
+            artifacts.bbox,
+            now,
+        );
+        if (claimError) return [null, claimError];
+        if (claims === null) return [null, ProjectFailures.claimFailed('claims missing')];
+        const sipPackages: SipWorkPackage[] = packages.map((workPackage) => ({
+            id: workPackage.id,
+            bbox: workPackage.bbox,
+            status: 'planned',
+            claimedBy: null,
+        }));
+        const collaboration = input.collaboration ?? 'private';
+        const [, sipError] = this.options.sip.propose({
+            projectId: input.id,
+            botId: input.botId,
+            kind: input.kind,
+            anchor: artifacts.plan.plan.anchor,
+            rotation: artifacts.plan.plan.rotation,
+            bbox: artifacts.bbox,
+            structureId,
+            blueprintRef: artifacts.blueprint.id,
+            designRevision: artifacts.blueprint.revision,
+            materialsNeeded: artifacts.plan.plan.materials,
+            workPackages: sipPackages,
+            collaboration,
+            autoAcceptCompatibleHelpers: input.autoAcceptCompatibleHelpers ?? false,
             storageId,
             storagePosition: input.storagePosition ?? null,
         });
         if (sipError) {
             this.releaseClaims(input.botId, claims, now);
-            return [null, { type: 'SIP_FAILED', message: sipError }];
+            return [null, ProjectFailures.sipFailed(sipError)];
         }
         const record: PersonalProjectRecord = {
             id: input.id,
@@ -83,8 +130,8 @@ export class PersonalProjectService {
             title: input.title,
             kind: input.kind,
             status: 'active',
-            anchor: input.anchor,
-            bbox: input.bbox,
+            anchor: artifacts.plan.plan.anchor,
+            bbox: artifacts.bbox,
             claims,
             structureId,
             storageId,
@@ -101,7 +148,22 @@ export class PersonalProjectService {
                 structureId,
                 storageId,
             });
-            return [null, { type: 'STORAGE', failure: insertError }];
+            return [null, ProjectFailures.storage(insertError)];
+        }
+        const [taskIds, taskError] = this.options.construction.seedTasks({
+            projectId: input.id,
+            structureId,
+            title: input.title,
+            botId: input.botId,
+            ownerBotId: input.botId,
+            collaboration,
+            blueprint: artifacts.blueprint,
+            plan: artifacts.plan,
+            claims,
+        });
+        if (taskError || taskIds === null) {
+            this.rollback(record, now, taskIds ?? []);
+            return [null, ProjectFailures.taskFailed(taskError ?? 'tasks missing')];
         }
         const [, profileSaveError] = this.options.bots.save({
             ...profile,
@@ -109,8 +171,8 @@ export class PersonalProjectService {
             updatedAt: now,
         });
         if (profileSaveError) {
-            this.rollback(record, now);
-            return [null, { type: 'PROFILE_FAILED', message: profileSaveError.message }];
+            this.rollback(record, now, taskIds);
+            return [null, ProjectFailures.profileFailed(profileSaveError.message)];
         }
         const [, agencyError] = this.assignAgency(
             input.botId,
@@ -120,7 +182,7 @@ export class PersonalProjectService {
             now,
         );
         if (agencyError) {
-            this.rollback(record, now);
+            this.rollback(record, now, taskIds);
             return [null, agencyError];
         }
         this.recordProposal(record, now);
@@ -133,10 +195,10 @@ export class PersonalProjectService {
         reason: string,
     ): Result<PersonalProjectRecord, ProjectFailure> {
         const [project, readError] = this.options.projects.get(projectId);
-        if (readError) return [null, { type: 'STORAGE', failure: readError }];
-        if (project === null) return [null, { type: 'PROJECT_NOT_FOUND', projectId }];
+        if (readError) return [null, ProjectFailures.storage(readError)];
+        if (project === null) return [null, ProjectFailures.projectNotFound(projectId)];
         if (project.botId !== botId) {
-            return [null, { type: 'OWNER_MISMATCH', projectId, botId }];
+            return [null, ProjectFailures.ownerMismatch(projectId, botId)];
         }
         const now = this.now();
         this.releaseClaims(botId, project.claims, now);
@@ -155,7 +217,7 @@ export class PersonalProjectService {
             updatedAt: now,
         };
         const [, updateError] = this.options.projects.update(abandoned);
-        if (updateError) return [null, { type: 'STORAGE', failure: updateError }];
+        if (updateError) return [null, ProjectFailures.storage(updateError)];
         const [, clearError] = this.clearHome(botId, project, now);
         if (clearError) return [null, clearError];
         this.recordEpisode({
@@ -182,17 +244,17 @@ export class PersonalProjectService {
 
     listForBot(botId: string): Result<readonly PersonalProjectRecord[], ProjectFailure> {
         const [projects, readError] = this.options.projects.listByBot(botId);
-        if (readError) return [null, { type: 'STORAGE', failure: readError }];
+        if (readError) return [null, ProjectFailures.storage(readError)];
         return [projects, null];
     }
 
     findActiveHome(botId: string): Result<PersonalProjectRecord | null, ProjectFailure> {
         const [projects, readError] = this.options.projects.listByBot(botId);
-        if (readError) return [null, { type: 'STORAGE', failure: readError }];
+        if (readError) return [null, ProjectFailures.storage(readError)];
         if (projects === null) {
             return [
                 null,
-                { type: 'STORAGE', failure: { type: 'READ_FAILED', message: 'projects missing' } },
+                ProjectFailures.storage(StorageFailures.from('READ_FAILED', 'projects missing')),
             ];
         }
         return [
@@ -216,14 +278,16 @@ export class PersonalProjectService {
         input: ProposeProjectInput,
         structureId: string,
         storageId: string | null,
+        packages: readonly PlannedWorkPackage[],
+        projectBbox: SipBoundingBox,
         now: string,
-    ): Result<readonly { claimId: string; fencingToken: number }[], ProjectFailure> {
+    ): Result<readonly ProjectClaimReference[], ProjectFailure> {
         const structureClaim = this.options.claims.acquire(
             {
                 id: `claim.project.${input.id}.structure`,
                 resourceType: 'structure',
                 resourceId: structureId,
-                bbox: input.bbox,
+                bbox: projectBbox,
                 botId: input.botId,
                 payload: { projectId: input.id, kind: input.kind },
                 leaseTtlMilliseconds: PROJECT_CLAIM_TTL_MILLISECONDS,
@@ -231,14 +295,55 @@ export class PersonalProjectService {
             now,
         );
         if (structureClaim[1]) {
-            return [null, { type: 'CLAIM_FAILED', message: structureClaim[1] }];
+            return [null, ProjectFailures.claimFailed(structureClaim[1])];
         }
         if (structureClaim[0] === null) {
-            return [null, { type: 'CLAIM_FAILED', message: 'structure claim missing' }];
+            return [null, ProjectFailures.claimFailed('structure claim missing')];
         }
-        const claims = [
-            { claimId: structureClaim[0].id, fencingToken: structureClaim[0].fencingToken },
+        const claims: ProjectClaimReference[] = [
+            {
+                claimId: structureClaim[0].id,
+                fencingToken: structureClaim[0].fencingToken,
+                resourceId: structureId,
+                resourceType: 'structure',
+            },
         ];
+        for (let index = 0; index < packages.length; index += 1) {
+            const workPackage = packages[index];
+            if (workPackage === undefined) continue;
+            const packageClaim = this.options.claims.acquire(
+                {
+                    id: `claim.project.${input.id}.package.${index}`,
+                    resourceType: 'work_package',
+                    resourceId: workPackage.id,
+                    bbox: workPackage.bbox,
+                    botId: input.botId,
+                    parentClaimId: structureClaim[0].id,
+                    payload: {
+                        projectId: input.id,
+                        kind: input.kind,
+                        structureId,
+                        workPackageId: workPackage.id,
+                    },
+                    leaseTtlMilliseconds: PROJECT_CLAIM_TTL_MILLISECONDS,
+                },
+                now,
+            );
+            if (packageClaim[1]) {
+                this.releaseClaims(input.botId, claims, now);
+                return [null, ProjectFailures.claimFailed(packageClaim[1])];
+            }
+            if (packageClaim[0] === null) {
+                this.releaseClaims(input.botId, claims, now);
+                return [null, ProjectFailures.claimFailed('package claim missing')];
+            }
+            claims.push({
+                claimId: packageClaim[0].id,
+                fencingToken: packageClaim[0].fencingToken,
+                resourceId: workPackage.id,
+                resourceType: 'work_package',
+            });
+        }
         if (
             storageId === null ||
             input.storagePosition === undefined ||
@@ -247,7 +352,7 @@ export class PersonalProjectService {
             return [claims, null];
         }
         const storageBox = PersonalProjectService.singleBlock(input.storagePosition);
-        if (SipGeometry.contains(input.bbox, storageBox)) return [claims, null];
+        if (SipGeometry.contains(projectBbox, storageBox)) return [claims, null];
         const storageClaim = this.options.claims.acquire(
             {
                 id: `claim.project.${input.id}.storage`,
@@ -262,15 +367,17 @@ export class PersonalProjectService {
         );
         if (storageClaim[1]) {
             this.releaseClaims(input.botId, claims, now);
-            return [null, { type: 'CLAIM_FAILED', message: storageClaim[1] }];
+            return [null, ProjectFailures.claimFailed(storageClaim[1])];
         }
         if (storageClaim[0] === null) {
             this.releaseClaims(input.botId, claims, now);
-            return [null, { type: 'CLAIM_FAILED', message: 'storage claim missing' }];
+            return [null, ProjectFailures.claimFailed('storage claim missing')];
         }
         claims.push({
             claimId: storageClaim[0].id,
             fencingToken: storageClaim[0].fencingToken,
+            resourceId: storageId,
+            resourceType: 'container',
         });
         return [claims, null];
     }
@@ -281,17 +388,17 @@ export class PersonalProjectService {
         now: string,
     ): Result<void, ProjectFailure> {
         const [profile, profileError] = this.options.bots.get(botId);
-        if (profileError) return [null, { type: 'STORAGE', failure: profileError }];
+        if (profileError) return [null, ProjectFailures.storage(profileError)];
         if (profile !== null && profile.homeStructureId === project.structureId) {
             const [, saveError] = this.options.bots.save({
                 ...profile,
                 homeStructureId: null,
                 updatedAt: now,
             });
-            if (saveError) return [null, { type: 'PROFILE_FAILED', message: saveError.message }];
+            if (saveError) return [null, ProjectFailures.profileFailed(saveError.message)];
         }
         const [agency, agencyError] = this.options.agency.load(botId);
-        if (agencyError) return [null, { type: 'STORAGE', failure: agencyError }];
+        if (agencyError) return [null, ProjectFailures.storage(agencyError)];
         if (agency === null) return [undefined, null];
         const clearsHome = agency.homeStructureId === project.structureId;
         const clearsStorage = agency.personalStorageId === project.storageId;
@@ -304,7 +411,7 @@ export class PersonalProjectService {
         };
         const [, agencySaveError] = this.options.agency.save(cleared);
         if (agencySaveError) {
-            return [null, { type: 'AGENCY_FAILED', message: agencySaveError.message }];
+            return [null, ProjectFailures.agencyFailed(agencySaveError.message)];
         }
         return [undefined, null];
     }
@@ -317,7 +424,7 @@ export class PersonalProjectService {
         now: string,
     ): Result<void, ProjectFailure> {
         const [agency, agencyError] = this.options.agency.load(botId);
-        if (agencyError) return [null, { type: 'STORAGE', failure: agencyError }];
+        if (agencyError) return [null, ProjectFailures.storage(agencyError)];
         if (agency === null) return [undefined, null];
         const [, saveError] = this.options.agency.save({
             ...agency,
@@ -325,11 +432,17 @@ export class PersonalProjectService {
             personalStorageId: storageId ?? agency.personalStorageId,
             updatedAt: now,
         });
-        if (saveError) return [null, { type: 'AGENCY_FAILED', message: saveError.message }];
+        if (saveError) return [null, ProjectFailures.agencyFailed(saveError.message)];
         return [undefined, null];
     }
 
-    private rollback(record: PersonalProjectRecord, now: string): void {
+    private rollback(
+        record: PersonalProjectRecord,
+        now: string,
+        taskIds: readonly string[] = [],
+    ): void {
+        const [, taskError] = this.options.construction.cancelTasks(taskIds);
+        if (taskError) this.logFailure({ error: taskError }, 'project task cancellation failed');
         this.releaseClaims(record.botId, record.claims, now);
         this.options.sip.abandon({
             projectId: record.id,
@@ -435,16 +548,16 @@ export class PersonalProjectService {
 
     private static validate(input: ProposeProjectInput): ProjectFailure | null {
         if (input.id.trim().length === 0) {
-            return { type: 'INVALID_PROJECT', message: 'project id is required' };
+            return ProjectFailures.invalidProject('project id is required');
         }
         if (input.botId.trim().length === 0) {
-            return { type: 'INVALID_PROJECT', message: 'bot id is required' };
+            return ProjectFailures.invalidProject('bot id is required');
         }
         if (input.title.trim().length === 0) {
-            return { type: 'INVALID_PROJECT', message: 'project title is required' };
+            return ProjectFailures.invalidProject('project title is required');
         }
         if (!SipGeometry.isValidBbox(input.bbox)) {
-            return { type: 'INVALID_PROJECT', message: 'project bbox is invalid' };
+            return ProjectFailures.invalidProject('project bbox is invalid');
         }
         return null;
     }

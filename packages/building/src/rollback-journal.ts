@@ -12,6 +12,7 @@ export interface BlockChangeRecord {
     before: WorldBlockState | null;
     after: WorldBlockState;
     grantId?: string;
+    grantFencingToken?: number;
     claimId?: string;
     planId?: string;
     structureId?: string;
@@ -73,6 +74,9 @@ export class RollbackJournal {
             before,
             after: change.target.state,
             ...(change.grantId === undefined ? {} : { grantId: change.grantId }),
+            ...(change.grantFencingToken === undefined
+                ? {}
+                : { grantFencingToken: change.grantFencingToken }),
             ...(change.claimId === undefined ? {} : { claimId: change.claimId }),
             ...(change.planId === undefined ? {} : { planId: change.planId }),
             ...(change.structureId === undefined ? {} : { structureId: change.structureId }),

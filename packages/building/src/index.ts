@@ -15,6 +15,7 @@ export * from './composer-outdoor.js';
 export * from './composer-roof.js';
 export * from './composer-shell.js';
 export * from './construction-dependency-graph.js';
+export * from './construction-plan-document.js';
 export * from './construction-plan-planner.js';
 export * from './construction-types.js';
 export * from './container-refill-adapter.js';

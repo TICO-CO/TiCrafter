@@ -2,10 +2,12 @@ import type { Result } from '@ticrafter/core';
 import type { TransactionManager } from '@ticrafter/memory';
 
 import type { CoordinatorDatabase } from '../core/index.js';
+import { SipGeometry } from '../sip/index.js';
 import { AtomicClaimAcquirer } from './atomic-acquirer.js';
 import { ClaimReleaser } from './claim-releaser.js';
 import { ClaimRepository as SqliteClaimRepository } from './claim-repository.js';
 import { ClaimContentionMetrics } from './contention-metrics.js';
+import { ClaimFailures } from './failures.js';
 import { FencingTokenAuthority } from './fencing-token-authority.js';
 import { ClaimLeaseHeartbeat } from './lease-heartbeat.js';
 import { ClaimLeaseReaper } from './lease-reaper.js';
@@ -87,6 +89,54 @@ export class ClaimService {
         return this.releaser.release(claimId, botId, fencingToken, now);
     }
 
+    authorizeScope(
+        input: {
+            claimId: string;
+            fencingToken: number;
+            position: { x: number; y: number; z: number };
+            structureId: string;
+            workPackageId?: string;
+        },
+        now = new Date().toISOString(),
+    ): Result<ClaimRecord, ClaimFailure> {
+        const [claim, readError] = this.repository.get(input.claimId);
+        if (readError) return [null, ClaimFailures.storage(readError)];
+        if (claim === null) return [null, ClaimFailures.claimNotFound(input.claimId)];
+        if (claim.status !== 'active') {
+            return [null, ClaimFailures.invalidStatus(claim.id, claim.status)];
+        }
+        if (claim.leaseUntil <= now) {
+            return [null, ClaimFailures.invalidStatus(claim.id, 'expired')];
+        }
+        if (claim.fencingToken !== input.fencingToken) {
+            return [
+                null,
+                ClaimFailures.staleToken(claim.id, claim.fencingToken, input.fencingToken),
+            ];
+        }
+        const structureMatches =
+            claim.resourceId === input.structureId ||
+            claim.payload.structureId === input.structureId ||
+            this.parentStructureMatches(claim, input.structureId);
+        if (!structureMatches) {
+            return [null, ClaimFailures.invalidClaim('claim structure mismatch')];
+        }
+        if (input.workPackageId !== undefined && claim.resourceId !== input.workPackageId) {
+            return [null, ClaimFailures.invalidClaim('claim package mismatch')];
+        }
+        if (!SipGeometry.contains(claim.bbox, SipGeometry.singleBlock(input.position))) {
+            return [null, ClaimFailures.invalidClaim('claim does not cover position')];
+        }
+        return [claim, null];
+    }
+
+    private parentStructureMatches(claim: ClaimRecord, structureId: string): boolean {
+        if (claim.parentClaimId === null) return false;
+        const [parent, parentError] = this.repository.get(claim.parentClaimId);
+        if (parentError || parent === null) return false;
+        return parent.resourceId === structureId;
+    }
+
     complete(
         claimId: string,
         botId: string,
@@ -102,7 +152,7 @@ export class ClaimService {
 
     listActive(): Result<readonly ClaimRecord[], ClaimFailure> {
         const [claims, claimError] = this.repository.listActive();
-        if (claimError) return [null, { type: 'STORAGE', failure: claimError }];
+        if (claimError) return [null, ClaimFailures.storage(claimError)];
         return [claims, null];
     }
 

@@ -8,5 +8,10 @@
     "building": {
         "maxStructureBlocks": 12000,
         "maxWorkPackageBlocks": 256
+    },
+    "decision": {
+        "tactical": {
+            "mode": "blocking"
+        }
     }
 }

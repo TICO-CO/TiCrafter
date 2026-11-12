@@ -1,10 +1,15 @@
-import { BlueprintDocumentHash } from '@ticrafter/building';
-import type { BlueprintDocumentPayload, Envelope, Result, TransportFailure } from '@ticrafter/core';
+import { type ConstructionPlan, ConstructionPlanDocumentHash } from '@ticrafter/building';
+import type {
+    ConstructionPlanDocumentPayload,
+    Envelope,
+    Result,
+    TransportFailure,
+} from '@ticrafter/core';
 import type { SkillBBox, SkillBlock, SkillBlockState, SkillContext } from '@ticrafter/skills';
 import { describe, expect, it } from 'bun:test';
 
-import { BlueprintFetchClient } from './blueprint-fetch-client.js';
 import type { BuildingWorldView } from './building-services.js';
+import { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
 import { ConstructionSource } from './construction-source.js';
 
 class FakeTransport {
@@ -40,35 +45,91 @@ class FakeWorld implements BuildingWorldView {
     }
 }
 
-const content = {
-    id: 'blueprint.home',
-    revision: 4,
-    source: 'template' as const,
-    provenance: { createdBy: 'bot.one', createdAt: '2026-11-12T10:00:00.000Z' },
-    blueprint: {
-        id: 'blueprint.home',
+const plan: ConstructionPlan = {
+    id: 'plan.structure.home',
+    blueprintId: 'blueprint.home',
+    anchor: { x: 0, y: 64, z: 0 },
+    rotation: 0,
+    translation: { x: 0, y: 0, z: 0 },
+    site: {
         anchor: { x: 0, y: 64, z: 0 },
-        rotation: 0 as const,
-        blocks: [
-            { x: 0, y: 64, z: 0, state: { name: 'oak_planks' }, priority: 1 },
-            { x: 0, y: 65, z: 0, state: { name: 'oak_planks' }, priority: 1 },
-        ],
-        materials: [{ item: 'oak_planks', count: 2 }],
-        constraints: [],
+        translation: { x: 0, y: 0, z: 0 },
+        rotation: 0,
+        bounds: { min: { x: 0, y: 64, z: 0 }, max: { x: 0, y: 65, z: 0 } },
+        clearance: [],
+        access: { kind: 'none', from: null, to: { x: 0, y: 64, z: 0 }, length: 0 },
+        foundationMode: 'level',
+        foundationFillDepth: 0,
+        foundationCutDepth: 0,
+        score: 100,
+        rationale: [],
     },
-} as const;
+    foundation: {
+        mode: 'level',
+        targetY: 64,
+        maximumFillDepth: 0,
+        changes: [],
+        materials: [],
+        rationale: [],
+    },
+    changes: [
+        {
+            kind: 'place',
+            block: { x: 0, y: 64, z: 0, state: { name: 'oak_planks' }, priority: 1 },
+            phase: 'walls',
+            reason: 'blueprint',
+            dependsOn: [],
+        },
+        {
+            kind: 'place',
+            block: { x: 0, y: 65, z: 0, state: { name: 'oak_planks' }, priority: 1 },
+            phase: 'walls',
+            reason: 'blueprint',
+            dependsOn: ['0,64,0'],
+        },
+    ],
+    order: ['0,64,0', '0,65,0'],
+    dependencies: [],
+    scaffolds: [],
+    unreachable: [],
+    phases: ['walls'],
+    materials: [{ item: 'oak_planks', count: 2 }],
+    workPackages: [
+        {
+            id: 'plan.structure.home:layers:walls:0',
+            bbox: { min: { x: 0, y: 64, z: 0 }, max: { x: 0, y: 65, z: 0 } },
+            blockKeys: ['0,64,0', '0,65,0'],
+            strategy: 'layers',
+            status: 'planned',
+            phase: 'walls',
+            materials: [{ item: 'oak_planks', count: 2 }],
+            scaffoldPositions: [],
+            predecessorIds: [],
+        },
+    ],
+};
+
+const content = {
+    id: 'plan.structure.home',
+    revision: 4,
+    structureId: 'structure.home',
+    blueprintId: 'blueprint.home',
+    blueprintRevision: 4,
+    plan,
+    createdAt: '2026-11-12T10:00:00.000Z',
+};
 
 const document = {
     ...content,
-    hash: BlueprintDocumentHash.of(content),
-} satisfies BlueprintDocumentPayload;
+    hash: ConstructionPlanDocumentHash.of(content),
+} satisfies ConstructionPlanDocumentPayload;
 
-function response(documentPayload: BlueprintDocumentPayload): Envelope {
+function response(documentPayload: ConstructionPlanDocumentPayload): Envelope {
     return {
         v: 1,
         id: 'response-1',
         kind: 'response',
-        type: 'bot.blueprint.response',
+        type: 'bot.constructionPlan.response',
         payload: { ok: true, document: documentPayload },
         timestamp: '2026-11-12T10:00:00.000Z',
     };
@@ -95,42 +156,40 @@ function context(world: BuildingWorldView): SkillContext {
 }
 
 describe('ConstructionSource', () => {
-    it('resolves a cached exact revision into ordered operations', async () => {
+    it('resolves a cached exact plan revision into package operations', async () => {
         const transport = new FakeTransport();
         transport.response = response(document);
-        const documents = new BlueprintFetchClient(transport, 'bot.one');
-        await documents.fetch('blueprint.home', 4);
+        const plans = new ConstructionPlanFetchClient(transport, 'bot.one');
+        await plans.fetch('plan.structure.home', 4);
         const world = new FakeWorld();
-        const source = new ConstructionSource({
-            documents,
-            world,
-            maxWorkPackageBlocks: 128,
-        });
+        const source = new ConstructionSource({ plans, world });
 
-        const [plan, resolveError] = source.resolve(context(world), {
+        const [resolved, resolveError] = source.resolve(context(world), {
             blueprintId: 'blueprint.home',
             blueprintRevision: 4,
+            planId: 'plan.structure.home',
+            planRevision: 4,
+            workPackageId: 'plan.structure.home:layers:walls:0',
         });
         expect(resolveError).toBeNull();
-        expect(plan?.blueprintRevision).toBe(4);
-        expect(plan?.operations.some((operation) => operation.kind === 'place')).toBe(true);
-        expect(plan?.operations[0]?.target.position.y).toBe(64);
+        expect(resolved?.planRevision).toBe(4);
+        expect(resolved?.operations.some((operation) => operation.kind === 'place')).toBe(true);
+        expect(resolved?.operations[0]?.target.position.y).toBe(64);
     });
 
-    it('fails when the exact revision is not cached', () => {
+    it('fails when the exact plan revision is not cached', () => {
         const transport = new FakeTransport();
-        const documents = new BlueprintFetchClient(transport, 'bot.one');
-        const source = new ConstructionSource({
-            documents,
-            world: new FakeWorld(),
-            maxWorkPackageBlocks: 128,
-        });
+        const plans = new ConstructionPlanFetchClient(transport, 'bot.one');
+        const source = new ConstructionSource({ plans, world: new FakeWorld() });
 
-        const [plan, resolveError] = source.resolve(context(new FakeWorld()), {
+        const [resolved, resolveError] = source.resolve(context(new FakeWorld()), {
             blueprintId: 'blueprint.home',
             blueprintRevision: 4,
+            planId: 'plan.structure.home',
+            planRevision: 4,
+            workPackageId: 'plan.structure.home:layers:walls:0',
         });
-        expect(plan).toBeNull();
+        expect(resolved).toBeNull();
         expect(resolveError?.includes('is not cached')).toBe(true);
     });
 });

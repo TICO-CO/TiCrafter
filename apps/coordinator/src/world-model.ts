@@ -187,6 +187,10 @@ export class CoordinatorWorldModel {
         return this.spatial.blockAt(position);
     }
 
+    blocksInBox(bounds: BoundingBox): Result<readonly ChunkBlockObservation[], WorldFailure> {
+        return this.occupancy.blocksInBox(bounds);
+    }
+
     containerAt(position: BlockPosition): Result<ContainerObservation | null, WorldFailure> {
         return this.spatial.containerAt(position);
     }

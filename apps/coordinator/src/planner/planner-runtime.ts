@@ -21,6 +21,7 @@ export interface PlannerRuntimeOptions {
     applier: PlannerCycleApplierPort;
     logger: LoggerPort;
     beforeCycle?: () => Result<void, string>;
+    onApplied?: (cycle: PlannerCycleResult) => void;
     now?: () => number;
 }
 
@@ -120,6 +121,7 @@ export class PlannerRuntime {
             );
             return;
         }
+        this.options.onApplied?.(cycle);
         this.options.logger.info(
             {
                 source: cycle.source,

@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import type { ClaimRepository } from './claim-repository.js';
+import { ClaimFailures } from './failures.js';
 import type { ClaimFailure } from './types.js';
 
 export class FencingTokenAuthority {
@@ -15,7 +16,7 @@ export class FencingTokenAuthority {
 
     next(): Result<number, ClaimFailure> {
         const [token, tokenError] = this.repository.nextFencingToken();
-        if (tokenError) return [null, { type: 'STORAGE', failure: tokenError }];
+        if (tokenError) return [null, ClaimFailures.storage(tokenError)];
         return [token, null];
     }
 }

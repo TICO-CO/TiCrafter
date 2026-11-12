@@ -20,6 +20,10 @@ export interface PlannerSemanticValidatorOptions {
     maxMutations?: number;
     maxDistanceBlocks?: number;
     reserveTasksPerBot?: number;
+    strategicIntentRequired?: boolean;
+    maxBotOverrides?: number;
+    goalKinds?: ReadonlySet<string>;
+    blueprints?: { has(reference: string): boolean };
 }
 
 export class PlannerSemanticValidator {
@@ -39,8 +43,56 @@ export class PlannerSemanticValidator {
         this.validateRegions(plan, context, issues);
         this.validateDistance(plan, context, issues);
         this.validateMaterials(plan, context, issues);
+        this.validateStrategicIntent(plan, context, issues);
         if (issues.length > 0) return [null, { type: 'SEMANTIC', issues }];
         return [undefined, null];
+    }
+
+    private validateStrategicIntent(
+        plan: PlannerPlan,
+        context: PlannerContext,
+        issues: string[],
+    ): void {
+        const intent = plan.strategicIntent;
+        if (intent === undefined) {
+            if (this.options.strategicIntentRequired === true) {
+                issues.push('plan is missing strategicIntent');
+            }
+            return;
+        }
+        if (intent.planId !== plan.planId) {
+            issues.push(`strategic intent planId ${intent.planId} does not match ${plan.planId}`);
+        }
+        const goals = [intent.primaryGoal, ...intent.secondaryGoals];
+        for (const goal of goals) {
+            if (this.options.goalKinds !== undefined && !this.options.goalKinds.has(goal.kind)) {
+                issues.push(`strategic intent references unknown goal kind ${goal.kind}`);
+            }
+            if (
+                goal.blueprintRef !== undefined &&
+                this.options.blueprints !== undefined &&
+                !this.options.blueprints.has(goal.blueprintRef)
+            ) {
+                issues.push(`strategic intent references unknown blueprint ${goal.blueprintRef}`);
+            }
+        }
+        const botIds = new Set(context.bots.map((bot) => bot.id));
+        const seen = new Set<string>();
+        for (const override of intent.perBot) {
+            if (!botIds.has(override.botId)) {
+                issues.push(`strategic intent references unknown bot ${override.botId}`);
+            }
+            if (seen.has(override.botId)) {
+                issues.push(`strategic intent has duplicate bot override ${override.botId}`);
+            }
+            seen.add(override.botId);
+        }
+        const maximum = this.options.maxBotOverrides;
+        if (maximum !== undefined && intent.perBot.length > maximum) {
+            issues.push(
+                `strategic intent has ${intent.perBot.length} bot overrides, limit is ${maximum}`,
+            );
+        }
     }
 
     private validateCounts(plan: PlannerPlan, issues: string[]): void {

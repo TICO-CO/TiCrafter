@@ -71,6 +71,25 @@ describe('PlannerRuntime', () => {
         expect(applier.calls).toBe(1);
     });
 
+    it('notifies observers only after a successful apply', async () => {
+        const applied: PlannerCycleResult[] = [];
+        const source = new FakeCycleSource([cycle(), null]);
+        const applier = new FakeApplier([
+            { sipRevision: null, tasksCreated: 0, tasksSkipped: 0, tasksCancelled: 0 },
+            null,
+        ]);
+        const runtime = new PlannerRuntime({
+            service: source,
+            triggers: new PlannerTriggerEvaluator({ intervalMilliseconds: 0 }),
+            applier,
+            onApplied: (result) => applied.push(result),
+            logger,
+        });
+        runtime.tick();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(applied).toHaveLength(1);
+    });
+
     it('triggers work-gap cycles after the interval', async () => {
         const source = new FakeCycleSource([cycle(), null]);
         const applier = new FakeApplier([

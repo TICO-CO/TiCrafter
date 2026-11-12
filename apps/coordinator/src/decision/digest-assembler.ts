@@ -51,9 +51,31 @@ export class DecisionDigestAssembler {
             ...(request.digest.lastResult === undefined
                 ? {}
                 : { lastResult: request.digest.lastResult }),
+            ...(request.digest.workingMemoryRevision === undefined
+                ? {}
+                : { workingMemoryRevision: request.digest.workingMemoryRevision }),
+            ...(request.digest.decisionKind === undefined
+                ? {}
+                : { decisionKind: request.digest.decisionKind }),
+            ...(request.digest.focus === undefined ? {} : { focus: request.digest.focus }),
+            ...(request.digest.commitments === undefined
+                ? {}
+                : { commitments: request.digest.commitments }),
+            ...(request.digest.recentExperiences === undefined
+                ? {}
+                : { recentExperiences: request.digest.recentExperiences }),
+            ...(request.digest.interruption === undefined
+                ? {}
+                : { interruption: request.digest.interruption }),
+            ...(request.digest.strategicGoal === undefined
+                ? {}
+                : { strategicGoal: request.digest.strategicGoal }),
+            ...(request.digest.strategicConstraints === undefined
+                ? {}
+                : { strategicConstraints: request.digest.strategicConstraints }),
         };
-        const estimatedTokens = this.estimateTokens(state, request);
-        if (estimatedTokens > this.maximumInputTokens) {
+        const fitted = this.fit(state, request);
+        if (fitted === null) {
             return [
                 null,
                 {
@@ -62,7 +84,27 @@ export class DecisionDigestAssembler {
                 },
             ];
         }
-        return [{ key: this.key(request), state }, null];
+        return [{ key: this.key(request), state: fitted }, null];
+    }
+
+    private fit(state: DecisionState, request: DecisionRequest): DecisionState | null {
+        let candidate = state;
+        if (this.fits(candidate, request)) return candidate;
+        candidate = { ...candidate, recentExperiences: undefined };
+        if (this.fits(candidate, request)) return candidate;
+        candidate = { ...candidate, commitments: undefined };
+        if (this.fits(candidate, request)) return candidate;
+        candidate = {
+            ...candidate,
+            strategicGoal: undefined,
+            strategicConstraints: undefined,
+        };
+        if (this.fits(candidate, request)) return candidate;
+        return null;
+    }
+
+    private fits(state: DecisionState, request: DecisionRequest): boolean {
+        return this.estimateTokens(state, request) <= this.maximumInputTokens;
     }
 
     private estimateTokens(state: DecisionState, request: DecisionRequest): number {

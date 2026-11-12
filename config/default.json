@@ -40,6 +40,15 @@
             "nextAction": 1,
             "danger": 1,
             "shouldContinue": 1
+        },
+        "tactical": {
+            "enabled": true,
+            "mode": "background",
+            "deadlineMilliseconds": 1200,
+            "minimumIntervalMilliseconds": 1000,
+            "maxDecisionsPerMinute": 4,
+            "skipSingleAffordance": true,
+            "circuitBreakerFailureCount": 3
         }
     },
     "planner": {
@@ -53,7 +62,11 @@
         "timeoutMilliseconds": 60000,
         "maxRepairAttempts": 2,
         "maxContextCharacters": 48000,
-        "reserveTasksPerBot": 1
+        "reserveTasksPerBot": 1,
+        "strategicIntent": {
+            "enabled": true,
+            "maxBotOverrides": 8
+        }
     },
     "logging": {
         "level": "info"
@@ -76,6 +89,18 @@
             "woolTarget": 3,
             "allowShelterBuild": true,
             "allowDigIn": true
+        },
+        "workingMemory": {
+            "maxCommitments": 4,
+            "maxExperiences": 8
+        },
+        "goalTieBreak": {
+            "enabled": false,
+            "closeScore": 0.12
+        },
+        "reflection": {
+            "enabled": true,
+            "maxTraitDelta": 0.01
         }
     },
     "building": {

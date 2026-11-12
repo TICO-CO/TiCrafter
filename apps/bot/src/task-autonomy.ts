@@ -20,6 +20,8 @@ import {
     type Result,
     type SessionResume,
     skillInputSchema,
+    type StrategicConstraint,
+    type StrategicGoalKind,
     TASK_CLAIM,
     TASK_COMPLETE,
     TASK_FAIL,
@@ -80,12 +82,39 @@ export interface TaskJobMarketPort {
     context: () => JobMarketContext;
 }
 
+export interface TaskTacticalContext {
+    revision: number;
+    focus: { kind: 'agency' | 'project' | 'task'; id: string; label: string } | null;
+    commitments: readonly { id: string; description: string; priority: number }[];
+    recentExperiences: readonly { event: string; outcome: string; at: string }[];
+    interruption: {
+        reason: string;
+        resumeCondition: string;
+        interruptedFocusId: string;
+    } | null;
+    strategicGoal: { kind: StrategicGoalKind; weight: number } | null;
+    strategicConstraints: readonly StrategicConstraint[];
+}
+
 export interface TaskAutonomyOptions {
     botId: string;
     constructionPrefetch?: (input: SkillInput) => Promise<Result<void, string>>;
     transport: TaskAutonomyTransportPort;
     jobMarket?: TaskJobMarketPort;
     decisions: TaskDecisionPort;
+    tacticalContext?: () => TaskTacticalContext;
+    recordTacticalDecision?: (input: {
+        choiceId: string;
+        source: 'laya' | 'fallback' | 'deterministic';
+        revision: number;
+        at: string;
+    }) => void;
+    recordTacticalDrop?: (input: {
+        choiceId: string;
+        revision: number;
+        reason: string;
+        at: string;
+    }) => void;
     skills: TaskSkillPort;
     snapshot: TaskAutonomySnapshotPort;
     logger: LoggerPort;
@@ -354,7 +383,8 @@ export class TaskAutonomy {
     private async startTaskSkill(active: ActiveTask): Promise<void> {
         const snapshot = this.options.snapshot.read();
         const affordances = this.affordances(active, snapshot);
-        const request = this.decisionRequest(active, snapshot, affordances);
+        const tactical = this.options.tacticalContext?.();
+        const request = this.decisionRequest(active, snapshot, affordances, tactical);
         const [decision, decisionError] = await this.options.decisions.decide(
             request,
             affordances,
@@ -366,9 +396,16 @@ export class TaskAutonomy {
             });
             return;
         }
-        const skillInput: SkillInput = { ...decision.choice.input, taskId: active.id };
+        const applied = this.acceptedDecision(active, decision, affordances, tactical);
+        this.options.recordTacticalDecision?.({
+            choiceId: applied.choice.id,
+            source: applied.source,
+            revision: tactical?.revision ?? 0,
+            at: new Date(this.now()).toISOString(),
+        });
+        const skillInput: SkillInput = { ...applied.choice.input, taskId: active.id };
         if (
-            decision.choice.skillId === 'construction' &&
+            applied.choice.skillId === 'construction' &&
             this.options.constructionPrefetch !== undefined
         ) {
             const [, prefetchError] = await this.options.constructionPrefetch(skillInput);
@@ -377,12 +414,12 @@ export class TaskAutonomy {
                 return;
             }
         }
-        const [step, runError] = this.options.skills.run(decision.choice.skillId, skillInput);
+        const [step, runError] = this.options.skills.run(applied.choice.skillId, skillInput);
         if (runError || step === null) {
             this.failActive(active, 'precondition', { reason: runError ?? 'skill returned null' });
             return;
         }
-        if (step.status === 'completed' && decision.choice.skillId === active.skillId) {
+        if (step.status === 'completed' && applied.choice.skillId === active.skillId) {
             await this.completeActive(active);
         }
     }
@@ -442,10 +479,54 @@ export class TaskAutonomy {
         );
     }
 
+    private acceptedDecision(
+        active: ActiveTask,
+        decision: LayaDecision,
+        affordances: readonly Affordance[],
+        tactical: TaskTacticalContext | undefined,
+    ): LayaDecision {
+        if (decision.source !== 'laya' || tactical === undefined) return decision;
+        const current = this.options.tacticalContext?.();
+        if (
+            current !== undefined &&
+            current.revision === tactical.revision &&
+            TaskAutonomy.focusKey(current.focus) === TaskAutonomy.focusKey(tactical.focus)
+        ) {
+            return decision;
+        }
+        this.options.recordTacticalDrop?.({
+            choiceId: decision.choice.id,
+            revision: tactical.revision,
+            reason: 'working memory focus or revision changed',
+            at: new Date(this.now()).toISOString(),
+        });
+        const fallback =
+            affordances.find((affordance) => affordance.id === `task:${active.id}`) ??
+            affordances[0];
+        if (fallback === undefined) return decision;
+        return {
+            choice: fallback,
+            source: 'fallback',
+            confidence: 0,
+            danger: decision.danger,
+            shouldContinue: true,
+            latencyMilliseconds: 0,
+            reason: 'stale tactical decision discarded',
+        };
+    }
+
+    private static focusKey(
+        focus: { kind: 'agency' | 'project' | 'task'; id: string } | null,
+    ): string | null {
+        if (focus === null) return null;
+        return `${focus.kind}:${focus.id}`;
+    }
+
     private decisionRequest(
         active: ActiveTask,
         snapshot: TaskAutonomySnapshot,
         affordances: readonly Affordance[],
+        tactical: TaskTacticalContext | undefined,
     ): DecisionRequest {
         return {
             botId: this.options.botId,
@@ -456,6 +537,7 @@ export class TaskAutonomy {
                 position: snapshot.position,
                 inventoryCount: snapshot.inventory.length,
                 currentSkill: this.options.skills.activeSkillId ?? undefined,
+                decisionKind: 'task',
                 inventorySummary: snapshot.inventory.slice(0, 5).map((item) => ({
                     name: item.name,
                     count: item.count,
@@ -463,6 +545,17 @@ export class TaskAutonomy {
                 hazards: [...snapshot.hazards],
                 taskId: active.id,
                 taskProgress: active.progress,
+                ...(tactical === undefined
+                    ? {}
+                    : {
+                          workingMemoryRevision: tactical.revision,
+                          focus: tactical.focus,
+                          commitments: [...tactical.commitments],
+                          recentExperiences: tactical.recentExperiences.slice(-5),
+                          interruption: tactical.interruption,
+                          strategicGoal: tactical.strategicGoal,
+                          strategicConstraints: [...tactical.strategicConstraints],
+                      }),
             },
             affordances: affordances.map((affordance) => ({
                 id: affordance.id,

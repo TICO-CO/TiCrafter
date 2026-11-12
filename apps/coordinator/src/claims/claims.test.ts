@@ -71,6 +71,61 @@ describe('ClaimService', () => {
         expect(overlapping).toBe(true);
     });
 
+    it('allows package claims inside one parent claim family', () => {
+        const { service } = fresh();
+        const [parent] = service.acquire(
+            ClaimFixtures.input({
+                id: 'claim-parent',
+                resourceType: 'structure',
+                resourceId: 'structure.home',
+            }),
+            now,
+        );
+        const parentToken = parent?.fencingToken ?? 0;
+        const [child, childError] = service.acquire(
+            ClaimFixtures.input({
+                id: 'claim-child',
+                resourceId: 'package.walls',
+                parentClaimId: 'claim-parent',
+            }),
+            now,
+        );
+        expect(childError).toBeNull();
+        const [sibling, siblingError] = service.acquire(
+            ClaimFixtures.input({
+                id: 'claim-sibling',
+                resourceId: 'package.roof',
+                parentClaimId: 'claim-parent',
+            }),
+            now,
+        );
+        expect(siblingError).toBeNull();
+        expect(child?.parentClaimId).toBe('claim-parent');
+        expect(sibling?.parentClaimId).toBe('claim-parent');
+        const [authorized, authorizeError] = service.authorizeScope(
+            {
+                claimId: 'claim-child',
+                fencingToken: child?.fencingToken ?? 0,
+                position: { x: 1, y: 60, z: 1 },
+                structureId: 'structure.home',
+                workPackageId: 'package.walls',
+            },
+            now,
+        );
+        expect(authorizeError).toBeNull();
+        expect(authorized?.botId).toBe('bot.one');
+        const [parentAuthorized] = service.authorizeScope(
+            {
+                claimId: 'claim-parent',
+                fencingToken: parentToken,
+                position: { x: 1, y: 60, z: 1 },
+                structureId: 'structure.home',
+            },
+            now,
+        );
+        expect(parentAuthorized?.id).toBe('claim-parent');
+    });
+
     it('renews only with a valid token and live session', () => {
         const { service } = fresh();
         const [claim] = service.acquire(ClaimFixtures.input(), now);

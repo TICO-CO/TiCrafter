@@ -3,6 +3,7 @@ import { z as zod } from 'zod';
 import { agencyStateSchema } from './agency.js';
 import { resumeProjectSchema } from './projects.js';
 import { roleSchema } from './shared.js';
+import { strategicIntentSchema } from './strategic-intent.js';
 import { taskAssignmentSchema } from './tasks.js';
 
 export const sessionHelloSchema = zod.object({
@@ -20,6 +21,7 @@ export const sessionResumeSchema = zod.object({
     role: roleSchema.nullable().optional(),
     agency: agencyStateSchema.nullable().optional(),
     projects: zod.array(resumeProjectSchema).optional(),
+    strategicIntent: strategicIntentSchema.nullable().optional(),
 });
 
 export const sessionHelloResponseSchema = zod.object({

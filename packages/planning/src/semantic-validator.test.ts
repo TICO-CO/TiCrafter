@@ -3,6 +3,37 @@ import { describe, expect, it } from 'bun:test';
 import { plannerContext, plannerPlan } from './planning-fixture.js';
 import { PlannerSemanticValidator } from './semantic-validator.js';
 
+const strategicIntent = (overrides: Record<string, unknown> = {}) => ({
+    planId: 'plan-1',
+    primaryGoal: { kind: 'gather', weight: 0.5 },
+    secondaryGoals: [{ kind: 'build-shelter', weight: 0.4 }],
+    constraints: ['prioritize-safety'],
+    perBot: [
+        {
+            botId: 'bot-1',
+            priorityModifiers: { gather: 0.2 },
+            constraints: ['prefer-local-work'],
+        },
+    ],
+    ...overrides,
+});
+
+function intentValidator(
+    overrides: {
+        strategicIntentRequired?: boolean;
+        maxBotOverrides?: number;
+    } = {},
+): PlannerSemanticValidator {
+    return new PlannerSemanticValidator({
+        skills: { has: (skillId) => skillId === 'navigate' },
+        sip: { validate: () => [undefined, null] },
+        strategicIntentRequired: overrides.strategicIntentRequired ?? true,
+        maxBotOverrides: overrides.maxBotOverrides ?? 8,
+        goalKinds: new Set(['gather', 'build-shelter']),
+        blueprints: { has: (reference) => reference === 'template:house' },
+    });
+}
+
 function validator(
     sipError: string | null = null,
     reserveTasksPerBot = 0,
@@ -233,6 +264,67 @@ describe('PlannerSemanticValidator', () => {
         );
         expect(validationError).toBeNull();
         expect(validated).toBe(undefined);
+    });
+
+    it('accepts validated strategic intent', () => {
+        const [, validationError] = intentValidator().validate(
+            plannerPlan({ strategicIntent: strategicIntent() }),
+            plannerContext(),
+        );
+        expect(validationError).toBeNull();
+    });
+
+    it('rejects invalid strategic intent references and caps', () => {
+        const [, missingError] = intentValidator().validate(plannerPlan(), plannerContext());
+        expect(missingError?.type).toBe('SEMANTIC');
+        if (missingError?.type !== 'SEMANTIC') return;
+        expect(missingError.issues.some((issue) => issue.includes('missing strategicIntent'))).toBe(
+            true,
+        );
+
+        const [, unknownError] = intentValidator().validate(
+            plannerPlan({
+                strategicIntent: strategicIntent({
+                    primaryGoal: { kind: 'explore', weight: 1 },
+                    perBot: [
+                        {
+                            botId: 'bot-missing',
+                            priorityModifiers: {},
+                            constraints: [],
+                        },
+                    ],
+                }),
+            }),
+            plannerContext(),
+        );
+        expect(unknownError?.type).toBe('SEMANTIC');
+        if (unknownError?.type !== 'SEMANTIC') return;
+        expect(unknownError.issues.some((issue) => issue.includes('unknown goal kind'))).toBe(true);
+        expect(unknownError.issues.some((issue) => issue.includes('unknown bot'))).toBe(true);
+    });
+
+    it('rejects unresolvable blueprint references and too many bot overrides', () => {
+        const [, validationError] = intentValidator({ maxBotOverrides: 0 }).validate(
+            plannerPlan({
+                strategicIntent: strategicIntent({
+                    primaryGoal: {
+                        kind: 'gather',
+                        weight: 1,
+                        projectKind: 'build',
+                        blueprintRef: 'template:castle',
+                    },
+                }),
+            }),
+            plannerContext(),
+        );
+        expect(validationError?.type).toBe('SEMANTIC');
+        if (validationError?.type !== 'SEMANTIC') return;
+        expect(validationError.issues.some((issue) => issue.includes('unknown blueprint'))).toBe(
+            true,
+        );
+        expect(
+            validationError.issues.some((issue) => issue.includes('bot overrides, limit is 0')),
+        ).toBe(true);
     });
 
     it('rejects stale revisions', () => {

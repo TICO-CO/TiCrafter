@@ -46,6 +46,14 @@ export interface DecisionState {
     taskId?: string;
     taskProgress?: number;
     lastResult?: string;
+    workingMemoryRevision?: number;
+    decisionKind?: 'task' | 'goal';
+    focus?: { kind: 'agency' | 'project' | 'task'; id: string; label: string } | null;
+    commitments?: readonly { id: string; description: string; priority: number }[];
+    recentExperiences?: readonly { event: string; outcome: string; at: string }[];
+    interruption?: { reason: string; resumeCondition: string; interruptedFocusId: string } | null;
+    strategicGoal?: { kind: string; weight: number } | null;
+    strategicConstraints?: readonly string[];
 }
 
 export interface DecisionParsedAnswer {

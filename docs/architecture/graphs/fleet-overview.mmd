@@ -38,7 +38,7 @@ n21 -->|subscribes×1, depends_on×1| n1
 n14 -->|delegates_to×2, depends_on×2| n8
 n14 -->|delegates_to×3| n21
 n14 -->|delegates_to×1, persists_to×1| n6
-n14 -->|depends_on×2, publishes×2| n1
+n14 -->|depends_on×3, publishes×2| n1
 n14 -->|depends_on×2, delegates_to×1| n11
 n6 -->|reads×1| n5
 n6 -->|reads×1, delegates_to×1| n2
@@ -150,11 +150,12 @@ n7 -->|depends_on×2| n16
 n7 -->|reads×2| n2
 n7 -->|subscribes×1, reads×1| n1
 n0 -->|controls×1| n14
-n14 -->|depends_on×4| n22
+n14 -->|depends_on×6| n22
 n14 -->|persists_to×1| n16
 n4 -->|depends_on×1| n1
 n22 -->|proposes_to×1| n14
 n6 -->|depends_on×1| n22
+n21 -->|depends_on×1| n18
 classDef system fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n0,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,n18,n19,n20,n21,n22,n23 system;

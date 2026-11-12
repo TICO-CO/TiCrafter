@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 287  
-**Relations:** 580  
+**Components:** 294  
+**Relations:** 591  
 **Externals:** 5
 
 ## Reading this catalog
@@ -28,19 +28,19 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.world` | [World Model and Landmarks](#world-model-and-landmarks) | 11 | `packages/worldmodel/src` | 3 |
 | `sys.perception` | [Perception](#perception) | 11 | `packages/perception/src` | 3 |
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
-| `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 12 | `packages/planning/src` | 9 |
+| `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 13 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
 | `sys.skills` | [Skill Library](#skill-library) | 27 | `packages/skills/src` | 4 |
-| `sys.building` | [Building](#building) | 35 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 18 | `apps/bot/src` | 1 |
+| `sys.building` | [Building](#building) | 36 | `packages/building/src` | 6 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 20 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
 | `sys.config` | [Config and Profiles](#config-and-profiles) | 8 | `packages/core/src/config` | 1 |
 | `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
-| `sys.brains` | [Brains](#brains) | 4 | `packages/brains/src` | 4 |
-| `sys.agency` | [Agency](#agency) | 16 | `packages/agency/src` | 12 |
+| `sys.brains` | [Brains](#brains) | 5 | `packages/brains/src` | 4 |
+| `sys.agency` | [Agency](#agency) | 18 | `packages/agency/src` | 12 |
 | `sys.toolchain` | [Bootstrap and Toolchain](#bootstrap-and-toolchain) | 5 | `tools` | 1 |
 
 ## Coordinator Runtime
@@ -2419,6 +2419,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `planner.plan-cache` | Plan Cache | Cache validated plans and recent planner responses for reuse and recovery. | `packages/planning/src/plan-cache` | 9 |
 | `planner.arbitration-handler` | Planner Arbitration Handler | Arbitrate ambiguous edit compatibility once without bypassing safety rules. | `packages/planning/src/arbitration-handler` | 9 |
 | `planner.keep-last-good-fallback` | Keep Last Good Fallback | Restore the last validated plan when planner output cannot be repaired. | `packages/planning/src/keep-last-good-fallback` | 9 |
+| `planner.strategic-intent-store` | Strategic Intent Store | Keep the latest validated strategic intent, merge per-bot overrides, and deliver it on resume and planner commit. | `packages/planning/src/strategic-intent-store` | 9 |
 
 ### `planner.openai-client` — OpenAI-Compatible Client
 
@@ -2656,6 +2657,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `planner_keep_last_good_fallback_errors_total`
   - `planner_keep_last_good_fallback_latency_ms`
+
+### `planner.strategic-intent-store` — Strategic Intent Store
+
+- **Responsibility:** Keep the latest validated strategic intent, merge per-bot overrides, and deliver it on resume and planner commit.
+- **Owner path:** `packages/planning/src/strategic-intent-store`
+- **Provides:** `planner.strategic-intent-store.interface`
+- **Requires:** `planner.plan-cache`
+- **Owns state:** none
+- **Source refs:** `main.md#8-long-term-planner-muse-spark-13-contributor`
+- **Milestone:** 9
+- **Invariants:**
+  - Only validated intent is stored and delivered.
+  - Fleet intent merges with bounded per-bot overrides.
+- **Failure modes:**
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
+- **Tests:**
+  - Repository contract test with rollback, concurrency, and stale-read cases.
+- **Metrics:**
+  - `planner_strategic_intent_store_errors_total`
+  - `planner_strategic_intent_store_latency_ms`
 
 ---
 
@@ -3532,6 +3553,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `building.construction-dependency-graph` | Construction Dependency Graph | Order construction changes by support, attachments, multi-block objects, phases, and explicit dependencies. | `packages/building/src/construction-dependency-graph` | 6 |
 | `building.work-package-planner` | Work Package Planner | Partition ordered construction changes into phase-aware packages without splitting dependency stacks. | `packages/building/src/work-package-planner` | 6 |
 | `building.construction-plan-planner` | Construction Plan Planner | Combine site, foundation, blueprint, scaffold, and package planning into one ordered construction plan. | `packages/building/src/construction-plan-planner` | 6 |
+| `building.construction-plan-document` | Construction Plan Document | Version, hash, and persist site-adapted construction plans with namespaced package identity. | `packages/building/src/construction-plan-document` | 6 |
 | `building.material-procurement-planner` | Material Procurement Planner | Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures. | `packages/building/src/material-procurement-planner` | 6 |
 
 ### `building.blueprint-ir` — Blueprint IR
@@ -4212,6 +4234,26 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `building_construction_plan_planner_errors_total`
   - `building_construction_plan_planner_latency_ms`
 
+### `building.construction-plan-document` — Construction Plan Document
+
+- **Responsibility:** Version, hash, and persist site-adapted construction plans with namespaced package identity.
+- **Owner path:** `packages/building/src/construction-plan-document`
+- **Provides:** `building.construction-plan-document.interface`
+- **Requires:** `building.construction-types`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Construction plans are fetched by exact revision.
+  - Package IDs are namespaced by plan ID.
+- **Failure modes:**
+  - Unreachable target or missing material: pause the package and request refill or replan.
+- **Tests:**
+  - Blueprint diff, ordering, idempotency, and rollback tests.
+- **Metrics:**
+  - `building_construction_plan_document_errors_total`
+  - `building_construction_plan_document_latency_ms`
+
 ### `building.material-procurement-planner` — Material Procurement Planner
 
 - **Responsibility:** Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures.
@@ -4263,12 +4305,14 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.action-executor` | Action Executor | Execute only safety-approved place, break, use, attack, and movement actions. | `apps/bot/src/action-executor` | 1 |
 | `bot-runtime.building-execution-service` | Building Execution Service | Prepare, verify, journal, and complete block changes for construction skills. | `apps/bot/src/building-execution-service` | 6 |
 | `bot-runtime.blueprint-fetch-client` | Blueprint Fetch Client | Fetch and cache exact blueprint document revisions from the coordinator. | `apps/bot/src/blueprint-fetch-client` | 6 |
-| `bot-runtime.construction-source` | Construction Source | Derive site, foundation, dependency, package, scaffold, and replacement operations for a fetched blueprint. | `apps/bot/src/construction-source` | 6 |
+| `bot-runtime.construction-plan-fetch-client` | Construction Plan Fetch Client | Fetch and cache exact construction plan revisions from the coordinator. | `apps/bot/src/construction-plan-fetch-client` | 6 |
+| `bot-runtime.construction-source` | Construction Source | Derive package, cleanup, and replacement operations from a fetched exact construction plan. | `apps/bot/src/construction-source` | 6 |
 | `bot-runtime.state-digest-collector` | State Digest Collector | Collect health, food, time, biome, y-level, target, inventory, hazards, and skill progress. | `apps/bot/src/state-digest-collector` | 1 |
 | `bot-runtime.guardian-hook` | Guardian Hook | Connect the local reflex guardian to the action veto gate on every tick. | `apps/bot/src/guardian-hook` | 1 |
 | `bot-runtime.skill-host` | Skill Host | Host the skill runtime inside the bot process and step active skills. | `apps/bot/src/skill-host` | 1 |
 | `bot-runtime.perception-host` | Perception Host | Host the perception sampler and detector pipeline inside the bot process. | `apps/bot/src/perception-host` | 1 |
 | `bot-runtime.agent-loop` | Agent Loop | Run the local agency tick, decide between personal goals and jobs, and drive intention execution through skills. | `apps/bot/src/agent-loop` | 12 |
+| `bot-runtime.goal-tie-break` | Goal Tie-Break | Ask Laya to choose among close agency goal candidates and fall back to the deterministic arbiter winner on error, stale revision, or disabled configuration. | `apps/bot/src/goal-tie-break` | 12 |
 | `bot-runtime.chat-adapter` | Chat Adapter | Send and receive typed social messages through mineflayer chat with rate limits and no physical actions. | `apps/bot/src/chat` | 14 |
 | `bot-runtime.agency-state-adapter` | Agency State Adapter | Load and persist agency snapshots through coordinator state and reconcile intention with the observed world. | `apps/bot/src/agency-state-adapter` | 12 |
 | `bot-runtime.reconnect-supervisor` | Reconnect Supervisor | Reconnect after disconnect and trigger delta resync and resume. | `apps/bot/src/reconnect-supervisor` | 1 |
@@ -4452,17 +4496,37 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `bot_runtime_blueprint_fetch_client_errors_total`
   - `bot_runtime_blueprint_fetch_client_latency_ms`
 
-### `bot-runtime.construction-source` — Construction Source
+### `bot-runtime.construction-plan-fetch-client` — Construction Plan Fetch Client
 
-- **Responsibility:** Derive site, foundation, dependency, package, scaffold, and replacement operations for a fetched blueprint.
-- **Owner path:** `apps/bot/src/construction-source`
-- **Provides:** `bot-runtime.construction-source.interface`
-- **Requires:** `building.construction-plan-planner`, `building.site-planner`, `bot-runtime.world-cache-adapter`, `bot-runtime.blueprint-fetch-client`
+- **Responsibility:** Fetch and cache exact construction plan revisions from the coordinator.
+- **Owner path:** `apps/bot/src/construction-plan-fetch-client`
+- **Provides:** `bot-runtime.construction-plan-fetch-client.interface`
+- **Requires:** `transport.message-schema-registry`, `transport.request-correlator`
 - **Owns state:** none
 - **Source refs:** `main.md#10-building-three-layers`
 - **Milestone:** 6
 - **Invariants:**
-  - Construction planning starts from a cached exact blueprint revision.
+  - Plan fetches require an exact id and revision.
+  - Fetched plans are hash-checked before caching.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_construction_plan_fetch_client_errors_total`
+  - `bot_runtime_construction_plan_fetch_client_latency_ms`
+
+### `bot-runtime.construction-source` — Construction Source
+
+- **Responsibility:** Derive package, cleanup, and replacement operations from a fetched exact construction plan.
+- **Owner path:** `apps/bot/src/construction-source`
+- **Provides:** `bot-runtime.construction-source.interface`
+- **Requires:** `building.construction-plan-document`, `bot-runtime.world-cache-adapter`, `bot-runtime.construction-plan-fetch-client`
+- **Owns state:** none
+- **Source refs:** `main.md#10-building-three-layers`
+- **Milestone:** 6
+- **Invariants:**
+  - Construction starts from a cached exact construction plan revision.
   - Mismatched existing blocks become break-then-place operations.
 - **Failure modes:**
   - Unreachable target or missing material: pause the package and request refill or replan.
@@ -4574,6 +4638,27 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `bot_runtime_agent_loop_latency_ms`
   - `bot_runtime_self_initiated_goals_total`
   - `bot_runtime_idle_milliseconds`
+
+### `bot-runtime.goal-tie-break` — Goal Tie-Break
+
+- **Responsibility:** Ask Laya to choose among close agency goal candidates and fall back to the deterministic arbiter winner on error, stale revision, or disabled configuration.
+- **Owner path:** `apps/bot/src/goal-tie-break`
+- **Provides:** `bot-runtime.goal-tie-break.interface`
+- **Requires:** `agency.goal-arbiter`, `brains.laya-client`, `brains.deterministic-policy`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Only close goal candidates are presented to Laya.
+  - A stale revision or focus change discards the Laya choice.
+  - The deterministic arbiter winner is always available.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `bot_runtime_goal_tie_break_errors_total`
+  - `bot_runtime_goal_tie_break_latency_ms`
 
 ### `bot-runtime.chat-adapter` — Chat Adapter
 
@@ -6010,7 +6095,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner package:** `packages/brains/src`
 - **Milestone:** 4
 - **Source refs:** `main.md#7-short-term-decision-service-laya`, `main.md#11-autonomy-loop-and-safety`, `main.md#13-repo-layout`
-- **Allowed cross-system dependencies:** `sys.bot-runtime`, `sys.safety`, `sys.skill-runtime`, `sys.transport`
+- **Allowed cross-system dependencies:** `sys.bot-runtime`, `sys.safety`, `sys.skill-runtime`, `sys.transport`, `sys.config`
 - **Forbidden dependencies:** none
 
 **Purpose.** Own reflex, affordances, deterministic decision fallback, and the bot-side Laya client.
@@ -6028,6 +6113,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `brains.affordance-enumerator` | Affordance Enumerator | Enumerate 8-16 legal actions with short labels for the decision service. | `packages/brains/src/affordance-enumerator` | 4 |
 | `brains.deterministic-policy` | Deterministic Policy | Choose a legal action from utility scores when Laya is unavailable, late, or low-confidence. | `packages/brains/src/deterministic-policy` | 4 |
 | `brains.laya-client` | Laya Client | Submit decision requests to the coordinator Laya service and apply typed responses with timeout fallback. | `packages/brains/src/laya-client` | 8 |
+| `brains.tactical-policy` | Tactical Decision Policy | Enforce tactical Laya enablement, profile mode, deadlines, rate limits, single-affordance skip, and circuit breaking. | `packages/brains/src/tactical-policy` | 8 |
 
 ### `brains.reflex-guardian-loop` — Reflex Guardian Loop
 
@@ -6106,6 +6192,26 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `brains_laya_client_timeouts_total`
   - `brains_laya_client_latency_ms`
 
+### `brains.tactical-policy` — Tactical Decision Policy
+
+- **Responsibility:** Enforce tactical Laya enablement, profile mode, deadlines, rate limits, single-affordance skip, and circuit breaking.
+- **Owner path:** `packages/brains/src/tactical-policy`
+- **Provides:** `brains.tactical-policy.interface`
+- **Requires:** `config.config-schema-validator`
+- **Owns state:** none
+- **Source refs:** `main.md#7-short-term-decision-service-laya`
+- **Milestone:** 8
+- **Invariants:**
+  - Background advisory never blocks task start, agency tick, or the guardian.
+  - Repeated failures open the tactical circuit breaker.
+- **Failure modes:**
+  - Unknown rule or malformed input: reject closed with an actionable reason.
+- **Tests:**
+  - Table-driven accept/reject fixtures including boundary and malformed inputs.
+- **Metrics:**
+  - `brains_tactical_policy_errors_total`
+  - `brains_tactical_policy_latency_ms`
+
 ---
 
 ## Agency
@@ -6145,6 +6251,8 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `agency.working-memory` | Working Memory | Track bounded focus, commitments, interruption, recent experience, and tactical revision for continuity across goals and restarts. | `packages/agency/src/working-memory` | 12 |
 | `agency.project-focus` | Project Focus Policy | Keep long-lived project focus as agency focus while allowing bounded survival and routine interruptions. | `packages/agency/src/project-focus` | 13 |
 | `agency.agency-state` | Agency State | Aggregate personality, needs, intention, routine, home, mood, working memory, and deliberation status into one snapshot. | `packages/agency/src/agency-state` | 12 |
+| `agency.strategic-intent` | Strategic Intent Policy | Apply validated fleet and per-bot strategic priorities and constraints to goal generation and tactical context. | `packages/agency/src/strategic-intent` | 12 |
+| `agency.reflection` | Reflection | Turn goal completion and abandonment into mood, bounded personality trait changes, and recent experience. | `packages/agency/src/reflection` | 12 |
 
 ### `agency.personality-model` — Personality Model
 
@@ -6462,6 +6570,47 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `agency_agency_state_errors_total`
   - `agency_agency_state_latency_ms`
+
+### `agency.strategic-intent` — Strategic Intent Policy
+
+- **Responsibility:** Apply validated fleet and per-bot strategic priorities and constraints to goal generation and tactical context.
+- **Owner path:** `packages/agency/src/strategic-intent`
+- **Provides:** `agency.strategic-intent.interface`
+- **Requires:** `agency.goal-arbiter`, `agency.working-memory`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Intent never interrupts an active intention.
+  - Priority modifiers stay bounded.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_strategic_intent_errors_total`
+  - `agency_strategic_intent_latency_ms`
+
+### `agency.reflection` — Reflection
+
+- **Responsibility:** Turn goal completion and abandonment into mood, bounded personality trait changes, and recent experience.
+- **Owner path:** `packages/agency/src/reflection`
+- **Provides:** `agency.reflection.interface`
+- **Requires:** `agency.personality-model`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 12
+- **Invariants:**
+  - Reflection is deterministic and local.
+  - Traits stay bounded to 0..1 and each update respects the configured maximum delta.
+  - Reflection failure never blocks goal completion or abandonment.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_reflection_errors_total`
+  - `agency_reflection_latency_ms`
 
 ---
 

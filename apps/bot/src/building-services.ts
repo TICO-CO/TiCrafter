@@ -32,6 +32,7 @@ import type {
 } from '@ticrafter/skills';
 
 import type { BlueprintFetchClient } from './blueprint-fetch-client.js';
+import type { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
 import { ConstructionSource } from './construction-source.js';
 
 const TEMPLATE_PREFIX = 'template:';
@@ -77,8 +78,8 @@ class CatalogRepairDiffSource implements SkillRepairDiffSource {
 
 export interface BuildingSkillServicesOptions {
     documents?: BlueprintFetchClient;
+    plans?: ConstructionPlanFetchClient;
     buildExecution?: SkillBuildExecutionPort;
-    maxWorkPackageBlocks?: number;
 }
 
 export class BuildingSkillServices implements SkillServices {
@@ -88,6 +89,7 @@ export class BuildingSkillServices implements SkillServices {
     readonly construction: SkillConstructionSource | undefined;
     readonly buildExecution: SkillBuildExecutionPort | undefined;
     private readonly documents: BlueprintFetchClient | undefined;
+    private readonly plans: ConstructionPlanFetchClient | undefined;
 
     private constructor(
         catalog: BuildingBlueprintCatalog,
@@ -98,28 +100,27 @@ export class BuildingSkillServices implements SkillServices {
         this.schematics = new CatalogSchematicPipeline(catalog);
         this.repairDiff = new CatalogRepairDiffSource(catalog, world);
         this.construction =
-            options.documents === undefined
+            options.plans === undefined
                 ? undefined
                 : new ConstructionSource({
-                      documents: options.documents,
+                      plans: options.plans,
                       world,
-                      maxWorkPackageBlocks: options.maxWorkPackageBlocks ?? 128,
                   });
         this.buildExecution = options.buildExecution;
         this.documents = options.documents;
+        this.plans = options.plans;
     }
 
     async prefetch(input: SkillInput): Promise<Result<void, string>> {
-        if (input.blueprintId === undefined || input.blueprintRevision === undefined) {
-            return [undefined, null];
+        if (input.planId === undefined || input.planRevision === undefined) {
+            return [null, 'construction requires a plan id and revision'];
         }
-        if (this.documents === undefined) return [null, 'blueprint fetch client is unavailable'];
-        const [document, fetchError] = await this.documents.fetch(
-            input.blueprintId,
-            input.blueprintRevision,
-        );
+        if (this.plans === undefined) {
+            return [null, 'construction plan fetch client is unavailable'];
+        }
+        const [document, fetchError] = await this.plans.fetch(input.planId, input.planRevision);
         if (fetchError !== null) return [null, fetchError];
-        if (document === null) return [null, 'blueprint document returned null'];
+        if (document === null) return [null, 'construction plan document returned null'];
         return [undefined, null];
     }
 

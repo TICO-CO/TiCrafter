@@ -1,9 +1,16 @@
+import { BuiltInTemplates } from '@ticrafter/building';
 import {
     attempt,
+    BOT_PROJECT_UPDATE_EVENT,
+    BOT_SAFETY_STOP,
     type LoggerPort,
     MessageSchemaRegistry,
+    PLANNER_STRATEGIC_INTENT_EVENT,
     type PlannerSecrets,
+    ProtocolEnvelope,
     type Result,
+    STRATEGIC_GOAL_KINDS,
+    type StrategicIntent,
     type TicrafterConfig,
 } from '@ticrafter/core';
 import {
@@ -23,6 +30,7 @@ import {
     PlannerArbitrationHandler,
     PlannerBudgetLimiter,
     PlannerContextBuilder,
+    type PlannerCycleResult,
     PlannerKeepLastGoodFallback,
     PlannerPlanCache,
     type PlannerPosition,
@@ -33,6 +41,7 @@ import {
     PlannerSipMutationTranslator,
     PlannerTaskDagTranslator,
     PlannerTriggerEvaluator,
+    StrategicIntentStore,
 } from '@ticrafter/planning';
 import { SkillCatalog } from '@ticrafter/skills';
 
@@ -48,6 +57,14 @@ import {
     BlueprintCommandHandler,
     BlueprintDocumentRepository,
     BlueprintDocumentService,
+    ConstructionEditAuthorizer,
+    ConstructionPlanCommandHandler,
+    ConstructionPlanDocumentService,
+    ConstructionPlanRepository,
+    CoordinatorConstructionWorld,
+    ProjectConstructionPlanner,
+    ProjectConstructionService,
+    ProjectConstructionTaskSeeder,
 } from './building/index.js';
 import { ClaimRepository, ClaimService } from './claims/index.js';
 import {
@@ -94,6 +111,7 @@ import {
     PersonalProjectRepository,
     PersonalProjectService,
     ProjectCommandHandler,
+    ProjectConstructionProgressService,
     ProjectSipAdapter,
 } from './projects/index.js';
 import { SipReconciliationEngine, SipTransactionalCommitter } from './sip/index.js';
@@ -196,7 +214,7 @@ export class CoordinatorComposition {
             epoch: options.epoch,
         });
         claims = claimService;
-        grants = new GrantService({
+        const grantService = new GrantService({
             database: options.database,
             transactions,
             sip: { load: () => sip.loadSnapshot() },
@@ -204,9 +222,29 @@ export class CoordinatorComposition {
             presence: { isOnline: (botId) => sessions.get(botId) !== undefined },
             epoch: options.epoch,
         });
+        grants = grantService;
+        const constructionEdits = new ConstructionEditAuthorizer({
+            claims: claimService,
+            grants: grantService,
+            sip: { loadSnapshot: () => sip.loadSnapshot() },
+        });
         const taskRepository = new TaskRepository(options.database);
         const grantRepository = new EditGrantRepository(options.database);
         const botStore = new BotProfileStore(options.database);
+        const plannerSchema = new PlannerSchemaValidator();
+        const plannerCache = new PlannerPlanCache({
+            store: new SqlitePlannerPlanStore(options.database),
+            schemaValidator: plannerSchema,
+        });
+        const strategicIntentStore = new StrategicIntentStore();
+        const [, intentHydrateError] = strategicIntentStore.hydrate(plannerCache);
+        if (intentHydrateError !== null) {
+            options.logger.debug(
+                { error: intentHydrateError },
+                'no persisted strategic intent loaded',
+            );
+        }
+        let broadcastIntent: ((intent: StrategicIntent) => void) | null = null;
         if (options.config.planner.enabled) {
             const [skillRegistry, skillError] = SkillCatalog.createRegistry();
             if (skillError) {
@@ -229,6 +267,13 @@ export class CoordinatorComposition {
                     positions: (botId) => sessions.get(botId)?.position ?? null,
                     auditor: taskAuditor,
                     skillIds: new Set(skillRegistry.list().map((skill) => skill.id)),
+                    schema: plannerSchema,
+                    cache: plannerCache,
+                    onApplied: (cycle) => {
+                        if (!strategicIntentStore.updateFromCycle(cycle)) return;
+                        const intent = strategicIntentStore.current();
+                        if (intent !== null) broadcastIntent?.(intent);
+                    },
                 });
             }
         }
@@ -245,12 +290,29 @@ export class CoordinatorComposition {
                 },
             },
         });
-        const agencyStore = new AgencyStateStore(options.database);
+        const agencyStore = new AgencyStateStore(options.database, {
+            workingMemory: options.config.agency.workingMemory,
+        });
         const agentEpisodes = new AgentEpisodeRepository(options.database);
         const projectRepository = new PersonalProjectRepository(options.database);
         const blueprintDocuments = new BlueprintDocumentService({
             documents: new BlueprintDocumentRepository(options.database),
         });
+        const constructionPlans = new ConstructionPlanDocumentService({
+            plans: new ConstructionPlanRepository(options.database),
+        });
+        const constructionPlanner = new ProjectConstructionPlanner({
+            world: new CoordinatorConstructionWorld(worldModel),
+            blueprints: blueprintDocuments,
+            plans: constructionPlans,
+            maxStructureBlocks: options.config.building.maxStructureBlocks,
+            maxWorkPackageBlocks: options.config.building.maxWorkPackageBlocks,
+        });
+        const constructionTasks = new ProjectConstructionTaskSeeder(tasks);
+        const projectConstruction = new ProjectConstructionService(
+            constructionPlanner,
+            constructionTasks,
+        );
         const projectService = new PersonalProjectService({
             projects: projectRepository,
             claims: {
@@ -283,9 +345,29 @@ export class CoordinatorComposition {
                 loadSnapshot: () => sip.loadSnapshot(),
                 commit: (input) => sip.commit(input),
             }),
+            construction: projectConstruction,
             logger: options.logger,
         });
-        const jobMarket = new JobOfferService(new CoordinatorJobOfferMarket(tasks, events));
+        const projectProgress = new ProjectConstructionProgressService({
+            tasks,
+            projects: projectRepository,
+            claims: claimService,
+            grants: grantService,
+            sip: {
+                loadSnapshot: () => sip.loadSnapshot(),
+                commit: (input) => sip.commit(input),
+            },
+            events,
+            logger: options.logger,
+        });
+        const jobMarket = new JobOfferService(
+            new CoordinatorJobOfferMarket(
+                tasks,
+                events,
+                () => new Date().toISOString(),
+                grants ?? undefined,
+            ),
+        );
         const botResume = new BotResumeOrchestrator(
             botStore,
             {
@@ -331,7 +413,32 @@ export class CoordinatorComposition {
             options.logger,
             decisionTrace,
         );
-        const taskCommands = new TaskCommandHandler(tasks, transport, options.logger);
+        const refreshProjectProgress = (): void => {
+            const [completed, progressError] = projectProgress.reconcile();
+            if (progressError) {
+                options.logger.warn(
+                    { error: progressError },
+                    'project progress reconciliation failed',
+                );
+                return;
+            }
+            for (const project of completed ?? []) {
+                const connection = transport
+                    .list()
+                    .find((candidate) => candidate.botId === project.botId);
+                if (connection === undefined) continue;
+                transport.send(
+                    connection,
+                    ProtocolEnvelope.create('event', BOT_PROJECT_UPDATE_EVENT, {
+                        botId: project.botId,
+                        project,
+                    }),
+                );
+            }
+        };
+        const taskCommands = new TaskCommandHandler(tasks, transport, options.logger, () =>
+            refreshProjectProgress(),
+        );
         const projectCommands = new ProjectCommandHandler(
             projectService,
             transport,
@@ -343,6 +450,22 @@ export class CoordinatorComposition {
             transport,
             options.logger,
         );
+        const constructionPlanCommands = new ConstructionPlanCommandHandler(
+            constructionPlans,
+            transport,
+            options.logger,
+        );
+        broadcastIntent = (intent) => {
+            const [, broadcastError] = transport.broadcast(
+                ProtocolEnvelope.create('event', PLANNER_STRATEGIC_INTENT_EVENT, { intent }),
+            );
+            if (broadcastError !== null) {
+                options.logger.warn(
+                    { error: broadcastError.type },
+                    'strategic intent broadcast failed',
+                );
+            }
+        };
         const handshake = new SessionHandshake({
             epoch: options.epoch,
             botNames: options.config.botNames,
@@ -350,6 +473,7 @@ export class CoordinatorComposition {
             events,
             transport,
             logger: options.logger,
+            strategicIntent: (botId) => strategicIntentStore.forBot(botId),
             bots: {
                 authenticate: (botId, username, now) =>
                     botIdentity.authenticate(botId, username, now),
@@ -384,7 +508,17 @@ export class CoordinatorComposition {
                 plannerRuntime?.noteLandmark(payload.candidate.type);
             },
             onBlockUpdate: (payload) => {
-                const [before] = worldModel.blockAt(payload.block.position);
+                const [before, beforeError] = worldModel.blockAt(payload.block.position);
+                const [decision, decisionError] = constructionEdits.authorize(
+                    payload,
+                    beforeError === null ? (before?.blockId ?? null) : null,
+                );
+                if (decisionError !== null) {
+                    options.logger.warn(
+                        { error: decisionError, botId: payload.botId },
+                        'construction edit authorization failed',
+                    );
+                }
                 const [, ingestError] = worldModel.ingestBlockUpdate(payload);
                 if (ingestError) {
                     options.logger.warn(
@@ -393,18 +527,65 @@ export class CoordinatorComposition {
                     );
                     return;
                 }
+                const authorized = decision?.authorized ?? false;
+                const rejectionReason =
+                    decision !== null && decision.authorized === false
+                        ? decision.reason
+                        : undefined;
                 const [, changelogError] = blockChanges.append({
                     botId: payload.botId,
                     position: payload.block.position,
                     before: before ?? undefined,
                     after: payload.block,
                     createdAt: payload.observedAt,
+                    authorized,
+                    ...(rejectionReason === undefined ? {} : { rejectionReason }),
                     ...(payload.attribution ?? {}),
                 });
                 if (changelogError) {
                     options.logger.warn(
                         { error: changelogError.type },
                         'block changelog write failed',
+                    );
+                }
+                if (authorized) return;
+                const reason = rejectionReason ?? decisionError ?? 'block edit rejected';
+                const taskId = payload.attribution?.taskId;
+                if (taskId !== undefined) {
+                    const [, requeueError] = tasks.requeue(
+                        taskId,
+                        'coordinator',
+                        reason,
+                        payload.observedAt,
+                    );
+                    if (requeueError) {
+                        options.logger.warn(
+                            { error: requeueError, taskId },
+                            'rejected edit task requeue failed',
+                        );
+                    }
+                }
+                const [, eventError] = events.append({
+                    type: 'construction.edit-rejected',
+                    botId: payload.botId,
+                    actor: 'coordinator',
+                    payload: {
+                        position: payload.block.position,
+                        reason,
+                        attribution: payload.attribution ?? null,
+                    },
+                    createdAt: payload.observedAt,
+                });
+                if (eventError) {
+                    options.logger.warn({ error: eventError.type }, 'rejected edit audit failed');
+                }
+                const connection = transport
+                    .list()
+                    .find((candidate) => candidate.botId === payload.botId);
+                if (connection !== undefined) {
+                    transport.send(
+                        connection,
+                        ProtocolEnvelope.create('request', BOT_SAFETY_STOP, { reason }),
                     );
                 }
             },
@@ -449,6 +630,8 @@ export class CoordinatorComposition {
                 projectCommands.handleAbandon(connection, payload, envelope),
             onBlueprintGet: (connection, payload, envelope) =>
                 blueprintCommands.handleGet(connection, payload, envelope),
+            onConstructionPlanGet: (connection, payload, envelope) =>
+                constructionPlanCommands.handleGet(connection, payload, envelope),
             onJobOffers: (connection, payload, envelope) =>
                 jobCommands.handleOffers(connection, payload, envelope),
             onJobDecide: (connection, payload, envelope) =>
@@ -620,6 +803,7 @@ export class CoordinatorComposition {
                         'backpressure state changed',
                     );
                 }
+                refreshProjectProgress();
                 const [, leaseError] = taskLeaseReaper.reap();
                 if (leaseError) {
                     options.logger.warn({ error: leaseError }, 'task lease reaping failed');
@@ -723,6 +907,9 @@ export class CoordinatorComposition {
         positions: (botId: string) => PlannerPosition | null;
         auditor: TaskIndependenceAuditor;
         skillIds: ReadonlySet<string>;
+        schema: PlannerSchemaValidator;
+        cache: PlannerPlanCache;
+        onApplied: (cycle: PlannerCycleResult) => void;
     }): PlannerRuntime {
         const planner = options.config.planner;
         const client = new OpenAiPlannerClient({
@@ -737,17 +924,31 @@ export class CoordinatorComposition {
             callsPerMinute: planner.callsPerMinute,
             maxTokensPerCall: planner.maxTokensPerCall,
         });
-        const schema = new PlannerSchemaValidator();
+        const schema = options.schema;
         const sipPorts = new CoordinatorSipProposalPort();
+        const templateCatalog = BuiltInTemplates.createRegistry();
+        if (templateCatalog[1] !== null) {
+            options.logger.warn(
+                { error: templateCatalog[1] },
+                'building template catalog unavailable',
+            );
+        }
+        const templateTypes =
+            templateCatalog[0] === null ? new Set<string>() : new Set(templateCatalog[0].types());
         const semantic = new PlannerSemanticValidator({
             skills: { has: (skillId) => options.skillIds.has(skillId) },
             sip: sipPorts,
             reserveTasksPerBot: planner.reserveTasksPerBot,
+            strategicIntentRequired: planner.strategicIntent.enabled,
+            maxBotOverrides: planner.strategicIntent.maxBotOverrides,
+            goalKinds: new Set(STRATEGIC_GOAL_KINDS),
+            blueprints: {
+                has: (reference) =>
+                    reference.startsWith('template:') &&
+                    templateTypes.has(reference.slice('template:'.length)),
+            },
         });
-        const cache = new PlannerPlanCache({
-            store: new SqlitePlannerPlanStore(options.database),
-            schemaValidator: schema,
-        });
+        const cache = options.cache;
         const context = new PlannerContextBuilder({
             source: new CoordinatorPlannerContextSource({
                 sip: options.sip,
@@ -759,6 +960,7 @@ export class CoordinatorComposition {
             allowedSkills: [...options.skillIds].sort(),
             maxContextCharacters: planner.maxContextCharacters,
             reserveTasksPerBot: planner.reserveTasksPerBot,
+            strategicIntentEnabled: planner.strategicIntent.enabled,
         });
         const service = new PlannerService({
             enabled: true,
@@ -798,6 +1000,7 @@ export class CoordinatorComposition {
                 intervalMilliseconds: planner.intervalMilliseconds,
             }),
             applier: PlannerCycleApplier.forTaskBoard(options.sip, options.tasks),
+            onApplied: options.onApplied,
             beforeCycle: () => {
                 const [, auditError] = options.auditor.audit();
                 if (auditError) return [null, auditError];

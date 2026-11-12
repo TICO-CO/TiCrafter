@@ -1,5 +1,6 @@
 import type { Result } from '@ticrafter/core';
 
+import { TaskFailures } from './failures.js';
 import type { TaskFailure, TaskRecord } from './types.js';
 
 export interface TaskDag {
@@ -12,7 +13,7 @@ export class TaskDagResolver {
         const byId = new Map<string, TaskRecord>();
         for (const task of tasks) {
             if (byId.has(task.id)) {
-                return [null, { type: 'MALFORMED_TASK', message: `duplicate task ${task.id}` }];
+                return [null, TaskFailures.malformedTask(`duplicate task ${task.id}`)];
             }
             byId.set(task.id, task);
         }
@@ -49,7 +50,7 @@ export class TaskDagResolver {
             const cycleTaskIds = tasks
                 .filter((task) => !visited.has(task.id))
                 .map((task) => task.id);
-            return [null, { type: 'DEPENDENCY_CYCLE', taskIds: cycleTaskIds }];
+            return [null, TaskFailures.dependencyCycle(cycleTaskIds)];
         }
         return [{ byId, children }, null];
     }

@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 import type { EventLogWriter, StorageFailure } from '@ticrafter/memory';
 
+import { TaskFailures } from './failures.js';
 import type { TaskRepository } from './task-repository.js';
 import type { TaskFailure, TaskFailureClass, TaskRecord, TaskStatus } from './types.js';
 
@@ -45,15 +46,7 @@ export class TaskStateMachine {
         changes: TaskTransitionChanges = {},
     ): Result<TaskRecord, TaskFailure> {
         if (!TaskStateMachine.canTransition(task.status, nextStatus)) {
-            return [
-                null,
-                {
-                    type: 'INVALID_TRANSITION',
-                    taskId: task.id,
-                    from: task.status,
-                    to: nextStatus,
-                },
-            ];
+            return [null, TaskFailures.invalidTransition(task.id, task.status, nextStatus)];
         }
         const completedAt =
             nextStatus === 'completed' ? (changes.completedAt ?? now) : task.completedAt;
@@ -65,7 +58,7 @@ export class TaskStateMachine {
             completedAt,
         };
         const [, updateError] = this.repository.update(updated);
-        if (updateError) return [null, { type: 'STORAGE', failure: updateError }];
+        if (updateError) return [null, TaskFailures.storage(updateError)];
         const eventBotId = changes.claimedBy === undefined ? task.claimedBy : changes.claimedBy;
         const [, eventError] = this.events.append({
             botId: eventBotId ?? undefined,
@@ -85,6 +78,6 @@ export class TaskStateMachine {
     }
 
     private storageFailure(failure: StorageFailure): TaskFailure {
-        return { type: 'STORAGE', failure };
+        return TaskFailures.storage(failure);
     }
 }

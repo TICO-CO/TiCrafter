@@ -128,6 +128,61 @@ describe('DecisionDigestAssembler', () => {
         expect(cache.get(assembled?.key ?? '')).not.toBeNull();
     });
 
+    it('carries working-memory revision and focus into the digest', () => {
+        const assembler = new DecisionDigestAssembler(600);
+        const [assembled, assembleError] = assembler.assemble(
+            request({
+                digest: {
+                    ...request().digest,
+                    workingMemoryRevision: 7,
+                    focus: { kind: 'project', id: 'project-1', label: 'Home' },
+                    commitments: [{ id: 'commitment-1', description: 'finish work', priority: 1 }],
+                    recentExperiences: [
+                        { event: 'goal.completed', outcome: 'ok', at: '2026-11-11T12:00:00.000Z' },
+                    ],
+                    interruption: null,
+                    strategicGoal: { kind: 'gather', weight: 0.5 },
+                    strategicConstraints: ['prioritize-safety'],
+                },
+            }),
+        );
+        expect(assembleError).toBeNull();
+        expect(assembled?.state.workingMemoryRevision).toBe(7);
+        expect(assembled?.state.focus?.id).toBe('project-1');
+        expect(assembled?.state.strategicGoal?.kind).toBe('gather');
+    });
+
+    it('drops optional context before revision and focus', () => {
+        const largeText = 'x'.repeat(400);
+        const assembler = new DecisionDigestAssembler(220);
+        const [assembled, assembleError] = assembler.assemble(
+            request({
+                digest: {
+                    ...request().digest,
+                    workingMemoryRevision: 9,
+                    focus: { kind: 'agency', id: 'goal-1', label: 'Gather wood' },
+                    commitments: Array.from({ length: 4 }, (_, index) => ({
+                        id: `commitment-${index}`,
+                        description: largeText,
+                        priority: index,
+                    })),
+                    recentExperiences: Array.from({ length: 8 }, (_, index) => ({
+                        event: `event-${index}`,
+                        outcome: largeText,
+                        at: '2026-11-11T12:00:00.000Z',
+                    })),
+                    interruption: null,
+                    strategicGoal: { kind: 'gather', weight: 0.5 },
+                    strategicConstraints: ['prioritize-safety'],
+                },
+            }),
+        );
+        expect(assembleError).toBeNull();
+        expect(assembled?.state.workingMemoryRevision).toBe(9);
+        expect(assembled?.state.focus?.id).toBe('goal-1');
+        expect(assembled?.state.recentExperiences).toBe(undefined);
+    });
+
     it('rejects labels over the word limit', () => {
         const assembler = new DecisionDigestAssembler(600);
         const tooLong = request({

@@ -27,6 +27,10 @@ export const chunkSnapshotSchema = zod.object({
 
 export const blockUpdateAttributionSchema = zod.object({
     structureId: zod.string().min(1).optional(),
+    taskId: zod.string().min(1).optional(),
+    claimId: zod.string().min(1).optional(),
+    grantId: zod.string().min(1).optional(),
+    grantFencingToken: zod.number().int().nonnegative().optional(),
     blueprintId: zod.string().min(1).optional(),
     blueprintRevision: zod.number().int().nonnegative().optional(),
     workPackageId: zod.string().min(1).optional(),
@@ -36,6 +40,7 @@ export const blockUpdateAttributionSchema = zod.object({
         .enum([
             'site-clear',
             'foundation',
+            'scaffold',
             'walls',
             'floors',
             'roof',

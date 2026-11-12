@@ -19,6 +19,23 @@ describe('working memory', () => {
         expect(restored?.snapshot).toEqual(created.snapshot);
     });
 
+    it('stores strategic intent with a revision change', () => {
+        const intent = {
+            planId: 'plan-1',
+            primaryGoal: { kind: 'gather' as const, weight: 0.5 },
+            secondaryGoals: [],
+            constraints: ['prioritize-safety' as const],
+            perBot: [],
+        };
+        const focused = WorkingMemoryModel.create().withStrategicIntent(intent);
+        expect(focused.revision).toBe(1);
+        expect(focused.strategicIntent?.planId).toBe('plan-1');
+        expect(focused.withStrategicIntent(intent).revision).toBe(1);
+        const [restored, restoreError] = WorkingMemoryModel.restore(focused.snapshot);
+        expect(restoreError).toBeNull();
+        expect(restored?.strategicIntent?.planId).toBe('plan-1');
+    });
+
     it('increments the revision on focus and interruption changes', () => {
         const focused = WorkingMemoryModel.create().withFocus({
             kind: 'project',

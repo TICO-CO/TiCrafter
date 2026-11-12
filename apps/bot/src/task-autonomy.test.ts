@@ -22,6 +22,7 @@ import {
     type TaskAutonomyTransportPort,
     type TaskDecisionPort,
     type TaskSkillPort,
+    type TaskTacticalContext,
 } from './task-autonomy.js';
 
 const logger = {
@@ -269,6 +270,61 @@ describe('TaskAutonomy', () => {
         autonomy.stop();
 
         expect(autonomy.activeTaskProjectId).toBe('project-1');
+    });
+
+    it('discards a tactical result after the working-memory revision changes', async () => {
+        const transport = new FakeTransport();
+        const skills = new FakeSkills();
+        let revision = 0;
+        const dropped: string[] = [];
+        const recorded: string[] = [];
+        const context = (): TaskTacticalContext => ({
+            revision,
+            focus: null,
+            commitments: [],
+            recentExperiences: [],
+            interruption: null,
+            strategicGoal: null,
+            strategicConstraints: [],
+        });
+        const decisions: TaskDecisionPort = {
+            decide: (request, affordances) => {
+                revision = 1;
+                const eat = affordances.find((affordance) => affordance.skillId === 'eat');
+                if (eat === undefined) return Promise.resolve([null, 'no eat affordance']);
+                return Promise.resolve([
+                    {
+                        choice: eat,
+                        source: 'laya',
+                        confidence: 0.9,
+                        danger: false,
+                        shouldContinue: true,
+                        latencyMilliseconds: 10,
+                    },
+                    null,
+                ]);
+            },
+        };
+        const autonomy = new TaskAutonomy({
+            botId: 'bot.one',
+            transport,
+            decisions,
+            skills,
+            snapshot: { read: () => ({ ...snapshot, food: 4 }) },
+            logger,
+            tacticalContext: context,
+            recordTacticalDrop: (input) => dropped.push(input.reason),
+            recordTacticalDecision: (input) => recorded.push(input.source),
+            tickMilliseconds: 1000,
+        });
+
+        autonomy.start();
+        await wait(20);
+        autonomy.stop();
+
+        expect(dropped).toHaveLength(1);
+        expect(recorded).toEqual(['fallback']);
+        expect(skills.runs[0]?.skillId).toBe('navigate');
     });
 
     it('restores a resumed task without claiming a new one', async () => {

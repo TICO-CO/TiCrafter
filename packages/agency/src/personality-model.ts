@@ -64,6 +64,17 @@ export class PersonalityModel {
         return this.traits[name];
     }
 
+    adjust(changes: Partial<PersonalityTraits>): Result<PersonalityModel, string> {
+        const adjusted: PersonalityTraits = { ...this.traits };
+        for (const name of TRAIT_NAMES) {
+            const change = changes[name];
+            if (change === undefined) continue;
+            if (!Number.isFinite(change)) return [null, `trait ${name} adjustment must be finite`];
+            adjusted[name] = PersonalityModel.clamp(adjusted[name] + change);
+        }
+        return [new PersonalityModel(adjusted), null];
+    }
+
     private static ratio(seed: number): number {
         const value = Math.sin(seed + 1) * 10_000;
         return Number((value - Math.floor(value)).toFixed(3));
@@ -71,5 +82,9 @@ export class PersonalityModel {
 
     private static isRatio(value: number): boolean {
         return Number.isFinite(value) && value >= 0 && value <= 1;
+    }
+
+    private static clamp(value: number): number {
+        return Math.min(1, Math.max(0, value));
     }
 }

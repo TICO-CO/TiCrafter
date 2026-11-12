@@ -27,6 +27,7 @@ import { WorkPackagePlanner, type WorkPackagePlanningOptions } from './work-pack
 export interface ConstructionPlanningOptions extends WorkPackagePlanningOptions {
     foundation?: FoundationPlannerOptions;
     scaffoldMaterial?: string;
+    planId?: string;
 }
 
 export class ConstructionPlanPlanner {
@@ -87,11 +88,10 @@ export class ConstructionPlanPlanner {
                 (order.get(BlueprintIr.blockKey(left.block)) ?? 0) -
                 (order.get(BlueprintIr.blockKey(right.block)) ?? 0),
         );
-        const [workPackages, packageError] = new WorkPackagePlanner().plan(
-            ordered,
-            graph.order,
-            this.options,
-        );
+        const [workPackages, packageError] = new WorkPackagePlanner().plan(ordered, graph.order, {
+            ...this.options,
+            idPrefix: this.options.planId ?? `${blueprint.id}:construction`,
+        });
         if (packageError) return [null, packageError];
         if (workPackages === null) {
             return [
@@ -101,7 +101,7 @@ export class ConstructionPlanPlanner {
         }
         return [
             {
-                id: `${blueprint.id}:construction`,
+                id: this.options.planId ?? `${blueprint.id}:construction`,
                 blueprintId: blueprint.id,
                 anchor: site.anchor,
                 rotation: site.rotation,

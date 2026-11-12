@@ -2,6 +2,7 @@ import type { Result } from '@ticrafter/core';
 
 import type { ClaimRepository } from './claim-repository.js';
 import type { ClaimContentionMetrics } from './contention-metrics.js';
+import { ClaimFailures } from './failures.js';
 import type { ClaimFailure, ClaimRecord, ClaimTaskPort } from './types.js';
 
 export class ClaimLeaseReaper {
@@ -13,8 +14,8 @@ export class ClaimLeaseReaper {
 
     reap(now = new Date().toISOString()): Result<readonly ClaimRecord[], ClaimFailure> {
         const [expired, listError] = this.repository.listExpired(now);
-        if (listError) return [null, { type: 'STORAGE', failure: listError }];
-        if (expired === null) return [null, { type: 'MALFORMED_CLAIM', message: 'claims missing' }];
+        if (listError) return [null, ClaimFailures.storage(listError)];
+        if (expired === null) return [null, ClaimFailures.malformedClaim('claims missing')];
         const reaped: ClaimRecord[] = [];
         for (const claim of expired) {
             if (claim.taskId !== null) {
@@ -27,11 +28,7 @@ export class ClaimLeaseReaper {
                 if (requeueError) {
                     return [
                         null,
-                        {
-                            type: 'TASK_REQUEUE_FAILED',
-                            taskId: claim.taskId,
-                            message: String(requeueError),
-                        },
+                        ClaimFailures.taskRequeueFailed(claim.taskId, String(requeueError)),
                     ];
                 }
             }
@@ -42,7 +39,7 @@ export class ClaimLeaseReaper {
                 updatedAt: now,
             };
             const [, updateError] = this.repository.update(expiredClaim);
-            if (updateError) return [null, { type: 'STORAGE', failure: updateError }];
+            if (updateError) return [null, ClaimFailures.storage(updateError)];
             this.metrics.recordReclaim();
             reaped.push(expiredClaim);
         }

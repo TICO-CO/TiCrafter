@@ -5,8 +5,14 @@ import {
     type NightIntent,
     PersonalityModel,
     type ProjectSummary,
+    StrategicIntentPolicy,
 } from '@ticrafter/agency';
-import { DeterministicPolicy, type GuardianReport, LayaClient } from '@ticrafter/brains';
+import {
+    DeterministicPolicy,
+    type GuardianReport,
+    LayaClient,
+    TacticalDecisionPolicy,
+} from '@ticrafter/brains';
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
@@ -21,6 +27,7 @@ import {
     botAutonomyPauseSchema,
     botAutonomyResumeSchema,
     botProjectResponseSchema,
+    botProjectUpdateSchema,
     botSafetyResumeSchema,
     botSafetyStopSchema,
     botSkillCancelSchema,
@@ -30,9 +37,12 @@ import {
     EventStream,
     type LoggerPort,
     type MessageSchemaRegistry,
+    PLANNER_STRATEGIC_INTENT_EVENT,
+    plannerStrategicIntentEventSchema,
     type Result,
     type SessionResume,
     SKILL_PROGRESS_EVENT,
+    type StrategicIntent,
     type TicrafterConfig,
 } from '@ticrafter/core';
 import { BlockUpdateListener, PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
@@ -52,7 +62,9 @@ import { AgencyStateAdapter } from './agency-state-adapter.js';
 import { BlueprintFetchClient } from './blueprint-fetch-client.js';
 import { BuildingExecutionService } from './building-execution-service.js';
 import { BuildingSkillServices } from './building-services.js';
+import { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
 import { BotEventBridge } from './event-bridge.js';
+import { GoalTieBreakClient } from './goal-tie-break.js';
 import { GuardianHook } from './guardian.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
@@ -92,6 +104,7 @@ export class BotConnection {
     private perception: PerceptionHost | null = null;
     private guardian: GuardianHook | null = null;
     private skills: SkillHost | null = null;
+    private decisions: LayaClient | null = null;
     private agencyRuntime: AgencyRuntime | null = null;
     private taskAutonomy: TaskAutonomy | null = null;
     private unsubscribeInbound: (() => void) | null = null;
@@ -102,8 +115,10 @@ export class BotConnection {
     private projectSummary: ProjectSummary | null = null;
     private role: string | null = null;
     private buildingServices: BuildingSkillServices | null = null;
+    private buildExecution: BuildingExecutionService | null = null;
     private homeProjectRequested = false;
     private lastReflexAt = 0;
+    private pendingStrategicIntent: StrategicIntent | null = null;
 
     constructor(private readonly options: BotConnectionOptions) {}
 
@@ -133,6 +148,7 @@ export class BotConnection {
         this.pendingResume = hello.resume ?? null;
         this.homeSnapshot = BotConnection.homeSnapshotFromResume(this.pendingResume);
         this.projectSummary = BotConnection.projectFromResume(this.pendingResume);
+        this.pendingStrategicIntent = this.pendingResume?.strategicIntent ?? null;
         this.role = this.pendingResume?.role ?? null;
         this.options.logger.info({ epoch: hello.epoch }, 'coordinator accepted session');
 
@@ -223,6 +239,10 @@ export class BotConnection {
             },
         };
         const blueprintFetch = new BlueprintFetchClient(transport, this.options.botId);
+        const constructionPlanFetch = new ConstructionPlanFetchClient(
+            transport,
+            this.options.botId,
+        );
         const buildExecution = new BuildingExecutionService({
             world,
             snapshot: () => safetySource.read(),
@@ -241,8 +261,8 @@ export class BotConnection {
             world,
             {
                 documents: blueprintFetch,
+                plans: constructionPlanFetch,
                 buildExecution,
-                maxWorkPackageBlocks: this.options.config.building.maxWorkPackageBlocks,
             },
         );
         if (buildingServicesError) {
@@ -252,6 +272,7 @@ export class BotConnection {
             );
         }
         this.buildingServices = buildingServices ?? null;
+        this.buildExecution = buildExecution;
         const [skills, skillsError] = SkillHost.create({
             source: new BotSkillContextSource(bot, world, buildingServices ?? undefined),
             dispatch: actionExecutor,
@@ -264,6 +285,13 @@ export class BotConnection {
             this.options.logger.error({ error: skillsError }, 'skill host creation failed');
         } else {
             this.skills = skills;
+            this.decisions = new LayaClient({
+                transport: this.transport,
+                timeoutMilliseconds: this.options.config.decision.timeoutMilliseconds,
+                minimumConfidence: this.options.config.decision.minConfidence,
+                policy: new DeterministicPolicy(),
+                tactical: new TacticalDecisionPolicy(this.options.config.decision.tactical),
+            });
             this.unsubscribeInbound = transport.onMessage((envelope) =>
                 this.handleCommand(envelope),
             );
@@ -338,10 +366,13 @@ export class BotConnection {
     ): Result<AgencyRuntime, string> {
         const skills = this.skills;
         if (skills === null) return [null, 'skill host unavailable'];
+        const decisions = this.decisions;
+        if (decisions === null) return [null, 'decision client unavailable'];
         const persistence = new AgencyStateAdapter({
             botId: this.options.botId,
             events: transport,
             logger: this.options.logger,
+            workingMemory: this.options.config.agency.workingMemory,
         });
         const [restored, restoreError] = persistence.restore(this.pendingResume?.agency);
         if (restoreError) return [null, restoreError];
@@ -375,12 +406,16 @@ export class BotConnection {
                     this.guardian?.emergencyStopActive === true,
                 isJobActive: () => this.taskAutonomy?.hasActiveTask === true,
                 isProjectTaskActive: () => this.taskAutonomy?.activeTaskProjectId !== null,
+                goalTieBreak: new GoalTieBreakClient({ decisions }),
             },
             state,
         );
         if (runtimeError) return [null, runtimeError];
         if (runtime === null) return [null, 'agency runtime creation returned null'];
         runtime.syncProjectFocus(this.projectSummary === null ? [] : [this.projectSummary]);
+        if (this.pendingStrategicIntent !== null) {
+            runtime.setStrategicIntent(this.pendingStrategicIntent);
+        }
         return [runtime, null];
     }
 
@@ -408,13 +443,13 @@ export class BotConnection {
                 );
             }
         }
-        if (this.skills !== null && this.transport !== null && this.bot !== null) {
-            const decisions = new LayaClient({
-                transport: this.transport,
-                timeoutMilliseconds: this.options.config.decision.timeoutMilliseconds,
-                minimumConfidence: this.options.config.decision.minConfidence,
-                policy: new DeterministicPolicy(),
-            });
+        if (
+            this.skills !== null &&
+            this.transport !== null &&
+            this.bot !== null &&
+            this.decisions !== null
+        ) {
+            const decisions = this.decisions;
             const agencyRuntime = this.agencyRuntime;
             const autonomy = new TaskAutonomy({
                 botId: this.options.botId,
@@ -435,6 +470,19 @@ export class BotConnection {
                 canClaim: () =>
                     this.agencyRuntime?.hasActiveGoal !== true &&
                     this.skills?.activeSkillId === null,
+                tacticalContext: () =>
+                    this.agencyRuntime?.tacticalContext() ?? {
+                        revision: 0,
+                        focus: null,
+                        commitments: [],
+                        recentExperiences: [],
+                        interruption: null,
+                        strategicGoal: null,
+                        strategicConstraints: [],
+                    },
+                recordTacticalDecision: (input) =>
+                    this.agencyRuntime?.recordTacticalDecision(input),
+                recordTacticalDrop: (input) => this.agencyRuntime?.recordTacticalDrop(input),
                 constructionPrefetch: (input) =>
                     this.buildingServices?.prefetch(input) ??
                     Promise.resolve([null, 'building services are unavailable']),
@@ -478,19 +526,19 @@ export class BotConnection {
             return;
         }
         if (skillId === 'construction') {
-            const blueprintId = resume.task.payload.blueprintId;
-            const blueprintRevision = resume.task.payload.blueprintRevision;
-            if (typeof blueprintId !== 'string' || typeof blueprintRevision !== 'number') {
+            const planId = resume.task.payload.planId;
+            const planRevision = resume.task.payload.planRevision;
+            if (typeof planId !== 'string' || typeof planRevision !== 'number') {
                 this.options.logger.warn(
                     { taskId: resume.task.id },
-                    'construction resume is missing blueprint metadata',
+                    'construction resume is missing plan metadata',
                 );
                 this.pendingResume = null;
                 return;
             }
             const [, prefetchError] = (await this.buildingServices?.prefetch({
-                blueprintId,
-                blueprintRevision,
+                planId,
+                planRevision,
             })) ?? [null, 'building services are unavailable'];
             if (prefetchError !== null) {
                 this.options.logger.warn(
@@ -652,6 +700,10 @@ export class BotConnection {
     }
 
     private handleCommand(envelope: Envelope): void {
+        if (envelope.kind === 'event' && envelope.type === PLANNER_STRATEGIC_INTENT_EVENT) {
+            this.handleStrategicIntent(envelope.payload);
+            return;
+        }
         if (envelope.kind !== 'request') return;
         if (envelope.type === BOT_SKILL_START) {
             void this.handleSkillStart(envelope.payload);
@@ -680,6 +732,50 @@ export class BotConnection {
         if (envelope.type === BOT_AUTONOMY_RESUME) {
             this.handleAutonomyResume(envelope.payload);
         }
+    }
+
+    private handleStrategicIntent(payload: unknown): void {
+        const parsed = plannerStrategicIntentEventSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid strategic intent event',
+            );
+            return;
+        }
+        const intent = StrategicIntentPolicy.forBot(parsed.data.intent, this.options.botId);
+        this.pendingStrategicIntent = intent;
+        this.agencyRuntime?.setStrategicIntent(intent);
+    }
+
+    private handleProjectUpdate(payload: unknown): void {
+        const parsed = botProjectUpdateSchema.safeParse(payload);
+        if (!parsed.success) {
+            this.options.logger.warn(
+                { error: parsed.error.message },
+                'invalid project update event',
+            );
+            return;
+        }
+        if (parsed.data.botId !== this.options.botId) return;
+        const project = parsed.data.project;
+        this.projectSummary = {
+            id: project.id,
+            title: project.title,
+            kind: project.kind,
+            status: project.status,
+            anchor: project.anchor,
+            bbox: project.bbox,
+            structureId: project.structureId,
+            storageId: project.storageId,
+        };
+        this.homeSnapshot = {
+            anchor: project.anchor,
+            bbox: project.bbox,
+            status: project.status,
+            structureId: project.structureId,
+        };
+        this.agencyRuntime?.syncProjectFocus([this.projectSummary]);
     }
 
     private async handleSkillStart(payload: unknown): Promise<void> {
@@ -948,11 +1044,13 @@ export class BotConnection {
             return;
         }
         if (observation === null) return;
+        const attribution = this.buildExecution?.attributionFor(observation.block.position);
         const [, sendError] = transport.sendEvent(BLOCK_UPDATE_EVENT, {
             botId: observation.botId,
             chunk: observation.chunk,
             observedAt: observation.observedAt,
             block: observation.block,
+            ...(attribution === null || attribution === undefined ? {} : { attribution }),
         });
         if (sendError) {
             this.options.logger.warn({ error: sendError }, 'block update send failed');

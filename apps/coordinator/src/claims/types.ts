@@ -18,6 +18,7 @@ export interface ClaimRecord {
     fencingToken: number;
     status: ClaimStatus;
     taskId: string | null;
+    parentClaimId: string | null;
     epoch: number;
     payload: Readonly<Record<string, unknown>>;
     createdAt: string;
@@ -31,6 +32,7 @@ export interface AcquireClaimInput {
     bbox: SipBoundingBox;
     botId: string;
     taskId?: string | null;
+    parentClaimId?: string | null;
     payload?: Readonly<Record<string, unknown>>;
     leaseTtlMilliseconds?: number;
 }

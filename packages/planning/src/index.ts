@@ -13,6 +13,7 @@ export * from './repair-loop.js';
 export * from './schema-validator.js';
 export * from './semantic-validator.js';
 export * from './sip-mutation-translator.js';
+export * from './strategic-intent-store.js';
 export * from './task-dag-translator.js';
 export * from './trigger-evaluator.js';
 export * from './types.js';

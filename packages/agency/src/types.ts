@@ -1,4 +1,4 @@
-import type { Vec3 } from '@ticrafter/core';
+import type { StrategicGoalKind, StrategicIntent, Vec3 } from '@ticrafter/core';
 
 export type NeedName =
     | 'safety'
@@ -23,25 +23,7 @@ export interface PersonalityTraits {
     patience: number;
 }
 
-export type GoalKind =
-    | 'survive'
-    | 'eat'
-    | 'rest'
-    | 'gather'
-    | 'craft'
-    | 'shelter'
-    | 'explore'
-    | 'social'
-    | 'return-home'
-    | 'deposit'
-    | 'leisure'
-    | 'prepare-night'
-    | 'build-shelter'
-    | 'dig-shelter'
-    | 'secure-bed'
-    | 'gather-wool'
-    | 'gather-food'
-    | 'equip-gear';
+export type GoalKind = StrategicGoalKind;
 
 export type GoalSource = 'need' | 'job' | 'social' | 'curiosity' | 'routine';
 
@@ -211,6 +193,7 @@ export interface WorkingMemory {
     interruption: WorkingMemoryInterruption | null;
     recentExperiences: readonly WorkingMemoryExperience[];
     lastTacticalDecision: WorkingMemoryTacticalDecision | null;
+    strategicIntent?: StrategicIntent | null;
 }
 
 export type ProjectKind = 'home' | 'storage' | 'build';

@@ -23,6 +23,10 @@ export interface AgencyStateAdapterOptions {
     botId: string;
     events: AgencyEventSink;
     logger: LoggerPort;
+    workingMemory?: {
+        maxCommitments: number;
+        maxExperiences: number;
+    };
 }
 
 export interface AgencyEpisodeInput {
@@ -46,25 +50,31 @@ export class AgencyStateAdapter {
         const [needs, needsError] = NeedsModel.restore(payload.needs);
         if (needsError) return [null, needsError];
         if (needs === null) return [null, 'needs restore returned null'];
-        const [workingMemory, memoryError] = WorkingMemoryModel.restore(payload.workingMemory);
+        const [workingMemory, memoryError] = WorkingMemoryModel.restore(
+            payload.workingMemory,
+            this.options.workingMemory,
+        );
         if (memoryError) return [null, memoryError];
         if (workingMemory === null) return [null, 'working memory restore returned null'];
-        return AgencyState.restore({
-            botId: this.options.botId,
-            traits,
-            needs,
-            intention: payload.intention,
-            routine: payload.routine,
-            homeStructureId: payload.homeStructureId,
-            personalStorageId: payload.personalStorageId,
-            mood: payload.mood,
-            lastDeliberationAt: payload.lastDeliberationAt,
-            workingMemory: {
-                ...workingMemory.snapshot,
-                commitments: [...workingMemory.snapshot.commitments],
-                recentExperiences: [...workingMemory.snapshot.recentExperiences],
+        return AgencyState.restore(
+            {
+                botId: this.options.botId,
+                traits,
+                needs,
+                intention: payload.intention,
+                routine: payload.routine,
+                homeStructureId: payload.homeStructureId,
+                personalStorageId: payload.personalStorageId,
+                mood: payload.mood,
+                lastDeliberationAt: payload.lastDeliberationAt,
+                workingMemory: {
+                    ...workingMemory.snapshot,
+                    commitments: [...workingMemory.snapshot.commitments],
+                    recentExperiences: [...workingMemory.snapshot.recentExperiences],
+                },
             },
-        });
+            this.options.workingMemory,
+        );
     }
 
     save(state: AgencyStateSnapshot, at = new Date().toISOString()): void {

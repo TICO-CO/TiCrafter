@@ -64,6 +64,7 @@ export class EvalFixtures {
             fencingToken: 1,
             status: 'active',
             taskId: 'task-1',
+            parentClaimId: null,
             epoch: 1,
             payload: {},
             createdAt: now,

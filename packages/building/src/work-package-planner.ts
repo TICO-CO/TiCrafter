@@ -17,6 +17,7 @@ import { type BuildingFailure, BuildingFailures } from './failures.js';
 export interface WorkPackagePlanningOptions {
     maxBlocks?: number;
     strategy?: WorkPackageStrategy;
+    idPrefix?: string;
 }
 
 interface MutablePackage {
@@ -39,7 +40,10 @@ export class WorkPackagePlanner {
         const dependencies = new Map(
             changes.map((change) => [BlueprintIr.blockKey(change.block), change.dependsOn]),
         );
-        return [this.finalize(merged, options.strategy ?? 'layers', dependencies), null];
+        return [
+            this.finalize(merged, options.strategy ?? 'layers', dependencies, options.idPrefix),
+            null,
+        ];
     }
 
     private sort(
@@ -153,6 +157,7 @@ export class WorkPackagePlanner {
         packages: readonly MutablePackage[],
         strategy: WorkPackageStrategy,
         dependencies: ReadonlyMap<string, readonly string[]>,
+        idPrefix: string | undefined,
     ): readonly PlannedWorkPackage[] {
         const planned: PlannedWorkPackage[] = packages.map((entry, index) => {
             const keys = entry.changes.map((change) => BlueprintIr.blockKey(change.block));
@@ -164,7 +169,7 @@ export class WorkPackagePlanner {
                     materials.set(item, (materials.get(item) ?? 0) + 1);
                 });
             return {
-                id: `${strategy}:${entry.phase}:${index}`,
+                id: WorkPackagePlanner.id(idPrefix, strategy, entry.phase, index),
                 bbox: WorkPackagePlanner.bounds(entry.changes),
                 blockKeys: keys,
                 strategy,
@@ -192,6 +197,16 @@ export class WorkPackagePlanner {
             });
             return { ...entry, predecessorIds: [...predecessors].sort() };
         });
+    }
+
+    private static id(
+        prefix: string | undefined,
+        strategy: WorkPackageStrategy,
+        phase: ConstructionPhase,
+        index: number,
+    ): string {
+        const suffix = `${strategy}:${phase}:${index}`;
+        return prefix === undefined ? suffix : `${prefix}:${suffix}`;
     }
 
     private static bounds(changes: readonly ConstructionChange[]): BlueprintBoundingBox {

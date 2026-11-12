@@ -19,9 +19,19 @@ describe('config', () => {
         expect(config.laya.executionProviders).toEqual(['cpu']);
         expect(config.decision.enabled).toBe(true);
         expect(config.decision.minConfidence).toBe(0.6);
+        expect(config.decision.tactical.mode).toBe('background');
+        expect(config.decision.tactical.skipSingleAffordance).toBe(true);
         expect(config.planner.model).toBe('Muse Spark 1.3 Contributor');
         expect(config.planner.maxRepairAttempts).toBe(2);
         expect(config.planner.reserveTasksPerBot).toBe(1);
+        expect(config.planner.strategicIntent.enabled).toBe(true);
+        expect(config.planner.strategicIntent.maxBotOverrides).toBe(8);
+        expect(config.agency.workingMemory.maxCommitments).toBe(4);
+        expect(config.agency.workingMemory.maxExperiences).toBe(8);
+        expect(config.agency.goalTieBreak.enabled).toBe(false);
+        expect(config.agency.goalTieBreak.closeScore).toBe(0.12);
+        expect(config.agency.reflection.enabled).toBe(true);
+        expect(config.agency.reflection.maxTraitDelta).toBe(0.01);
         expect(config.building.maxStructureBlocks).toBe(4000);
         expect(config.building.maxWorkPackageBlocks).toBe(128);
         expect(config.building.allowRawBlockBlueprints).toBe(false);
@@ -37,6 +47,7 @@ describe('config', () => {
         expect(config.laya.threads).toBe(8);
         expect(config.building.maxStructureBlocks).toBe(12000);
         expect(config.building.maxWorkPackageBlocks).toBe(256);
+        expect(config.decision.tactical.mode).toBe('blocking');
     });
 
     it('resolves the profile name from environment before defaults', () => {

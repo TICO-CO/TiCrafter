@@ -371,8 +371,8 @@ Locked decisions:
 Three layers:
 
 1. **Design generation**: deterministic composer, motif library, style palette, schematic import, and observed-structure capture. Templates remain available as direct sources. Planner output is validated and composed before storage.
-2. **Construction planning**: site selection, terrain adaptation, foundation, phased dependency graph, reachability and scaffolding, material procurement, and phase-aware work packages. Work packages are claimable and idempotent: blocks already correct are skipped.
-3. **Coordinated execution**: verified block changes through the building executor, claims and grants, fencing tokens, progress reconciliation, completion, repair, renovation, and rollback.
+2. **Construction planning**: the coordinator runs site selection, terrain adaptation, foundation, phased dependency graph, reachability and scaffolding, and phase-aware work packages, then stores an exact plan revision. Work packages are claimable and idempotent: blocks already correct are skipped.
+3. **Coordinated execution**: verified block changes through the building executor, a parent structure claim plus per-package claims, scoped helper grants, fencing tokens, post-update coordinator authorization, progress reconciliation, completion, repair, renovation, and rollback.
 
 Blueprint IR remains the block-level contract:
 
@@ -673,6 +673,7 @@ Goal arbitration:
 - Score `urgency × trait weight × expected value × feasibility − cost − risk`.
 - Add commitment hysteresis; an active intention keeps a bonus until completion, abandonment, or preemption.
 - Ask Laya for goal tie-break only when top scores are close, after repeated failure, or at a slow heartbeat, and only after the tactical task path has been evaluated.
+- Goal tie-break is implemented behind `agency.goalTieBreak.enabled`, default off until the behavioral evaluation gate passes; fallback is always the deterministic winner.
 - Below the confidence gate or on a stale revision, use the deterministic utility policy or continue the current commitment.
 
 Working memory:
@@ -690,6 +691,12 @@ Intention lifecycle:
 - Tactical interruption is not abandonment. The intention resumes when the interruption clears.
 - Record every outcome in `agent_episodes`.
 - Restart restores the intention, reconciles it with the observed world, then resumes or abandons.
+
+Reflection:
+
+- Goal completion and abandonment update mood and apply bounded personality trait deltas.
+- Reflection is deterministic, local, and recorded with the outcome episode and recent working memory.
+- Reflection never overrides the guardian, commitments, strategic intent validation, or task leases.
 
 Routine:
 

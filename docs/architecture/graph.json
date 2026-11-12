@@ -2673,6 +2673,26 @@
                     "milestone": 9,
                     "template": "tpl.planner-stage",
                     "invariants": ["A failed planner cycle never replaces the last validated plan."]
+                },
+                {
+                    "id": "planner.strategic-intent-store",
+                    "name": "Strategic Intent Store",
+                    "responsibility": "Keep the latest validated strategic intent, merge per-bot overrides, and deliver it on resume and planner commit.",
+                    "plannedPath": "packages/planning/src/strategic-intent-store",
+                    "provides": ["planner.strategic-intent-store.interface"],
+                    "requires": ["planner.plan-cache"],
+                    "ownsState": [],
+                    "metrics": [
+                        "planner_strategic_intent_store_errors_total",
+                        "planner_strategic_intent_store_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#8-long-term-planner-muse-spark-13-contributor"],
+                    "milestone": 9,
+                    "template": "tpl.state-repository",
+                    "invariants": [
+                        "Only validated intent is stored and delivered.",
+                        "Fleet intent merges with bounded per-bot overrides."
+                    ]
                 }
             ]
         },
@@ -3912,6 +3932,26 @@
                     "template": "tpl.building-stage"
                 },
                 {
+                    "id": "building.construction-plan-document",
+                    "name": "Construction Plan Document",
+                    "responsibility": "Version, hash, and persist site-adapted construction plans with namespaced package identity.",
+                    "plannedPath": "packages/building/src/construction-plan-document",
+                    "provides": ["building.construction-plan-document.interface"],
+                    "requires": ["building.construction-types"],
+                    "ownsState": [],
+                    "metrics": [
+                        "building_construction_plan_document_errors_total",
+                        "building_construction_plan_document_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.building-stage",
+                    "invariants": [
+                        "Construction plans are fetched by exact revision.",
+                        "Package IDs are namespaced by plan ID."
+                    ]
+                },
+                {
                     "id": "building.material-procurement-planner",
                     "name": "Material Procurement Planner",
                     "responsibility": "Convert material shortages into withdrawals, crafting, gathering, reservations, or blocking failures.",
@@ -4123,16 +4163,38 @@
                     ]
                 },
                 {
+                    "id": "bot-runtime.construction-plan-fetch-client",
+                    "name": "Construction Plan Fetch Client",
+                    "responsibility": "Fetch and cache exact construction plan revisions from the coordinator.",
+                    "plannedPath": "apps/bot/src/construction-plan-fetch-client",
+                    "provides": ["bot-runtime.construction-plan-fetch-client.interface"],
+                    "requires": [
+                        "transport.message-schema-registry",
+                        "transport.request-correlator"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_construction_plan_fetch_client_errors_total",
+                        "bot_runtime_construction_plan_fetch_client_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#10-building-three-layers"],
+                    "milestone": 6,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Plan fetches require an exact id and revision.",
+                        "Fetched plans are hash-checked before caching."
+                    ]
+                },
+                {
                     "id": "bot-runtime.construction-source",
                     "name": "Construction Source",
-                    "responsibility": "Derive site, foundation, dependency, package, scaffold, and replacement operations for a fetched blueprint.",
+                    "responsibility": "Derive package, cleanup, and replacement operations from a fetched exact construction plan.",
                     "plannedPath": "apps/bot/src/construction-source",
                     "provides": ["bot-runtime.construction-source.interface"],
                     "requires": [
-                        "building.construction-plan-planner",
-                        "building.site-planner",
+                        "building.construction-plan-document",
                         "bot-runtime.world-cache-adapter",
-                        "bot-runtime.blueprint-fetch-client"
+                        "bot-runtime.construction-plan-fetch-client"
                     ],
                     "ownsState": [],
                     "metrics": [
@@ -4143,7 +4205,7 @@
                     "milestone": 6,
                     "template": "tpl.building-stage",
                     "invariants": [
-                        "Construction planning starts from a cached exact blueprint revision.",
+                        "Construction starts from a cached exact construction plan revision.",
                         "Mismatched existing blocks become break-then-place operations."
                     ]
                 },
@@ -4248,6 +4310,31 @@
                         "The agent loop never blocks the 20Hz guardian and never calls mineflayer directly.",
                         "Urgent needs preempt jobs and personal goals; the guardian preempts everything.",
                         "No job is accepted without a local utility decision and a valid lease."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.goal-tie-break",
+                    "name": "Goal Tie-Break",
+                    "responsibility": "Ask Laya to choose among close agency goal candidates and fall back to the deterministic arbiter winner on error, stale revision, or disabled configuration.",
+                    "plannedPath": "apps/bot/src/goal-tie-break",
+                    "provides": ["bot-runtime.goal-tie-break.interface"],
+                    "requires": [
+                        "agency.goal-arbiter",
+                        "brains.laya-client",
+                        "brains.deterministic-policy"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_goal_tie_break_errors_total",
+                        "bot_runtime_goal_tie_break_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Only close goal candidates are presented to Laya.",
+                        "A stale revision or focus change discards the Laya choice.",
+                        "The deterministic arbiter winner is always available."
                     ]
                 },
                 {
@@ -5478,7 +5565,8 @@
                 "sys.bot-runtime",
                 "sys.safety",
                 "sys.skill-runtime",
-                "sys.transport"
+                "sys.transport",
+                "sys.config"
             ],
             "forbiddenDependencies": [],
             "components": [
@@ -5579,6 +5667,26 @@
                     "metrics": [
                         "brains_laya_client_timeouts_total",
                         "brains_laya_client_latency_ms"
+                    ]
+                },
+                {
+                    "id": "brains.tactical-policy",
+                    "name": "Tactical Decision Policy",
+                    "responsibility": "Enforce tactical Laya enablement, profile mode, deadlines, rate limits, single-affordance skip, and circuit breaking.",
+                    "plannedPath": "packages/brains/src/tactical-policy",
+                    "provides": ["brains.tactical-policy.interface"],
+                    "requires": ["config.config-schema-validator"],
+                    "ownsState": [],
+                    "sourceRefs": ["main.md#7-short-term-decision-service-laya"],
+                    "milestone": 8,
+                    "template": "tpl.validator",
+                    "invariants": [
+                        "Background advisory never blocks task start, agency tick, or the guardian.",
+                        "Repeated failures open the tactical circuit breaker."
+                    ],
+                    "metrics": [
+                        "brains_tactical_policy_errors_total",
+                        "brains_tactical_policy_latency_ms"
                     ]
                 }
             ]
@@ -5925,6 +6033,44 @@
                     "milestone": 12,
                     "template": "tpl.brain",
                     "invariants": ["Agency state snapshots are immutable and restart-safe."]
+                },
+                {
+                    "id": "agency.strategic-intent",
+                    "name": "Strategic Intent Policy",
+                    "responsibility": "Apply validated fleet and per-bot strategic priorities and constraints to goal generation and tactical context.",
+                    "plannedPath": "packages/agency/src/strategic-intent",
+                    "provides": ["agency.strategic-intent.interface"],
+                    "requires": ["agency.goal-arbiter", "agency.working-memory"],
+                    "ownsState": [],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Intent never interrupts an active intention.",
+                        "Priority modifiers stay bounded."
+                    ],
+                    "metrics": [
+                        "agency_strategic_intent_errors_total",
+                        "agency_strategic_intent_latency_ms"
+                    ]
+                },
+                {
+                    "id": "agency.reflection",
+                    "name": "Reflection",
+                    "responsibility": "Turn goal completion and abandonment into mood, bounded personality trait changes, and recent experience.",
+                    "plannedPath": "packages/agency/src/reflection",
+                    "provides": ["agency.reflection.interface"],
+                    "requires": ["agency.personality-model"],
+                    "ownsState": [],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 12,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Reflection is deterministic and local.",
+                        "Traits stay bounded to 0..1 and each update respects the configured maximum delta.",
+                        "Reflection failure never blocks goal completion or abandonment."
+                    ],
+                    "metrics": ["agency_reflection_errors_total", "agency_reflection_latency_ms"]
                 }
             ]
         },
@@ -13682,6 +13828,149 @@
             "criticality": "hard",
             "failureBehavior": "Return a typed transport failure and leave the cache unchanged.",
             "notes": "Blueprint fetch requests are correlated over the bot transport.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0583",
+            "from": "planner.strategic-intent-store",
+            "to": "planner.plan-cache",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "plan cache",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the deterministic fallback and record the downgrade.",
+            "notes": "Strategic Intent Store reads the latest validated plan.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0584",
+            "from": "brains.laya-client",
+            "to": "brains.tactical-policy",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "tactical policy",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the deterministic fallback and record the downgrade.",
+            "notes": "Laya Client applies tactical profile and rate policy.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0585",
+            "from": "brains.tactical-policy",
+            "to": "config.config-schema-validator",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "tactical config",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the deterministic fallback and record the downgrade.",
+            "notes": "Tactical policy is configured by profile.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0586",
+            "from": "agency.strategic-intent",
+            "to": "agency.goal-arbiter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "priority adjustments",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the deterministic fallback and record the downgrade.",
+            "notes": "Strategic intent biases goal utility before arbitration.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0587",
+            "from": "agency.strategic-intent",
+            "to": "agency.working-memory",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "latest intent",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the deterministic fallback and record the downgrade.",
+            "notes": "Strategic intent is stored in working memory.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0588",
+            "from": "bot-runtime.agent-loop",
+            "to": "bot-runtime.goal-tie-break",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "close goal candidates",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Use the deterministic goal arbiter winner and record the tactical drop.",
+            "notes": "Goal tie-break is gated off until the behavioral evaluation passes.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0589",
+            "from": "bot-runtime.goal-tie-break",
+            "to": "agency.goal-arbiter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "ranked close candidates",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Use the deterministic goal arbiter winner.",
+            "notes": "The tie-break adapter only accepts arbiter candidates.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0591",
+            "from": "building.construction-plan-document",
+            "to": "building.construction-types",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "construction plan and package manifest",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the plan document and keep the last stored revision.",
+            "notes": "Plan documents persist construction plan types.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0592",
+            "from": "bot-runtime.construction-plan-fetch-client",
+            "to": "transport.request-correlator",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "construction plan fetch request correlation",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Return a typed transport failure and leave the cache unchanged.",
+            "notes": "Plan fetch requests are correlated over the bot transport.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0593",
+            "from": "bot-runtime.construction-source",
+            "to": "bot-runtime.construction-plan-fetch-client",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "cached construction plan document",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail construction resolution when the exact plan revision is not cached.",
+            "notes": "Construction source consumes stored plan packages.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0590",
+            "from": "bot-runtime.agent-loop",
+            "to": "agency.reflection",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "goal outcome",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Keep the goal outcome and skip the mood or trait update.",
+            "notes": "Reflection runs after completion or abandonment.",
             "explicit": true
         }
     ]

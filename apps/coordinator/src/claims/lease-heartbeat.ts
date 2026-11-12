@@ -1,6 +1,7 @@
 import type { Result } from '@ticrafter/core';
 
 import type { ClaimRepository } from './claim-repository.js';
+import { ClaimFailures } from './failures.js';
 import type { ClaimFailure, ClaimRecord, ClaimSessionPort } from './types.js';
 
 export class ClaimLeaseHeartbeat {
@@ -17,25 +18,17 @@ export class ClaimLeaseHeartbeat {
         leaseTtlMilliseconds = 30_000,
     ): Result<ClaimRecord, ClaimFailure> {
         const [claim, readError] = this.repository.get(claimId);
-        if (readError) return [null, { type: 'STORAGE', failure: readError }];
-        if (claim === null) return [null, { type: 'CLAIM_NOT_FOUND', claimId }];
+        if (readError) return [null, ClaimFailures.storage(readError)];
+        if (claim === null) return [null, ClaimFailures.claimNotFound(claimId)];
         if (claim.status !== 'active') {
-            return [null, { type: 'INVALID_STATUS', claimId, status: claim.status }];
+            return [null, ClaimFailures.invalidStatus(claimId, claim.status)];
         }
-        if (claim.botId !== botId) return [null, { type: 'OWNER_MISMATCH', claimId, botId }];
+        if (claim.botId !== botId) return [null, ClaimFailures.ownerMismatch(claimId, botId)];
         if (claim.fencingToken !== fencingToken) {
-            return [
-                null,
-                {
-                    type: 'STALE_TOKEN',
-                    claimId,
-                    expected: claim.fencingToken,
-                    actual: fencingToken,
-                },
-            ];
+            return [null, ClaimFailures.staleToken(claimId, claim.fencingToken, fencingToken)];
         }
         if (!this.sessions.isConnected(botId)) {
-            return [null, { type: 'SESSION_INVALID', botId }];
+            return [null, ClaimFailures.sessionInvalid(botId)];
         }
         const renewed: ClaimRecord = {
             ...claim,
@@ -43,7 +36,7 @@ export class ClaimLeaseHeartbeat {
             updatedAt: now,
         };
         const [, updateError] = this.repository.update(renewed);
-        if (updateError) return [null, { type: 'STORAGE', failure: updateError }];
+        if (updateError) return [null, ClaimFailures.storage(updateError)];
         return [renewed, null];
     }
 }
