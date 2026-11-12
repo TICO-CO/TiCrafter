@@ -13,6 +13,8 @@ import {
     botJobOffersResponseSchema,
     type BotTaskResponse,
     botTaskResponseSchema,
+    type ClockHandle,
+    type ClockPort,
     type DecisionRequest,
     type Envelope,
     type JobOfferPayload,
@@ -23,6 +25,7 @@ import {
     skillInputSchema,
     type StrategicConstraint,
     type StrategicGoalKind,
+    SystemClock,
     TASK_CLAIM,
     TASK_COMPLETE,
     TASK_FAIL,
@@ -124,6 +127,7 @@ export interface TaskAutonomyOptions {
     timeoutMilliseconds?: number;
     renewMilliseconds?: number;
     now?: () => number;
+    clock?: ClockPort;
 }
 
 interface ActiveTask {
@@ -141,7 +145,7 @@ interface ActiveTask {
 }
 
 export class TaskAutonomy {
-    private timer: ReturnType<typeof setInterval> | null = null;
+    private timer: ClockHandle | null = null;
     private active: ActiveTask | null = null;
     private busy = false;
     private closed = false;
@@ -150,19 +154,21 @@ export class TaskAutonomy {
     private readonly timeoutMilliseconds: number;
     private readonly renewMilliseconds: number;
     private readonly now: () => number;
+    private readonly clock: ClockPort;
 
     constructor(private readonly options: TaskAutonomyOptions) {
         this.tickMilliseconds = options.tickMilliseconds ?? 1000;
         this.timeoutMilliseconds = options.timeoutMilliseconds ?? 5000;
         this.renewMilliseconds = options.renewMilliseconds ?? 15_000;
-        this.now = options.now ?? Date.now;
+        this.clock = options.clock ?? new SystemClock();
+        this.now = options.now ?? (() => this.clock.now());
     }
 
     start(): void {
         if (this.timer !== null) return;
         this.closed = false;
         this.paused = false;
-        this.timer = setInterval(() => this.tickSafely(), this.tickMilliseconds);
+        this.timer = this.clock.setInterval(() => this.tickSafely(), this.tickMilliseconds);
         this.tickSafely();
     }
 
@@ -182,7 +188,7 @@ export class TaskAutonomy {
     resume(): void {
         if (this.closed || !this.paused) return;
         this.paused = false;
-        this.timer = setInterval(() => this.tickSafely(), this.tickMilliseconds);
+        this.timer = this.clock.setInterval(() => this.tickSafely(), this.tickMilliseconds);
         this.tickSafely();
     }
 
@@ -296,7 +302,7 @@ export class TaskAutonomy {
 
     private clearTimer(): void {
         if (this.timer === null) return;
-        clearInterval(this.timer);
+        this.clock.clearInterval(this.timer);
         this.timer = null;
     }
 

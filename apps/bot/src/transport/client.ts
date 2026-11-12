@@ -1,5 +1,6 @@
 import {
     attempt,
+    type ClockPort,
     type Envelope,
     type MessageSchemaRegistry,
     ProtocolEnvelope,
@@ -15,16 +16,21 @@ import { WebSocket } from 'ws';
 export interface BotTransportClientOptions {
     url: string;
     registry: MessageSchemaRegistry;
+    clock?: ClockPort;
 }
 
 export class BotTransportClient {
     private readonly codec: WsCodec;
-    private readonly correlator = new RequestCorrelator();
+    private readonly correlator: RequestCorrelator;
     private readonly listeners = new Set<(envelope: Envelope) => void>();
     private socket: WebSocket | null = null;
 
     constructor(private readonly options: BotTransportClientOptions) {
         this.codec = new WsCodec(options.registry);
+        this.correlator =
+            options.clock === undefined
+                ? new RequestCorrelator()
+                : new RequestCorrelator(options.clock);
     }
 
     connect(): Promise<Result<void, TransportFailure>> {

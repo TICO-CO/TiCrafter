@@ -23,12 +23,15 @@ import {
 } from '@ticrafter/agency';
 import {
     attemptAsync,
+    type ClockHandle,
+    type ClockPort,
     type LoggerPort,
     type Result,
     skillInputSchema,
     type StrategicConstraint,
     type StrategicGoalKind,
     type StrategicIntent,
+    SystemClock,
 } from '@ticrafter/core';
 import type { SkillInput, SkillProgressEvent, SkillStep } from '@ticrafter/skills';
 
@@ -84,6 +87,7 @@ export interface AgencyRuntimeOptions {
     isProjectTaskActive?: () => boolean;
     goalTieBreak?: GoalTieBreakPort;
     now?: () => number;
+    clock?: ClockPort;
     maximumAttempts?: number;
     telemetryMilliseconds?: number;
 }
@@ -105,11 +109,12 @@ export interface AgencyTickReport {
 export class AgencyRuntime {
     private readonly agent: AgentLoop;
     private readonly generator = new GoalGenerator();
+    private readonly clock: ClockPort;
     private readonly now: () => number;
     private readonly maximumAttempts: number;
     private readonly telemetryMilliseconds: number;
     private state: AgencyState;
-    private timer: ReturnType<typeof setInterval> | null = null;
+    private timer: ClockHandle | null = null;
     private lastTickAt: number;
     private lastPersistAt = 0;
     private lastNightReadinessKey: string | null = null;
@@ -123,7 +128,8 @@ export class AgencyRuntime {
         arbiter: GoalArbiter,
     ) {
         this.state = state;
-        this.now = options.now ?? Date.now;
+        this.clock = options.clock ?? new SystemClock();
+        this.now = options.now ?? (() => this.clock.now());
         this.maximumAttempts = options.maximumAttempts ?? DEFAULT_MAXIMUM_ATTEMPTS;
         this.telemetryMilliseconds =
             options.telemetryMilliseconds ?? DEFAULT_TELEMETRY_MILLISECONDS;
@@ -332,7 +338,7 @@ export class AgencyRuntime {
 
     start(): void {
         if (this.timer !== null || !this.options.config.enabled) return;
-        this.timer = setInterval(
+        this.timer = this.clock.setInterval(
             () => this.tickSafely(),
             this.options.config.goalCadenceMilliseconds,
         );
@@ -341,7 +347,7 @@ export class AgencyRuntime {
 
     stop(): void {
         if (this.timer === null) return;
-        clearInterval(this.timer);
+        this.clock.clearInterval(this.timer);
         this.timer = null;
     }
 

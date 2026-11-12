@@ -12,51 +12,51 @@ n39["Confidence Calibrator"]
 n40["Timeout and Fallback Handler"]
 n80["Latency Metrics"]
 n70["Deterministic Policy (Brains)"]
-n174["Config Schema Validator (Config and Profiles)"]
-n169["Message Schema Registry (Transport and Protocol)"]
-n262["Hardware Probe (Config and Profiles)"]
-n158["Structured Logger (Ops and Observability)"]
-n157["Metrics Registry (Ops and Observability)"]
-n263["Laya Runtime Resolver (Config and Profiles)"]
+n175["Config Schema Validator (Config and Profiles)"]
+n170["Message Schema Registry (Transport and Protocol)"]
+n263["Hardware Probe (Config and Profiles)"]
+n159["Structured Logger (Ops and Observability)"]
+n158["Metrics Registry (Ops and Observability)"]
+n264["Laya Runtime Resolver (Config and Profiles)"]
 n26(["ONNX Runtime / WebGPU Driver"])
-n184["Event Stream (Transport and Protocol)"]
-n180["Profile Resolver (Config and Profiles)"]
-n264["Laya Benchmark Harness (Testing and Evaluation)"]
-n159["Health and Readiness (Ops and Observability)"]
-n265["Calibration Fitter (Laya Training)"]
-n70 -->|subscribes| n184
-n262 -->|depends_on| n180
-n263 -->|depends_on| n262
-n263 -->|depends_on| n180
-n180 -->|depends_on| n174
+n185["Event Stream (Transport and Protocol)"]
+n181["Profile Resolver (Config and Profiles)"]
+n265["Laya Benchmark Harness (Testing and Evaluation)"]
+n160["Health and Readiness (Ops and Observability)"]
+n266["Calibration Fitter (Laya Training)"]
+n70 -->|subscribes| n185
+n263 -->|depends_on| n181
+n264 -->|depends_on| n263
+n264 -->|depends_on| n181
+n181 -->|depends_on| n175
 n36 -->|depends_on| n78
 n36 -->|depends_on| n34
 n36 -->|depends_on| n76
 n39 -->|proposes_to| n70
-n39 -->|depends_on| n174
+n39 -->|depends_on| n175
 n39 -->|depends_on| n38
-n79 -->|depends_on| n169
+n79 -->|depends_on| n170
 n78 -->|depends_on| n76
-n35 -->|depends_on| n262
+n35 -->|depends_on| n263
 n35 -->|controls| n34
-n35 -->|observes| n158
-n80 -->|observes| n157
-n80 -->|writes| n157
-n34 -->|depends_on| n263
+n35 -->|observes| n159
+n80 -->|observes| n158
+n80 -->|writes| n158
+n34 -->|depends_on| n264
 n34 -->|depends_on| n26
 n38 -->|depends_on| n36
-n38 -->|publishes| n184
-n76 -->|subscribes| n184
-n77 -->|depends_on| n180
+n38 -->|publishes| n185
+n76 -->|subscribes| n185
+n77 -->|depends_on| n181
 n77 -->|depends_on| n76
 n37 -->|controls| n36
 n40 -->|controls| n38
 n40 -->|depends_on| n76
-n264 -->|depends_on| n80
-n264 -->|depends_on| n34
-n159 -->|depends_on| n34
-n265 -->|reads| n39
+n265 -->|depends_on| n80
+n265 -->|depends_on| n34
+n160 -->|depends_on| n34
+n266 -->|reads| n39
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n34,n35,n76,n77,n78,n79,n36,n37,n38,n39,n40,n80 internal;
-class n70,n174,n169,n262,n158,n157,n263,n184,n180,n264,n159,n265,n26 external;
+class n70,n175,n170,n263,n159,n158,n264,n185,n181,n265,n160,n266,n26 external;

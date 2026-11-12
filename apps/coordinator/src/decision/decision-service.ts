@@ -1,8 +1,10 @@
 import {
     attemptAsync,
+    type ClockPort,
     type DecisionRequest,
     type LoggerPort,
     type Result,
+    SystemClock,
     type TicrafterConfig,
 } from '@ticrafter/core';
 
@@ -29,6 +31,7 @@ export interface DecisionServiceOptions {
     logger: LoggerPort;
     loader: DecisionModelLoaderPort;
     now?: () => number;
+    clock?: ClockPort;
 }
 
 export interface DecisionServiceStatus {
@@ -62,7 +65,8 @@ export class DecisionService {
             decision.fleetRatePerSecond,
             decision.botRatePerSecond,
         );
-        this.now = options.now ?? Date.now;
+        const clock = options.clock ?? new SystemClock();
+        this.now = options.now ?? (() => clock.now());
         this.metrics = new DecisionLatencyMetrics();
         const calibrator = new DecisionConfidenceCalibrator(
             decision.providerTemperatures,
@@ -74,7 +78,7 @@ export class DecisionService {
             assembler: new DecisionDigestAssembler(decision.maxInputTokens),
             cache: new DecisionDigestCache(),
             parser: new DecisionOutputParser(),
-            guard: new DecisionSingleInflightGuard(),
+            guard: new DecisionSingleInflightGuard(clock),
             outcomes: this.outcomes,
             models: this.models,
             timeoutMilliseconds: decision.timeoutMilliseconds,

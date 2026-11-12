@@ -41,7 +41,7 @@ export interface ScenarioObservation {
 export interface ScenarioDriver {
     start(definition: ScenarioDefinition): Result<void, string>;
     run(definition: ScenarioDefinition): Promise<Result<ScenarioObservation, string>>;
-    stop(definition: ScenarioDefinition): Result<void, string>;
+    stop(definition: ScenarioDefinition): Result<void, string> | Promise<Result<void, string>>;
 }
 
 export interface ScenarioResult extends ScenarioObservation {
@@ -66,7 +66,7 @@ export class ScenarioRunner {
         const [runResult, runException] = await attemptAsync<Result<ScenarioObservation, string>>(
             () => this.driver.run(definition),
         );
-        const [, stopError] = this.driver.stop(definition);
+        const [, stopError] = await this.driver.stop(definition);
         if (stopError) return [null, stopError];
         if (runException) return [null, ScenarioRunner.describe(runException)];
         if (runResult === null) return [null, 'scenario run returned null'];

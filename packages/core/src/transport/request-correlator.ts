@@ -1,15 +1,17 @@
-import type { Result } from '../kernel/index.js';
+import { type ClockHandle, type ClockPort, type Result, SystemClock } from '../kernel/index.js';
 import type { Envelope } from '../schemas/index.js';
 import type { TransportFailure } from './failures.js';
 import { ProtocolEnvelope } from './messages.js';
 
 interface PendingRequest {
     resolve: (result: Result<Envelope, TransportFailure>) => void;
-    timer: ReturnType<typeof setTimeout>;
+    timer: ClockHandle;
 }
 
 export class RequestCorrelator {
     private readonly pending = new Map<string, PendingRequest>();
+
+    constructor(private readonly clock: ClockPort = new SystemClock()) {}
 
     createRequest(
         type: string,
@@ -18,7 +20,7 @@ export class RequestCorrelator {
     ): { envelope: Envelope; response: Promise<Result<Envelope, TransportFailure>> } {
         const envelope = ProtocolEnvelope.create('request', type, payload);
         const response = new Promise<Result<Envelope, TransportFailure>>((resolve) => {
-            const timer = setTimeout(() => {
+            const timer = this.clock.setTimeout(() => {
                 this.pending.delete(envelope.id);
                 resolve([null, { type: 'TIMEOUT', requestType: type }]);
             }, timeoutMs);
@@ -32,7 +34,7 @@ export class RequestCorrelator {
         const requestId = envelope.replyTo ?? envelope.id;
         const pending = this.pending.get(requestId);
         if (!pending) return false;
-        clearTimeout(pending.timer);
+        this.clock.clearTimeout(pending.timer);
         this.pending.delete(requestId);
         if (envelope.error) {
             pending.resolve([null, { type: 'SEND_FAILED', message: envelope.error.message }]);
@@ -45,14 +47,14 @@ export class RequestCorrelator {
     reject(id: string, failure: TransportFailure): void {
         const pending = this.pending.get(id);
         if (!pending) return;
-        clearTimeout(pending.timer);
+        this.clock.clearTimeout(pending.timer);
         this.pending.delete(id);
         pending.resolve([null, failure]);
     }
 
     rejectAll(failure: TransportFailure): void {
         for (const [id, pending] of this.pending) {
-            clearTimeout(pending.timer);
+            this.clock.clearTimeout(pending.timer);
             pending.resolve([null, failure]);
             this.pending.delete(id);
         }

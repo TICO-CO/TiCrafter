@@ -1,4 +1,10 @@
-import { attempt, type Result } from '@ticrafter/core';
+import {
+    attempt,
+    type ClockHandle,
+    type ClockPort,
+    type Result,
+    SystemClock,
+} from '@ticrafter/core';
 import type {
     IncidentJournal,
     RecoveryLadder,
@@ -23,14 +29,16 @@ export interface GuardianReport {
 export interface ReflexGuardianOptions {
     intervalMilliseconds: number;
     now?: () => number;
+    clock?: ClockPort;
     onReport?: (report: GuardianReport) => void;
     onError?: (error: string) => void;
 }
 
 export class ReflexGuardianLoop {
-    private timer: ReturnType<typeof setInterval> | null = null;
+    private timer: ClockHandle | null = null;
     private lastSnapshot: SafetySnapshot | null = null;
     private readonly activeIncidentKeys = new Set<string>();
+    private readonly clock: ClockPort;
 
     constructor(
         private readonly evaluators: readonly SafetyEvaluator[],
@@ -39,7 +47,9 @@ export class ReflexGuardianLoop {
         private readonly recoveryLadder: RecoveryLadder,
         private readonly source: GuardianSnapshotSource,
         private readonly options: ReflexGuardianOptions,
-    ) {}
+    ) {
+        this.clock = options.clock ?? new SystemClock();
+    }
 
     tick(): Result<GuardianReport, string> {
         const [readResult, readFailure] = attempt<Result<SafetySnapshot, string>, unknown>(() =>
@@ -56,7 +66,7 @@ export class ReflexGuardianLoop {
             return this.failClosed(`safety evaluator failed: ${evaluatorError}`, snapshot);
         }
         if (signals === null) return this.failClosed('safety evaluator returned null', snapshot);
-        const now = this.options.now?.() ?? Date.now();
+        const now = this.options.now?.() ?? this.clock.now();
         const recovery = this.recoveryLadder.next(signals, now);
         this.recordCriticalIncidents(snapshot, signals, recovery);
         return [
@@ -78,13 +88,16 @@ export class ReflexGuardianLoop {
 
     start(): Result<void, string> {
         if (this.timer !== null) return [null, 'guardian already running'];
-        this.timer = setInterval(() => this.runTick(), this.options.intervalMilliseconds);
+        this.timer = this.clock.setInterval(
+            () => this.runTick(),
+            this.options.intervalMilliseconds,
+        );
         return [undefined, null];
     }
 
     stop(): void {
         if (this.timer === null) return;
-        clearInterval(this.timer);
+        this.clock.clearInterval(this.timer);
         this.timer = null;
     }
 

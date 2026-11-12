@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import {
     ArchitectureGuard,
+    BehaviorScenarioCatalog,
     EvalMetrics,
     FleetScenarioDriver,
     FleetSoakProbe,
@@ -13,17 +14,23 @@ import {
     ReplayEngine,
     ScenarioCatalog,
     ScenarioRunner,
+    SimulatedFleetDriver,
+    TraceInspector,
 } from '@ticrafter/eval';
 import { BlockChangelogReader, EventLogWriter, SqliteRuntime } from '@ticrafter/memory';
 
 const root = path.resolve(import.meta.dir, '../..');
 
 function usage() {
-    console.log('usage: bun tools/eval/run.mjs <scenario|soak|guard|replay> [options]');
-    console.log('  scenario <id> [--accept-eula] [--data-dir <path>]');
+    console.log(
+        'usage: bun tools/eval/run.mjs <scenario|soak|guard|replay|inspect|check> [options]',
+    );
+    console.log('  scenario <id> [--mode simulate|live] [--seed <n>] [--data-dir <path>]');
     console.log('  soak <id> [--duration <ms>] [--interval <ms>] [--accept-eula]');
     console.log('  guard');
     console.log('  replay <data-dir>');
+    console.log('  inspect <data-dir> [--bot <id>] [--from <tick>] [--to <tick>] [--kind <kind>]');
+    console.log('  check <data-dir> --scenario <id>');
 }
 
 function argumentValue(name, fallback = null) {
@@ -43,14 +50,20 @@ function metricsSink(filePath) {
 }
 
 async function runScenario(identifier) {
+    const mode = argumentValue('--mode', 'simulate');
+    const dataDir = path.resolve(
+        argumentValue('--data-dir', path.join('data', 'eval', identifier)),
+    );
+    if (mode === 'simulate') return runSimulatedScenario(identifier, dataDir);
+    if (mode !== 'live') {
+        console.error(`unknown mode: ${mode}`);
+        return 1;
+    }
     const definition = ScenarioCatalog.definitions().find((scenario) => scenario.id === identifier);
     if (definition === undefined) {
         console.error(`unknown scenario: ${identifier}`);
         return 1;
     }
-    const dataDir = path.resolve(
-        argumentValue('--data-dir', path.join('data', 'eval', identifier)),
-    );
     const metrics = new EvalMetrics();
     const reporter = new MetricsReporter(metrics, metricsSink(path.join(dataDir, 'metrics.json')));
     const driver = new FleetScenarioDriver({
@@ -68,6 +81,85 @@ async function runScenario(identifier) {
     }
     console.log(JSON.stringify(result, null, 2));
     return result?.passed ? 0 : 1;
+}
+
+async function runSimulatedScenario(identifier, dataDir) {
+    const scenario = BehaviorScenarioCatalog.find(identifier);
+    if (scenario === null) {
+        console.error(`unknown simulated scenario: ${identifier}`);
+        return 1;
+    }
+    const seedOverride = argumentValue('--seed', null);
+    const selected =
+        seedOverride === null ? scenario : { ...scenario, seed: Number.parseInt(seedOverride, 10) };
+    const definition = {
+        id: selected.id,
+        title: selected.title,
+        bots: selected.bots.map((bot) => ({ name: bot.name, role: bot.role })),
+        timeoutMilliseconds: selected.timeoutMilliseconds,
+        tasks: selected.tasks,
+    };
+    const driver = new SimulatedFleetDriver({
+        repositoryRoot: root,
+        artifactDirectory: dataDir,
+        scenario: selected,
+    });
+    const runner = new ScenarioRunner(driver);
+    const [result, error] = await runner.run(definition);
+    if (error) {
+        console.error(error);
+        return 1;
+    }
+    console.log(JSON.stringify(result, null, 2));
+    return result?.passed ? 0 : 1;
+}
+
+function inspectArtifacts(dataDirectory) {
+    if (dataDirectory === null) {
+        console.error('inspect requires a data directory');
+        return 1;
+    }
+    const [inspection, error] = TraceInspector.load(dataDirectory);
+    if (error) {
+        console.error(error);
+        return 1;
+    }
+    const from = argumentValue('--from', null);
+    const to = argumentValue('--to', null);
+    const filtered = TraceInspector.filter(inspection.trace, {
+        botId: argumentValue('--bot', undefined),
+        ...(from === null ? {} : { fromTick: Number.parseInt(from, 10) }),
+        ...(to === null ? {} : { toTick: Number.parseInt(to, 10) }),
+        kind: argumentValue('--kind', undefined),
+    });
+    if (process.argv.includes('--json')) {
+        console.log(JSON.stringify({ report: inspection.report, trace: filtered }, null, 2));
+        return 0;
+    }
+    console.log(TraceInspector.render(filtered));
+    return 0;
+}
+
+function checkArtifacts(dataDirectory) {
+    if (dataDirectory === null) {
+        console.error('check requires a data directory');
+        return 1;
+    }
+    const scenario = argumentValue('--scenario', null);
+    const [inspection, error] = TraceInspector.load(dataDirectory);
+    if (error) {
+        console.error(error);
+        return 1;
+    }
+    const report = inspection.report;
+    const matches = scenario === null || report?.scenarioId === scenario;
+    const passed = report?.passed === true && matches;
+    if (process.argv.includes('--json')) {
+        console.log(JSON.stringify({ passed, scenario, report }, null, 2));
+        return passed ? 0 : 1;
+    }
+    console.log(`${passed ? 'PASS' : 'FAIL'} ${scenario ?? report?.scenarioId ?? 'unknown'}`);
+    return passed ? 0 : 1;
 }
 
 async function runSoak(identifier) {
@@ -165,6 +257,10 @@ async function main() {
             return runGuard();
         case 'replay':
             return runReplay(argument ?? null);
+        case 'inspect':
+            return inspectArtifacts(argument ?? null);
+        case 'check':
+            return checkArtifacts(argument ?? null);
         default:
             usage();
             return 1;

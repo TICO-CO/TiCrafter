@@ -8,6 +8,7 @@ import {
     type BlueprintRotation,
     BuildingFailures,
     BuiltInTemplates,
+    type ContainerView,
     type SchematicDiff,
     SchematicDiffCalculator,
     SchematicParser,
@@ -35,7 +36,6 @@ import type {
 import type { BlueprintFetchClient } from './blueprint-fetch-client.js';
 import type { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
 import { ConstructionSource } from './construction-source.js';
-import type { ContainerScanner } from './container-scanner.js';
 
 const TEMPLATE_PREFIX = 'template:';
 const SCHEMATIC_EXTENSION = '.schem';
@@ -78,12 +78,17 @@ class CatalogRepairDiffSource implements SkillRepairDiffSource {
     }
 }
 
+export interface ContainerRefreshPort {
+    list(): readonly ContainerView[];
+    refresh(): Promise<Result<readonly ContainerView[], string>>;
+}
+
 export interface BuildingSkillServicesOptions {
     documents?: BlueprintFetchClient;
     plans?: ConstructionPlanFetchClient;
     buildExecution?: SkillBuildExecutionPort;
     procurement?: SkillProcurementPort;
-    containers?: ContainerScanner;
+    containers?: ContainerRefreshPort;
 }
 
 export class BuildingSkillServices implements SkillServices {
@@ -95,7 +100,7 @@ export class BuildingSkillServices implements SkillServices {
     readonly procurement: SkillProcurementPort | undefined;
     private readonly documents: BlueprintFetchClient | undefined;
     private readonly plans: ConstructionPlanFetchClient | undefined;
-    private readonly containers: ContainerScanner | undefined;
+    private readonly containers: ContainerRefreshPort | undefined;
 
     private constructor(
         catalog: BuildingBlueprintCatalog,

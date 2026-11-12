@@ -13,44 +13,44 @@ n50["Planner Arbitration Handler"]
 n51["Keep Last Good Fallback"]
 n82["Strategic Intent Store"]
 n31["Global Scheduler (Coordinator Runtime)"]
-n207["Compatibility Checker (Edit Grants and Collaboration)"]
-n166["Grant Issuer (Edit Grants and Collaboration)"]
-n184["Event Stream (Transport and Protocol)"]
-n157["Metrics Registry (Ops and Observability)"]
-n227["Bot Profile Store (Bot Registry and Profiles)"]
-n201["SIP Revision Manager (Shared Infrastructure Plan)"]
-n217["Task Repository (Task Board)"]
-n211["Spatial Query Engine (World Model and Landmarks)"]
-n174["Config Schema Validator (Config and Profiles)"]
-n190["Secrets Loader (Config and Profiles)"]
+n208["Compatibility Checker (Edit Grants and Collaboration)"]
+n167["Grant Issuer (Edit Grants and Collaboration)"]
+n185["Event Stream (Transport and Protocol)"]
+n158["Metrics Registry (Ops and Observability)"]
+n228["Bot Profile Store (Bot Registry and Profiles)"]
+n202["SIP Revision Manager (Shared Infrastructure Plan)"]
+n218["Task Repository (Task Board)"]
+n212["Spatial Query Engine (World Model and Landmarks)"]
+n175["Config Schema Validator (Config and Profiles)"]
+n191["Secrets Loader (Config and Profiles)"]
 n25(["Muse Spark Planner Endpoint"])
-n170["Transaction Manager (Memory and Persistence)"]
-n203["Dependency Validator (Shared Infrastructure Plan)"]
-n200["Rules Store (Shared Infrastructure Plan)"]
+n171["Transaction Manager (Memory and Persistence)"]
+n204["Dependency Validator (Shared Infrastructure Plan)"]
+n201["Rules Store (Shared Infrastructure Plan)"]
 n84["Skill Registry (Skill Runtime)"]
-n204["SIP Mutation Proposer (Shared Infrastructure Plan)"]
-n223["Dead Letter Manager (Task Board)"]
+n205["SIP Mutation Proposer (Shared Infrastructure Plan)"]
+n224["Dead Letter Manager (Task Board)"]
 n64["Recovery Ladder (Autonomy and Safety)"]
-n227 -->|depends_on| n170
+n228 -->|depends_on| n171
 n31 -->|delegates_to| n43
-n207 -->|depends_on| n200
-n166 -->|depends_on| n207
-n50 -->|reads| n207
-n50 -->|proposes_to| n166
-n50 -->|subscribes| n184
-n49 -->|observes| n157
+n208 -->|depends_on| n201
+n167 -->|depends_on| n208
+n50 -->|reads| n208
+n50 -->|proposes_to| n167
+n50 -->|subscribes| n185
+n49 -->|observes| n158
 n49 -->|controls| n41
-n42 -->|reads| n227
-n42 -->|reads| n201
-n42 -->|reads| n217
-n42 -->|reads| n211
+n42 -->|reads| n228
+n42 -->|reads| n202
+n42 -->|reads| n218
+n42 -->|reads| n212
 n51 -->|depends_on| n81
-n51 -->|reads| n201
-n41 -->|depends_on| n174
-n41 -->|depends_on| n190
+n51 -->|reads| n202
+n41 -->|depends_on| n175
+n41 -->|depends_on| n191
 n41 -->|depends_on| n25
 n41 -->|delegates_to| n50
-n81 -->|depends_on| n170
+n81 -->|depends_on| n171
 n46 -->|controls| n51
 n46 -->|depends_on| n41
 n46 -->|depends_on| n44
@@ -58,30 +58,30 @@ n46 -->|depends_on| n45
 n44 -->|controls| n46
 n45 -->|controls| n46
 n45 -->|depends_on| n44
-n45 -->|depends_on| n203
-n45 -->|reads| n200
+n45 -->|depends_on| n204
+n45 -->|reads| n201
 n45 -->|reads| n84
-n45 -->|reads| n211
+n45 -->|reads| n212
 n47 -->|depends_on| n46
-n47 -->|proposes_to| n204
+n47 -->|proposes_to| n205
 n48 -->|depends_on| n46
-n48 -->|proposes_to| n217
-n43 -->|observes| n157
+n48 -->|proposes_to| n218
+n43 -->|observes| n158
 n43 -->|delegates_to| n42
-n43 -->|reads| n201
-n43 -->|reads| n223
+n43 -->|reads| n202
+n43 -->|reads| n224
 n64 -->|proposes_to| n43
-n64 -->|depends_on| n184
-n203 -->|reads| n211
-n204 -->|depends_on| n203
-n204 -->|depends_on| n201
-n201 -->|depends_on| n170
-n201 -->|depends_on| n200
-n200 -->|depends_on| n170
-n223 -->|writes| n217
-n217 -->|depends_on| n170
+n64 -->|depends_on| n185
+n204 -->|reads| n212
+n205 -->|depends_on| n204
+n205 -->|depends_on| n202
+n202 -->|depends_on| n171
+n202 -->|depends_on| n201
+n201 -->|depends_on| n171
+n224 -->|writes| n218
+n218 -->|depends_on| n171
 n82 -->|depends_on| n81
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n41,n42,n43,n44,n45,n46,n47,n48,n49,n81,n50,n51,n82 internal;
-class n31,n207,n166,n184,n157,n227,n201,n217,n211,n174,n190,n170,n203,n200,n84,n204,n223,n64,n25 external;
+class n31,n208,n167,n185,n158,n228,n202,n218,n212,n175,n191,n171,n204,n201,n84,n205,n224,n64,n25 external;

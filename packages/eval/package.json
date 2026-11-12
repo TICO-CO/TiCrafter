@@ -9,11 +9,16 @@
     },
     "dependencies": {
         "@receptron/laya": "0.2.0",
+        "@ticrafter/agency": "0.1.0",
+        "@ticrafter/bot": "0.1.0",
+        "@ticrafter/brains": "0.1.0",
         "@ticrafter/building": "0.1.0",
         "@ticrafter/coordinator": "0.1.0",
         "@ticrafter/core": "0.1.0",
         "@ticrafter/memory": "0.1.0",
         "@ticrafter/perception": "0.1.0",
-        "@ticrafter/safety": "0.1.0"
+        "@ticrafter/planning": "0.1.0",
+        "@ticrafter/safety": "0.1.0",
+        "@ticrafter/skills": "0.1.0"
     }
 }

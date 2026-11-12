@@ -1,47 +1,54 @@
 flowchart LR
-n301["Unit Fixtures"]
-n261["Detector Fixtures"]
-n302["Docker Server Harness"]
-n303["Scenario Runner"]
-n297["Replay Engine"]
-n226["Contention Harness"]
-n299["Metrics Reporter"]
-n304["Soak Runner"]
-n305["Architecture Guard Tests"]
-n264["Laya Benchmark Harness"]
-n229["Claim Repository (Claims and Leases)"]
-n217["Task Repository (Task Board)"]
-n259["Detector Pipeline (Perception)"]
+n303["Unit Fixtures"]
+n262["Detector Fixtures"]
+n304["Docker Server Harness"]
+n305["Scenario Runner"]
+n299["Replay Engine"]
+n227["Contention Harness"]
+n301["Metrics Reporter"]
+n306["Soak Runner"]
+n307["Architecture Guard Tests"]
+n265["Laya Benchmark Harness"]
+n294["Simulation Harness"]
+n308["Behavior Assertions"]
+n309["Trace Inspector"]
+n230["Claim Repository (Claims and Leases)"]
+n218["Task Repository (Task Board)"]
+n260["Detector Pipeline (Perception)"]
 n24(["Minecraft 1.20.1 LAN Server"])
 n80["Latency Metrics (Laya Decision Service)"]
 n34["Model Loader (Laya Decision Service)"]
-n157["Metrics Registry (Ops and Observability)"]
-n228["Event Log Writer (Memory and Persistence)"]
-n306["Promotion Gate (Laya Training)"]
-n296["Episode Store (Memory and Persistence)"]
-n80 -->|observes| n157
-n80 -->|writes| n157
-n305 -->|depends_on| n301
-n226 -->|depends_on| n229
-n226 -->|delegates_to| n303
-n226 -->|depends_on| n217
-n261 -->|depends_on| n301
-n261 -->|depends_on| n259
-n302 -->|depends_on| n301
-n302 -->|depends_on| n24
-n264 -->|depends_on| n80
-n264 -->|depends_on| n34
-n264 -->|delegates_to| n303
-n299 -->|observes| n157
-n297 -->|depends_on| n303
-n297 -->|depends_on| n228
-n303 -->|controls| n302
-n303 -->|publishes| n299
-n304 -->|depends_on| n299
-n304 -->|delegates_to| n303
-n306 -->|depends_on| n264
-n297 -->|reads| n296
+n158["Metrics Registry (Ops and Observability)"]
+n229["Event Log Writer (Memory and Persistence)"]
+n310["Promotion Gate (Laya Training)"]
+n298["Episode Store (Memory and Persistence)"]
+n143["Headless Bot Runtime (Bot Runtime and Mineflayer Adapter)"]
+n80 -->|observes| n158
+n80 -->|writes| n158
+n307 -->|depends_on| n303
+n227 -->|depends_on| n230
+n227 -->|delegates_to| n305
+n227 -->|depends_on| n218
+n262 -->|depends_on| n303
+n262 -->|depends_on| n260
+n304 -->|depends_on| n303
+n304 -->|depends_on| n24
+n265 -->|depends_on| n80
+n265 -->|depends_on| n34
+n265 -->|delegates_to| n305
+n301 -->|observes| n158
+n299 -->|depends_on| n305
+n299 -->|depends_on| n229
+n305 -->|controls| n304
+n305 -->|publishes| n301
+n306 -->|depends_on| n301
+n306 -->|delegates_to| n305
+n310 -->|depends_on| n265
+n299 -->|reads| n298
+n294 -->|depends_on| n143
+n294 -->|depends_on| n308
+n309 -->|depends_on| n294
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n301,n261,n302,n303,n297,n226,n299,n304,n305,n264 internal;
-class n229,n217,n259,n80,n34,n157,n228,n306,n296,n24 external;
+class n303,n262,n304,n305,n299,n227,n301,n306,n307,n265,n294,n308,n309 internal;
+class n230,n218,n260,n80,n34,n158,n229,n310,n298,n143,n24 external;

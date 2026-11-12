@@ -140,7 +140,7 @@ export class PersistentSoakRunner {
                 samples.push(this.probe.snapshot());
             }
         });
-        const [, stopError] = this.driver.stop(definition);
+        const [, stopError] = await this.driver.stop(definition);
         if (loopException !== null) {
             return [null, PersistentSoakRunner.describe(loopException)];
         }

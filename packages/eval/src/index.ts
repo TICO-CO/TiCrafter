@@ -1,4 +1,5 @@
 export * from './architecture-guard-tests/index.js';
+export * from './behavior-assertions/index.js';
 export * from './contention-harness/index.js';
 export * from './detector-fixtures/index.js';
 export * from './docker-server-harness/index.js';
@@ -6,5 +7,7 @@ export * from './laya-benchmark-harness/index.js';
 export * from './metrics-reporter/index.js';
 export * from './replay-engine/index.js';
 export * from './scenario-runner/index.js';
+export * from './simulation-harness/index.js';
 export * from './soak-runner/index.js';
+export * from './trace-inspector/index.js';
 export * from './unit-fixtures/index.js';

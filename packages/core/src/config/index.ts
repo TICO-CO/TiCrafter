@@ -1,3 +1,4 @@
+export * from './config-fixture.js';
 export * from './config-loader.js';
 export * from './env-overlay.js';
 export * from './env-parser.js';

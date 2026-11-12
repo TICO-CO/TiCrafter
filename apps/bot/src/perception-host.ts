@@ -1,12 +1,15 @@
 import {
     attempt,
     CHUNK_SNAPSHOT_EVENT,
+    type ClockHandle,
+    type ClockPort,
     type Envelope,
     EventStream,
     LANDMARK_CANDIDATE_EVENT,
     type LoggerPort,
     ProtocolEnvelope,
     type Result,
+    SystemClock,
     type TransportFailure,
 } from '@ticrafter/core';
 import {
@@ -32,15 +35,18 @@ export interface PerceptionHostOptions {
     intervalMilliseconds: number;
     maxChunksPerTick?: number;
     pipeline?: DetectorPipeline;
+    clock?: ClockPort;
 }
 
 export class PerceptionHost {
     private readonly encoder = new ChunkSnapshotEncoder();
     private readonly emitter: LandmarkCandidateEmitter;
     private readonly unsubscribe: Array<() => void> = [];
-    private timer: ReturnType<typeof setInterval> | null = null;
+    private readonly clock: ClockPort;
+    private timer: ClockHandle | null = null;
 
     constructor(private readonly options: PerceptionHostOptions) {
+        this.clock = options.clock ?? new SystemClock();
         this.emitter = new LandmarkCandidateEmitter(
             options.pipeline ?? DetectorPipeline.withDefaults(),
             options.events,
@@ -57,12 +63,15 @@ export class PerceptionHost {
                 this.forward(envelope),
             ),
         );
-        this.timer = setInterval(() => this.runTick(), this.options.intervalMilliseconds);
+        this.timer = this.clock.setInterval(
+            () => this.runTick(),
+            this.options.intervalMilliseconds,
+        );
     }
 
     stop(): void {
         if (this.timer !== null) {
-            clearInterval(this.timer);
+            this.clock.clearInterval(this.timer);
             this.timer = null;
         }
         this.unsubscribe.splice(0).forEach((unsubscribe) => unsubscribe());

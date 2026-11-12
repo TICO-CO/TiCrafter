@@ -1,17 +1,17 @@
 flowchart LR
-n175["Environment Parser"]
-n174["Config Schema Validator"]
-n180["Profile Resolver"]
-n262["Hardware Probe"]
-n190["Secrets Loader"]
-n240["Name Pool Validator"]
-n263["Laya Runtime Resolver"]
-n300["Fail Fast Handler"]
+n176["Environment Parser"]
+n175["Config Schema Validator"]
+n181["Profile Resolver"]
+n263["Hardware Probe"]
+n191["Secrets Loader"]
+n241["Name Pool Validator"]
+n264["Laya Runtime Resolver"]
+n302["Fail Fast Handler"]
 n54["Connection Lifecycle (Bot Runtime and Mineflayer Adapter)"]
 n129["Join and Auth (Bot Runtime and Mineflayer Adapter)"]
 n131["Reach and Rate Guard (Bot Runtime and Mineflayer Adapter)"]
-n181["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n239["Name Pool Allocator (Bot Registry and Profiles)"]
+n182["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n240["Name Pool Allocator (Bot Registry and Profiles)"]
 n27(["Host Hardware"])
 n72["Process Bootstrap (Coordinator Runtime)"]
 n73["Service Composition (Coordinator Runtime)"]
@@ -19,41 +19,41 @@ n39["Confidence Calibrator (Laya Decision Service)"]
 n35["Execution Provider Selector (Laya Decision Service)"]
 n34["Model Loader (Laya Decision Service)"]
 n77["Decision Rate Limiter (Laya Decision Service)"]
-n260["Perception Rate Limiter (Perception)"]
+n261["Perception Rate Limiter (Perception)"]
 n41["OpenAI-Compatible Client (Cloud Planner Advisor)"]
-n187["Transport Authentication (Transport and Protocol)"]
-n162["Tactical Decision Policy (Brains)"]
-n54 -->|depends_on| n174
+n188["Transport Authentication (Transport and Protocol)"]
+n163["Tactical Decision Policy (Brains)"]
+n54 -->|depends_on| n175
 n129 -->|depends_on| n54
-n129 -->|depends_on| n180
-n131 -->|depends_on| n174
-n181 -->|depends_on| n190
-n239 -->|depends_on| n240
-n174 -->|depends_on| n175
-n300 -->|depends_on| n174
-n262 -->|depends_on| n180
-n262 -->|depends_on| n27
-n263 -->|depends_on| n262
-n263 -->|depends_on| n180
-n240 -->|depends_on| n174
-n180 -->|depends_on| n174
-n190 -->|depends_on| n175
-n72 -->|depends_on| n174
+n129 -->|depends_on| n181
+n131 -->|depends_on| n175
+n182 -->|depends_on| n191
+n240 -->|depends_on| n241
+n175 -->|depends_on| n176
+n302 -->|depends_on| n175
+n263 -->|depends_on| n181
+n263 -->|depends_on| n27
+n264 -->|depends_on| n263
+n264 -->|depends_on| n181
+n241 -->|depends_on| n175
+n181 -->|depends_on| n175
+n191 -->|depends_on| n176
 n72 -->|depends_on| n175
+n72 -->|depends_on| n176
 n72 -->|depends_on| n73
-n73 -->|depends_on| n180
-n39 -->|depends_on| n174
-n35 -->|depends_on| n262
+n73 -->|depends_on| n181
+n39 -->|depends_on| n175
+n35 -->|depends_on| n263
 n35 -->|controls| n34
-n34 -->|depends_on| n263
-n77 -->|depends_on| n180
-n260 -->|depends_on| n180
-n41 -->|depends_on| n174
-n41 -->|depends_on| n190
-n187 -->|depends_on| n181
-n187 -->|depends_on| n190
-n162 -->|depends_on| n174
+n34 -->|depends_on| n264
+n77 -->|depends_on| n181
+n261 -->|depends_on| n181
+n41 -->|depends_on| n175
+n41 -->|depends_on| n191
+n188 -->|depends_on| n182
+n188 -->|depends_on| n191
+n163 -->|depends_on| n175
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n175,n174,n180,n262,n190,n240,n263,n300 internal;
-class n54,n129,n131,n181,n239,n72,n73,n39,n35,n34,n77,n260,n41,n187,n162,n27 external;
+class n176,n175,n181,n263,n191,n241,n264,n302 internal;
+class n54,n129,n131,n182,n240,n72,n73,n39,n35,n34,n77,n261,n41,n188,n163,n27 external;

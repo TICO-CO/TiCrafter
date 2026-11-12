@@ -10,25 +10,32 @@ import {
     type WorldBlockQueryPort,
     type WorldBlockState,
 } from '@ticrafter/building';
-import type {
-    ActionDispatchPort,
-    ActionOutcome,
-    ActionRequest,
-    BlockUpdateAttribution,
-    Result,
+import {
+    type ActionDispatchPort,
+    type ActionOutcome,
+    type ActionRequest,
+    type BlockUpdateAttribution,
+    type Result,
+    SystemClock,
 } from '@ticrafter/core';
 import type { SafetyDecision, SafetySnapshot } from '@ticrafter/safety';
 import type {
+    SkillBBox,
+    SkillBlock,
+    SkillBlockState,
     SkillBuildExecutionPort,
     SkillBuildPreparation,
     SkillConstructionOperation,
     SkillContext,
 } from '@ticrafter/skills';
 
-import type { WorldCacheAdapter } from './world-cache.js';
+interface ExecutionWorldView {
+    blockStateAt(position: { x: number; y: number; z: number }): SkillBlockState | null;
+    blocksInBox(bbox: SkillBBox): readonly SkillBlock[];
+}
 
 class BotBuildingWorld implements WorldBlockQueryPort {
-    constructor(private readonly world: WorldCacheAdapter) {}
+    constructor(private readonly world: ExecutionWorldView) {}
 
     blockAt(position: {
         x: number;
@@ -86,7 +93,7 @@ interface PositionedAttribution {
 const ATTRIBUTION_TTL_MILLISECONDS = 60_000;
 
 export interface BuildingExecutionServiceOptions {
-    world: WorldCacheAdapter;
+    world: ExecutionWorldView;
     snapshot: () => Result<SafetySnapshot, string>;
     safety: { evaluate(request: ActionRequest): SafetyDecision };
     clock?: { now(): number };
@@ -97,8 +104,10 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
     private readonly journal: MemoryBlockChangelog;
     private readonly executor: BlockExecutor;
     private readonly attributions = new Map<string, PositionedAttribution>();
+    private readonly clock: { now(): number };
 
     constructor(private readonly options: BuildingExecutionServiceOptions) {
+        this.clock = options.clock ?? new SystemClock();
         this.verifier = new BlockVerifier(new BotBuildingWorld(options.world));
         this.journal = new MemoryBlockChangelog();
         const journal = new RollbackJournal(this.journal);
@@ -163,7 +172,7 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
         const key = BuildingExecutionService.key(position);
         const entry = this.attributions.get(key);
         if (entry === undefined) return null;
-        if (entry.expiresAt < Date.now()) {
+        if (entry.expiresAt < this.clock.now()) {
             this.attributions.delete(key);
             return null;
         }
@@ -195,7 +204,7 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
                 ...(change.fencingToken === undefined ? {} : { fencingToken: change.fencingToken }),
                 ...(operation.phase === undefined ? {} : { phase: operation.phase }),
             },
-            expiresAt: Date.now() + ATTRIBUTION_TTL_MILLISECONDS,
+            expiresAt: this.clock.now() + ATTRIBUTION_TTL_MILLISECONDS,
         });
     }
 
@@ -213,7 +222,7 @@ export class BuildingExecutionService implements SkillBuildExecutionPort {
             }
             if (
                 operation.grant.expiresAt !== undefined &&
-                Date.parse(operation.grant.expiresAt) <= Date.now()
+                Date.parse(operation.grant.expiresAt) <= this.clock.now()
             ) {
                 return 'construction grant is expired';
             }

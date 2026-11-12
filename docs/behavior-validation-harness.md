@@ -1,6 +1,8 @@
 # TiCrafter Behavior Validation Harness
 
-Status: proposed. Implementation has not started.
+Status: phase 1 implemented. The clock port, fake platform layer, headless bot
+runtime, in-process coordinator runner, simulated driver, assertions, trace
+inspector, and `simulated-build` scenario exist. Later phases remain open.
 
 This document defines the milestone 16 behavior validation harness. It is the
 canonical companion to the milestone description in `main.md`.

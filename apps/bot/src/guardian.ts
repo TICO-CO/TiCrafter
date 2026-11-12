@@ -3,7 +3,13 @@ import {
     type GuardianSnapshotSource,
     ReflexGuardianLoop,
 } from '@ticrafter/brains';
-import { type ActionRequest, attempt, type LoggerPort, type Result } from '@ticrafter/core';
+import {
+    type ActionRequest,
+    attempt,
+    type ClockPort,
+    type LoggerPort,
+    type Result,
+} from '@ticrafter/core';
 import {
     ActionVetoGate,
     ClaimLossEvaluator,
@@ -29,6 +35,7 @@ export interface GuardianHookOptions {
     onCritical?: (report: GuardianReport) => void;
     incidentSink?: SafetyIncidentSink;
     emergencyStop?: EmergencyStopController;
+    clock?: ClockPort;
 }
 
 export class GuardianHook {
@@ -67,6 +74,7 @@ export class GuardianHook {
             options.source,
             {
                 intervalMilliseconds: options.intervalMilliseconds ?? 50,
+                ...(options.clock === undefined ? {} : { clock: options.clock }),
                 onReport: (report) => this.report(report),
                 onError: (error) => options.logger.warn({ error }, 'guardian tick failed'),
             },

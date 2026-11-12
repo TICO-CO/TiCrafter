@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 300  
-**Relations:** 605  
+**Components:** 304  
+**Relations:** 608  
 **Externals:** 5
 
 ## Reading this catalog
@@ -32,12 +32,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
 | `sys.skills` | [Skill Library](#skill-library) | 28 | `packages/skills/src` | 4 |
 | `sys.building` | [Building](#building) | 38 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 23 | `apps/bot/src` | 1 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 24 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
 | `sys.config` | [Config and Profiles](#config-and-profiles) | 8 | `packages/core/src/config` | 1 |
-| `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 10 | `packages/eval/src` | 10 |
+| `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 13 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
 | `sys.brains` | [Brains](#brains) | 5 | `packages/brains/src` | 4 |
 | `sys.agency` | [Agency](#agency) | 18 | `packages/agency/src` | 12 |
@@ -4382,6 +4382,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.chat-adapter` | Chat Adapter | Send and receive typed social messages through mineflayer chat with rate limits and no physical actions. | `apps/bot/src/chat` | 14 |
 | `bot-runtime.agency-state-adapter` | Agency State Adapter | Load and persist agency snapshots through coordinator state and reconcile intention with the observed world. | `apps/bot/src/agency-state-adapter` | 12 |
 | `bot-runtime.reconnect-supervisor` | Reconnect Supervisor | Reconnect after disconnect and trigger delta resync and resume. | `apps/bot/src/reconnect-supervisor` | 1 |
+| `bot-runtime.headless-runtime` | Headless Bot Runtime | Compose the real agency, skill, building, guardian, task, and transport code against injected platform ports without Mineflayer. | `apps/bot/src/headless` | 16 |
 
 ### `bot-runtime.connection-lifecycle` — Connection Lifecycle
 
@@ -4843,6 +4844,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bot_runtime_reconnect_supervisor_errors_total`
   - `bot_runtime_reconnect_supervisor_latency_ms`
+
+### `bot-runtime.headless-runtime` — Headless Bot Runtime
+
+- **Responsibility:** Compose the real agency, skill, building, guardian, task, and transport code against injected platform ports without Mineflayer.
+- **Owner path:** `apps/bot/src/headless`
+- **Provides:** `bot-runtime.headless-runtime.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#1-fleet-coordinator`
+- **Milestone:** 16
+- **Invariants:**
+  - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
+  - Reach and action-rate guards run before every physical action.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot_runtime_headless_runtime_errors_total`
+  - `bot_runtime_headless_runtime_latency_ms`
 
 ---
 
@@ -5817,7 +5838,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Owner package:** `packages/eval/src`
 - **Milestone:** 10
 - **Source refs:** `main.md#15-testing-and-evaluation`
-- **Allowed cross-system dependencies:** `sys.claims`, `sys.decision`, `sys.memory`, `sys.perception`, `sys.tasks`
+- **Allowed cross-system dependencies:** `sys.bot-runtime`, `sys.claims`, `sys.decision`, `sys.memory`, `sys.perception`, `sys.tasks`
 - **Forbidden dependencies:** none
 
 **Purpose.** Run deterministic scenarios, contention tests, benchmarks, replays, and soak tests.
@@ -5841,6 +5862,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `eval.soak-runner` | Soak Runner | Run 2+ hour stability tests and detect memory growth, deadlocks, and claim drift. | `packages/eval/src/soak-runner` | 10 |
 | `eval.architecture-guard-tests` | Architecture Guard Tests | Assert dependency rules, forbidden edges, and graph coverage in CI. | `packages/eval/src/architecture-guard-tests` | 10 |
 | `eval.laya-benchmark-harness` | Laya Benchmark Harness | Measure warm-model p50 and p95 for CPU and WebGPU with stability gates. | `packages/eval/src/laya-benchmark-harness` | 10 |
+| `eval.simulation-harness` | Simulation Harness | Run deterministic offline behavior scenarios with a fake world, inventory, clock, and action dispatch while exercising real runtime code. | `packages/eval/src/simulation-harness` | 16 |
+| `eval.behavior-assertions` | Behavior Assertions | Evaluate declarative world, task, event, metric, safety, and checkpoint assertions over scenario evidence. | `packages/eval/src/behavior-assertions` | 16 |
+| `eval.trace-inspector` | Trace Inspector | Normalize, filter, and render per-bot goal, planner, skill, safety, and building decisions. | `packages/eval/src/trace-inspector` | 16 |
 
 ### `eval.unit-fixtures` — Unit Fixtures
 
@@ -6040,6 +6064,66 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `eval_laya_benchmark_harness_errors_total`
   - `eval_laya_benchmark_harness_latency_ms`
+
+### `eval.simulation-harness` — Simulation Harness
+
+- **Responsibility:** Run deterministic offline behavior scenarios with a fake world, inventory, clock, and action dispatch while exercising real runtime code.
+- **Owner path:** `packages/eval/src/simulation-harness`
+- **Provides:** `eval.simulation-harness.interface`
+- **Requires:** `eval.scenario-runner`, `eval.unit-fixtures`, `bot-runtime.headless-runtime`
+- **Owns state:** none
+- **Source refs:** `main.md#15-testing-and-evaluation`
+- **Milestone:** 16
+- **Invariants:**
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
+- **Failure modes:**
+  - Environment unavailable: skip with an explicit reason; never pass silently.
+- **Tests:**
+  - Self-tests for fixture setup and metric reporting.
+- **Metrics:**
+  - `eval_simulation_harness_errors_total`
+  - `eval_simulation_harness_latency_ms`
+
+### `eval.behavior-assertions` — Behavior Assertions
+
+- **Responsibility:** Evaluate declarative world, task, event, metric, safety, and checkpoint assertions over scenario evidence.
+- **Owner path:** `packages/eval/src/behavior-assertions`
+- **Provides:** `eval.behavior-assertions.interface`
+- **Requires:** `eval.unit-fixtures`
+- **Owns state:** none
+- **Source refs:** `main.md#15-testing-and-evaluation`
+- **Milestone:** 16
+- **Invariants:**
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
+- **Failure modes:**
+  - Environment unavailable: skip with an explicit reason; never pass silently.
+- **Tests:**
+  - Self-tests for fixture setup and metric reporting.
+- **Metrics:**
+  - `eval_behavior_assertions_errors_total`
+  - `eval_behavior_assertions_latency_ms`
+
+### `eval.trace-inspector` — Trace Inspector
+
+- **Responsibility:** Normalize, filter, and render per-bot goal, planner, skill, safety, and building decisions.
+- **Owner path:** `packages/eval/src/trace-inspector`
+- **Provides:** `eval.trace-inspector.interface`
+- **Requires:** `eval.simulation-harness`
+- **Owns state:** none
+- **Source refs:** `main.md#15-testing-and-evaluation`
+- **Milestone:** 16
+- **Invariants:**
+  - Harnesses use disposable servers and deterministic fixtures.
+  - Benchmarks record hardware profile, execution provider, and p50/p95.
+- **Failure modes:**
+  - Environment unavailable: skip with an explicit reason; never pass silently.
+- **Tests:**
+  - Self-tests for fixture setup and metric reporting.
+- **Metrics:**
+  - `eval_trace_inspector_errors_total`
+  - `eval_trace_inspector_latency_ms`
 
 ---
 

@@ -1,4 +1,10 @@
-import { attemptAsync, type Result } from '@ticrafter/core';
+import {
+    attemptAsync,
+    type ClockHandle,
+    type ClockPort,
+    type Result,
+    SystemClock,
+} from '@ticrafter/core';
 
 import type { DecisionFailure } from './types.js';
 
@@ -10,13 +16,15 @@ interface TimeoutHandle<T> {
 export class DecisionSingleInflightGuard {
     private inFlight = false;
 
+    constructor(private readonly clock: ClockPort = new SystemClock()) {}
+
     async run<T>(
         operation: () => Promise<T>,
         timeoutMilliseconds: number,
     ): Promise<Result<T, DecisionFailure>> {
         if (this.inFlight) return [null, { type: 'BUSY' }];
         this.inFlight = true;
-        const timeout = DecisionSingleInflightGuard.timeout<T>(timeoutMilliseconds);
+        const timeout = this.timeout<T>(timeoutMilliseconds);
         const result = await Promise.race([
             attemptAsync<T, DecisionFailure>(operation),
             timeout.promise,
@@ -30,10 +38,10 @@ export class DecisionSingleInflightGuard {
         return this.inFlight;
     }
 
-    private static timeout<T>(timeoutMilliseconds: number): TimeoutHandle<T> {
-        let timer: ReturnType<typeof setTimeout> | null = null;
+    private timeout<T>(timeoutMilliseconds: number): TimeoutHandle<T> {
+        let timer: ClockHandle | null = null;
         const promise = new Promise<Result<T, DecisionFailure>>((resolve) => {
-            timer = setTimeout(
+            timer = this.clock.setTimeout(
                 () => resolve([null, { type: 'TIMEOUT', timeoutMilliseconds }]),
                 timeoutMilliseconds,
             );
@@ -41,7 +49,7 @@ export class DecisionSingleInflightGuard {
         return {
             promise,
             cancel: () => {
-                if (timer !== null) clearTimeout(timer);
+                if (timer !== null) this.clock.clearTimeout(timer);
             },
         };
     }

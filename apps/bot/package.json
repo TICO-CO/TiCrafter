@@ -4,6 +4,10 @@
     "private": true,
     "type": "module",
     "main": "src/main.ts",
+    "exports": {
+        ".": "./src/main.ts",
+        "./headless": "./src/headless/index.ts"
+    },
     "dependencies": {
         "@ticrafter/agency": "0.1.0",
         "@ticrafter/brains": "0.1.0",

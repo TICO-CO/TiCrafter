@@ -1,4 +1,4 @@
-import type { ActionDispatchPort, LoggerPort, Result } from '@ticrafter/core';
+import type { ActionDispatchPort, ClockPort, LoggerPort, Result } from '@ticrafter/core';
 import {
     CheckpointManager,
     EffectsEmitter,
@@ -25,6 +25,7 @@ export interface SkillHostOptions {
     logger: LoggerPort;
     tickMilliseconds: number;
     checkpointStore?: SkillCheckpointStore;
+    clock?: ClockPort;
 }
 
 export class SkillHost {
@@ -42,7 +43,10 @@ export class SkillHost {
     ) {
         this.builder = new SkillContextBuilder(options.source);
         this.lifecycle = lifecycle;
-        this.scheduler = new TickScheduler(options.tickMilliseconds);
+        this.scheduler =
+            options.clock === undefined
+                ? new TickScheduler(options.tickMilliseconds)
+                : new TickScheduler(options.tickMilliseconds, options.clock);
         this.preemption = new PreemptionHandler(lifecycle);
         this.checkpoints = checkpoints;
     }

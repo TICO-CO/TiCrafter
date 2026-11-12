@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 605  
+**Relations:** 608  
 **State owners:** 23  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 22 |
-| `depends_on` | 423 |
+| `depends_on` | 426 |
 | `observes` | 8 |
 | `persists_to` | 2 |
 | `proposes_to` | 7 |
@@ -179,6 +179,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Ops and Observability` | `Shared Infrastructure Plan` | 2 | depends_on×1, reads×1 |
 | `Ops and Observability` | `Task Board` | 1 | reads×1 |
 | `Ops and Observability` | `Transport and Protocol` | 3 | depends_on×3 |
+| `Testing and Evaluation` | `Bot Runtime and Mineflayer Adapter` | 1 | depends_on×1 |
 | `Testing and Evaluation` | `Claims and Leases` | 1 | depends_on×1 |
 | `Testing and Evaluation` | `Laya Decision Service` | 2 | depends_on×2 |
 | `Testing and Evaluation` | `Memory and Persistence` | 2 | depends_on×1, reads×1 |
@@ -858,6 +859,9 @@ None.
 | `rel.0179` | `eval.soak-runner` | `depends_on` | `eval.metrics-reporter` | `in-process` | sync | hard | depends on payload for Metrics Reporter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Soak Runner depends on Metrics Reporter. |
 | `rel.0180` | `eval.soak-runner` | `delegates_to` | `eval.scenario-runner` | `in-process` | sync | hard | soak scenario | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Soak tests reuse scenario runner. |
 | `rel.0480` | `eval.replay-engine` | `reads` | `memory.episode-store` | `in-process` | sync | hard | episode traces | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Replay Engine reads Episode Store. |
+| `rel.0609` | `eval.simulation-harness` | `depends_on` | `bot-runtime.headless-runtime` | `in-process` | sync | hard | headless bot runtime and platform ports | Fail the simulated scenario with evidence. | Dev-only dependency; runtime code must not import the simulator. |
+| `rel.0610` | `eval.simulation-harness` | `depends_on` | `eval.behavior-assertions` | `in-process` | sync | hard | behavior assertion evaluation | Fail the scenario with assertion or inspection evidence. | Evaluation-only dependency. |
+| `rel.0611` | `eval.trace-inspector` | `depends_on` | `eval.simulation-harness` | `in-process` | sync | hard | stored simulation trace artifacts | Fail the scenario with assertion or inspection evidence. | Evaluation-only dependency. |
 
 ## Laya Training relations
 

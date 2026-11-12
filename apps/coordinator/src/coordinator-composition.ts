@@ -3,6 +3,7 @@ import {
     attempt,
     BOT_PROJECT_UPDATE_EVENT,
     BOT_SAFETY_STOP,
+    type ClockPort,
     type LoggerPort,
     MessageSchemaRegistry,
     PLANNER_STRATEGIC_INTENT_EVENT,
@@ -11,6 +12,7 @@ import {
     type Result,
     STRATEGIC_GOAL_KINDS,
     type StrategicIntent,
+    SystemClock,
     type TicrafterConfig,
 } from '@ticrafter/core';
 import {
@@ -139,10 +141,12 @@ export interface CoordinatorCompositionOptions {
     schemaVersion: number;
     currentWorkingDirectory: string;
     planner: PlannerSecrets;
+    clock?: ClockPort;
 }
 
 export class CoordinatorComposition {
     static build(options: CoordinatorCompositionOptions): Coordinator {
+        const clock = options.clock ?? new SystemClock();
         const sessions = new SessionManager();
         const registry = MessageSchemaRegistry.withDefaults();
         const events = new EventLogWriter(options.database);
@@ -455,6 +459,7 @@ export class CoordinatorComposition {
             config: options.config,
             logger: options.logger,
             loader: new DecisionModelLoader(),
+            clock,
         });
         const backpressure = new BackpressureController();
         const decisionTrace = new DecisionTraceRecorder(
@@ -813,13 +818,14 @@ export class CoordinatorComposition {
                 uptimeSeconds: () => Math.round(process.uptime()),
             },
         });
-        let lastDecayAt = Date.now();
+        let lastDecayAt = clock.now();
         let lastBackpressureLevel = backpressure.current().level;
-        let lastReconcileAt = Date.now();
-        let lastRetentionAt = Date.now();
+        let lastReconcileAt = clock.now();
+        let lastRetentionAt = clock.now();
         const scheduler = new Scheduler({
             intervalMs: 5000,
             logger: options.logger,
+            clock,
             tick: () => {
                 const staleSessions = sessions.pruneStale(15_000);
                 if (staleSessions.length) {
@@ -842,7 +848,7 @@ export class CoordinatorComposition {
                         options.logger.info({ expired: expired.length }, 'edit grants expired');
                     }
                 }
-                const now = Date.now();
+                const now = clock.now();
                 if (now - lastDecayAt >= 30_000) {
                     lastDecayAt = now;
                     const [, decayError] = worldModel.applyDecay(new Date(now).toISOString());

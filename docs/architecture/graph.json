@@ -4520,6 +4520,22 @@
                     "sourceRefs": ["main.md#1-fleet-coordinator"],
                     "milestone": 1,
                     "template": "tpl.bot-adapter"
+                },
+                {
+                    "id": "bot-runtime.headless-runtime",
+                    "name": "Headless Bot Runtime",
+                    "responsibility": "Compose the real agency, skill, building, guardian, task, and transport code against injected platform ports without Mineflayer.",
+                    "plannedPath": "apps/bot/src/headless",
+                    "provides": ["bot-runtime.headless-runtime.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot_runtime_headless_runtime_errors_total",
+                        "bot_runtime_headless_runtime_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#1-fleet-coordinator"],
+                    "milestone": 16,
+                    "template": "tpl.bot-adapter"
                 }
             ]
         },
@@ -5342,6 +5358,7 @@
                 "Benchmarks record p50 and p95 with hardware profile and provider metadata."
             ],
             "allowedDependencies": [
+                "sys.bot-runtime",
                 "sys.claims",
                 "sys.decision",
                 "sys.memory",
@@ -5515,6 +5532,58 @@
                         "Hard gates are warm-model p95 below 250ms and 2h with no crash or driver reset.",
                         "WebGPU is adopted only if it also beats CPU p95."
                     ]
+                },
+                {
+                    "id": "eval.simulation-harness",
+                    "name": "Simulation Harness",
+                    "responsibility": "Run deterministic offline behavior scenarios with a fake world, inventory, clock, and action dispatch while exercising real runtime code.",
+                    "plannedPath": "packages/eval/src/simulation-harness",
+                    "provides": ["eval.simulation-harness.interface"],
+                    "requires": [
+                        "eval.scenario-runner",
+                        "eval.unit-fixtures",
+                        "bot-runtime.headless-runtime"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "eval_simulation_harness_errors_total",
+                        "eval_simulation_harness_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#15-testing-and-evaluation"],
+                    "milestone": 16,
+                    "template": "tpl.test-harness"
+                },
+                {
+                    "id": "eval.behavior-assertions",
+                    "name": "Behavior Assertions",
+                    "responsibility": "Evaluate declarative world, task, event, metric, safety, and checkpoint assertions over scenario evidence.",
+                    "plannedPath": "packages/eval/src/behavior-assertions",
+                    "provides": ["eval.behavior-assertions.interface"],
+                    "requires": ["eval.unit-fixtures"],
+                    "ownsState": [],
+                    "metrics": [
+                        "eval_behavior_assertions_errors_total",
+                        "eval_behavior_assertions_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#15-testing-and-evaluation"],
+                    "milestone": 16,
+                    "template": "tpl.test-harness"
+                },
+                {
+                    "id": "eval.trace-inspector",
+                    "name": "Trace Inspector",
+                    "responsibility": "Normalize, filter, and render per-bot goal, planner, skill, safety, and building decisions.",
+                    "plannedPath": "packages/eval/src/trace-inspector",
+                    "provides": ["eval.trace-inspector.interface"],
+                    "requires": ["eval.simulation-harness"],
+                    "ownsState": [],
+                    "metrics": [
+                        "eval_trace_inspector_errors_total",
+                        "eval_trace_inspector_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#15-testing-and-evaluation"],
+                    "milestone": 16,
+                    "template": "tpl.test-harness"
                 }
             ]
         },
@@ -14276,6 +14345,45 @@
             "criticality": "hard",
             "failureBehavior": "Fail the procurement step and preserve the package task dependency.",
             "notes": "Procurement catalog uses local registries and recipes.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0609",
+            "from": "eval.simulation-harness",
+            "to": "bot-runtime.headless-runtime",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "headless bot runtime and platform ports",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the simulated scenario with evidence.",
+            "notes": "Dev-only dependency; runtime code must not import the simulator.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0610",
+            "from": "eval.simulation-harness",
+            "to": "eval.behavior-assertions",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "behavior assertion evaluation",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the scenario with assertion or inspection evidence.",
+            "notes": "Evaluation-only dependency.",
+            "explicit": true
+        },
+        {
+            "id": "rel.0611",
+            "from": "eval.trace-inspector",
+            "to": "eval.simulation-harness",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "stored simulation trace artifacts",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Fail the scenario with assertion or inspection evidence.",
+            "notes": "Evaluation-only dependency.",
             "explicit": true
         }
     ]

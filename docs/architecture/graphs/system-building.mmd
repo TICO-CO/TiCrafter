@@ -39,21 +39,21 @@ n127["Repair Plan Planner"]
 n128["Rollback Plan Planner"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
-n211["Spatial Query Engine (World Model and Landmarks)"]
-n200["Rules Store (Shared Infrastructure Plan)"]
-n210["Container Memory (World Model and Landmarks)"]
+n212["Spatial Query Engine (World Model and Landmarks)"]
+n201["Rules Store (Shared Infrastructure Plan)"]
+n211["Container Memory (World Model and Landmarks)"]
 n52["Skill Context Builder (Skill Runtime)"]
 n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n287["Block Changelog Writer (Memory and Persistence)"]
-n195["Structure Store (Shared Infrastructure Plan)"]
-n184["Event Stream (Transport and Protocol)"]
-n275["Bridge (Skill Library)"]
-n276["Clear (Skill Library)"]
-n268["Place Build (Skill Library)"]
-n280["Repair (Skill Library)"]
-n279["Schematic Build (Skill Library)"]
-n277["Construction (Skill Library)"]
-n278["Procurement (Skill Library)"]
+n288["Block Changelog Writer (Memory and Persistence)"]
+n196["Structure Store (Shared Infrastructure Plan)"]
+n185["Event Stream (Transport and Protocol)"]
+n276["Bridge (Skill Library)"]
+n277["Clear (Skill Library)"]
+n269["Place Build (Skill Library)"]
+n281["Repair (Skill Library)"]
+n280["Schematic Build (Skill Library)"]
+n278["Construction (Skill Library)"]
+n279["Procurement (Skill Library)"]
 n57 -->|depends_on| n63
 n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
@@ -61,24 +61,24 @@ n53 -->|depends_on| n108
 n53 -->|depends_on| n111
 n53 -->|depends_on| n63
 n108 -->|depends_on| n92
-n108 -->|reads| n211
+n108 -->|reads| n212
 n93 -->|depends_on| n92
-n93 -->|depends_on| n200
+n93 -->|depends_on| n201
 n106 -->|depends_on| n92
 n106 -->|depends_on| n105
 n110 -->|depends_on| n57
-n110 -->|writes| n210
+n110 -->|writes| n211
 n109 -->|depends_on| n92
 n109 -->|reads| n52
-n109 -->|reads| n210
+n109 -->|reads| n211
 n107 -->|reads| n56
 n107 -->|depends_on| n106
-n107 -->|reads| n211
-n111 -->|writes| n287
-n111 -->|reads| n195
-n111 -->|subscribes| n184
+n107 -->|reads| n212
+n111 -->|writes| n288
+n111 -->|reads| n196
+n111 -->|subscribes| n185
 n104 -->|depends_on| n92
-n104 -->|reads| n211
+n104 -->|reads| n212
 n103 -->|depends_on| n92
 n99 -->|depends_on| n92
 n97 -->|depends_on| n92
@@ -91,21 +91,21 @@ n100 -->|depends_on| n92
 n98 -->|depends_on| n92
 n101 -->|depends_on| n92
 n105 -->|depends_on| n92
-n105 -->|reads| n195
+n105 -->|reads| n196
 n63 -->|validates| n57
 n63 -->|validates| n53
 n52 -->|reads| n56
-n52 -->|reads| n211
-n275 -->|depends_on| n53
+n52 -->|reads| n212
 n276 -->|depends_on| n53
-n276 -->|depends_on| n63
-n268 -->|depends_on| n53
-n268 -->|depends_on| n52
+n277 -->|depends_on| n53
+n277 -->|depends_on| n63
+n269 -->|depends_on| n53
+n269 -->|depends_on| n52
+n281 -->|depends_on| n53
+n281 -->|depends_on| n104
 n280 -->|depends_on| n53
-n280 -->|depends_on| n104
-n279 -->|depends_on| n53
-n279 -->|depends_on| n106
-n279 -->|depends_on| n105
+n280 -->|depends_on| n106
+n280 -->|depends_on| n105
 n112 -->|depends_on| n92
 n113 -->|depends_on| n92
 n117 -->|depends_on| n113
@@ -123,7 +123,7 @@ n124 -->|depends_on| n123
 n124 -->|depends_on| n126
 n126 -->|depends_on| n109
 n120 -->|depends_on| n112
-n277 -->|depends_on| n124
+n278 -->|depends_on| n124
 n125 -->|depends_on| n112
 n127 -->|depends_on| n92
 n127 -->|depends_on| n104
@@ -133,8 +133,8 @@ n128 -->|depends_on| n92
 n128 -->|depends_on| n122
 n128 -->|depends_on| n123
 n128 -->|depends_on| n111
-n278 -->|depends_on| n126
+n279 -->|depends_on| n126
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
 class n92,n93,n94,n95,n96,n97,n98,n99,n100,n101,n102,n103,n104,n105,n106,n107,n108,n53,n109,n110,n111,n112,n113,n114,n115,n116,n117,n118,n119,n120,n121,n122,n123,n124,n125,n126,n127,n128 internal;
-class n57,n63,n211,n200,n210,n52,n56,n287,n195,n184,n275,n276,n268,n280,n279,n277,n278 external;
+class n57,n63,n212,n201,n211,n52,n56,n288,n196,n185,n276,n277,n269,n281,n280,n278,n279 external;

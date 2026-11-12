@@ -1,78 +1,78 @@
 flowchart LR
 n66["Ops API"]
-n154["Status Aggregator"]
-n155["Agency Status View"]
+n155["Status Aggregator"]
+n156["Agency Status View"]
 n67["Pause and Resume Controller"]
 n68["Fleet Emergency Stop"]
-n156["SIP Dump"]
-n157["Metrics Registry"]
-n158["Structured Logger"]
-n159["Health and Readiness"]
-n160["Audit Viewer"]
-n231["Contention Metrics (Claims and Leases)"]
+n157["SIP Dump"]
+n158["Metrics Registry"]
+n159["Structured Logger"]
+n160["Health and Readiness"]
+n161["Audit Viewer"]
+n232["Contention Metrics (Claims and Leases)"]
 n35["Execution Provider Selector (Laya Decision Service)"]
 n80["Latency Metrics (Laya Decision Service)"]
-n299["Metrics Reporter (Testing and Evaluation)"]
+n301["Metrics Reporter (Testing and Evaluation)"]
 n28(["Fleet Operator"])
-n287["Block Changelog Writer (Memory and Persistence)"]
-n228["Event Log Writer (Memory and Persistence)"]
+n288["Block Changelog Writer (Memory and Persistence)"]
+n229["Event Log Writer (Memory and Persistence)"]
 n65["Emergency Stop Controller (Autonomy and Safety)"]
-n184["Event Stream (Transport and Protocol)"]
+n185["Event Stream (Transport and Protocol)"]
 n34["Model Loader (Laya Decision Service)"]
-n293["SQLite Runtime (Memory and Persistence)"]
-n169["Message Schema Registry (Transport and Protocol)"]
+n295["SQLite Runtime (Memory and Persistence)"]
+n170["Message Schema Registry (Transport and Protocol)"]
 n59["Skill Host (Bot Runtime and Mineflayer Adapter)"]
-n182["Presence Tracker (Bot Registry and Profiles)"]
-n201["SIP Revision Manager (Shared Infrastructure Plan)"]
-n229["Claim Repository (Claims and Leases)"]
-n217["Task Repository (Task Board)"]
+n183["Presence Tracker (Bot Registry and Profiles)"]
+n202["SIP Revision Manager (Shared Infrastructure Plan)"]
+n230["Claim Repository (Claims and Leases)"]
+n218["Task Repository (Task Board)"]
 n49["Planner Budget Limiter (Cloud Planner Advisor)"]
 n43["Planner Trigger Evaluator (Cloud Planner Advisor)"]
 n87["Skill Progress Reporter (Skill Runtime)"]
-n296["Episode Store (Memory and Persistence)"]
-n238["Agency State Store (Bot Registry and Profiles)"]
-n291["Agent Episode Repository (Memory and Persistence)"]
-n231 -->|depends_on| n229
-n231 -->|observes| n157
+n298["Episode Store (Memory and Persistence)"]
+n239["Agency State Store (Bot Registry and Profiles)"]
+n292["Agent Episode Repository (Memory and Persistence)"]
+n232 -->|depends_on| n230
+n232 -->|observes| n158
 n35 -->|controls| n34
-n35 -->|observes| n158
-n80 -->|observes| n157
-n80 -->|writes| n157
-n299 -->|observes| n157
+n35 -->|observes| n159
+n80 -->|observes| n158
+n80 -->|writes| n158
+n301 -->|observes| n158
 n28 -->|controls| n66
-n160 -->|reads| n287
-n160 -->|reads| n228
+n161 -->|reads| n288
+n161 -->|reads| n229
 n68 -->|controls| n65
-n68 -->|depends_on| n184
-n159 -->|depends_on| n34
-n159 -->|depends_on| n293
-n159 -->|depends_on| n154
+n68 -->|depends_on| n185
+n160 -->|depends_on| n34
+n160 -->|depends_on| n295
+n160 -->|depends_on| n155
 n66 -->|depends_on| n68
 n66 -->|depends_on| n67
-n66 -->|depends_on| n154
-n66 -->|depends_on| n169
-n67 -->|controls| n59
-n67 -->|depends_on| n182
-n67 -->|depends_on| n184
-n156 -->|depends_on| n201
-n154 -->|depends_on| n182
-n154 -->|reads| n229
-n154 -->|observes| n157
-n154 -->|reads| n201
-n154 -->|reads| n217
-n49 -->|observes| n157
-n43 -->|observes| n157
-n43 -->|reads| n201
-n65 -->|depends_on| n184
-n87 -->|observes| n157
-n87 -->|publishes| n184
-n160 -->|reads| n296
-n67 -->|writes| n228
-n68 -->|writes| n228
-n155 -->|reads| n238
-n155 -->|reads| n291
 n66 -->|depends_on| n155
+n66 -->|depends_on| n170
+n67 -->|controls| n59
+n67 -->|depends_on| n183
+n67 -->|depends_on| n185
+n157 -->|depends_on| n202
+n155 -->|depends_on| n183
+n155 -->|reads| n230
+n155 -->|observes| n158
+n155 -->|reads| n202
+n155 -->|reads| n218
+n49 -->|observes| n158
+n43 -->|observes| n158
+n43 -->|reads| n202
+n65 -->|depends_on| n185
+n87 -->|observes| n158
+n87 -->|publishes| n185
+n161 -->|reads| n298
+n67 -->|writes| n229
+n68 -->|writes| n229
+n156 -->|reads| n239
+n156 -->|reads| n292
+n66 -->|depends_on| n156
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n66,n154,n155,n67,n68,n156,n157,n158,n159,n160 internal;
-class n231,n35,n80,n299,n287,n228,n65,n184,n34,n293,n169,n59,n182,n201,n229,n217,n49,n43,n87,n296,n238,n291,n28 external;
+class n66,n155,n156,n67,n68,n157,n158,n159,n160,n161 internal;
+class n232,n35,n80,n301,n288,n229,n65,n185,n34,n295,n170,n59,n183,n202,n230,n218,n49,n43,n87,n298,n239,n292,n28 external;

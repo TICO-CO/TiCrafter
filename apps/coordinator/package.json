@@ -6,6 +6,7 @@
     "main": "src/main.ts",
     "exports": {
         ".": "./src/main.ts",
+        "./composition": "./src/coordinator-composition.ts",
         "./bots": "./src/bots/index.ts",
         "./claims": "./src/claims/index.ts",
         "./core": "./src/core/index.ts",

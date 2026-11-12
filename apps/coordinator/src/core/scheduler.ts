@@ -1,23 +1,33 @@
-import { attempt, type LoggerPort } from '@ticrafter/core';
+import {
+    attempt,
+    type ClockHandle,
+    type ClockPort,
+    type LoggerPort,
+    SystemClock,
+} from '@ticrafter/core';
 
 export interface SchedulerOptions {
     intervalMs: number;
     logger: LoggerPort;
     tick: () => void;
+    clock?: ClockPort;
 }
 
 export class Scheduler {
-    private timer: ReturnType<typeof setInterval> | null = null;
+    private timer: ClockHandle | null = null;
+    private readonly clock: ClockPort;
 
-    constructor(private readonly options: SchedulerOptions) {}
+    constructor(private readonly options: SchedulerOptions) {
+        this.clock = options.clock ?? new SystemClock();
+    }
 
     start(): void {
         if (this.timer) return;
-        this.timer = setInterval(() => this.tick(), this.options.intervalMs);
+        this.timer = this.clock.setInterval(() => this.tick(), this.options.intervalMs);
     }
 
     stop(): void {
-        if (this.timer) clearInterval(this.timer);
+        if (this.timer) this.clock.clearInterval(this.timer);
         this.timer = null;
     }
 
