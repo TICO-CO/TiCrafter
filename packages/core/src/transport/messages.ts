@@ -2,6 +2,8 @@ import type { z as zod } from 'zod';
 
 import { attempt, type Result } from '../kernel/index.js';
 import {
+    AGENCY_EPISODE_EVENT,
+    AGENCY_STATE_EVENT,
     BLOCK_UPDATE_EVENT,
     CHUNK_SNAPSHOT_EVENT,
     DECISION_REQUEST,
@@ -24,6 +26,8 @@ import {
     BOT_SKILL_CANCEL,
     BOT_SKILL_RESUME,
     BOT_SKILL_START,
+    botAgencyEpisodeSchema,
+    botAgencyStateSchema,
     botAutonomyPauseSchema,
     botAutonomyResumeSchema,
     botEventSchema,
@@ -111,6 +115,8 @@ export class MessageSchemaRegistry {
             .register(LANDMARK_CANDIDATE_EVENT, landmarkCandidateSchema)
             .register(BLOCK_UPDATE_EVENT, blockUpdateSchema)
             .register(SKILL_PROGRESS_EVENT, skillProgressSchema)
+            .register(AGENCY_STATE_EVENT, botAgencyStateSchema)
+            .register(AGENCY_EPISODE_EVENT, botAgencyEpisodeSchema)
             .register(BOT_SKILL_START, botSkillStartSchema)
             .register(BOT_SKILL_CANCEL, botSkillCancelSchema)
             .register(BOT_SKILL_RESUME, botSkillResumeSchema)

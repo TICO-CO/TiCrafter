@@ -10,8 +10,17 @@ export interface AgencyStatusSnapshot {
     recentGoalOutcomes: readonly string[];
 }
 
+export interface AgencyEpisodeSnapshot {
+    id: string;
+    goalId: string | null;
+    kind: string;
+    summary: string;
+    createdAt: string;
+}
+
 export interface AgencyStatusPort {
     snapshot(botId: string): Result<AgencyStatusSnapshot | null, string>;
+    episodes(botId: string, limit: number): Result<readonly AgencyEpisodeSnapshot[], string>;
     onlineBotIds(): Result<readonly string[], string>;
 }
 
@@ -20,6 +29,10 @@ export class AgencyStatusView {
 
     one(botId: string): Result<AgencyStatusSnapshot | null, string> {
         return this.port.snapshot(botId);
+    }
+
+    episodes(botId: string, limit = 20): Result<readonly AgencyEpisodeSnapshot[], string> {
+        return this.port.episodes(botId, limit);
     }
 
     fleet(): Result<readonly AgencyStatusSnapshot[], string> {

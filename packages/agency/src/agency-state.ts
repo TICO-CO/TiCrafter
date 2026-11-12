@@ -3,7 +3,7 @@ import type { Result } from '@ticrafter/core';
 import { NeedsModel } from './needs-model.js';
 import { PersonalityModel } from './personality-model.js';
 import { RoutineModel } from './routine-model.js';
-import type { Intention, RoutineState } from './types.js';
+import type { Intention, NeedName, RoutineState } from './types.js';
 
 export interface AgencyStateSnapshot {
     botId: string;
@@ -51,5 +51,61 @@ export class AgencyState {
             }),
             null,
         ];
+    }
+
+    static restore(input: AgencyStateSnapshot): Result<AgencyState, string> {
+        if (input.botId.length === 0) return [null, 'botId is required'];
+        if (input.mood.length === 0) return [null, 'mood is required'];
+        const intentionError = AgencyState.validateIntention(input.intention);
+        if (intentionError !== null) return [null, intentionError];
+        return [new AgencyState(input), null];
+    }
+
+    decayNeeds(elapsedMilliseconds: number, ratePerMinute: number): AgencyState {
+        return new AgencyState({
+            ...this.snapshot,
+            needs: this.snapshot.needs.decayUniform(elapsedMilliseconds, ratePerMinute),
+        });
+    }
+
+    satisfyNeed(name: NeedName, amount: number): AgencyState {
+        return new AgencyState({
+            ...this.snapshot,
+            needs: this.snapshot.needs.satisfy(name, amount),
+        });
+    }
+
+    withIntention(intention: Intention | null): AgencyState {
+        return new AgencyState({ ...this.snapshot, intention });
+    }
+
+    withRoutine(routine: RoutineState): AgencyState {
+        return new AgencyState({ ...this.snapshot, routine });
+    }
+
+    withHome(homeStructureId: string | null, personalStorageId: string | null): AgencyState {
+        return new AgencyState({ ...this.snapshot, homeStructureId, personalStorageId });
+    }
+
+    withMood(mood: string): AgencyState {
+        return new AgencyState({ ...this.snapshot, mood });
+    }
+
+    touchDeliberation(now: string): AgencyState {
+        return new AgencyState({ ...this.snapshot, lastDeliberationAt: now });
+    }
+
+    private static validateIntention(intention: Intention | null): string | null {
+        if (intention === null) return null;
+        if (intention.goalId.length === 0) return 'intention goalId is required';
+        if (intention.label.length === 0) return 'intention label is required';
+        if (!Number.isInteger(intention.stepIndex) || intention.stepIndex < 0) {
+            return 'intention stepIndex must be a non-negative integer';
+        }
+        if (!Number.isInteger(intention.attempts) || intention.attempts < 0) {
+            return 'intention attempts must be a non-negative integer';
+        }
+        if (intention.createdAt.length === 0) return 'intention createdAt is required';
+        return null;
     }
 }

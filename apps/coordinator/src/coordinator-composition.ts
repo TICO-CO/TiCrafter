@@ -7,6 +7,7 @@ import {
     type TicrafterConfig,
 } from '@ticrafter/core';
 import {
+    AgentEpisodeRepository,
     BlockChangelogReader,
     BlockChangelogWriter,
     EpisodeStore,
@@ -36,6 +37,7 @@ import {
 import { SkillCatalog } from '@ticrafter/skills';
 
 import {
+    AgencyStateStore,
     BotDeltaSyncPlanner,
     BotIdentityAuthenticator,
     BotPresenceTracker,
@@ -63,6 +65,8 @@ import {
 } from './decision/index.js';
 import { EditGrantRepository, GrantService } from './grants/index.js';
 import {
+    AgencyStatusSource,
+    AgencyStatusView,
     OpsApi,
     OpsAuditViewer,
     OpsFleetEmergencyStop,
@@ -221,9 +225,12 @@ export class CoordinatorComposition {
                 },
             },
         });
+        const agencyStore = new AgencyStateStore(options.database);
+        const agentEpisodes = new AgentEpisodeRepository(options.database);
         const botResume = new BotResumeOrchestrator(
             botStore,
             {
+                agency: agencyStore,
                 claims: claimRepository,
                 tasks: taskRepository,
                 grants: grantRepository,
@@ -329,6 +336,38 @@ export class CoordinatorComposition {
                     );
                 }
             },
+            onAgencyState: (payload) => {
+                const [, saveError] = agencyStore.saveSnapshot(
+                    payload.botId,
+                    payload.state,
+                    payload.at,
+                );
+                if (saveError) {
+                    options.logger.warn(
+                        { botId: payload.botId, error: saveError },
+                        'agency state save failed',
+                    );
+                }
+            },
+            onAgencyEpisode: (payload) => {
+                const [, appendError] = agentEpisodes.append({
+                    id: payload.episode.id,
+                    botId: payload.botId,
+                    goalId: payload.episode.goalId,
+                    kind: payload.episode.kind,
+                    summary: payload.episode.summary,
+                    position: payload.episode.position,
+                    relatedBotId: payload.episode.relatedBotId,
+                    payload: payload.episode.payload,
+                    createdAt: payload.at,
+                });
+                if (appendError) {
+                    options.logger.warn(
+                        { botId: payload.botId, error: appendError },
+                        'agency episode append failed',
+                    );
+                }
+            },
             onDecisionRequest: (connection, payload, envelope) => {
                 void decisionAdapter.handle(connection, payload, envelope);
             },
@@ -383,6 +422,13 @@ export class CoordinatorComposition {
             metrics: opsMetrics,
             status,
             health: opsHealth,
+            agency: new AgencyStatusView(
+                new AgencyStatusSource({
+                    states: agencyStore,
+                    episodes: agentEpisodes,
+                    sessions,
+                }),
+            ),
             sip: new OpsSipDump({ loadSnapshot: () => sip.loadSnapshot() }, opsMetrics),
             audit: new OpsAuditViewer(
                 {

@@ -3,7 +3,7 @@ import type { Result, Vec3 } from '@ticrafter/core';
 import { GoalCatalog, type GoalTemplate } from './goal-catalog.js';
 import type { NeedsModel } from './needs-model.js';
 import type { PersonalityModel } from './personality-model.js';
-import type { AgencySnapshot, Goal, GoalKind, RoutinePhase } from './types.js';
+import type { AgencySnapshot, Goal, GoalKind, GoalStep, RoutinePhase } from './types.js';
 
 const FOOD_ITEMS = new Set([
     'apple',
@@ -49,10 +49,14 @@ export class GoalGenerator {
             case 'rest':
                 return phase === 'night' && snapshot.hasBed;
             case 'gather':
-                return template.label.includes('wood')
-                    ? needs.pressure('materials') > 0.35 ||
-                          personality.weight('industriousness') > 0.6
-                    : needs.pressure('tools') > 0.35;
+                if (template.label.includes('wood')) {
+                    return (
+                        this.hasResourceSite(snapshot, 'wood') &&
+                        (needs.pressure('materials') > 0.35 ||
+                            personality.weight('industriousness') > 0.6)
+                    );
+                }
+                return this.hasResourceSite(snapshot, 'stone') && needs.pressure('tools') > 0.35;
             case 'craft':
                 return needs.pressure('tools') > 0.4 && this.hasAny(snapshot, ['log', 'stone']);
             case 'shelter':
@@ -63,28 +67,26 @@ export class GoalGenerator {
             case 'return-home':
                 return snapshot.home !== null && this.distanceToHome(snapshot) > 12;
             case 'deposit':
-                return this.itemCount(snapshot) >= 30;
+                return false;
             case 'explore':
                 return needs.pressure('novelty') > 0.35 || personality.weight('curiosity') > 0.6;
             case 'social':
-                return (
-                    snapshot.nearbyBots.length + snapshot.nearbyPlayers.length > 0 &&
-                    personality.weight('sociability') > 0.3
-                );
+                return false;
             case 'leisure':
                 return true;
         }
     }
 
     private materialize(template: GoalTemplate, snapshot: AgencySnapshot): Goal {
+        const target = this.target(template, snapshot);
         return {
             id: `goal:${template.kind}:${template.label.toLowerCase().replace(/\s+/g, '-')}`,
             kind: template.kind,
             label: template.label,
             priority: template.priority,
             source: template.source,
-            target: this.target(template.kind, snapshot),
-            steps: template.steps,
+            target,
+            steps: this.steps(template, snapshot, target),
             expectedValue: template.expectedValue,
             estimatedCost: template.estimatedCost,
             estimatedRisk: template.estimatedRisk,
@@ -92,15 +94,53 @@ export class GoalGenerator {
         };
     }
 
-    private target(kind: GoalKind, snapshot: AgencySnapshot): Vec3 | null {
-        if (kind === 'shelter' || kind === 'deposit' || kind === 'return-home') {
+    private steps(
+        template: GoalTemplate,
+        snapshot: AgencySnapshot,
+        target: Vec3 | null,
+    ): readonly GoalStep[] {
+        return template.steps.map((step) => {
+            if (step.skillId === 'mine') {
+                return { ...step, input: { ...step.input, target } };
+            }
+            if (step.skillId === 'navigate') {
+                return {
+                    ...step,
+                    input: { ...step.input, target: this.navigationTarget(snapshot) },
+                };
+            }
+            if (step.skillId === 'explore') {
+                return { ...step, input: { ...step.input, center: snapshot.position } };
+            }
+            return step;
+        });
+    }
+
+    private target(template: GoalTemplate, snapshot: AgencySnapshot): Vec3 | null {
+        if (template.kind === 'gather') {
+            return this.resourceSite(snapshot, template.label.includes('wood') ? 'wood' : 'stone');
+        }
+        if (
+            template.kind === 'shelter' ||
+            template.kind === 'deposit' ||
+            template.kind === 'return-home'
+        ) {
             return snapshot.home;
         }
-        if (kind === 'gather') {
-            return snapshot.knownResourceSites[0]?.position ?? null;
-        }
-        if (kind === 'explore') return snapshot.position;
+        if (template.kind === 'explore') return snapshot.position;
         return null;
+    }
+
+    private navigationTarget(snapshot: AgencySnapshot): Vec3 {
+        return snapshot.home ?? snapshot.position;
+    }
+
+    private hasResourceSite(snapshot: AgencySnapshot, kind: string): boolean {
+        return snapshot.knownResourceSites.some((site) => site.kind === kind);
+    }
+
+    private resourceSite(snapshot: AgencySnapshot, kind: string): Vec3 | null {
+        return snapshot.knownResourceSites.find((site) => site.kind === kind)?.position ?? null;
     }
 
     private hasFood(snapshot: AgencySnapshot): boolean {
@@ -109,10 +149,6 @@ export class GoalGenerator {
 
     private hasAny(snapshot: AgencySnapshot, names: readonly string[]): boolean {
         return snapshot.inventory.some((item) => names.some((name) => item.name.includes(name)));
-    }
-
-    private itemCount(snapshot: AgencySnapshot): number {
-        return snapshot.inventory.reduce((total, item) => total + item.count, 0);
     }
 
     private distanceToHome(snapshot: AgencySnapshot): number {

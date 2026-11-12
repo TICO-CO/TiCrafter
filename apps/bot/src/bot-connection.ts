@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { AgencyState, PersonalityModel } from '@ticrafter/agency';
 import { DeterministicPolicy, type GuardianReport, LayaClient } from '@ticrafter/brains';
 import {
     attempt,
@@ -38,6 +39,9 @@ import {
 import { type Bot, createBot } from 'mineflayer';
 
 import { ActionExecutor } from './action-executor.js';
+import { AgencyRuntime } from './agency-runtime.js';
+import { AgencySnapshotSource } from './agency-snapshot-source.js';
+import { AgencyStateAdapter } from './agency-state-adapter.js';
 import { BuildingSkillServices } from './building-services.js';
 import { BotEventBridge } from './event-bridge.js';
 import { GuardianHook } from './guardian.js';
@@ -57,6 +61,7 @@ export interface BotConnectionOptions {
     config: TicrafterConfig;
     name: string;
     botId: string;
+    botIndex: number;
     url: string;
     registry: MessageSchemaRegistry;
     logger: LoggerPort;
@@ -78,6 +83,7 @@ export class BotConnection {
     private perception: PerceptionHost | null = null;
     private guardian: GuardianHook | null = null;
     private skills: SkillHost | null = null;
+    private agencyRuntime: AgencyRuntime | null = null;
     private taskAutonomy: TaskAutonomy | null = null;
     private unsubscribeInbound: (() => void) | null = null;
     private autonomyStarted = false;
@@ -194,6 +200,7 @@ export class BotConnection {
         const progressSink: SkillProgressSink = {
             report: (event) => {
                 this.taskAutonomy?.observeProgress(event);
+                this.agencyRuntime?.observeProgress(event);
                 const [, sendError] = transport.sendEvent(SKILL_PROGRESS_EVENT, event);
                 return sendError ? [null, sendError.type] : [undefined, null];
             },
@@ -223,6 +230,12 @@ export class BotConnection {
             this.unsubscribeInbound = transport.onMessage((envelope) =>
                 this.handleCommand(envelope),
             );
+            const [agencyRuntime, agencyError] = this.createAgencyRuntime(bot, world, transport);
+            if (agencyError) {
+                this.options.logger.warn({ error: agencyError }, 'agency runtime creation failed');
+            } else {
+                this.agencyRuntime = agencyRuntime;
+            }
         }
 
         const blockUpdates = new BlockUpdateListener();
@@ -281,6 +294,51 @@ export class BotConnection {
         this.skills = null;
     }
 
+    private createAgencyRuntime(
+        bot: Bot,
+        world: WorldCacheAdapter,
+        transport: BotTransportClient,
+    ): Result<AgencyRuntime, string> {
+        const skills = this.skills;
+        if (skills === null) return [null, 'skill host unavailable'];
+        const persistence = new AgencyStateAdapter({
+            botId: this.options.botId,
+            events: transport,
+            logger: this.options.logger,
+        });
+        const [restored, restoreError] = persistence.restore(this.pendingResume?.agency);
+        if (restoreError) return [null, restoreError];
+        let state = restored;
+        if (state === null) {
+            const [created, createError] = AgencyState.create({
+                botId: this.options.botId,
+                traits: PersonalityModel.fromBotIndex(this.options.botIndex),
+                timeOfDay: bot.time?.timeOfDay ?? null,
+            });
+            if (createError) return [null, createError];
+            if (created === null) return [null, 'agency state creation returned null'];
+            state = created;
+        }
+        const [runtime, runtimeError] = AgencyRuntime.create(
+            {
+                botId: this.options.botId,
+                context: new AgencySnapshotSource({ bot, world }),
+                skills,
+                persistence,
+                logger: this.options.logger,
+                config: this.options.config.agency,
+                isPaused: () =>
+                    this.autonomyPausedReason !== null ||
+                    this.guardian?.emergencyStopActive === true,
+                isJobActive: () => this.taskAutonomy?.hasActiveTask === true,
+            },
+            state,
+        );
+        if (runtimeError) return [null, runtimeError];
+        if (runtime === null) return [null, 'agency runtime creation returned null'];
+        return [runtime, null];
+    }
+
     private startAutonomy(): void {
         if (this.autonomyStarted) return;
         this.autonomyStarted = true;
@@ -294,6 +352,15 @@ export class BotConnection {
             const [, skillError] = this.skills.start();
             if (skillError) {
                 this.options.logger.warn({ error: skillError }, 'skill host start failed');
+            }
+        }
+        if (this.agencyRuntime !== null) {
+            const [, reconciliationError] = this.agencyRuntime.restore();
+            if (reconciliationError) {
+                this.options.logger.warn(
+                    { error: reconciliationError },
+                    'agency intention reconciliation failed',
+                );
             }
         }
         if (this.skills !== null && this.transport !== null && this.bot !== null) {
@@ -310,11 +377,15 @@ export class BotConnection {
                 skills: this.skills,
                 snapshot: { read: () => this.readTaskSnapshot() },
                 logger: this.options.logger,
+                canClaim: () =>
+                    this.agencyRuntime?.hasActiveGoal !== true &&
+                    this.skills?.activeSkillId === null,
             });
             this.taskAutonomy = autonomy;
             if (this.autonomyPausedReason === null) this.applyPendingResume();
             autonomy.start();
             if (this.autonomyPausedReason !== null) autonomy.pause(this.autonomyPausedReason);
+            this.agencyRuntime?.start();
         }
     }
 
@@ -322,10 +393,14 @@ export class BotConnection {
         const autonomy = this.taskAutonomy;
         const resume = this.pendingResume;
         if (autonomy === null || resume === null) return;
+        if (resume.task === null || resume.fencingToken === null) {
+            this.pendingResume = null;
+            return;
+        }
         if (!autonomy.resumeTask(resume)) {
             this.pendingResume = null;
             this.options.logger.warn(
-                { taskId: resume.task?.id },
+                { taskId: resume.task.id },
                 'pending task resume was not applicable',
             );
             return;
@@ -356,6 +431,8 @@ export class BotConnection {
     }
 
     private stopAutonomy(): void {
+        this.agencyRuntime?.stop();
+        this.agencyRuntime = null;
         this.taskAutonomy?.stop();
         this.taskAutonomy = null;
         this.guardian?.stop();

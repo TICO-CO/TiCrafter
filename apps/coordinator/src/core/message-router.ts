@@ -1,7 +1,13 @@
 import {
+    AGENCY_EPISODE_EVENT,
+    AGENCY_STATE_EVENT,
     BLOCK_UPDATE_EVENT,
     type BlockUpdateMessage,
     blockUpdateSchema,
+    type BotAgencyEpisodeMessage,
+    botAgencyEpisodeSchema,
+    type BotAgencyStateMessage,
+    botAgencyStateSchema,
     botHeartbeatSchema,
     type BotTaskClaim,
     botTaskClaimSchema,
@@ -42,6 +48,8 @@ export interface MessageRouterOptions {
     handshake: SessionHandshake;
     events: EventLogWriter;
     logger: LoggerPort;
+    onAgencyState?: (payload: BotAgencyStateMessage) => void;
+    onAgencyEpisode?: (payload: BotAgencyEpisodeMessage) => void;
     onChunkSnapshot?: (payload: ChunkSnapshotMessage) => void;
     onLandmarkCandidate?: (payload: LandmarkCandidateMessage) => void;
     onBlockUpdate?: (payload: BlockUpdateMessage) => void;
@@ -88,6 +96,26 @@ export class MessageRouter {
                 new Date().toISOString(),
                 parsed.data.digest.position,
             );
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === AGENCY_STATE_EVENT) {
+            const parsed = botAgencyStateSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid agency state');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onAgencyState?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === AGENCY_EPISODE_EVENT) {
+            const parsed = botAgencyEpisodeSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid agency episode');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onAgencyEpisode?.(parsed.data);
             return;
         }
         if (envelope.kind === 'event' && envelope.type === 'bot.event') {

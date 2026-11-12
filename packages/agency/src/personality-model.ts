@@ -37,6 +37,16 @@ export class PersonalityModel {
         return [new PersonalityModel(merged), null];
     }
 
+    static restore(traits: Partial<PersonalityTraits>): Result<PersonalityModel, string> {
+        for (const name of TRAIT_NAMES) {
+            if (!(name in traits)) return [null, `trait ${name} is required`];
+            if (!PersonalityModel.isRatio(traits[name] ?? Number.NaN)) {
+                return [null, `trait ${name} must be between 0 and 1`];
+            }
+        }
+        return [new PersonalityModel({ ...DEFAULT_TRAITS, ...traits }), null];
+    }
+
     static fromBotIndex(botIndex: number): PersonalityModel {
         const traits: PersonalityTraits = {
             curiosity: PersonalityModel.ratio(botIndex * 37),

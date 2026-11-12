@@ -72,6 +72,7 @@ export interface TaskAutonomyOptions {
     skills: TaskSkillPort;
     snapshot: TaskAutonomySnapshotPort;
     logger: LoggerPort;
+    canClaim?: () => boolean;
     tickMilliseconds?: number;
     timeoutMilliseconds?: number;
     renewMilliseconds?: number;
@@ -133,6 +134,10 @@ export class TaskAutonomy {
         this.paused = false;
         this.timer = setInterval(() => this.tickSafely(), this.tickMilliseconds);
         this.tickSafely();
+    }
+
+    get hasActiveTask(): boolean {
+        return this.active !== null;
     }
 
     resumeTask(resume: SessionResume): boolean {
@@ -208,6 +213,7 @@ export class TaskAutonomy {
     }
 
     private async claim(): Promise<void> {
+        if (this.options.canClaim?.() === false) return;
         const snapshot = this.options.snapshot.read();
         const [envelope, requestError] = await this.options.transport.request(
             TASK_CLAIM,

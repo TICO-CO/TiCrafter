@@ -65,7 +65,7 @@ export class BotRuntime {
         const url = `ws://${config.transport.host}:${config.transport.port}`;
 
         void attemptAsync(() =>
-            this.loop(config, name, botId, url, registry, logger, checkpointStore),
+            this.loop(config, name, botId, botIndex, url, registry, logger, checkpointStore),
         ).then(([, loopError]) => {
             if (loopError) {
                 logger.error({ error: this.describe(loopError) }, 'bot loop failed');
@@ -86,6 +86,7 @@ export class BotRuntime {
         config: TicrafterConfig,
         name: string,
         botId: string,
+        botIndex: number,
         url: string,
         registry: MessageSchemaRegistry,
         logger: LoggerPort,
@@ -96,6 +97,7 @@ export class BotRuntime {
                 config,
                 name,
                 botId,
+                botIndex,
                 url,
                 registry,
                 logger,
@@ -117,6 +119,7 @@ export class BotRuntime {
         config: TicrafterConfig,
         name: string,
         botId: string,
+        botIndex: number,
         url: string,
         registry: MessageSchemaRegistry,
         logger: LoggerPort,
@@ -126,6 +129,7 @@ export class BotRuntime {
             config,
             name,
             botId,
+            botIndex,
             url,
             registry,
             logger,

@@ -3,6 +3,7 @@ import http from 'node:http';
 import { attempt, attemptAsync, type Result } from '@ticrafter/core';
 import { z as zod } from 'zod';
 
+import type { AgencyStatusView } from './agency-status-view.js';
 import type { OpsAuditViewer } from './audit-viewer.js';
 import type { OpsFleetEmergencyStop } from './fleet-emergency-stop.js';
 import type { OpsHealthReadiness } from './health-readiness.js';
@@ -32,6 +33,7 @@ export interface OpsApiOptions {
     metrics: OpsMetricsRegistry;
     status: OpsStatusAggregator;
     health: OpsHealthReadiness;
+    agency: AgencyStatusView;
     sip: OpsSipDump;
     audit: OpsAuditViewer;
     pauseResume: OpsPauseResumeController;
@@ -118,6 +120,17 @@ export class OpsApi {
     }
 
     private get(url: URL): Result<OpsHttpResponse, OpsFailure> {
+        const botAgency = /^\/bots\/([^/]+)\/agency$/.exec(url.pathname);
+        if (botAgency !== null && botAgency[1] !== undefined) {
+            return this.agencyOne(botAgency[1]);
+        }
+        const botEpisodes = /^\/bots\/([^/]+)\/episodes$/.exec(url.pathname);
+        if (botEpisodes !== null && botEpisodes[1] !== undefined) {
+            return this.agencyEpisodes(
+                botEpisodes[1],
+                OpsHttp.limit(url.searchParams.get('limit'), 20),
+            );
+        }
         switch (url.pathname) {
             case '/health':
                 return this.health();
@@ -130,6 +143,8 @@ export class OpsApi {
                 ];
             case '/sip':
                 return this.sip();
+            case '/agency':
+                return this.agencyFleet();
             case '/audit/events':
                 return this.auditResponse(
                     this.options.audit.events(OpsHttp.limit(url.searchParams.get('limit'), 100)),
@@ -227,6 +242,41 @@ export class OpsApi {
             return [null, snapshotError ?? { type: 'UNAVAILABLE', message: 'SIP unavailable' }];
         }
         return [{ status: 200, body: { ok: true, sip: snapshot } }, null];
+    }
+
+    private agencyFleet(): Result<OpsHttpResponse, OpsFailure> {
+        const [snapshots, snapshotError] = this.options.agency.fleet();
+        if (snapshotError !== null) {
+            return [null, { type: 'UNAVAILABLE', message: snapshotError }];
+        }
+        if (snapshots === null) {
+            return [null, { type: 'UNAVAILABLE', message: 'agency unavailable' }];
+        }
+        return [{ status: 200, body: { ok: true, agency: snapshots } }, null];
+    }
+
+    private agencyOne(botId: string): Result<OpsHttpResponse, OpsFailure> {
+        const [snapshot, snapshotError] = this.options.agency.one(botId);
+        if (snapshotError !== null) {
+            return [null, { type: 'UNAVAILABLE', message: snapshotError }];
+        }
+        if (snapshot === null) {
+            return [{ status: 404, body: { ok: false, error: 'not_found' } }, null];
+        }
+        return [{ status: 200, body: { ok: true, agency: snapshot } }, null];
+    }
+
+    private agencyEpisodes(botId: string, limit: number): Result<OpsHttpResponse, OpsFailure> {
+        const [episodes, episodeError] = this.options.agency.episodes(botId, limit);
+        if (episodeError || episodes === null) {
+            return [
+                null,
+                episodeError === null
+                    ? { type: 'UNAVAILABLE', message: 'episodes unavailable' }
+                    : { type: 'UNAVAILABLE', message: episodeError },
+            ];
+        }
+        return [{ status: 200, body: { ok: true, episodes } }, null];
     }
 
     private auditResponse<T>(

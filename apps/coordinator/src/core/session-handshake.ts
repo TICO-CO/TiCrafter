@@ -1,4 +1,5 @@
 import {
+    type AgencyStatePayload,
     attempt,
     type AuthenticatedBot,
     type Envelope,
@@ -11,7 +12,7 @@ import {
 } from '@ticrafter/core';
 import type { EventLogWriter } from '@ticrafter/memory';
 
-import type { BotFailure, BotProfile, BotResumePlan } from '../bots/index.js';
+import type { AgencyStateRecord, BotFailure, BotProfile, BotResumePlan } from '../bots/index.js';
 import type { ClientConnection, TransportServer } from '../transport/index.js';
 import type { SessionManager } from './session-manager.js';
 
@@ -149,14 +150,21 @@ export class SessionHandshake {
         }
     }
 
-    private static resumePayload(plan: BotResumePlan): SessionResume | undefined {
+    private static resumePayload(plan: BotResumePlan): SessionResume {
+        const agency = plan.agency === null ? null : SessionHandshake.agencyPayload(plan.agency);
         const task = plan.task;
         if (
             task === null ||
             task.leaseToken === null ||
             (task.status !== 'claimed' && task.status !== 'running')
         ) {
-            return undefined;
+            return {
+                task: null,
+                fencingToken: null,
+                leaseUntil: null,
+                sipRevision: plan.delta.sipRevision,
+                agency,
+            };
         }
         return {
             task: {
@@ -171,6 +179,20 @@ export class SessionHandshake {
             leaseUntil: task.leaseUntil,
             checkpoint: plan.checkpoint ?? undefined,
             sipRevision: plan.delta.sipRevision,
+            agency,
+        };
+    }
+
+    private static agencyPayload(record: AgencyStateRecord): AgencyStatePayload {
+        return {
+            traits: record.traits.traits,
+            needs: record.needs.levels,
+            intention: record.intention,
+            routine: record.routine,
+            homeStructureId: record.homeStructureId,
+            personalStorageId: record.personalStorageId,
+            mood: record.mood,
+            lastDeliberationAt: record.lastDeliberationAt,
         };
     }
 

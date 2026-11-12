@@ -55,6 +55,16 @@ export class NeedsModel {
         return new NeedsModel(DEFAULT_LEVELS);
     }
 
+    static restore(levels: Partial<NeedLevels>): Result<NeedsModel, string> {
+        for (const name of NEED_NAMES) {
+            if (!(name in levels)) return [null, `need ${name} is required`];
+            if (!NeedsModel.isRatio(levels[name] ?? Number.NaN)) {
+                return [null, `need ${name} must be between 0 and 1`];
+            }
+        }
+        return [new NeedsModel({ ...DEFAULT_LEVELS, ...levels }), null];
+    }
+
     decay(elapsedMilliseconds: number, rates: Partial<NeedLevels> = {}): NeedsModel {
         const minutes = Math.max(0, elapsedMilliseconds) / 60_000;
         const combined: NeedLevels = { ...DEFAULT_DECAY_PER_MINUTE, ...rates };
@@ -65,6 +75,14 @@ export class NeedsModel {
             ]),
         ) as unknown as NeedLevels;
         return new NeedsModel(levels);
+    }
+
+    decayUniform(elapsedMilliseconds: number, ratePerMinute: number): NeedsModel {
+        const rate = NeedsModel.clamp(ratePerMinute);
+        const rates = Object.fromEntries(
+            NEED_NAMES.map((name) => [name, rate]),
+        ) as unknown as Partial<NeedLevels>;
+        return this.decay(elapsedMilliseconds, rates);
     }
 
     satisfy(name: NeedName, amount: number): NeedsModel {

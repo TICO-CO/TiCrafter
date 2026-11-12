@@ -138,6 +138,7 @@ describe('bots', () => {
         const resume = new BotResumeOrchestrator(
             store,
             {
+                agency: { load: () => [null, null] },
                 claims: { listActive: () => [[claim()], null] },
                 tasks: {
                     get: () => [task({ status: 'completed' }), null],
@@ -170,6 +171,7 @@ describe('bots', () => {
         const resume = new BotResumeOrchestrator(
             store,
             {
+                agency: { load: () => [null, null] },
                 claims: { listActive: () => [[], null] },
                 tasks: { get: () => [null, null], list: () => [[active], null] },
                 grants: { listActive: () => [[], null] },

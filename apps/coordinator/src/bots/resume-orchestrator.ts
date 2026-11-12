@@ -4,10 +4,12 @@ import type { StorageFailure } from '@ticrafter/memory';
 import type { ClaimRecord } from '../claims/index.js';
 import type { EditGrantRecord } from '../grants/index.js';
 import type { TaskRecord } from '../tasks/index.js';
+import type { AgencyStateRecord } from './agency-state-store.js';
 import type { BotDeltaSyncPlanner, BotStateDelta } from './delta-sync-planner.js';
 import type { BotFailure, BotProfile, BotProfileStorePort } from './types.js';
 
 export interface BotResumePorts {
+    agency: { load(botId: string): Result<AgencyStateRecord | null, StorageFailure> };
     claims: { listActive(): Result<readonly ClaimRecord[], StorageFailure> };
     tasks: {
         get(taskId: string): Result<TaskRecord | null, StorageFailure>;
@@ -21,6 +23,7 @@ export interface BotResumePorts {
 
 export interface BotResumePlan {
     profile: BotProfile;
+    agency: AgencyStateRecord | null;
     task: TaskRecord | null;
     claims: readonly ClaimRecord[];
     grants: readonly EditGrantRecord[];
@@ -40,6 +43,8 @@ export class BotResumeOrchestrator {
         const [stored, readError] = this.store.get(botId);
         if (readError) return [null, { type: 'STORAGE', failure: readError }];
         if (stored === null) return [null, { type: 'BOT_NOT_FOUND', botId }];
+        const [agency, agencyError] = this.ports.agency.load(botId);
+        if (agencyError) return [null, { type: 'STORAGE', failure: agencyError }];
         const [task, taskError] = this.task(stored);
         if (taskError) return [null, taskError];
         const [claims, claimError] = this.claims(botId);
@@ -67,6 +72,7 @@ export class BotResumeOrchestrator {
         return [
             {
                 profile,
+                agency,
                 task,
                 claims,
                 grants,

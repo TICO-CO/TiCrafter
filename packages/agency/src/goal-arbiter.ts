@@ -18,8 +18,16 @@ const KIND_NEEDS: Readonly<Record<GoalKind, NeedName>> = {
     leisure: 'novelty',
 };
 
+export function goalNeedFor(kind: GoalKind): NeedName {
+    return KIND_NEEDS[kind];
+}
+
 const CLOSE_SCORE = 0.12;
-const COMMITMENT_BONUS = 0.15;
+const DEFAULT_COMMITMENT_BONUS = 0.15;
+
+export interface GoalArbiterOptions {
+    commitmentBonus?: number;
+}
 
 export interface GoalSelection {
     goal: Goal;
@@ -28,6 +36,20 @@ export interface GoalSelection {
 }
 
 export class GoalArbiter {
+    private readonly commitmentBonus: number;
+
+    private constructor(options: GoalArbiterOptions) {
+        this.commitmentBonus = options.commitmentBonus ?? DEFAULT_COMMITMENT_BONUS;
+    }
+
+    static create(options: GoalArbiterOptions = {}): Result<GoalArbiter, string> {
+        const commitmentBonus = options.commitmentBonus ?? DEFAULT_COMMITMENT_BONUS;
+        if (!Number.isFinite(commitmentBonus) || commitmentBonus < 0 || commitmentBonus > 1) {
+            return [null, 'commitmentBonus must be between 0 and 1'];
+        }
+        return [new GoalArbiter(options), null];
+    }
+
     select(
         goals: readonly Goal[],
         needs: NeedsModel,
@@ -63,7 +85,7 @@ export class GoalArbiter {
     ): number {
         const needPressure = needs.pressure(KIND_NEEDS[goal.kind]);
         const traitFactor = this.traitFactor(goal.kind, personality);
-        const commitment = intention?.goalId === goal.id ? COMMITMENT_BONUS : 0;
+        const commitment = intention?.goalId === goal.id ? this.commitmentBonus : 0;
         const riskPenalty = goal.estimatedRisk * (0.4 + personality.weight('caution'));
         return (
             goal.priority / 100 +

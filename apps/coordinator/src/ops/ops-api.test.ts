@@ -1,6 +1,7 @@
 import type { LoggerPort } from '@ticrafter/core';
 import { afterEach, describe, expect, it } from 'bun:test';
 
+import type { AgencyStatusView } from './agency-status-view.js';
 import type { OpsAuditViewer } from './audit-viewer.js';
 import type { OpsFleetEmergencyStop } from './fleet-emergency-stop.js';
 import type { OpsHealthReadiness } from './health-readiness.js';
@@ -35,6 +36,22 @@ const api = (overrides: Partial<ConstructorParameters<typeof OpsApi>[0]> = {}): 
                 null,
             ],
         } as unknown as OpsHealthReadiness,
+        agency: {
+            one: () => [
+                {
+                    botId: 'bot.one',
+                    phase: 'day',
+                    activeGoal: 'Gather nearby wood',
+                    needs: {},
+                    homeStructureId: null,
+                    lastDeliberationAt: null,
+                    recentGoalOutcomes: [],
+                },
+                null,
+            ],
+            fleet: () => [[], null],
+            episodes: () => [[], null],
+        } as unknown as AgencyStatusView,
         sip: { snapshot: () => [{ revision: 3 }, null] } as unknown as OpsSipDump,
         audit: {
             events: () => [[{ type: 'task.created' }], null],
@@ -99,6 +116,22 @@ describe('OpsApi', () => {
         expect(metricsBody.metrics.counters).toEqual({});
         expect(sipBody.sip.revision).toBe(3);
         expect(eventsBody.events).toHaveLength(1);
+    });
+
+    it('serves agency state and episode views', async () => {
+        const baseUrl = await start();
+
+        const fleet = await fetch(`${baseUrl}/agency`);
+        const one = await fetch(`${baseUrl}/bots/bot.one/agency`);
+        const episodes = await fetch(`${baseUrl}/bots/bot.one/episodes?limit=5`);
+        const fleetBody = (await json(fleet)) as { agency: unknown[] };
+        const oneBody = (await json(one)) as { agency: { botId: string } };
+        const episodeBody = (await json(episodes)) as { episodes: unknown[] };
+
+        expect(fleet.status).toBe(200);
+        expect(fleetBody.agency).toEqual([]);
+        expect(oneBody.agency.botId).toBe('bot.one');
+        expect(episodeBody.episodes).toEqual([]);
     });
 
     it('runs fleet controls and validates bodies', async () => {
