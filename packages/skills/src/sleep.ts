@@ -1,4 +1,4 @@
-import { MobThreatRules, type Result, type Vec3 } from '@ticrafter/core';
+import { DayCycle, MobThreatRules, type Result, type Vec3 } from '@ticrafter/core';
 
 import type {
     Skill,
@@ -111,10 +111,7 @@ export class SleepSkill implements Skill {
     }
 
     private isDaytime(context: SkillContext): boolean {
-        const timeOfDay = context.timeOfDay;
-        if (timeOfDay === undefined) return false;
-        const normalized = ((timeOfDay % 24_000) + 24_000) % 24_000;
-        return normalized >= 6_000 && normalized < 19_500;
+        return DayCycle.isDaytime(context.timeOfDay);
     }
 
     private isThreatened(context: SkillContext): boolean {

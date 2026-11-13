@@ -4,6 +4,7 @@ node_modules/
 .toolchain/
 data/
 models/
+.env
 config/.env
 *.log
 __pycache__/

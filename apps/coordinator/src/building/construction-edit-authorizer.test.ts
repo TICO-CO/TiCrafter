@@ -60,7 +60,7 @@ function grant(overrides: Partial<EditGrantRecord> = {}): EditGrantRecord {
     };
 }
 
-function update(botId: string, withGrant = false): BlockUpdateMessage {
+function update(botId: string, withGrant = false, withAttribution = true): BlockUpdateMessage {
     return {
         botId,
         chunk: { x: 0, z: 0 },
@@ -70,13 +70,17 @@ function update(botId: string, withGrant = false): BlockUpdateMessage {
             blockId: 'stone',
             solid: true,
         },
-        attribution: {
-            structureId: structure.id,
-            workPackageId: 'work-package.shell',
-            claimId: 'claim.package',
-            fencingToken: 4,
-            ...(withGrant ? { grantId: 'grant-1', grantFencingToken: 2 } : {}),
-        },
+        ...(withAttribution
+            ? {
+                  attribution: {
+                      structureId: structure.id,
+                      workPackageId: 'work-package.shell',
+                      claimId: 'claim.package',
+                      fencingToken: 4,
+                      ...(withGrant ? { grantId: 'grant-1', grantFencingToken: 2 } : {}),
+                  },
+              }
+            : {}),
     };
 }
 
@@ -116,6 +120,18 @@ describe('ConstructionEditAuthorizer', () => {
         expect(helper.authorize(update('bot.helper', true), 'air')[0]).toEqual({
             authorized: true,
             via: 'helper',
+        });
+    });
+
+    it('allows unattributed owner edits but keeps helper edits strict', () => {
+        const owner = authorizer().authorize(update('bot.tibot1', false, false), 'air')[0];
+        expect(owner).toEqual({ authorized: true, via: 'owner' });
+
+        const helper = authorizer().authorize(update('bot.helper', false, false), 'air')[0];
+        expect(helper).toEqual({
+            authorized: false,
+            reason: 'active structure edit is missing attribution',
+            taskId: null,
         });
     });
 

@@ -49,9 +49,14 @@ export class SessionManager {
         return this.sessions.size;
     }
 
-    pruneStale(timeoutMs: number, now = Date.now()): string[] {
+    pruneStale(
+        timeoutMs: number,
+        now = Date.now(),
+        keepAlive?: (botId: string) => boolean,
+    ): string[] {
         const removed: string[] = [];
         for (const [botId, session] of this.sessions) {
+            if (keepAlive?.(botId) === true) continue;
             if (now - Date.parse(session.lastSeen) > timeoutMs) {
                 this.sessions.delete(botId);
                 removed.push(botId);

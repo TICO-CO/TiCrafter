@@ -65,10 +65,10 @@ describe('SafetySignals', () => {
     });
 
     it('creates movement and inventory signals', () => {
-        expect(SafetySignals.movementStuck15s()).toEqual({
+        expect(SafetySignals.movementStuck20s()).toEqual({
             code: 'movement.stuck',
             severity: 'critical',
-            message: 'movement stuck for 15s',
+            message: 'movement stuck for 20s',
         });
         expect(SafetySignals.movementStuck5s()).toEqual({
             code: 'movement.stuck',

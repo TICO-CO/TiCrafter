@@ -59,13 +59,13 @@ describe('BuildingProcurementService', () => {
                 item: 'oak_planks',
                 count: 2,
             },
+            { kind: 'gather', item: 'dirt', count: 3, source: 'dirt' },
             {
                 kind: 'craft',
                 item: 'stone',
                 count: 1,
                 ingredients: [{ item: 'cobblestone', count: 2 }],
             },
-            { kind: 'gather', item: 'dirt', count: 3, source: 'dirt' },
         ]);
         expect(plan?.blocked).toBe(false);
     });

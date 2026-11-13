@@ -67,6 +67,10 @@ describe('TaskIndependenceAuditor', () => {
                 status: 'completed',
                 dependencies: ['task-independent'],
             }),
+            task('task-project', {
+                payload: { projectId: 'project-1' },
+                dependencies: ['task-independent'],
+            }),
         ]);
         const auditor = new TaskIndependenceAuditor({ tasks, logger });
         const [cancelled, auditError] = auditor.audit();

@@ -88,7 +88,9 @@ export class CoordinatorWorldModel {
         });
         if (ingestError) return [null, CoordinatorWorldModel.failure(ingestError)];
         if (result !== null) {
-            this.occupancy.invalidate();
+            if (result.outcome === 'stored') {
+                this.occupancy.replaceChunk(payload.chunk, payload.blocks);
+            }
             this.logger.debug(
                 { chunk: result.chunk, version: result.version, outcome: result.outcome },
                 'chunk observation ingested',
@@ -130,7 +132,7 @@ export class CoordinatorWorldModel {
         const [result, ingestError] = this.chunks.applyBlockUpdate(payload);
         if (ingestError) return [null, CoordinatorWorldModel.failure(ingestError)];
         if (result !== null) {
-            this.occupancy.invalidate();
+            this.occupancy.applyBlock(payload.block);
             this.logger.debug(
                 { chunk: result.chunk, version: result.version },
                 'block update ingested',

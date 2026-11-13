@@ -403,6 +403,12 @@ export class CoordinatorComposition {
             },
             logger: options.logger,
         });
+        CoordinatorComposition.reviveProjectTasks(
+            projectRepository,
+            taskRepository,
+            projectService,
+            options.logger,
+        );
         const projectProgress = new ProjectConstructionProgressService({
             tasks,
             projects: projectRepository,
@@ -827,7 +833,9 @@ export class CoordinatorComposition {
             logger: options.logger,
             clock,
             tick: () => {
-                const staleSessions = sessions.pruneStale(15_000);
+                const staleSessions = sessions.pruneStale(15_000, Date.now(), (botId) =>
+                    transport.list().some((connection) => connection.botId === botId),
+                );
                 if (staleSessions.length) {
                     options.logger.warn({ staleSessions }, 'pruned stale sessions');
                     staleSessions.forEach((botId) => botPresence.markOffline(botId));
@@ -979,6 +987,42 @@ export class CoordinatorComposition {
             decision,
             blueprints: blueprintDocuments,
         });
+    }
+
+    private static reviveProjectTasks(
+        projects: PersonalProjectRepository,
+        tasks: TaskRepository,
+        projectService: PersonalProjectService,
+        logger: LoggerPort,
+    ): void {
+        const [taskRecords, taskError] = tasks.list();
+        if (taskError || taskRecords === null) {
+            logger.warn({ error: taskError?.type ?? null }, 'project task revival skipped');
+            return;
+        }
+        const openProjectIds = new Set(
+            taskRecords
+                .filter((task) => ACTIONABLE_TASK_STATUSES.has(task.status))
+                .map((task) => task.payload.projectId)
+                .filter((projectId): projectId is string => typeof projectId === 'string'),
+        );
+        const [activeProjects, projectError] = projects.listActive();
+        if (projectError || activeProjects === null) {
+            logger.warn({ error: projectError?.type ?? null }, 'project task revival skipped');
+            return;
+        }
+        for (const project of activeProjects) {
+            if (openProjectIds.has(project.id)) continue;
+            const [, repairError] = projectService.repair(project.id, project.botId);
+            if (repairError !== null) {
+                logger.warn(
+                    { error: repairError.type, projectId: project.id },
+                    'project task revival failed',
+                );
+                continue;
+            }
+            logger.info({ projectId: project.id }, 'project tasks revived');
+        }
     }
 
     private static describeFailure(failure: unknown): string {

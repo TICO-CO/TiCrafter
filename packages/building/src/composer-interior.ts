@@ -66,7 +66,7 @@ export class ComposerInterior {
     }
 
     private static bed(blocks: BlockMap, room: ComposerRoom): void {
-        const bed = MotifInterior.bed(room.x + 1, 1, room.z + 1, 'south', 'red_bed', 4);
+        const bed = MotifInterior.bed(room.x + 1, 1, room.z + 1, 'south', 'white_bed', 4);
         if (bed.some((block) => blocks.has(BlueprintIr.blockKey(block)))) return;
         bed.forEach((block) => blocks.set(BlueprintIr.blockKey(block), block));
     }

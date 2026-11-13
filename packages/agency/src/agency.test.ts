@@ -197,12 +197,23 @@ describe('agency', () => {
     });
 
     it('classifies dusk and counts down to night', () => {
-        expect(RoutineModel.phase(17_500)).toBe('evening');
+        expect(RoutineModel.phase(12_500)).toBe('evening');
         expect(RoutineModel.isDusk('evening')).toBe(true);
         expect(RoutineModel.isNight('night')).toBe(true);
-        expect(RoutineModel.ticksUntilNight(17_500)).toBe(2_000);
+        expect(RoutineModel.ticksUntilNight(11_000)).toBe(2_000);
         expect(RoutineModel.isNightTime(20_000)).toBe(true);
         expect(RoutineModel.isNightTime(12_000)).toBe(false);
+    });
+
+    it('does not return to shelter when already home', () => {
+        const [goals, goalError] = new GoalGenerator().generate(
+            snapshot({ position: { x: 0, y: 64, z: 0 }, home: { x: 0, y: 64, z: 0 } }),
+            NeedsModel.defaults(),
+            PersonalityModel.fromBotIndex(1),
+            'night',
+        );
+        expect(goalError).toBeNull();
+        expect(goals?.some((goal) => goal.kind === 'shelter') ?? true).toBe(false);
     });
 
     it('builds a dusk preparation goal with actionable steps', () => {
@@ -243,7 +254,7 @@ describe('agency', () => {
         const [state, stateError] = AgencyState.create({ botId: 'bot.tibot1', timeOfDay: 1000 });
         expect(stateError).toBeNull();
         expect(state?.snapshot.botId).toBe('bot.tibot1');
-        expect(state?.snapshot.routine.phase).toBe('night');
+        expect(state?.snapshot.routine.phase).toBe('morning');
     });
 
     it('restores and transitions agency state', () => {

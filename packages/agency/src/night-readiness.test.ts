@@ -72,7 +72,7 @@ describe('night readiness', () => {
         const config = NightPrepDefaults.config();
         const readiness = NightReadinessModel.assess(
             snapshot({
-                timeOfDay: 13_500,
+                timeOfDay: 7_500,
                 digSite: { x: 1, y: 64, z: 0 },
                 inventory: [{ name: 'cobblestone', count: config.buildMaterialCount }],
             }),
@@ -89,7 +89,7 @@ describe('night readiness', () => {
         const config = NightPrepDefaults.config();
         const readiness = NightReadinessModel.assess(
             snapshot({
-                timeOfDay: 13_500,
+                timeOfDay: 7_500,
                 home: null,
                 homeBbox: null,
                 inventory: [{ name: 'cobblestone', count: config.buildMaterialCount }],

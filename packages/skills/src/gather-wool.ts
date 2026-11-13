@@ -13,8 +13,10 @@ import { SkillSharedUtilities } from './utilities.js';
 
 const SHEEP_NAMES = new Set(['sheep']);
 const SHEARS = 'shears';
-const MAX_ATTACKS = 12;
-const REACH = 2;
+const MAX_ATTACKS = 20;
+const APPROACH_REACH = 2;
+const ATTACK_REACH = 3;
+const ATTACK_COOLDOWN_MILLISECONDS = 500;
 
 export class GatherWoolSkill implements Skill {
     readonly id = 'gather-wool';
@@ -82,9 +84,10 @@ export class GatherWoolSkill implements Skill {
 
     private afterAction(context: SkillContext, run: SkillRun, phase: string): SkillStep {
         if (phase === 'equip') return this.moveOrUse(context, this.withPhase(run, 'move'));
-        if (phase === 'move') return this.useOrAttack(context, this.withPhase(run, 'strike'));
+        if (phase === 'move') return this.moveOrUse(context, this.withPhase(run, 'move'));
         if (phase === 'use') return this.collect(this.ignoreTarget(run));
         if (phase === 'attack') return this.afterAttack(context, run);
+        if (phase === 'cooldown') return this.attackOrApproach(context, run);
         if (phase === 'collect') {
             return this.findAndApproach(context, this.resetTarget(run, 'find'));
         }
@@ -96,7 +99,7 @@ export class GatherWoolSkill implements Skill {
         if (phase === 'equip') return this.equip(run);
         if (phase === 'move') return this.moveOrUse(context, run);
         if (phase === 'use') return this.use(run);
-        if (phase === 'attack') return this.attack(run);
+        if (phase === 'attack' || phase === 'cooldown') return this.attackOrApproach(context, run);
         if (phase === 'collect') return this.collect(run);
         return this.findAndApproach(context, this.withPhase(run, 'find'));
     }
@@ -123,30 +126,39 @@ export class GatherWoolSkill implements Skill {
     }
 
     private moveOrUse(context: SkillContext, run: SkillRun): SkillStep {
-        const target = SkillSharedUtilities.isRecord(run.state.target)
-            ? this.readTarget(run.state.target)
-            : null;
-        if (target === null) return this.findAndApproach(context, this.withPhase(run, 'find'));
-        if (SkillSharedUtilities.distance(context.position, target.position) > REACH) {
+        const target = this.liveTarget(context, run);
+        if (target === null) return this.collect(this.ignoreTarget(run));
+        const found = this.withTarget(run, target);
+        if (SkillSharedUtilities.distance(context.position, target.position) > APPROACH_REACH) {
             return SkillSharedUtilities.running(
-                this.withPhase(run, 'move'),
-                { kind: 'move-to', position: target.position, range: REACH },
+                this.withPhase(found, 'move'),
+                { kind: 'move-to', position: target.position, range: APPROACH_REACH },
                 0,
                 1,
                 'moving to sheep',
             );
         }
-        return this.useOrAttack(context, run);
+        return this.useOrAttack(context, found);
     }
 
     private useOrAttack(context: SkillContext, run: SkillRun): SkillStep {
-        const target = SkillSharedUtilities.isRecord(run.state.target)
-            ? this.readTarget(run.state.target)
-            : null;
-        if (target === null) return this.findAndApproach(context, this.withPhase(run, 'find'));
-        return this.hasShears(context)
-            ? this.use({ ...run, state: { ...run.state, target } })
-            : this.attack({ ...run, state: { ...run.state, target } });
+        const target = this.liveTarget(context, run);
+        if (target === null) return this.collect(this.ignoreTarget(run));
+        const found = this.withTarget(run, target);
+        if (SkillSharedUtilities.distance(context.position, target.position) > ATTACK_REACH) {
+            return this.moveOrUse(context, this.withPhase(found, 'move'));
+        }
+        return this.hasShears(context) ? this.use(found) : this.attack(found);
+    }
+
+    private attackOrApproach(context: SkillContext, run: SkillRun): SkillStep {
+        const target = this.liveTarget(context, run);
+        if (target === null) return this.collect(this.ignoreTarget(run));
+        const found = this.withTarget(run, target);
+        if (SkillSharedUtilities.distance(context.position, target.position) > ATTACK_REACH) {
+            return this.moveOrUse(context, this.withPhase(found, 'move'));
+        }
+        return this.hasShears(context) ? this.use(found) : this.attack(found);
     }
 
     private use(run: SkillRun): SkillStep {
@@ -178,13 +190,35 @@ export class GatherWoolSkill implements Skill {
     }
 
     private afterAttack(context: SkillContext, run: SkillRun): SkillStep {
+        const target = this.liveTarget(context, run);
+        if (target === null) return this.collect(this.ignoreTarget(run));
+        const found = this.withTarget(run, target);
         const attacks = SkillSharedUtilities.readNumber(run.state.attacks, 0);
-        const target = this.target(run);
-        if (target === null) return this.collect(this.withPhase(run, 'collect'));
-        if (attacks < MAX_ATTACKS && EntityTargeting.exists(context, target)) {
-            return this.attack(this.withPhase(run, 'attack'));
+        if (attacks >= MAX_ATTACKS) return this.collect(this.ignoreTarget(found));
+        if (SkillSharedUtilities.distance(context.position, target.position) > ATTACK_REACH) {
+            return this.moveOrUse(context, this.withPhase(found, 'move'));
         }
-        return this.collect(this.ignoreTarget(run));
+        return this.cooldown(found);
+    }
+
+    private cooldown(run: SkillRun): SkillStep {
+        return SkillSharedUtilities.running(
+            this.withPhase(run, 'cooldown'),
+            { kind: 'wait', milliseconds: ATTACK_COOLDOWN_MILLISECONDS },
+            0,
+            1,
+            'waiting to strike',
+        );
+    }
+
+    private liveTarget(context: SkillContext, run: SkillRun): EntityTarget | null {
+        const target = this.target(run);
+        if (target === null) return null;
+        return EntityTargeting.refresh(context, target);
+    }
+
+    private withTarget(run: SkillRun, target: EntityTarget): SkillRun {
+        return { ...run, state: { ...run.state, target } };
     }
 
     private collect(run: SkillRun): SkillStep {

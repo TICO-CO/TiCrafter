@@ -460,8 +460,8 @@ describe('single-bot construction acceptance', () => {
         expect(procurementError).toBeNull();
         expect(procurementPlan?.actions.map((action) => action.kind)).toEqual([
             'withdraw',
-            'craft',
             'gather',
+            'craft',
         ]);
 
         const [started, startError] = skill.start(

@@ -10,6 +10,7 @@ const SUPPORTED_EFFECTS = new Set<ActionRequest['kind']>([
     'equip',
     'consume',
     'craft',
+    'smelt',
     'collect-drops',
     'transfer',
     'wait',

@@ -12,8 +12,10 @@ import type {
 import { SkillSharedUtilities } from './utilities.js';
 
 const FOOD_ANIMALS = new Set(['cow', 'pig', 'chicken', 'rabbit', 'sheep', 'salmon', 'cod']);
-const MAX_ATTACKS = 16;
-const REACH = 2;
+const MAX_ATTACKS = 20;
+const APPROACH_REACH = 2;
+const ATTACK_REACH = 3;
+const ATTACK_COOLDOWN_MILLISECONDS = 500;
 
 export class GatherFoodSkill implements Skill {
     readonly id = 'gather-food';
@@ -74,15 +76,18 @@ export class GatherFoodSkill implements Skill {
     }
 
     private afterAction(context: SkillContext, run: SkillRun, phase: string): SkillStep {
-        if (phase === 'move') return this.attack(this.withPhase(run, 'attack'));
+        if (phase === 'move') return this.moveOrAttack(context, this.withPhase(run, 'move'));
         if (phase === 'attack') return this.afterAttack(context, run);
+        if (phase === 'cooldown') return this.attackOrApproach(context, run);
         if (phase === 'collect') return this.findAndApproach(context, this.withPhase(run, 'find'));
         return this.findAndApproach(context, run);
     }
 
     private perform(context: SkillContext, run: SkillRun, phase: string): SkillStep {
-        if (phase === 'attack') return this.attack(run);
+        if (phase === 'attack' || phase === 'cooldown')
+            return this.attackOrApproach(context, run);
         if (phase === 'collect') return this.collect(run);
+        if (phase === 'move') return this.moveOrAttack(context, run);
         return this.findAndApproach(context, run);
     }
 
@@ -90,15 +95,41 @@ export class GatherFoodSkill implements Skill {
         const target = EntityTargeting.nearest(context, FOOD_ANIMALS);
         if (target === null)
             return SkillSharedUtilities.failed(run, 'target-missing', 'no animals found');
-        const found = { ...run, state: { ...run.state, target } };
-        if (SkillSharedUtilities.distance(context.position, target.position) > REACH) {
+        const found = this.withTarget(run, target);
+        if (SkillSharedUtilities.distance(context.position, target.position) > APPROACH_REACH) {
             return SkillSharedUtilities.running(
-                { ...found, state: { ...found.state, phase: 'move' } },
-                { kind: 'move-to', position: target.position, range: REACH },
+                this.withPhase(found, 'move'),
+                { kind: 'move-to', position: target.position, range: APPROACH_REACH },
                 0,
                 1,
                 'moving to animal',
             );
+        }
+        return this.attackOrApproach(context, found);
+    }
+
+    private moveOrAttack(context: SkillContext, run: SkillRun): SkillStep {
+        const target = this.liveTarget(context, run);
+        if (target === null) return this.collect(this.withPhase(run, 'collect'));
+        const found = this.withTarget(run, target);
+        if (SkillSharedUtilities.distance(context.position, target.position) > APPROACH_REACH) {
+            return SkillSharedUtilities.running(
+                this.withPhase(found, 'move'),
+                { kind: 'move-to', position: target.position, range: APPROACH_REACH },
+                0,
+                1,
+                'moving to animal',
+            );
+        }
+        return this.attackOrApproach(context, found);
+    }
+
+    private attackOrApproach(context: SkillContext, run: SkillRun): SkillStep {
+        const target = this.liveTarget(context, run);
+        if (target === null) return this.collect(this.withPhase(run, 'collect'));
+        const found = this.withTarget(run, target);
+        if (SkillSharedUtilities.distance(context.position, target.position) > ATTACK_REACH) {
+            return this.moveOrAttack(context, this.withPhase(found, 'move'));
         }
         return this.attack(found);
     }
@@ -118,13 +149,35 @@ export class GatherFoodSkill implements Skill {
     }
 
     private afterAttack(context: SkillContext, run: SkillRun): SkillStep {
-        const attacks = SkillSharedUtilities.readNumber(run.state.attacks, 0);
-        const target = this.target(run);
+        const target = this.liveTarget(context, run);
         if (target === null) return this.collect(this.withPhase(run, 'collect'));
-        if (attacks < MAX_ATTACKS && EntityTargeting.exists(context, target)) {
-            return this.attack(this.withPhase(run, 'attack'));
+        const found = this.withTarget(run, target);
+        const attacks = SkillSharedUtilities.readNumber(run.state.attacks, 0);
+        if (attacks >= MAX_ATTACKS) return this.collect(this.withPhase(found, 'collect'));
+        if (SkillSharedUtilities.distance(context.position, target.position) > ATTACK_REACH) {
+            return this.moveOrAttack(context, this.withPhase(found, 'move'));
         }
-        return this.collect(this.withPhase(run, 'collect'));
+        return this.cooldown(found);
+    }
+
+    private cooldown(run: SkillRun): SkillStep {
+        return SkillSharedUtilities.running(
+            this.withPhase(run, 'cooldown'),
+            { kind: 'wait', milliseconds: ATTACK_COOLDOWN_MILLISECONDS },
+            0,
+            1,
+            'waiting to strike',
+        );
+    }
+
+    private liveTarget(context: SkillContext, run: SkillRun): EntityTarget | null {
+        const target = this.target(run);
+        if (target === null) return null;
+        return EntityTargeting.refresh(context, target);
+    }
+
+    private withTarget(run: SkillRun, target: EntityTarget): SkillRun {
+        return { ...run, state: { ...run.state, target } };
     }
 
     private collect(run: SkillRun): SkillStep {

@@ -23,7 +23,10 @@ const COLLECT_RADIUS = 4;
 interface GatherState {
     position: Vec3;
     expectedBlockId: string;
-    phase: 'move' | 'break' | 'collect';
+    phase: 'move' | 'break' | 'attack' | 'collect';
+    entityId?: number;
+    entityName?: string;
+    itemName?: string;
 }
 
 interface ProcurementState {
@@ -207,7 +210,7 @@ export class ProcurementSkill implements Skill {
         if (packageNeeds.length === 0 && state.extraNeeds.length === 0) {
             return SkillSharedUtilities.completed(run, 'materials ready');
         }
-        const needs = this.mergeNeeds(packageNeeds, state.extraNeeds);
+        const needs = state.extraNeeds.length > 0 ? state.extraNeeds : packageNeeds;
         const [plan, planError] = context.services.procurement.plan({
             needs,
             inventory: context.inventory,
@@ -295,6 +298,21 @@ export class ProcurementSkill implements Skill {
                 `crafting ${action.item}`,
             );
         }
+        if (action.kind === 'smelt') {
+            return SkillSharedUtilities.running(
+                run,
+                {
+                    kind: 'smelt',
+                    inputItem: action.input,
+                    fuelItem: action.fuel,
+                    outputItem: action.item,
+                    count: action.count,
+                },
+                state.steps,
+                MAXIMUM_STEPS,
+                `smelting ${action.item}`,
+            );
+        }
         return this.beginGather(context, nextState, action);
     }
 
@@ -304,6 +322,9 @@ export class ProcurementSkill implements Skill {
         action: Extract<SkillProcurementAction, { kind: 'gather' }>,
     ): SkillStep {
         const run: SkillRun = { skillId: this.id, state: this.serialize(state) };
+        if (action.source.startsWith('entity:')) {
+            return this.beginEntityGather(context, state, action);
+        }
         if (context.world.nearestBlock === undefined) {
             return SkillSharedUtilities.failed(
                 run,
@@ -345,6 +366,40 @@ export class ProcurementSkill implements Skill {
         return this.gatherStep({ skillId: this.id, state: this.serialize(gatherState) }, gather);
     }
 
+    private beginEntityGather(
+        context: SkillContext,
+        state: ProcurementState,
+        action: Extract<SkillProcurementAction, { kind: 'gather' }>,
+    ): SkillStep {
+        const run: SkillRun = { skillId: this.id, state: this.serialize(state) };
+        const entityName = action.source.slice('entity:'.length);
+        const entities = context.world.entities?.() ?? [];
+        const entity = entities
+            .filter((candidate) => candidate.name === entityName)
+            .map((candidate) => ({
+                ...candidate,
+                distance: SkillSharedUtilities.distance(context.position, candidate.position),
+            }))
+            .sort((left, right) => left.distance - right.distance)[0];
+        if (entity === undefined) {
+            return SkillSharedUtilities.failed(
+                run,
+                'missing-item',
+                `cannot find ${entityName} to gather ${action.item}`,
+            );
+        }
+        const gather: GatherState = {
+            position: entity.position,
+            expectedBlockId: action.source,
+            phase: entity.distance > GATHER_REACH ? 'move' : 'attack',
+            entityName,
+            itemName: action.item,
+            ...(entity.id === undefined ? {} : { entityId: entity.id }),
+        };
+        const gatherState = { ...state, gather };
+        return this.gatherStep({ skillId: this.id, state: this.serialize(gatherState) }, gather);
+    }
+
     private advanceGather(
         context: SkillContext,
         run: SkillRun,
@@ -358,22 +413,27 @@ export class ProcurementSkill implements Skill {
                 'procurement gather state is missing',
             );
         }
-        if (gather.phase === 'move') {
-            const breaking: GatherState = { ...gather, phase: 'break' };
+        const nextPhase = this.nextGatherPhase(gather);
+        if (nextPhase !== null) {
+            const next: GatherState = { ...gather, phase: nextPhase };
             return this.gatherStep(
-                { skillId: this.id, state: this.serialize({ ...state, gather: breaking }) },
-                breaking,
-            );
-        }
-        if (gather.phase === 'break') {
-            const collecting: GatherState = { ...gather, phase: 'collect' };
-            return this.gatherStep(
-                { skillId: this.id, state: this.serialize({ ...state, gather: collecting }) },
-                collecting,
+                { skillId: this.id, state: this.serialize({ ...state, gather: next }) },
+                next,
             );
         }
         const nextState = { ...state, gather: null, active: null, steps: state.steps + 1 };
         return this.advance(context, nextState);
+    }
+
+    private nextGatherPhase(gather: GatherState): GatherState['phase'] | null {
+        if (gather.entityName !== undefined) {
+            if (gather.phase === 'move') return 'attack';
+            if (gather.phase === 'attack') return 'collect';
+            return null;
+        }
+        if (gather.phase === 'move') return 'break';
+        if (gather.phase === 'break') return 'collect';
+        return null;
     }
 
     private gatherStep(run: SkillRun, gather: GatherState): SkillStep {
@@ -399,9 +459,26 @@ export class ProcurementSkill implements Skill {
                 `gathering ${gather.expectedBlockId}`,
             );
         }
+        if (gather.phase === 'attack') {
+            return SkillSharedUtilities.running(
+                run,
+                {
+                    kind: 'attack',
+                    ...(gather.entityId === undefined ? {} : { entityId: gather.entityId }),
+                    ...(gather.entityName === undefined ? {} : { entityName: gather.entityName }),
+                },
+                0,
+                MAXIMUM_STEPS,
+                `gathering ${gather.itemName ?? 'drops'} from ${gather.entityName ?? 'entity'}`,
+            );
+        }
         return SkillSharedUtilities.running(
             run,
-            { kind: 'collect-drops', radius: COLLECT_RADIUS },
+            {
+                kind: 'collect-drops',
+                radius: COLLECT_RADIUS,
+                ...(gather.itemName === undefined ? {} : { itemName: gather.itemName }),
+            },
             0,
             MAXIMUM_STEPS,
             'collecting gathered materials',
@@ -431,6 +508,21 @@ export class ProcurementSkill implements Skill {
                 steps,
                 MAXIMUM_STEPS,
                 `crafting ${action.item}`,
+            );
+        }
+        if (action.kind === 'smelt') {
+            return SkillSharedUtilities.running(
+                run,
+                {
+                    kind: 'smelt',
+                    inputItem: action.input,
+                    fuelItem: action.fuel,
+                    outputItem: action.item,
+                    count: action.count,
+                },
+                steps,
+                MAXIMUM_STEPS,
+                `smelting ${action.item}`,
             );
         }
         return SkillSharedUtilities.failed(
@@ -575,6 +667,12 @@ export class ProcurementSkill implements Skill {
             if (source === null) return undefined;
             return { kind, item, count, source };
         }
+        if (kind === 'smelt') {
+            const input = SkillSharedUtilities.readString(value.input);
+            const fuel = SkillSharedUtilities.readString(value.fuel);
+            if (input === null || fuel === null) return undefined;
+            return { kind, item, count, input, fuel };
+        }
         return undefined;
     }
 
@@ -585,21 +683,27 @@ export class ProcurementSkill implements Skill {
         const expectedBlockId = SkillSharedUtilities.readString(value.expectedBlockId);
         const phase = SkillSharedUtilities.readString(value.phase);
         if (position === null || expectedBlockId === null) return undefined;
-        if (phase !== 'move' && phase !== 'break' && phase !== 'collect') return undefined;
-        return { position, expectedBlockId, phase };
-    }
-
-    private mergeNeeds(
-        left: readonly SkillMaterialNeed[],
-        right: readonly SkillMaterialNeed[],
-    ): SkillMaterialNeed[] {
-        const merged = new Map<string, number>();
-        [...left, ...right].forEach((need) => {
-            merged.set(need.item, (merged.get(need.item) ?? 0) + need.count);
-        });
-        return [...merged.entries()]
-            .map(([item, count]) => ({ item, count }))
-            .sort((a, b) => a.item.localeCompare(b.item));
+        if (phase !== 'move' && phase !== 'break' && phase !== 'attack' && phase !== 'collect') {
+            return undefined;
+        }
+        const entityId = value.entityId;
+        if (entityId !== undefined && typeof entityId !== 'number') return undefined;
+        const entityName = value.entityName;
+        const itemName = value.itemName;
+        if (
+            (entityName !== undefined && typeof entityName !== 'string') ||
+            (itemName !== undefined && typeof itemName !== 'string')
+        ) {
+            return undefined;
+        }
+        return {
+            position,
+            expectedBlockId,
+            phase,
+            ...(entityId === undefined ? {} : { entityId }),
+            ...(entityName === undefined ? {} : { entityName }),
+            ...(itemName === undefined ? {} : { itemName }),
+        };
     }
 
     private mergeExtraNeeds(

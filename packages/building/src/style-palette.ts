@@ -86,7 +86,55 @@ const palettes = {
         gate: 'birch_fence_gate',
         path: 'dirt_path',
     },
+    starter_oak_and_cobblestone: {
+        structure: 'oak_planks',
+        floor: 'cobblestone',
+        roof: 'dark_oak_planks',
+        accent: 'cobblestone',
+        glass: 'oak_planks',
+        door: 'oak_door',
+        light: 'torch',
+        furniture: 'oak_planks',
+        crop: 'wheat',
+        fence: 'oak_fence',
+        gate: 'oak_fence_gate',
+        path: 'dirt_path',
+    },
+    starter_birch_and_cobblestone: {
+        structure: 'birch_planks',
+        floor: 'cobblestone',
+        roof: 'spruce_planks',
+        accent: 'cobblestone',
+        glass: 'birch_planks',
+        door: 'birch_door',
+        light: 'torch',
+        furniture: 'birch_planks',
+        crop: 'beetroots',
+        fence: 'birch_fence',
+        gate: 'birch_fence_gate',
+        path: 'dirt_path',
+    },
+    starter_spruce_and_cobblestone: {
+        structure: 'spruce_planks',
+        floor: 'stone',
+        roof: 'dark_oak_planks',
+        accent: 'cobblestone',
+        glass: 'spruce_planks',
+        door: 'spruce_door',
+        light: 'torch',
+        furniture: 'spruce_planks',
+        crop: 'carrots',
+        fence: 'spruce_fence',
+        gate: 'spruce_fence_gate',
+        path: 'gravel',
+    },
 } satisfies Record<string, PaletteMaterials>;
+
+const starterPalettes: readonly PaletteName[] = [
+    'starter_oak_and_cobblestone',
+    'starter_birch_and_cobblestone',
+    'starter_spruce_and_cobblestone',
+];
 
 export type PaletteName = keyof typeof palettes;
 
@@ -95,6 +143,10 @@ const fallbackPalette: PaletteName = 'oak_and_cobblestone';
 export class StylePalette {
     static names(): readonly string[] {
         return Object.keys(palettes).sort();
+    }
+
+    static starterNames(): readonly string[] {
+        return [...starterPalettes];
     }
 
     static resolve(style: StyleProfile): PaletteMaterials {

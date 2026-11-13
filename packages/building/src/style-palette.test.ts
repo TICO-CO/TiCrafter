@@ -31,4 +31,20 @@ describe('StylePalette', () => {
         expect(StylePalette.names().includes('sandstone')).toBe(true);
         expect(StylePalette.names()).toEqual([...StylePalette.names()].sort());
     });
+
+    it('keeps starter palettes free of brick and smelted materials', () => {
+        for (const name of StylePalette.starterNames()) {
+            const palette = StylePalette.resolve({
+                palette: name,
+                roof: 'gable',
+                symmetry: 0.8,
+                decoration: 0,
+            });
+            expect(palette.floor.includes('brick')).toBe(false);
+            expect(palette.accent.includes('brick')).toBe(false);
+            expect(palette.glass).not.toBe('glass');
+            expect(palette.glass).not.toBe('glass_pane');
+            expect(palette.floor).not.toBe('smooth_sandstone');
+        }
+    });
 });

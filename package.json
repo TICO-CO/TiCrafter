@@ -30,7 +30,7 @@
         "bench:laya": "bun tools/laya-bench/benchmark.mjs",
         "bench:laya:fp16": "bun tools/laya-bench/benchmark.mjs --fixture compact --model-dir models/laya-fp16 --provider webgpu",
         "convert:laya:fp16": ".venv/bin/python tools/laya-bench/convert-fp16.py models/laya/receptron--laya-onnx/d42786bdff8a7550316339c5fbf8f46caa83ea1b models/laya-fp16",
-        "dev:coordinator": "bun apps/coordinator/src/main.ts",
+        "dev:coordinator": "bun tools/dev/run-coordinator.mjs",
         "dev:bot": "bun apps/bot/src/main.ts",
         "eval:harnesses": "bun test packages/eval/src",
         "eval:guard": "bun test packages/eval/src/architecture-guard-tests",

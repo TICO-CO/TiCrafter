@@ -32,6 +32,7 @@ export class TaskIndependenceAuditor {
         const cancelled: string[] = [];
         for (const task of tasks) {
             if (!OPEN_TASK_STATUSES.has(task.status)) continue;
+            if (TaskIndependenceAuditor.projectTask(task)) continue;
             if (task.parentId === null && task.dependencies.length === 0) continue;
             const [, cancelError] = this.options.tasks.cancel(
                 task.id,
@@ -48,6 +49,11 @@ export class TaskIndependenceAuditor {
             this.options.logger.info({ cancelled }, 'cancelled non-independent tasks');
         }
         return [cancelled, null];
+    }
+
+    private static projectTask(task: TaskRecord): boolean {
+        const projectId = task.payload.projectId;
+        return typeof projectId === 'string' && projectId.length > 0;
     }
 
     private static describe(failure: TaskFailure): string {

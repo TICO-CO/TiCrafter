@@ -40,6 +40,11 @@ class FakeCatalog implements ProcurementCatalogPort {
         if (item === 'dirt') return ['dig', null];
         return [null, null];
     }
+
+    smeltFor(item: string): Result<{ input: string; count: number } | null, BuildingFailure> {
+        if (item === 'glass') return [{ input: 'sand', count: 1 }, null];
+        return [null, null];
+    }
 }
 
 describe('MaterialProcurementPlanner', () => {
@@ -78,6 +83,19 @@ describe('MaterialProcurementPlanner', () => {
         ]);
         expect(plan?.gathering).toEqual([{ item: 'dirt', count: 3, source: 'dig' }]);
         expect(plan?.reservations).toHaveLength(1);
+        expect(plan?.blocked).toBe(false);
+    });
+
+    it('turns furnace recipes into smelting requirements', () => {
+        const planner = new MaterialProcurementPlanner(
+            new FakeInventory([]),
+            new FakeContainers([]),
+            new FakeCatalog(),
+        );
+        const [plan, planError] = planner.plan([{ item: 'glass', count: 3 }]);
+
+        expect(planError).toBeNull();
+        expect(plan?.smelting).toEqual([{ item: 'glass', count: 3, input: 'sand', fuel: 'coal' }]);
         expect(plan?.blocked).toBe(false);
     });
 

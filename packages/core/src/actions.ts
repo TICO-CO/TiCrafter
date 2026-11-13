@@ -31,6 +31,14 @@ export type ActionRequest =
     | { kind: 'use-entity'; entityId?: number; entityName?: string }
     | { kind: 'consume'; itemName?: string }
     | { kind: 'craft'; itemName: string; count: number }
+    | {
+          kind: 'smelt';
+          inputItem: string;
+          fuelItem: string;
+          outputItem: string;
+          count: number;
+          furnace?: Vec3;
+      }
     | { kind: 'collect-drops'; radius: number; itemName?: string }
     | {
           kind: 'transfer';

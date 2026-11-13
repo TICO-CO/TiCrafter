@@ -80,6 +80,8 @@ export class FakeActionDispatcher {
                 return this.breakBlock(request);
             case 'craft':
                 return this.craft(request);
+            case 'smelt':
+                return this.completed(request);
             case 'transfer':
                 return this.transfer(request);
             case 'consume':

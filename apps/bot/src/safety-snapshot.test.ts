@@ -164,6 +164,25 @@ describe('safety snapshot source', () => {
         expect(snapshot.world.isProtected({ x: 4, y: 64, z: 0 })).toBe(false);
     });
 
+    it('disables claim tracking when the active skill does not require a claim', () => {
+        const state = createBot();
+        const source = new SafetySnapshotSource(state.bot, worldCache, () => 'gather-wool', {
+            claimSource: () => null,
+            claimTracking: () => false,
+        });
+
+        expect(readSnapshot(source).claimTrackingEnabled).toBe(false);
+    });
+
+    it('enables claim tracking when the active task requires a claim', () => {
+        const state = createBot();
+        const source = new SafetySnapshotSource(state.bot, worldCache, () => 'construction', {
+            claimTracking: () => true,
+        });
+
+        expect(readSnapshot(source).claimTrackingEnabled).toBe(true);
+    });
+
     it('exposes claim and grant regions for collision checks', () => {
         const state = createBot();
         const claim = {

@@ -18,9 +18,11 @@ import { SkillRegistry } from './registry.js';
 import type { Skill, SkillContext, SkillWorldView } from './types.js';
 
 class FakeWorld implements SkillWorldView {
-    constructor(
-        private readonly entityList: readonly { id: number; name: string; position: Vec3 }[] = [],
-    ) {}
+    private entityList: readonly { id: number; name: string; position: Vec3 }[];
+
+    constructor(entityList: readonly { id: number; name: string; position: Vec3 }[] = []) {
+        this.entityList = entityList;
+    }
 
     blockAt(): string | null {
         return 'stone';
@@ -32,6 +34,10 @@ class FakeWorld implements SkillWorldView {
 
     entities(): readonly { id?: number; name: string; position: Vec3 }[] {
         return this.entityList;
+    }
+
+    setEntities(entityList: readonly { id: number; name: string; position: Vec3 }[]): void {
+        this.entityList = entityList;
     }
 }
 
@@ -175,6 +181,83 @@ describe('night skills', () => {
         );
         expect(error).toBeNull();
         expect(dispatch.lastRequest?.kind).toBe('equip');
+    });
+
+    it('re-approaches a moving sheep instead of attacking out of reach', () => {
+        const skill = new GatherWoolSkill();
+        const world = new FakeWorld([{ id: 7, name: 'sheep', position: { x: 1, y: 64, z: 0 } }]);
+        const value = context({ world });
+        const [started] = skill.start(value, { count: 3 });
+        expect(started?.action?.kind).toBe('attack');
+        if (started === null || started.action === null) return;
+
+        world.setEntities([{ id: 7, name: 'sheep', position: { x: 4, y: 64, z: 0 } }]);
+        const [moving, error] = skill.step(
+            {
+                ...value,
+                lastAction: { request: started.action, status: 'completed' },
+            },
+            started.run,
+        );
+
+        expect(error).toBeNull();
+        expect(moving?.action).toMatchObject({
+            kind: 'move-to',
+            position: { x: 4, y: 64, z: 0 },
+            range: 2,
+        });
+    });
+
+    it('paces sheep attacks to the damage cooldown', () => {
+        const skill = new GatherWoolSkill();
+        const value = context({
+            world: new FakeWorld([{ id: 7, name: 'sheep', position: { x: 1, y: 64, z: 0 } }]),
+        });
+        const [started] = skill.start(value, { count: 3 });
+        expect(started?.action?.kind).toBe('attack');
+        if (started === null || started.action === null) return;
+
+        const [waiting, waitError] = skill.step(
+            {
+                ...value,
+                lastAction: { request: started.action, status: 'completed' },
+            },
+            started.run,
+        );
+        expect(waitError).toBeNull();
+        expect(waiting?.action).toEqual({ kind: 'wait', milliseconds: 500 });
+        if (waiting === null || waiting.action === null) return;
+
+        const [striking, strikeError] = skill.step(
+            {
+                ...value,
+                lastAction: { request: waiting.action, status: 'completed' },
+            },
+            waiting.run,
+        );
+        expect(strikeError).toBeNull();
+        expect(striking?.action?.kind).toBe('attack');
+    });
+
+    it('collects drops after the sheep disappears', () => {
+        const skill = new GatherWoolSkill();
+        const world = new FakeWorld([{ id: 7, name: 'sheep', position: { x: 1, y: 64, z: 0 } }]);
+        const value = context({ world });
+        const [started] = skill.start(value, { count: 3 });
+        expect(started?.action?.kind).toBe('attack');
+        if (started === null || started.action === null) return;
+
+        world.setEntities([]);
+        const [collecting, collectError] = skill.step(
+            {
+                ...value,
+                lastAction: { request: started.action, status: 'completed' },
+            },
+            started.run,
+        );
+
+        expect(collectError).toBeNull();
+        expect(collecting?.action?.kind).toBe('collect-drops');
     });
 
     it('hunts a passive animal when food is missing', () => {

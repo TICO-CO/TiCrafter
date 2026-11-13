@@ -13,6 +13,7 @@ import {
 export interface ProcurementCatalogPort {
     recipeFor(item: string): Result<readonly BlueprintMaterialNeed[] | null, BuildingFailure>;
     sourceFor(item: string): Result<string | null, BuildingFailure>;
+    smeltFor?(item: string): Result<{ input: string; count: number } | null, BuildingFailure>;
 }
 
 export interface CraftingRequirement {
@@ -27,10 +28,18 @@ export interface GatheringRequirement {
     source: string;
 }
 
+export interface SmeltingRequirement {
+    item: string;
+    count: number;
+    input: string;
+    fuel: string;
+}
+
 export interface ProcurementPlan {
     materials: MaterialPlan;
     crafting: readonly CraftingRequirement[];
     gathering: readonly GatheringRequirement[];
+    smelting: readonly SmeltingRequirement[];
     unresolved: readonly BlueprintMaterialNeed[];
     reservations: readonly MaterialWithdrawal[];
     blocked: boolean;
@@ -58,6 +67,7 @@ export class MaterialProcurementPlanner {
         }
         const crafting: CraftingRequirement[] = [];
         const gathering: GatheringRequirement[] = [];
+        const smelting: SmeltingRequirement[] = [];
         const unresolved: BlueprintMaterialNeed[] = [];
         for (const shortage of materials.shortages) {
             const [recipe, recipeError] = this.catalog.recipeFor(shortage.item);
@@ -79,6 +89,17 @@ export class MaterialProcurementPlanner {
                 gathering.push({ item: shortage.item, count: shortage.count, source });
                 continue;
             }
+            const [smelt, smeltError] = this.catalog.smeltFor?.(shortage.item) ?? [null, null];
+            if (smeltError) return [null, smeltError];
+            if (smelt !== null) {
+                smelting.push({
+                    item: shortage.item,
+                    count: shortage.count,
+                    input: smelt.input,
+                    fuel: 'coal',
+                });
+                continue;
+            }
             unresolved.push(shortage);
         }
         return [
@@ -86,6 +107,7 @@ export class MaterialProcurementPlanner {
                 materials,
                 crafting,
                 gathering,
+                smelting,
                 unresolved,
                 reservations: materials.withdrawals,
                 blocked: unresolved.length > 0,

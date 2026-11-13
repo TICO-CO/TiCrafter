@@ -44,6 +44,7 @@ export interface SafetySnapshotSourceOptions {
     allowDestructiveMaterials?: boolean;
     failureSource?: () => { class: string; at: string } | null;
     claimSource?: () => SafetyClaim | null;
+    claimTracking?: () => boolean;
     claimsSource?: () => readonly SafetyClaimRegion[];
     grantsSource?: () => readonly SafetyGrantRegion[];
     protectedBounds?: () => SafetyBounds | null;
@@ -142,7 +143,8 @@ export class SafetySnapshotSource {
                 inventoryTotalSlots: INVENTORY_TOTAL_SLOTS,
                 hostiles: this.hostileScanner.scan(position),
                 activeSkillId: skillId,
-                claimTrackingEnabled: this.options.claimSource !== undefined,
+                claimTrackingEnabled:
+                    this.options.claimTracking?.() ?? this.options.claimSource !== undefined,
                 allowDestructiveMaterials: this.options.allowDestructiveMaterials ?? false,
                 world: this.world,
             },

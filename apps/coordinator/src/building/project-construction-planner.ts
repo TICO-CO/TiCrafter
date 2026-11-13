@@ -161,7 +161,7 @@ export class ProjectConstructionPlanner {
     private static brief(input: ProjectConstructionInput): BuildingBrief {
         const kind = ProjectConstructionPlanner.briefKind(input.kind);
         const seed = ProjectConstructionPlanner.seed(input.projectId);
-        const palettes = StylePalette.names();
+        const palettes = input.kind === 'home' ? StylePalette.starterNames() : StylePalette.names();
         const palette = palettes[seed % palettes.length] ?? 'oak_and_cobblestone';
         return {
             kind,
@@ -178,7 +178,7 @@ export class ProjectConstructionPlanner {
                 palette,
                 roof: 'gable',
                 symmetry: 0.8,
-                decoration: 0.5,
+                decoration: input.kind === 'home' ? 0 : 0.5,
             },
             site: {
                 anchor: input.anchor,

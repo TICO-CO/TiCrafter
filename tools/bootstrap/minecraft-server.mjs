@@ -41,8 +41,23 @@ const readProcessId = () => {
     }
 };
 
-const writeDefaultProperties = () => {
-    if (exists(propertiesPath)) return;
+const difficultyLine = 'difficulty=normal';
+
+const ensureDifficulty = (contents) => {
+    if (/^difficulty=.*$/m.test(contents)) {
+        return contents.replace(/^difficulty=.*$/m, difficultyLine);
+    }
+    const separator = contents.length === 0 || contents.endsWith('\n') ? '' : '\n';
+    return `${contents}${separator}${difficultyLine}\n`;
+};
+
+const writeServerProperties = () => {
+    if (exists(propertiesPath)) {
+        const contents = fileSystem.readFileSync(propertiesPath, 'utf8');
+        const updated = ensureDifficulty(contents);
+        if (updated !== contents) fileSystem.writeFileSync(propertiesPath, updated);
+        return;
+    }
     const properties = [
         'online-mode=false',
         'server-port=25565',
@@ -52,7 +67,7 @@ const writeDefaultProperties = () => {
         'view-distance=6',
         'simulation-distance=6',
         'spawn-protection=0',
-        'difficulty=peaceful',
+        difficultyLine,
         'level-type=minecraft\\:normal',
         'generate-structures=true',
         'allow-nether=false',
@@ -108,7 +123,7 @@ export function startServer({ acceptEula = false } = {}) {
         console.log('wrote data/minecraft/eula.txt after explicit --accept-eula');
     }
 
-    writeDefaultProperties();
+    writeServerProperties();
 
     const logFileDescriptor = fileSystem.openSync(logPath, 'a');
     const childProcess = spawn(

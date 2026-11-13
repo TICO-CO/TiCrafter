@@ -31,6 +31,9 @@ export class ConstructionEditAuthorizer {
         if (structure === null) return [{ authorized: true, via: 'unattributed' }, null];
         const attribution = update.attribution;
         if (attribution === undefined) {
+            if (structure.ownerBotIds.includes(update.botId)) {
+                return [{ authorized: true, via: 'owner' }, null];
+            }
             return [
                 {
                     authorized: false,

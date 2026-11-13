@@ -398,7 +398,7 @@ describe('action veto gate', () => {
         {
             name: 'stuck',
             evaluator: new StuckTimeoutEvaluator(),
-            state: () => snapshot(undefined, { stuckMilliseconds: 16_000 }),
+            state: () => snapshot(undefined, { stuckMilliseconds: 21_000 }),
         },
         {
             name: 'inventory',
@@ -511,6 +511,22 @@ describe('recovery ladder', () => {
         expect(ladder.safeModeActive).toBe(true);
         expect(ladder.next(warning, 20_000).kind).toBe('emergency-stop');
         expect(ladder.next(warning, 25_000).kind).toBe('emergency-stop');
+    });
+
+    it('does not escalate transient movement warnings to safe mode', () => {
+        const ladder = new RecoveryLadder();
+        const warning: SafetySignal[] = [
+            { code: 'movement.stuck', severity: 'warning', message: 'movement stuck for 5s' },
+        ];
+        expect(ladder.next(warning, 0).kind).toBe('retry-local');
+        expect(ladder.next(warning, 20_000).kind).toBe('retry-local');
+        expect(ladder.safeModeActive).toBe(false);
+
+        const critical: SafetySignal[] = [
+            { code: 'movement.stuck', severity: 'critical', message: 'movement stuck for 20s' },
+        ];
+        expect(ladder.next(critical, 21_000).kind).toBe('planner-replan');
+        expect(ladder.next(critical, 26_000).kind).toBe('safe-mode');
     });
 
     const floorCases = [

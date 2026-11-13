@@ -4,8 +4,8 @@ import type { SafetyEvaluator, SafetySignal, SafetySnapshot } from './types.js';
 export class StuckTimeoutEvaluator implements SafetyEvaluator {
     evaluate(snapshot: SafetySnapshot): readonly SafetySignal[] {
         const signals: SafetySignal[] = [];
-        if (snapshot.stuckMilliseconds >= 15_000) {
-            signals.push(SafetySignals.movementStuck15s());
+        if (snapshot.stuckMilliseconds >= 20_000) {
+            signals.push(SafetySignals.movementStuck20s());
         } else if (snapshot.stuckMilliseconds >= 5_000) {
             signals.push(SafetySignals.movementStuck5s());
         }

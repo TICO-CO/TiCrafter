@@ -52,6 +52,19 @@ export class BuildingProcurementService implements SkillProcurementPort {
                 item: withdrawal.item,
                 count: withdrawal.count,
             })),
+            ...plan.gathering.map((gather) => ({
+                kind: 'gather' as const,
+                item: gather.item,
+                count: gather.count,
+                source: gather.source,
+            })),
+            ...plan.smelting.map((smelt) => ({
+                kind: 'smelt' as const,
+                item: smelt.item,
+                count: smelt.count,
+                input: smelt.input,
+                fuel: smelt.fuel,
+            })),
             ...plan.crafting.map((craft) => ({
                 kind: 'craft' as const,
                 item: craft.item,
@@ -60,12 +73,6 @@ export class BuildingProcurementService implements SkillProcurementPort {
                     item: ingredient.item,
                     count: ingredient.count,
                 })),
-            })),
-            ...plan.gathering.map((gather) => ({
-                kind: 'gather' as const,
-                item: gather.item,
-                count: gather.count,
-                source: gather.source,
             })),
         ];
         return [

@@ -49,6 +49,17 @@ type ShortcutCapablePathfinder = Bot['pathfinder'] & {
 
 type MineflayerBlock = NonNullable<ReturnType<Bot['blockAt']>>;
 
+interface SmeltFurnace {
+    putFuel(itemType: number, metadata: null, count: number): Promise<void>;
+    putInput(itemType: number, metadata: null, count: number): Promise<void>;
+    takeOutput(): Promise<unknown>;
+    close(): Promise<void>;
+}
+
+type FurnaceCapableBot = Bot & {
+    openFurnace(furnaceBlock: MineflayerBlock): Promise<SmeltFurnace>;
+};
+
 const PLACEMENT_OFFSETS = [
     { offset: { x: 0, y: -1, z: 0 }, face: { x: 0, y: 1, z: 0 } },
     { offset: { x: 0, y: 0, z: -1 }, face: { x: 0, y: 0, z: 1 } },
@@ -178,6 +189,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 return this.consume(request.itemName);
             case 'craft':
                 return this.craft(request.itemName, request.count);
+            case 'smelt':
+                return this.smelt(request);
             case 'collect-drops':
                 return this.collectDrops(request.radius, request.itemName);
             case 'transfer':
@@ -493,6 +506,62 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         );
         if (error) return [null, this.describe(error)];
         return [undefined, null];
+    }
+
+    private async smelt(request: {
+        inputItem: string;
+        fuelItem: string;
+        outputItem: string;
+        count: number;
+        furnace?: CoreVec3;
+    }): Promise<Result<void, string>> {
+        const furnaceBlock = this.findFurnace(request.furnace);
+        if (furnaceBlock === null) return [null, 'no furnace available'];
+        const inputType = this.bot.registry.itemsByName[request.inputItem];
+        const fuelType = this.bot.registry.itemsByName[request.fuelItem];
+        if (inputType === undefined) return [null, `unknown item ${request.inputItem}`];
+        if (fuelType === undefined) return [null, `unknown item ${request.fuelItem}`];
+        const [, approachError] = await this.ensureNear(
+            { x: furnaceBlock.position.x, y: furnaceBlock.position.y, z: furnaceBlock.position.z },
+            3,
+        );
+        if (approachError !== null) return [null, approachError];
+        const [furnace, openError] = await attemptAsync(() =>
+            (this.bot as FurnaceCapableBot).openFurnace(furnaceBlock),
+        );
+        if (openError !== null || furnace === null) {
+            return [null, this.describe(openError ?? 'furnace returned null')];
+        }
+        const [, resultError] = await attemptAsync(() =>
+            this.withTimeout(
+                this.runSmelt(furnace, inputType.id, fuelType.id, request.count),
+                this.timeoutMilliseconds,
+            ),
+        );
+        const [, closeError] = await attemptAsync(() => furnace.close());
+        if (resultError !== null) return [null, this.describe(resultError)];
+        if (closeError !== null) return [null, this.describe(closeError)];
+        return [undefined, null];
+    }
+
+    private async runSmelt(
+        furnace: SmeltFurnace,
+        inputType: number,
+        fuelType: number,
+        count: number,
+    ): Promise<void> {
+        const batches = Math.max(1, count);
+        await furnace.putFuel(fuelType, null, batches);
+        await furnace.putInput(inputType, null, batches);
+        await this.delay(4_000);
+        await furnace.takeOutput();
+    }
+
+    private findFurnace(position?: CoreVec3): MineflayerBlock | null {
+        if (position !== undefined) return this.bot.blockAt(this.vector(position));
+        const furnaceId = this.bot.registry.blocksByName.furnace?.id;
+        if (furnaceId === undefined) return null;
+        return this.bot.findBlock({ matching: furnaceId, maxDistance: 32 });
     }
 
     private async collectDrops(radius: number, itemName?: string): Promise<Result<void, string>> {

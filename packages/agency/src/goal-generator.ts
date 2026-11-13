@@ -81,10 +81,7 @@ export class GoalGenerator {
             case 'craft':
                 return needs.pressure('tools') > 0.4 && this.hasAny(snapshot, ['log', 'stone']);
             case 'shelter':
-                return (
-                    snapshot.home !== null &&
-                    (phase === 'night' || this.distanceToHome(snapshot) > 24)
-                );
+                return snapshot.home !== null && this.distanceToHome(snapshot) > 12;
             case 'return-home':
                 return snapshot.home !== null && this.distanceToHome(snapshot) > 12;
             case 'deposit':

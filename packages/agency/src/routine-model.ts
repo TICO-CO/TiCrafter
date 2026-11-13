@@ -1,44 +1,30 @@
-import type { RoutinePhase, RoutineState } from './types.js';
+import { DayCycle } from '@ticrafter/core';
 
-const TICKS_PER_DAY = 24_000;
-const NIGHT_END = 6_000;
-const MORNING_END = 9_000;
-const DAY_END = 16_500;
-const NIGHT_START = 19_500;
+import type { RoutinePhase, RoutineState } from './types.js';
 
 export class RoutineModel {
     static phase(timeOfDay: number | null): RoutinePhase {
-        if (timeOfDay === null) return 'day';
-        const normalized = RoutineModel.normalize(timeOfDay);
-        if (normalized < NIGHT_END) return 'night';
-        if (normalized < MORNING_END) return 'morning';
-        if (normalized < DAY_END) return 'day';
-        if (normalized < NIGHT_START) return 'evening';
-        return 'night';
+        return DayCycle.phase(timeOfDay);
     }
 
     static isDusk(phase: RoutinePhase): boolean {
-        return phase === 'evening';
+        return DayCycle.isDusk(phase);
     }
 
     static isNight(phase: RoutinePhase): boolean {
-        return phase === 'night';
+        return DayCycle.isNight(phase);
     }
 
     static isPreparationWindow(phase: RoutinePhase): boolean {
-        return phase === 'evening';
+        return DayCycle.isPreparationWindow(phase);
     }
 
     static isNightTime(timeOfDay: number | null): boolean {
-        return RoutineModel.phase(timeOfDay) === 'night';
+        return DayCycle.isNightTime(timeOfDay);
     }
 
     static ticksUntilNight(timeOfDay: number | null): number {
-        if (timeOfDay === null) return 0;
-        const normalized = RoutineModel.normalize(timeOfDay);
-        if (normalized < NIGHT_END) return 0;
-        if (normalized >= NIGHT_START) return 0;
-        return NIGHT_START - normalized;
+        return DayCycle.ticksUntilNight(timeOfDay);
     }
 
     static initialState(timeOfDay: number | null): RoutineState {
@@ -68,9 +54,5 @@ export class RoutineModel {
 
     static prefersWork(phase: RoutinePhase): boolean {
         return phase === 'morning' || phase === 'day';
-    }
-
-    private static normalize(timeOfDay: number): number {
-        return ((timeOfDay % TICKS_PER_DAY) + TICKS_PER_DAY) % TICKS_PER_DAY;
     }
 }

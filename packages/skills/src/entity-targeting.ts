@@ -29,6 +29,23 @@ export class EntityTargeting {
         return candidates[0]?.entity ?? null;
     }
 
+    static refresh(context: SkillContext, target: EntityTarget): EntityTarget | null {
+        const entities = context.world.entities?.() ?? [];
+        if (target.id !== undefined) {
+            return entities.find((entity) => entity.id === target.id) ?? null;
+        }
+        return (
+            entities.find(
+                (entity) =>
+                    entity.name === target.name &&
+                    Math.hypot(
+                        entity.position.x - target.position.x,
+                        entity.position.z - target.position.z,
+                    ) < 2,
+            ) ?? null
+        );
+    }
+
     static exists(context: SkillContext, target: EntityTarget): boolean {
         const entities = context.world.entities?.() ?? [];
         return entities.some(

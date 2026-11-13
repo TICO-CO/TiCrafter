@@ -18,6 +18,7 @@ import {
     BLOCK_UPDATE_EVENT,
     BOT_AUTONOMY_PAUSE,
     BOT_AUTONOMY_RESUME,
+    BOT_PROJECT_ABANDON,
     BOT_PROJECT_PROPOSE,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
@@ -26,6 +27,7 @@ import {
     BOT_SKILL_START,
     botAutonomyPauseSchema,
     botAutonomyResumeSchema,
+    botProjectAbandonResponseSchema,
     botProjectResponseSchema,
     botProjectUpdateSchema,
     botSafetyResumeSchema,
@@ -52,6 +54,7 @@ import {
     MemoryCheckpointStore,
     type SkillCheckpointStore,
     type SkillInput,
+    type SkillProgressEvent,
     type SkillProgressSink,
 } from '@ticrafter/skills';
 import { type Bot, createBot } from 'mineflayer';
@@ -70,6 +73,7 @@ import { ContainerScanner } from './container-scanner.js';
 import { BotEventBridge } from './event-bridge.js';
 import { GoalTieBreakClient } from './goal-tie-break.js';
 import { GuardianHook } from './guardian.js';
+import { HomeProjectFailure } from './home-project-failure.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
 import { MineflayerPerceptionSource } from './perception-source.js';
@@ -102,6 +106,8 @@ interface BlockLike {
     getProperties?: () => Record<string, string | number | boolean>;
 }
 
+const PROJECT_REQUEST_TIMEOUT_MILLISECONDS = 30_000;
+
 export class BotConnection {
     private bot: Bot | null = null;
     private transport: BotTransportClient | null = null;
@@ -123,6 +129,7 @@ export class BotConnection {
     private buildingServices: BuildingSkillServices | null = null;
     private buildExecution: BuildingExecutionService | null = null;
     private homeProjectRequested = false;
+    private homeProjectAbandonInFlight = false;
     private lastReflexAt = 0;
     private pendingStrategicIntent: StrategicIntent | null = null;
 
@@ -213,6 +220,7 @@ export class BotConnection {
                 botNames: this.options.config.botNames,
                 allowDestructiveMaterials: false,
                 claimSource: () => this.activeSafetyClaim(),
+                claimTracking: () => this.claimTrackingExpected(),
                 claimsSource: () => this.currentSafetyContext().claims,
                 grantsSource: () => this.currentSafetyContext().grants,
                 failureSource: () => {
@@ -253,6 +261,7 @@ export class BotConnection {
             report: (event) => {
                 this.taskAutonomy?.observeProgress(event);
                 this.agencyRuntime?.observeProgress(event);
+                this.handleHomeProjectFailure(event);
                 const [, sendError] = transport.sendEvent(SKILL_PROGRESS_EVENT, event);
                 return sendError ? [null, sendError.type] : [undefined, null];
             },
@@ -613,6 +622,54 @@ export class BotConnection {
         return payload?.requiresMobDrops === true ? 'hunt' : null;
     }
 
+    private handleHomeProjectFailure(event: SkillProgressEvent): void {
+        if (!HomeProjectFailure.isUnreachableNavigation(event)) return;
+        const project = this.projectSummary;
+        if (project === null || project.kind !== 'home') return;
+        this.clearUnreachableHome();
+        void this.abandonUnreachableHome(project.id, event.failureClass ?? 'unreachable');
+    }
+
+    private clearUnreachableHome(): void {
+        this.homeSnapshot = null;
+        this.projectSummary = null;
+        this.homeProjectRequested = false;
+        this.agencyRuntime?.syncProjectFocus([]);
+    }
+
+    private async abandonUnreachableHome(projectId: string, reason: string): Promise<void> {
+        if (this.homeProjectAbandonInFlight) return;
+        const transport = this.transport;
+        if (transport === null) return;
+        this.homeProjectAbandonInFlight = true;
+        const [envelope, requestError] = await transport.request(
+            BOT_PROJECT_ABANDON,
+            {
+                botId: this.options.botId,
+                projectId,
+                reason: `home anchor unreachable: ${reason}`,
+            },
+            PROJECT_REQUEST_TIMEOUT_MILLISECONDS,
+        );
+        if (requestError || envelope === null) {
+            this.homeProjectAbandonInFlight = false;
+            this.options.logger.warn({ error: requestError }, 'home project abandon failed');
+            return;
+        }
+        const parsed = botProjectAbandonResponseSchema.safeParse(envelope.payload);
+        if (!parsed.success || !parsed.data.ok) {
+            this.homeProjectAbandonInFlight = false;
+            this.options.logger.warn(
+                { reason: parsed.success ? parsed.data.reason : 'invalid response' },
+                'home project abandon was not accepted',
+            );
+            return;
+        }
+        this.options.logger.info({ projectId, reason }, 'unreachable home project abandoned');
+        await this.ensureHomeProject(transport);
+        this.homeProjectAbandonInFlight = false;
+    }
+
     private async ensureHomeProject(transport: BotTransportClient): Promise<void> {
         if (this.homeProjectRequested || this.homeSnapshot !== null || this.bot === null) return;
         this.homeProjectRequested = true;
@@ -627,14 +684,18 @@ export class BotConnection {
             min: anchor,
             max: { x: anchor.x + 6, y: anchor.y + 3, z: anchor.z + 6 },
         };
-        const [envelope, requestError] = await transport.request(BOT_PROJECT_PROPOSE, {
-            botId: this.options.botId,
-            title: `Home of ${this.options.name}`,
-            kind: 'home',
-            anchor,
-            bbox,
-            storagePosition: { x: anchor.x + 1, y: anchor.y + 1, z: anchor.z + 5 },
-        });
+        const [envelope, requestError] = await transport.request(
+            BOT_PROJECT_PROPOSE,
+            {
+                botId: this.options.botId,
+                title: `Home of ${this.options.name}`,
+                kind: 'home',
+                anchor,
+                bbox,
+                storagePosition: { x: anchor.x + 1, y: anchor.y + 1, z: anchor.z + 5 },
+            },
+            PROJECT_REQUEST_TIMEOUT_MILLISECONDS,
+        );
         if (requestError || envelope === null) {
             this.options.logger.warn({ error: requestError }, 'home project request failed');
             return;
@@ -740,6 +801,15 @@ export class BotConnection {
         return this.taskAutonomy?.activeTaskClaim ?? null;
     }
 
+    private claimTrackingExpected(): boolean {
+        const taskAutonomy = this.taskAutonomy;
+        if (taskAutonomy === null || !taskAutonomy.hasActiveTask) return false;
+        const claimId = taskAutonomy.activeTaskPayload?.claimId;
+        if (typeof claimId === 'string' && claimId.length > 0) return true;
+        const activeClaim = taskAutonomy.activeTaskSafety?.activeClaim;
+        return activeClaim !== null && activeClaim !== undefined;
+    }
+
     private readTaskSnapshot(): TaskAutonomySnapshot {
         const bot = this.bot;
         if (bot === null) {
@@ -824,6 +894,14 @@ export class BotConnection {
         }
         if (parsed.data.botId !== this.options.botId) return;
         const project = parsed.data.project;
+        if (project.status === 'abandoned' || project.status === 'failed') {
+            if (this.projectSummary?.id === project.id) {
+                this.homeSnapshot = null;
+                this.projectSummary = null;
+                this.agencyRuntime?.syncProjectFocus([]);
+            }
+            return;
+        }
         this.projectSummary = {
             id: project.id,
             title: project.title,

@@ -1,6 +1,7 @@
 import { SafetyReasons } from './signals.js';
 import type { RecoveryStep, RecoveryStepKind, SafetySignal } from './types.js';
 
+const TRANSIENT_MOVEMENT_CODES = new Set(['movement.stuck', 'movement.unreachable']);
 const ESCALATION_STEPS: readonly RecoveryStepKind[] = [
     'retry-local',
     'deterministic-alternative',
@@ -23,6 +24,9 @@ export class RecoveryLadder {
         if (signals.length === 0) {
             this.reset();
             return { kind: 'retry-local', reason: SafetyReasons.noSafetySignal };
+        }
+        if (RecoveryLadder.onlyTransientMovementWarnings(signals)) {
+            return { kind: 'retry-local', reason: this.reasonFor(signals) };
         }
         const requiredLevel = this.requiredLevel(signals);
         if (!this.active) {
@@ -66,6 +70,12 @@ export class RecoveryLadder {
 
     get currentSafeModeReason(): string | null {
         return this.safeModeReason;
+    }
+
+    private static onlyTransientMovementWarnings(signals: readonly SafetySignal[]): boolean {
+        return signals.every(
+            (signal) => TRANSIENT_MOVEMENT_CODES.has(signal.code) && signal.severity === 'warning',
+        );
     }
 
     private requiredLevel(signals: readonly SafetySignal[]): number {

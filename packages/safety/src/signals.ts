@@ -63,11 +63,11 @@ export class SafetySignals {
         };
     }
 
-    static movementStuck15s(): SafetySignal {
+    static movementStuck20s(): SafetySignal {
         return {
             code: 'movement.stuck',
             severity: 'critical',
-            message: 'movement stuck for 15s',
+            message: 'movement stuck for 20s',
         };
     }
 

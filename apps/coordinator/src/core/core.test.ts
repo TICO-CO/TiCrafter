@@ -232,6 +232,14 @@ describe('coordinator core', () => {
         sessions.touch('bot.alpha', '2026-01-01T00:00:10.000Z', { x: 1, y: 2, z: 3 });
         expect(sessions.get('bot.alpha')?.lastSeen).toBe('2026-01-01T00:00:10.000Z');
         expect(sessions.get('bot.alpha')?.position).toEqual({ x: 1, y: 2, z: 3 });
+        expect(
+            sessions.pruneStale(
+                5000,
+                Date.parse('2026-01-01T00:00:20.000Z'),
+                (botId) => botId === 'bot.alpha',
+            ),
+        ).toEqual([]);
+        expect(sessions.count()).toBe(1);
         expect(sessions.pruneStale(5000, Date.parse('2026-01-01T00:00:20.000Z'))).toEqual([
             'bot.alpha',
         ]);

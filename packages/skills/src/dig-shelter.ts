@@ -1,4 +1,4 @@
-import type { Result, Vec3 } from '@ticrafter/core';
+import { DayCycle, type Result, type Vec3 } from '@ticrafter/core';
 
 import type {
     Skill,
@@ -298,7 +298,6 @@ export class DigShelterSkill implements Skill {
     }
 
     private isNight(timeOfDay: number): boolean {
-        const normalized = ((timeOfDay % 24_000) + 24_000) % 24_000;
-        return normalized < 6_000 || normalized >= 19_500;
+        return DayCycle.isNightTime(timeOfDay);
     }
 }

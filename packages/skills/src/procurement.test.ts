@@ -18,6 +18,7 @@ import type {
 class FakeWorld implements SkillWorldView {
     blocks: Record<string, string> = {};
     gatherTarget: { x: number; y: number; z: number } | null = null;
+    entityList: { id?: number; name: string; position: { x: number; y: number; z: number } }[] = [];
 
     blockAt(): string | null {
         return null;
@@ -29,6 +30,10 @@ class FakeWorld implements SkillWorldView {
 
     nearestBlock(): { x: number; y: number; z: number } | null {
         return this.gatherTarget;
+    }
+
+    entities() {
+        return this.entityList;
     }
 }
 
@@ -285,6 +290,86 @@ describe('procurement skill', () => {
             collecting.run,
         );
         expect(next?.status).toBe('completed');
+    });
+
+    it('runs smelting actions', () => {
+        const { skill, procurement, world, services, input } = setup();
+        procurement.plans.push({
+            actions: [
+                {
+                    kind: 'smelt',
+                    item: 'glass',
+                    count: 1,
+                    input: 'sand',
+                    fuel: 'coal',
+                },
+            ],
+            shortages: [],
+            blocked: false,
+        });
+
+        const [started] = skill.start(
+            context(
+                [
+                    { name: 'sand', count: 1 },
+                    { name: 'coal', count: 1 },
+                ],
+                services,
+                world,
+            ),
+            input,
+        );
+
+        expect(started?.action).toMatchObject({
+            kind: 'smelt',
+            inputItem: 'sand',
+            fuelItem: 'coal',
+            outputItem: 'glass',
+            count: 1,
+        });
+    });
+
+    it('gathers wool from the nearest sheep', () => {
+        const { skill, procurement, world, services, input } = setup();
+        world.entityList = [{ id: 7, name: 'sheep', position: { x: 10, y: 64, z: 0 } }];
+        procurement.plans.push({
+            actions: [
+                {
+                    kind: 'gather',
+                    item: 'white_wool',
+                    count: 1,
+                    source: 'entity:sheep',
+                },
+            ],
+            shortages: [],
+            blocked: false,
+        });
+
+        const [moving] = skill.start(context([], services, world), input);
+        expect(moving?.action).toMatchObject({ kind: 'move-to' });
+        if (moving === null || moving.action === null) return;
+
+        const [attacking] = skill.step(
+            {
+                ...context([], services, world),
+                lastAction: completed(moving.action),
+            },
+            moving.run,
+        );
+        expect(attacking?.action).toMatchObject({ kind: 'attack', entityId: 7 });
+        if (attacking === null || attacking.action === null) return;
+
+        const [collecting] = skill.step(
+            {
+                ...context([], services, world),
+                lastAction: completed(attacking.action),
+            },
+            attacking.run,
+        );
+        expect(collecting?.action).toMatchObject({
+            kind: 'collect-drops',
+            itemName: 'white_wool',
+        });
     });
 
     it('fails closed when procurement is blocked', () => {

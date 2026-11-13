@@ -54,6 +54,7 @@ export class MaterialBanRule implements SafetyRule {
             case 'equip':
             case 'consume':
             case 'craft':
+            case 'smelt':
             case 'collect-drops':
             case 'transfer':
             case 'wait':
@@ -118,6 +119,7 @@ export class ClaimBoundaryRule implements SafetyRule {
             case 'equip':
             case 'consume':
             case 'craft':
+            case 'smelt':
             case 'collect-drops':
             case 'transfer':
             case 'wait':
@@ -170,6 +172,7 @@ export class ProtectedBboxRule implements SafetyRule {
             case 'equip':
             case 'consume':
             case 'craft':
+            case 'smelt':
             case 'collect-drops':
             case 'transfer':
             case 'wait':

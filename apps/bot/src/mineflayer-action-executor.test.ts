@@ -337,6 +337,23 @@ describe('mineflayer action executor', () => {
         expect(state.movedSlots).toEqual([[2, 3]]);
     });
 
+    it('fails smelting when no furnace is available', async () => {
+        const state = createFakeBot();
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'smelt',
+            inputItem: 'sand',
+            fuelItem: 'coal',
+            outputItem: 'glass',
+            count: 1,
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('failed');
+        expect(outcome?.message?.includes('furnace')).toBe(true);
+    });
+
     it('enables path shortcuts for long moves', async () => {
         const state = createFakeBot();
         const executor = new MineflayerActionExecutor(state.bot, logger);

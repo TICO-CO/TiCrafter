@@ -104,6 +104,12 @@ describe('ProjectConstructionPlanner', () => {
             ),
         ).toBe(true);
         expect(opened.plans.get('plan.structure.project.project-1', 1)[0]?.hash).toHaveLength(64);
+        const materials = new Set(result?.plan.plan.materials.map((need) => need.item));
+        expect(materials.has('bricks')).toBe(false);
+        expect(materials.has('glass')).toBe(false);
+        expect(materials.has('glass_pane')).toBe(false);
+        expect(materials.has('smooth_sandstone')).toBe(false);
+        expect(materials.has('flower_pot')).toBe(false);
     });
 
     it('selects a nearby flat site when the requested anchor is too steep', () => {
