@@ -84,8 +84,7 @@ export class GatherFoodSkill implements Skill {
     }
 
     private perform(context: SkillContext, run: SkillRun, phase: string): SkillStep {
-        if (phase === 'attack' || phase === 'cooldown')
-            return this.attackOrApproach(context, run);
+        if (phase === 'attack' || phase === 'cooldown') return this.attackOrApproach(context, run);
         if (phase === 'collect') return this.collect(run);
         if (phase === 'move') return this.moveOrAttack(context, run);
         return this.findAndApproach(context, run);

@@ -433,6 +433,8 @@ export class PersonalProjectService {
         if (project.botId !== botId) {
             return [null, ProjectFailures.ownerMismatch(projectId, botId)];
         }
+        const [, cancelError] = this.options.construction.cancelProjectTasks(project.id);
+        if (cancelError) return [null, ProjectFailures.taskFailed(cancelError)];
         const now = this.now();
         this.releaseClaims(botId, project.claims, now);
         const [, sipError] = this.options.sip.abandon({

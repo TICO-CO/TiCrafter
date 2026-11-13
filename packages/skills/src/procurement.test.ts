@@ -9,6 +9,7 @@ import type {
     SkillContext,
     SkillInput,
     SkillInventoryItem,
+    SkillMaterialNeed,
     SkillProcurementPlan,
     SkillProcurementPort,
     SkillServices,
@@ -48,9 +49,11 @@ class FakeSource implements SkillConstructionSource {
 
 class FakeProcurement implements SkillProcurementPort {
     plans: SkillProcurementPlan[] = [];
+    readonly requests: { needs: readonly SkillMaterialNeed[] }[] = [];
     readonly recorded: { action: unknown; status: string }[] = [];
 
-    plan(): Result<SkillProcurementPlan, string> {
+    plan(input: { needs: readonly SkillMaterialNeed[] }): Result<SkillProcurementPlan, string> {
+        this.requests.push(input);
         return [this.plans.shift() ?? { actions: [], shortages: [], blocked: false }, null];
     }
 
@@ -301,6 +304,7 @@ describe('procurement skill', () => {
                     item: 'glass',
                     count: 1,
                     input: 'sand',
+                    inputCount: 1,
                     fuel: 'coal',
                 },
             ],
@@ -326,7 +330,44 @@ describe('procurement skill', () => {
             fuelItem: 'coal',
             outputItem: 'glass',
             count: 1,
+            inputCount: 1,
         });
+    });
+
+    it('plans missing smelt inputs and fuel before starting the furnace', () => {
+        const { skill, procurement, world, services, input } = setup();
+        procurement.plans.push({
+            actions: [
+                {
+                    kind: 'smelt',
+                    item: 'glass',
+                    count: 2,
+                    input: 'sand',
+                    inputCount: 2,
+                    fuel: 'coal',
+                },
+            ],
+            shortages: [],
+            blocked: false,
+        });
+        procurement.plans.push({
+            actions: [
+                { kind: 'gather', item: 'sand', count: 2, source: 'sand' },
+                { kind: 'gather', item: 'coal', count: 1, source: 'coal_ore' },
+            ],
+            shortages: [],
+            blocked: false,
+        });
+        world.gatherTarget = { x: 4, y: 64, z: 0 };
+
+        const [started, error] = skill.start(context([], services, world), input);
+
+        expect(error).toBeNull();
+        expect(procurement.requests[1]?.needs).toEqual([
+            { item: 'coal', count: 1 },
+            { item: 'sand', count: 2 },
+        ]);
+        expect(started?.action).toMatchObject({ kind: 'move-to', position: world.gatherTarget });
     });
 
     it('gathers wool from the nearest sheep', () => {

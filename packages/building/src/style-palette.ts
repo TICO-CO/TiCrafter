@@ -116,7 +116,7 @@ const palettes = {
     },
     starter_spruce_and_cobblestone: {
         structure: 'spruce_planks',
-        floor: 'stone',
+        floor: 'cobblestone',
         roof: 'dark_oak_planks',
         accent: 'cobblestone',
         glass: 'spruce_planks',

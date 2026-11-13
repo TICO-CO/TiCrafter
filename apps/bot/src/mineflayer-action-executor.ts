@@ -42,6 +42,9 @@ const FURNACE_SLOTS: Record<ContainerSlot, number> = {
 const DEFAULT_ACTION_TIMEOUT_MILLISECONDS = 20_000;
 const CONTAINER_MOVE_TIMEOUT_MILLISECONDS = 10_000;
 const LONG_DISTANCE_SPRINT_THRESHOLD = 24;
+const SMELTING_MILLISECONDS_PER_ITEM = 10_000;
+const SMELTING_OUTPUT_POLL_MILLISECONDS = 1_000;
+const ITEMS_PER_FUEL = 8;
 
 type ShortcutCapablePathfinder = Bot['pathfinder'] & {
     enablePathShortcut: boolean;
@@ -513,6 +516,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         fuelItem: string;
         outputItem: string;
         count: number;
+        inputCount?: number;
         furnace?: CoreVec3;
     }): Promise<Result<void, string>> {
         const furnaceBlock = this.findFurnace(request.furnace);
@@ -532,10 +536,14 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (openError !== null || furnace === null) {
             return [null, this.describe(openError ?? 'furnace returned null')];
         }
+        const inputCount = Math.max(request.inputCount ?? request.count, 1);
+        const outputCount = Math.max(request.count, 1);
+        const smeltTimeout =
+            this.timeoutMilliseconds + outputCount * SMELTING_MILLISECONDS_PER_ITEM;
         const [, resultError] = await attemptAsync(() =>
             this.withTimeout(
-                this.runSmelt(furnace, inputType.id, fuelType.id, request.count),
-                this.timeoutMilliseconds,
+                this.runSmelt(furnace, inputType.id, fuelType.id, inputCount, outputCount),
+                smeltTimeout,
             ),
         );
         const [, closeError] = await attemptAsync(() => furnace.close());
@@ -548,13 +556,26 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         furnace: SmeltFurnace,
         inputType: number,
         fuelType: number,
-        count: number,
+        inputCount: number,
+        outputCount: number,
     ): Promise<void> {
-        const batches = Math.max(1, count);
-        await furnace.putFuel(fuelType, null, batches);
-        await furnace.putInput(inputType, null, batches);
-        await this.delay(4_000);
-        await furnace.takeOutput();
+        await furnace.putFuel(fuelType, null, Math.max(1, Math.ceil(inputCount / ITEMS_PER_FUEL)));
+        await furnace.putInput(inputType, null, inputCount);
+        let remaining = outputCount;
+        while (remaining > 0) {
+            const taken = MineflayerActionExecutor.takenCount(await furnace.takeOutput());
+            if (taken > 0) {
+                remaining -= taken;
+                continue;
+            }
+            await this.delay(SMELTING_OUTPUT_POLL_MILLISECONDS);
+        }
+    }
+
+    private static takenCount(value: unknown): number {
+        if (typeof value !== 'object' || value === null) return 0;
+        const count = (value as { count?: unknown }).count;
+        return typeof count === 'number' && count > 0 ? count : 0;
     }
 
     private findFurnace(position?: CoreVec3): MineflayerBlock | null {

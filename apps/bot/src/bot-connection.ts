@@ -73,7 +73,7 @@ import { ContainerScanner } from './container-scanner.js';
 import { BotEventBridge } from './event-bridge.js';
 import { GoalTieBreakClient } from './goal-tie-break.js';
 import { GuardianHook } from './guardian.js';
-import { HomeProjectFailure } from './home-project-failure.js';
+import { HomeProjectFailure, HomeProjectRecovery } from './home-project-failure.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
 import { MineflayerPerceptionSource } from './perception-source.js';
@@ -129,11 +129,17 @@ export class BotConnection {
     private buildingServices: BuildingSkillServices | null = null;
     private buildExecution: BuildingExecutionService | null = null;
     private homeProjectRequested = false;
-    private homeProjectAbandonInFlight = false;
+    private readonly homeProjectRecovery: HomeProjectRecovery;
     private lastReflexAt = 0;
     private pendingStrategicIntent: StrategicIntent | null = null;
 
-    constructor(private readonly options: BotConnectionOptions) {}
+    constructor(private readonly options: BotConnectionOptions) {
+        this.homeProjectRecovery = new HomeProjectRecovery({
+            abandon: (projectId, reason) => this.requestHomeAbandon(projectId, reason),
+            clearHome: () => this.clearUnreachableHome(),
+            repropose: () => this.reproposeHome(),
+        });
+    }
 
     async run(): Promise<Result<boolean, BotConnectionFailure>> {
         const transport = new BotTransportClient({
@@ -626,8 +632,7 @@ export class BotConnection {
         if (!HomeProjectFailure.isUnreachableNavigation(event)) return;
         const project = this.projectSummary;
         if (project === null || project.kind !== 'home') return;
-        this.clearUnreachableHome();
-        void this.abandonUnreachableHome(project.id, event.failureClass ?? 'unreachable');
+        void this.homeProjectRecovery.abandon(project.id, event.failureClass ?? 'unreachable');
     }
 
     private clearUnreachableHome(): void {
@@ -637,11 +642,9 @@ export class BotConnection {
         this.agencyRuntime?.syncProjectFocus([]);
     }
 
-    private async abandonUnreachableHome(projectId: string, reason: string): Promise<void> {
-        if (this.homeProjectAbandonInFlight) return;
+    private async requestHomeAbandon(projectId: string, reason: string): Promise<boolean> {
         const transport = this.transport;
-        if (transport === null) return;
-        this.homeProjectAbandonInFlight = true;
+        if (transport === null) return false;
         const [envelope, requestError] = await transport.request(
             BOT_PROJECT_ABANDON,
             {
@@ -652,29 +655,34 @@ export class BotConnection {
             PROJECT_REQUEST_TIMEOUT_MILLISECONDS,
         );
         if (requestError || envelope === null) {
-            this.homeProjectAbandonInFlight = false;
             this.options.logger.warn({ error: requestError }, 'home project abandon failed');
-            return;
+            return false;
         }
         const parsed = botProjectAbandonResponseSchema.safeParse(envelope.payload);
         if (!parsed.success || !parsed.data.ok) {
-            this.homeProjectAbandonInFlight = false;
             this.options.logger.warn(
                 { reason: parsed.success ? parsed.data.reason : 'invalid response' },
                 'home project abandon was not accepted',
             );
-            return;
+            return false;
         }
         this.options.logger.info({ projectId, reason }, 'unreachable home project abandoned');
-        await this.ensureHomeProject(transport);
-        this.homeProjectAbandonInFlight = false;
+        return true;
+    }
+
+    private async reproposeHome(): Promise<void> {
+        const transport = this.transport;
+        if (transport !== null) await this.ensureHomeProject(transport);
     }
 
     private async ensureHomeProject(transport: BotTransportClient): Promise<void> {
         if (this.homeProjectRequested || this.homeSnapshot !== null || this.bot === null) return;
         this.homeProjectRequested = true;
         const position = this.bot.entity?.position;
-        if (position === undefined) return;
+        if (position === undefined) {
+            this.homeProjectRequested = false;
+            return;
+        }
         const anchor = {
             x: Math.floor(position.x),
             y: Math.floor(position.y),
@@ -697,11 +705,13 @@ export class BotConnection {
             PROJECT_REQUEST_TIMEOUT_MILLISECONDS,
         );
         if (requestError || envelope === null) {
+            this.homeProjectRequested = false;
             this.options.logger.warn({ error: requestError }, 'home project request failed');
             return;
         }
         const parsed = botProjectResponseSchema.safeParse(envelope.payload);
         if (!parsed.success || !parsed.data.ok || parsed.data.project === null) {
+            this.homeProjectRequested = false;
             this.options.logger.info(
                 { reason: parsed.success ? parsed.data.reason : 'invalid response' },
                 'home project was not accepted',
@@ -896,9 +906,9 @@ export class BotConnection {
         const project = parsed.data.project;
         if (project.status === 'abandoned' || project.status === 'failed') {
             if (this.projectSummary?.id === project.id) {
-                this.homeSnapshot = null;
-                this.projectSummary = null;
-                this.agencyRuntime?.syncProjectFocus([]);
+                this.homeProjectRecovery.reset();
+                this.clearUnreachableHome();
+                void this.reproposeHome();
             }
             return;
         }

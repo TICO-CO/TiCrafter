@@ -3233,7 +3233,7 @@
                         "skills_entity_targeting_latency_ms"
                     ],
                     "sourceRefs": ["main.md#9-skills"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.skill"
                 },
                 {
@@ -3246,7 +3246,7 @@
                     "ownsState": [],
                     "metrics": ["skills_equip_gear_errors_total", "skills_equip_gear_latency_ms"],
                     "sourceRefs": ["main.md#9-skills"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.skill",
                     "invariants": [
                         "Only inventory items may be equipped and no slot is filled with an incompatible item."
@@ -3267,7 +3267,7 @@
                     "ownsState": [],
                     "metrics": ["skills_gather_food_errors_total", "skills_gather_food_latency_ms"],
                     "sourceRefs": ["main.md#9-skills"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.skill",
                     "invariants": [
                         "Gathering stops at the requested food count and never attacks players or bots."
@@ -3288,7 +3288,7 @@
                     "ownsState": [],
                     "metrics": ["skills_gather_wool_errors_total", "skills_gather_wool_latency_ms"],
                     "sourceRefs": ["main.md#9-skills"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.skill",
                     "invariants": [
                         "A sheared target is not retried indefinitely and gathering stops at the requested wool count."
@@ -3304,7 +3304,7 @@
                     "ownsState": [],
                     "metrics": ["skills_place_bed_errors_total", "skills_place_bed_latency_ms"],
                     "sourceRefs": ["main.md#9-skills"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.skill",
                     "invariants": [
                         "A bed is placed only when a bed item is carried and the target cell is reachable."
@@ -3320,7 +3320,7 @@
                     "ownsState": [],
                     "metrics": ["skills_dig_shelter_errors_total", "skills_dig_shelter_latency_ms"],
                     "sourceRefs": ["main.md#9-skills"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.skill",
                     "invariants": [
                         "Each dug block is recorded and restored when the shelter is left.",
@@ -4131,7 +4131,7 @@
                         "bot_runtime_shelter_inspector_latency_ms"
                     ],
                     "sourceRefs": ["main.md#20-agency-and-motivation"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.bot-adapter",
                     "invariants": [
                         "Shelter is reported only while the bot is inside or next to the home bounds.",
@@ -4534,7 +4534,7 @@
                         "bot_runtime_headless_runtime_latency_ms"
                     ],
                     "sourceRefs": ["main.md#1-fleet-coordinator"],
-                    "milestone": 16,
+                    "milestone": 19,
                     "template": "tpl.bot-adapter"
                 }
             ]
@@ -5550,7 +5550,7 @@
                         "eval_simulation_harness_latency_ms"
                     ],
                     "sourceRefs": ["main.md#15-testing-and-evaluation"],
-                    "milestone": 16,
+                    "milestone": 19,
                     "template": "tpl.test-harness"
                 },
                 {
@@ -5566,7 +5566,7 @@
                         "eval_behavior_assertions_latency_ms"
                     ],
                     "sourceRefs": ["main.md#15-testing-and-evaluation"],
-                    "milestone": 16,
+                    "milestone": 19,
                     "template": "tpl.test-harness"
                 },
                 {
@@ -5582,7 +5582,7 @@
                         "eval_trace_inspector_latency_ms"
                     ],
                     "sourceRefs": ["main.md#15-testing-and-evaluation"],
-                    "milestone": 16,
+                    "milestone": 19,
                     "template": "tpl.test-harness"
                 }
             ]
@@ -6057,7 +6057,7 @@
                         "agency_item_knowledge_latency_ms"
                     ],
                     "sourceRefs": ["main.md#20-agency-and-motivation"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.brain"
                 },
                 {
@@ -6073,7 +6073,7 @@
                         "agency_night_prep_config_latency_ms"
                     ],
                     "sourceRefs": ["main.md#20-agency-and-motivation"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.brain"
                 },
                 {
@@ -6089,7 +6089,7 @@
                         "agency_shelter_strategy_latency_ms"
                     ],
                     "sourceRefs": ["main.md#20-agency-and-motivation"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.brain",
                     "invariants": [
                         "Build is chosen only when enough daylight and material remain.",
@@ -6109,7 +6109,7 @@
                         "agency_shelter_plan_latency_ms"
                     ],
                     "sourceRefs": ["main.md#10-building-three-layers"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.brain",
                     "invariants": [
                         "Shelter blocks are ordered support-first and bounded to a small footprint."
@@ -6134,7 +6134,7 @@
                         "agency_night_readiness_latency_ms"
                     ],
                     "sourceRefs": ["main.md#20-agency-and-motivation"],
-                    "milestone": 15,
+                    "milestone": 18,
                     "template": "tpl.brain",
                     "invariants": [
                         "Readiness is a pure assessment and never calls a skill directly.",

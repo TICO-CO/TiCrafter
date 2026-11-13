@@ -37,6 +37,7 @@ export type ActionRequest =
           fuelItem: string;
           outputItem: string;
           count: number;
+          inputCount?: number;
           furnace?: Vec3;
       }
     | { kind: 'collect-drops'; radius: number; itemName?: string }

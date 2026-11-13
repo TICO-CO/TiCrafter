@@ -111,7 +111,14 @@ export type SkillProcurementAction =
     | { kind: 'withdraw'; container: Vec3; item: string; count: number }
     | { kind: 'craft'; item: string; count: number; ingredients: readonly SkillMaterialNeed[] }
     | { kind: 'gather'; item: string; count: number; source: string }
-    | { kind: 'smelt'; item: string; count: number; input: string; fuel: string };
+    | {
+          kind: 'smelt';
+          item: string;
+          count: number;
+          input: string;
+          inputCount: number;
+          fuel: string;
+      };
 
 export interface SkillProcurementPlan {
     actions: readonly SkillProcurementAction[];

@@ -1,9 +1,13 @@
 # TiCrafter Cognitive Architecture
 
-Status: implemented. Working memory, focus, interruption, project focus, tactical
-Laya revision guards, tactical profile policy, strategic intent, planner
-integration, agency goal tie-break, and reflection are implemented. Goal
+Status: current baseline implemented; behavior realism and the early-game
+progression plan are planned. Working memory, focus, interruption, project focus,
+tactical Laya revision guards, tactical profile policy, strategic intent,
+planner integration, agency goal tie-break, and reflection are implemented. Goal
 tie-break is disabled by default until the behavioral evaluation gate passes.
+The progression plan, humanized movement and gaze, view-cone perception, and
+behavior-realism gates are defined here and in
+[`behavior-roadmap.md`](behavior-roadmap.md) but are not yet fully implemented.
 
 This document defines the boundary between reflex safety, local agency, tactical
 Laya decisions, working memory, and the optional cloud planner. It is the
@@ -38,6 +42,7 @@ The goal is not to make Laya a smaller planner. The goal is a clean split:
 | Laya           | Continue, interrupt, switch, recover among legal options | Advisory                 |
 | Cloud planner  | Strategic goals, constraints, priorities                 | Optional advisory        |
 | Skills         | Pathfinding, inventory, crafting, building, movement     | Deterministic execution  |
+| Behavior       | Pacing, gaze, pauses, movement segmentation              | Advisory execution only  |
 | Perception     | World and self observations                              | Observation only         |
 
 Rules:
@@ -46,6 +51,8 @@ Rules:
 - Laya never invents goals, writes SIP, claims, or grants, or calls skills.
 - The cloud planner never writes blocks or bypasses validation.
 - The guardian remains the safety authority. Laya cannot authorize danger.
+- Behavior realism may pace non-urgent actions but never delays a guardian veto,
+  threat reaction, hunger reaction, or emergency stop.
 - A bot must remain functional with the cloud planner disabled.
 
 ## 3. Ownership boundaries
@@ -133,6 +140,10 @@ interface WorkingMemory {
         at: string;
         revision: number;
     } | null;
+    plan?: ProgressionPlan | null;
+    lastDecisionAt: string | null;
+    lastSwitchAt: string | null;
+    lastGazeAt: string | null;
     strategicIntent?: StrategicIntent | null;
 }
 ```
@@ -142,6 +153,7 @@ Bounds:
 - maximum 4 commitments;
 - maximum 8 recent experiences;
 - one active interruption at a time;
+- one active progression plan with a bounded milestone count;
 - no full episode history is sent to Laya.
 
 Working memory stores interpretations and outcomes, not world observations.
@@ -155,12 +167,15 @@ Implementation:
 - `strategicIntent` is optional in persisted JSON for backward compatibility;
   missing or null restores to null.
 - The revision increments on every focus, commitment, interruption, experience,
-  strategic-intent, and tactical-decision change.
+  strategic-intent, plan, and tactical-decision change.
 - Project focus survives project sub-work tasks. Survival and other interruption
   goals may temporarily take focus; completing or abandoning them restores the
   project focus.
 - Tactical decisions record their source, choice, and working-memory revision.
   Stale results are dropped and recorded as recent experiences.
+- `plan` is optional in persisted JSON. Old snapshots restore to an empty plan.
+- `lastDecisionAt`, `lastSwitchAt`, and `lastGazeAt` support dwell, reaction
+  latency, and humanization policy without adding another goal manager.
 
 ### Focus
 
@@ -425,6 +440,18 @@ best available gear.
 or active task requires mob drops. Night readiness is re-assessed each agency
 tick and recorded as an episode when it changes.
 
+Routine is a daily prior, not a fixed script:
+
+- morning: eat, check needs, then resume the progression plan, project, or a job;
+- day: gather, build, farm, explore, or socialize;
+- evening: return home, deposit surplus, craft, check stations, chat;
+- night: shelter, sleep when a bed exists, or work cautiously;
+- dusk: return home early enough to secure shelter, food, bed, and gear.
+
+Idle time is purposeful and bounded. Allowed idle behaviors include storage
+organization, chest sorting, base inspection, patrol, resource scanning, eating,
+and resting. An empty leisure loop is not idle life.
+
 ## 8. Build and project goals
 
 Build projects are agency focus. They are not a separate goal manager.
@@ -453,8 +480,13 @@ project responses, and structured update events.
 Implemented project-focus behavior:
 
 - an active project sets the working-memory `project` focus;
-- while project focus is active, agency goal generation is limited to
-  interruption goals such as survival, eating, rest, shelter, and night prep;
+- while project focus is active, agency goal generation allows survival, eating,
+  rest, shelter, and night prep, plus provisioning goals such as gather, craft,
+  and deposit;
+- provisioning goals supply the project; they do not replace project focus or
+  bypass project claims;
+- a home brief includes a bed, chest, crafting table, furnace, and lighting where
+  materials allow;
 - a project task accepted from the job market carries `projectId` and does not
   replace project focus;
 - project focus is restored from session resume and is cleared when its project
@@ -514,6 +546,18 @@ are implemented.
 - `agency.goalTieBreak.closeScore` (default 0.12)
 - `agency.reflection.enabled` (default true)
 - `agency.reflection.maxTraitDelta` (default 0.01)
+- `agency.progression.enabled` (default true)
+- `agency.progression.milestoneCadenceMilliseconds`
+- `agency.progression.maxStepAttempts`
+- `agency.progression.pivotThreshold`
+- `behavior.movement.*` — walk, sprint, pause, scan, final approach
+- `behavior.gaze.*` — yaw rate, pitch rate, scan sweep, idle saccades
+- `behavior.rhythm.*` — reaction latency, dwell, switch threshold, action gap
+- `behavior.perception.*` — view cone, line of sight, memory radius
+- `behavior.social.*` — reply delay, rate, greeting cooldown
+- `behavior.idle.*` — idle duration and micro-behavior weights
+- `behavior.village.*` — ownership radius, allowed regions, player base links,
+  confidence threshold, inquiry cooldown, permission TTL
 - `planner.strategicIntent.enabled`
 - `planner.strategicIntent.maxBotOverrides`
 - `training.traceEnabled`
@@ -539,7 +583,21 @@ Behavior:
 - project proposal produces a task and completes;
 - planner disabled still yields autonomous behavior;
 - cloud unavailable uses last-good intent or local defaults;
-- reflection changes mood and bounded traits without blocking goal completion.
+- reflection changes mood and bounded traits without blocking goal completion;
+- the early-game progression reaches stone tools, crafting table, furnace,
+  chest, and bed from an empty inventory without a planner or seed jobs;
+- a blocked progression step pivots to an alternate source instead of abandoning
+  the plan;
+- pathfinding never places scaffold or bridge blocks and never digs for
+  navigation;
+- every break, place, use, attack, and container open is preceded by a look at
+  the target;
+- new targets respect the view cone and line of sight, or a remembered sighting;
+- non-urgent goal dwell and switch rates stay inside the configured ranges;
+- chat replies are delayed, varied, and rate-limited;
+- idle time is purposeful and bounded;
+- guardian, threat, hunger, fall, lava, and emergency stop bypass all
+  humanization delays.
 
 Performance:
 
@@ -552,14 +610,23 @@ Behavioral value:
 
 - Laya must beat deterministic policy on at least one behavioral metric without
   regressing others before agency tie-break is enabled.
+- Humanization must reduce oddity-detector counts without regressing task
+  success or increasing abandonment beyond the configured gate.
+- The progression plan must reach the first base milestone within the scenario
+  deadline with the planner disabled and no seed jobs.
 
 ## 13. Migration and compatibility
 
 - `agent_state` stores JSON; optional working memory fields need no schema
   migration.
-- Old snapshots restore with empty working memory.
+- Old snapshots restore with empty working memory and an empty progression plan.
 - Strategic intent changes to the planner plan require schema validation updates.
 - Project task metadata requires task and job-offer schema updates.
+- Behavior traces are additive telemetry; they do not require state migration.
+- Progression plan fields are optional and bounded; malformed plans fail closed
+  to an empty plan.
+- `player_confidence` is an additive coordinator-owned table keyed by player
+  UUID; missing rows start at the initial confidence.
 - Architecture graph update happens only when planned modules exist.
 - Generated architecture Markdown is never edited by hand.
 
@@ -597,6 +664,17 @@ Phase 3 documentation:
 - agency tie-break;
 - reflection and bounded personality updates.
 
+Behavior-realism phases:
+
+- execution stability and failure reporting;
+- progression plan and finishing skills;
+- movement, gaze, decision rhythm, and perception realism;
+- village and farm behavior;
+- behavior traces, oddity detectors, and player-likeness gates.
+
+See [`behavior-roadmap.md`](behavior-roadmap.md) for the implementation order,
+deliverables, and exit criteria.
+
 ## 15. Reflection and bounded personality updates
 
 Reflection is local and deterministic. It runs after a goal completes or is
@@ -632,8 +710,151 @@ Implementation:
 - `apps/bot/src/agency-runtime.ts` runs reflection on completion, abandonment,
   and restored-intention abandonment.
 
-## 16. Open questions
+## 16. Progression plan
+
+The progression plan gives the bot a persistent, player-like early-game arc. It
+is owned by agency and persisted inside working memory. It is not a second goal
+manager and does not bypass the intention lifecycle.
+
+Shape:
+
+```ts
+interface ProgressionPlan {
+    id: string;
+    version: number;
+    revision: number;
+    milestoneIndex: number;
+    milestones: {
+        id: string;
+        kind: string;
+        label: string;
+        attempts: number;
+        blocked: boolean;
+        completedAt: string | null;
+    }[];
+    updatedAt: string;
+}
+```
+
+Rules:
+
+- milestones are ordered: forage, crafting table, wooden tools, stone, furnace
+  and chest, base provisioning, farm, night routine;
+- the plan expands a milestone into existing goal kinds and skills using a
+  recipe port;
+- the plan is immutable; transitions return a new plan and increment the
+  working-memory revision;
+- completed or already-satisfied milestones are skipped;
+- partial counts carry over across goals and restarts;
+- unknown plan versions restore to an empty plan and emit a `plan-migrated`
+  trace;
+- a failed step records an attempt, respects a cooldown, and pivots to an
+  alternate source or target;
+- the plan never overrides survival, eating, night preparation, project tasks,
+  commitments, or the guardian;
+- when the planner is disabled, the progression plan is the primary source of
+  self-initiated goals;
+- if the planner is enabled, strategic intent may bias milestone priority but
+  cannot invalidate the plan.
+
+The recipe port is injected at the composition root. The bot adapter reads live
+Mineflayer recipes and stations; simulation and unit tests use a static table.
+A missing recipe or station becomes a prerequisite milestone, not a failure
+loop.
+
+## 17. Decision rhythm and bounded imperfection
+
+Human-like decisions need pacing, not randomness for its own sake.
+
+Rules:
+
+- non-urgent decisions wait for a bounded reaction delay;
+- a new goal must overcome commitment cost and a minimum dwell;
+- close candidates are selected with seeded satisficing, not a fixed argmax;
+- a switch re-checks the snapshot after the delay; if conditions changed, the
+  current commitment continues;
+- failed steps cool down before retry and prefer an alternate target or source;
+- occasional hesitation, scanning, and short detours are allowed;
+- identical action and target sequences are rate-limited to avoid visible
+  looping;
+- guardian, threat, hunger, fall, lava, and emergency stop bypass every delay.
+
+The policy is deterministic per seed. Live bots use one seed per session; tests
+use a fixed seed so behavior assertions remain stable.
+
+## 18. Movement and gaze realism
+
+Movement realism is an execution policy under skills.
+
+- Pathfinding never places scaffold or bridge blocks and never digs for
+  navigation.
+- Travel is split into short segments. The follower may pause, scan, and resume
+  between segments.
+- Walk by default. Sprint only on long, open, straight stretches. Never sprint
+  indoors, inside a base, near hazards, or while eating.
+- The bot looks toward the next waypoint with rate-limited yaw and pitch. It does
+  not reverse direction instantly.
+- Before breaking, placing, using, attacking, or opening a container, the bot
+  stops, looks at the target, and pauses briefly.
+- Explicit bridge, clear, and dig steps remain available when the plan chooses
+  them. They are never a pathfinder side effect.
+- Gaze and movement actions are recorded in the behavior trace.
+
+## 19. Perception realism
+
+Agency and skills must not act on information a player could not have.
+
+- New targets require a view cone and line of sight, or a remembered sighting.
+- The bot remembers discovered trees, stone, stations, farms, villages, water,
+  and containers.
+- Depleted resources are tracked and not re-targeted until a cooldown expires or
+  a new sighting occurs.
+- Container contents are known only after opening the container.
+- Village detection uses clustered villagers, beds, doors, workstations, and
+  farmland. It is a candidate, not an omniscient map.
+- Farm ownership resolves from an active `farm_plot` claim first, then the
+  nearest `house` landmark and its claim owners or linked players. Zero,
+  multiple, or conflicting owners resolve to unknown or ambiguous; the bot never
+  guesses.
+- `PlayerConfidenceStore` is coordinator-owned and keyed by player UUID. It
+  stores confidence, base links, interactions, and the last interaction time.
+- Perception failures fail closed to the last known sighting or to survey
+  behavior; they do not fall back to through-wall scanning.
+- The guardian keeps its immediate safety scan. Safety perception is not subject
+  to view-cone realism.
+
+## 20. Social presence and idle life
+
+Chat and body language are visible proof that the bot is present.
+
+- Wire the chat adapter to incoming bot chat events.
+- Reply after roughly 0.8–3 seconds, with personality-styled and varied
+  templates.
+- Look at the speaker and pause briefly during a greeting.
+- Rate limit per bot and per conversation; operator mute always wins.
+- Status messages are occasional and milestone-based, not a running commentary.
+- Farm permission asks are one per plot per cooldown, delayed, and rate-limited.
+  Silence is denial. Replies from unlinked players are ignored.
+- Player confidence starts at `0.5`. Positive chat, gifts, help, and kept
+  permission promises raise it; crop theft, claim violation, and unsafe base
+  behavior lower it. It decays toward `0.5` with a 30-day half-life.
+- A player must be linked to the nearby base and reach `0.6` confidence before
+  an affirmative farm-permission reply is trusted. A known different owner
+  always wins.
+- Idle life includes storage organization, chest sorting, base inspection,
+  patrol, resource scanning, eating, and resting.
+- Idle behavior is bounded. It never replaces survival, night preparation, the
+  progression plan, or an active project task.
+- A late planner or Laya result cannot be applied to a newer focus while a social
+  or idle action is running.
+
+## 21. Open questions
 
 - Whether project tasks should be seeded by the project service or by a separate
   project task seeder.
 - When to enable agency goal tie-break beyond the first evaluation.
+- Whether the progression plan should expose intermediate milestones after
+  stone tools or jump directly to base provisioning.
+- Whether village beds may be used for sleep by default or only when no personal
+  bed exists.
+- How much seeded variation is desirable before it becomes visible repetition.

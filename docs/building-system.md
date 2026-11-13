@@ -619,11 +619,15 @@ Building is part of agency, not only job execution.
 
 Proposed goals:
 
+- `forage`: gather wood and food before a first build
 - `build-shelter`: first safe shelter when no home exists
 - `build-home`: personal home
 - `expand-home`: add a room, storage, farm, or workshop
 - `repair-home`: fix damage or incomplete work
 - `decorate-home`: lighting, paths, fences, and interior detail
+- `tend-farm`: harvest mature crops and replant
+- `scout-village`: approach a detected village for crops only; no chest theft and
+  no trading
 - `help-build`: help a friend or shared project
 
 Behavior:
@@ -635,6 +639,10 @@ Behavior:
 - bots may observe and imitate existing structures
 - social help uses claims, grants, and the same construction pipeline
 - a project is agency focus; construction tasks are sub-work
+- project focus allows provisioning goals such as gather, craft, and deposit so
+  the bot can supply its own project
+- a home brief includes a bed, chest, crafting table, furnace, and lighting
+  where materials allow
 - survival or recovery interruptions preserve project focus and task leases
 - a late tactical decision cannot replace newer project focus
 
@@ -762,7 +770,7 @@ Evaluation scenarios:
 
 The fake-world acceptance suite exercises `arbitrary-house`, `uneven-terrain`,
 and `scaffold-tower` with the real building and skill code without a Minecraft
-server. The `simulated-*` scenarios run in the milestone 16 behavior validation
+server. The `simulated-*` scenarios run in the milestone 19 behavior validation
 harness and are not part of the building milestone itself.
 
 ## 18. Migration and compatibility
@@ -774,7 +782,7 @@ harness and are not part of the building milestone itself.
 - Add blueprint storage and changelog migrations with the implementation.
 - Update `docs/architecture/graph.json` and regenerate architecture docs only
   when the modules exist.
-- Add the milestone 16 validation components to `graph.json` only when the
+- Add the milestone 19 validation components to `graph.json` only when the
   behavior harness implementation starts.
 - Update `docs/operations.md` when building endpoints and metrics exist.
 

@@ -182,7 +182,7 @@ Autonomy soak fails on long idle drift above 20%, goal churn above the configure
 limit, missing need-satisfaction evidence, claim conflicts between personal
 homes, or a bot that stops pursuing goals before the run ends.
 
-## Behavior validation (milestone 16)
+## Behavior validation (milestone 19)
 
 The behavior validation harness is the final milestone. It runs after the
 implementation milestones and exists to validate them; it does not change
@@ -192,24 +192,72 @@ run.
 ```sh
 bun tools/eval/run.mjs scenario personal-homes --mode simulate
 bun tools/eval/run.mjs scenario personal-homes --mode live --accept-eula
+bun tools/eval/run.mjs scenario early-game-bootstrap --mode simulate
+bun tools/eval/run.mjs scenario human-signature --mode simulate
+bun tools/eval/run.mjs scenario human-movement --mode live --accept-eula
 bun tools/eval/run.mjs inspect data/eval/personal-homes --bot bot.tibot1
 bun tools/eval/run.mjs check data/eval/personal-homes --scenario personal-homes
 ```
 
 `scenario --mode simulate` uses a fake world, inventory, and clock while running
-the real agency, planning, skill, and building code. It does not start a
-Minecraft server or connect mineflayer bots. `--mode live` reuses the same
-scenario and assertions against the repo-provisioned server.
+the real agency, planning, skill, building, progression, and humanization code.
+It does not start a Minecraft server or connect mineflayer bots. `--mode live`
+reuses the same scenario and assertions against the repo-provisioned server.
 
 `inspect` prints a per-bot decision timeline instead of raw events. It shows goal
-choices, planner or Laya advice, skill outcomes, building progress, claim
-conflicts, idle periods, and need trends. Filters include `--bot`, `--since`,
-`--type`, and `--json`.
+choices, plan milestones, planner or Laya advice, skill outcomes, gaze and pause
+events, movement segments, chat, building progress, claim conflicts, idle
+periods, and need trends. Filters include `--bot`, `--since`, `--type`, and
+`--json`.
 
 `check` applies the scenario assertions to an existing data directory and exits
 non-zero on failure. Reports fail on assertion failures, duplicate block writes,
-missing goal or need evidence, build mismatches, or missing expected decision
-events.
+missing goal or need evidence, missing plan progress, behavior-realism violations,
+build mismatches, or missing expected decision events.
+
+## Behavior realism operations
+
+Behavior realism is a pacing layer, not a safety layer. The guardian, threat,
+hunger, fall, lava, and emergency-stop paths bypass every humanization delay.
+
+Config groups:
+
+- `behavior.movement.*` — walk, sprint, pause, scan, final approach;
+- `behavior.gaze.*` — yaw rate, pitch rate, scan sweep, idle saccades;
+- `behavior.rhythm.*` — reaction latency, dwell, switch threshold, action gap;
+- `behavior.perception.*` — view cone, line of sight, memory radius;
+- `behavior.social.*` — reply delay, rate, greeting cooldown;
+- `behavior.idle.*` — idle duration and micro-behavior weights;
+- `behavior.village.*` — ownership radius, allowed regions, player base links,
+  confidence threshold, inquiry cooldown, and permission TTL;
+- `agency.progression.*` — progression plan cadence, attempts, pivot threshold,
+  plan version.
+
+Debugging:
+
+- disable `agency.progression.enabled` to retain legacy goal generation during
+  migration;
+- disable individual behavior groups to isolate a movement or timing problem;
+- keep safety groups enabled; they do not have a humanization toggle;
+- inspect `trace.jsonl` for `decision`, `movement`, `gaze`, `pause`, `action`,
+  `chat`, `permission`, and `progression` events;
+- check player confidence and base links before changing village permission
+  settings; lower confidence never widens access;
+- replay a failed run with the recorded seed before changing configuration.
+
+Alerts:
+
+- `auto-scaffold` above zero;
+- `zero-look-interact` above zero;
+- `teleport-step` or `instant-turn` above zero;
+- `switch-storm` or `same-target-retry` above threshold;
+- `unpermitted-farm-harvest` above zero;
+- permission grants from unlinked or below-threshold players above zero;
+- chat duplicate replies above zero;
+- progression milestones stalled beyond the configured attempt budget.
+
+A behavior-realism alert blocks promotion. A safety alert always takes priority
+over a behavior alert.
 
 ## Failure classes
 

@@ -251,6 +251,7 @@ SQLite tables:
 - `agent_episodes` — append-only episodic memory: deaths, discoveries, gifts, chats, goal outcomes.
 - `bot_events` — append-only log of decisions, task transitions, grants, failures, social events.
 - `skill_checkpoints` — `(botId, taskId, skillId, stateJson, updatedAt)`.
+- `player_confidence` — per-player confidence, linked base IDs, interactions, and last interaction timestamp. Coordinator-owned and keyed by player UUID.
 - Claims and edit grants are coordinator-owned; bots reconnect to them by `botId`.
 
 Restart / resume flow:
@@ -398,6 +399,10 @@ Executor invariants:
 - 1Hz agency tick: needs decay, opportunity scan, goal generation, routine check.
 - 200–500ms skill step.
 - Goal deliberation on need threshold, goal completion, failure, danger, social event, or 1Hz heartbeat.
+- Non-urgent decisions use a bounded reaction delay, minimum dwell, switch hysteresis, and seeded satisficing among close candidates. Guardian reactions are never delayed.
+- Movement is executed in short segments with walk-first pacing, sprint only on long open stretches, waypoint pauses, and a look-at pause before interaction. Pathfinding never places scaffold or bridge blocks on its own.
+- New targets must be visible or previously remembered. Perception uses a view cone and line of sight; container contents are known only after opening.
+- Bounded imperfection is allowed: pauses, scans, short detours, and occasional re-checks. Harmful mistakes are never allowed.
 - Tactical Laya is called only at legal choice points with more than one option. `danger` is not a Laya input; the guardian owns danger.
 - Working memory records focus, commitments, interruptions, recent experiences, and the revision used for the last tactical decision.
 - Interruptions preserve the current intention or task lease and record a resume condition. Task interruption never releases the lease by itself.
@@ -415,7 +420,7 @@ Executor invariants:
 
 ## 12. Memory and persistence
 
-SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `agent_state`, `agent_episodes`, `personal_projects`, `planner_plans`, `bot_events`, `skill_checkpoints`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
+SQLite (WAL) tables: `sip`, `sip_revisions`, `claims`, `edit_grants`, `tasks`, `bots`, `agent_state`, `agent_episodes`, `personal_projects`, `planner_plans`, `bot_events`, `skill_checkpoints`, `player_confidence`, `chunks`, `landmarks`, `structures`, `containers`, `episodes`, `block_changelog`, `metrics`.
 
 - **Data directory:** `DATA_DIR`, default `./data`; holds the SQLite DB, event log, and block changelog. Gitignored.
 - **Retention:** prune event logs and block changelogs after 30 days. Keep SQLite state until manual pruning.
@@ -446,7 +451,7 @@ packages/planning/       planner client, prompt builders, strategic intent,
                          validators, task DAG
 packages/memory/         repositories, migrations, changelog
 packages/eval/           scenario runner, metrics, replay, contention tests,
-                         offline behavior simulator, trace inspector (milestone 16)
+                         offline behavior simulator, trace inspector (milestone 19)
 tools/bootstrap/         dependency and app provisioning, local server control
 tools/architecture/      graph validator, renderers, SVG renderer
 tools/laya-train/        dev-only Python: labeling, fine-tune, ONNX export
@@ -503,20 +508,29 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
     - `tactical-interruption`: survival interruption preserves task lease and resumes the same task.
     - `stale-decision`: a late Laya result cannot overwrite a newer focus or revision.
     - `project-build`: a project proposal creates a construction task and completes through the task board.
+    - `early-game-bootstrap`: a bot reaches stone tools, crafting table, furnace, chest, and a bed in a shelter from an empty inventory.
+    - `human-signature`: movement, gaze, dwell, pauses, and chat stay inside the player-likeness ranges.
+    - `human-movement`: no unplanned scaffold or bridge placement, no teleport steps, and no instant turns.
+    - `village-farm`: a bot resolves plot ownership, harvests and replants permitted crops, stores surplus, and leaves village chests untouched.
+    - `idle-life`: idle time is bounded and purposeful, not an empty leisure loop.
+    - `social-chat`: replies are delayed, rate-limited, and never duplicate the previous reply.
+    - `no-oscillation`: goal and plan switching stays below the configured rate.
 - Metrics: task success, goal success, goal abandonment, time, deaths, blocks/min, claim contention, duplicate work, idle time, self-initiated goals, need satisfaction, social interactions, chat rate, Laya accuracy/ECE, planner calls/tokens/cost, interruption/resume success, stale-decision drops, project completion, and focus-switch rate.
+- Behavior-realism metrics: time-to-milestone, dwell time, switches per 10 minutes, action-start jitter, pause frequency, scans per travel segment, look-before-interact rate, chat reply latency, idle fraction, oddity-detector counts, and humanization A/B task-time regression.
 - Soak test: 2+ hours on both profiles — 4 bots on `home-min`, 8 bots on `home-full`; no memory growth, no deadlocks, claims stable.
-- Offline behavior validation (milestone 16, after all implementation milestones):
+- Offline behavior validation (milestone 19, after all implementation milestones):
     - One scenario definition drives both `--mode simulate` and `--mode live`.
     - Simulated mode uses a fake world, inventory, and clock while running the real
-      agency, planning, skill, and building code; no Minecraft server or mineflayer
-      connection is required.
+      agency, planning, skill, building, progression, and humanization code; no
+      Minecraft server or mineflayer connection is required.
     - Live mode reuses the same scenario definitions and assertions against the
       repo-provisioned server.
-    - Declarative checks cover goal sequence, need satisfaction, idle fraction,
-      planner accept/defer/decline, duplicate block writes, build completion, and
-      restart resume.
-    - Reports render a per-bot decision timeline with goal choices, planner or Laya
-      advice, skill outcomes, and building progress instead of raw events.
+    - Declarative checks cover goal sequence, plan progression, need satisfaction,
+      idle fraction, planner accept/defer/decline, duplicate block writes, build
+      completion, restart resume, gaze, movement pacing, dwell, and chat latency.
+    - Reports render a per-bot decision timeline with goal choices, plan steps,
+      planner or Laya advice, skill outcomes, gaze and pause events, and building
+      progress instead of raw events.
     - Commands:
       `bun tools/eval/run.mjs scenario <id> --mode simulate`,
       `bun tools/eval/run.mjs scenario <id> --mode live`,
@@ -539,14 +553,17 @@ Stack: `mineflayer`, `mineflayer-pathfinder`, `mineflayer-collectblock`, `minefl
 12. **Local agency core**: traits, needs, goal catalog, utility arbitration, intention manager, routine, personal goals with no planner and no seed jobs.
 13. **Homes and job market**: personal homes, storage, projects, project focus, project task seeding, bot-facing claims, opt-in job offers with accept/decline.
 14. **Social village**: chat, relationships, sharing, cooperation, body language, social goals.
-15. **Player-like validation**: autonomy scenarios, 2-hour soak, working-memory interruption/resume, tactical Laya calibration, project completion, v2 acceptance.
-16. **Behavior validation harness**: offline simulator for agency, planning, and building; shared simulate/live scenario spec; declarative assertions; trace inspector; CI run without a server. This is intentionally last, after milestones 1–15. It validates those implementations and changes no runtime behavior.
+15. **Execution stability and behavior realism**: failure reporting instead of silent aborts, progress watchdog and checkpoint resume, real intention in arbitration, minimum dwell and deadlines, no navigation scaffold/bridge/digging, humanized segmented movement, gaze before interaction, view-cone and line-of-sight targeting, chat presence, purposeful idle behavior, behavior traces, and initial oddity detectors.
+16. **Progression plan and finishing skills**: persistent early-game milestones from wood through base provisioning, recipe expansion, multi-block gathering, station provisioning for crafting table and furnace, wool and shelter for bed placement, deposit with chests, and checkpoint-aware retries.
+17. **Perception realism, villages, and farming**: remembered stations, trees, farms, villages, and water; village detection; farm ownership resolution; player confidence and base-linked permission; harvest and replant; project provisioning; no village chest theft and no trading.
+18. **Player-like and behavior-realism validation**: autonomy scenarios, early-game bootstrap, human-signature and no-oscillation scenarios, 2-hour soak, working-memory interruption/resume, tactical Laya calibration, project completion, behavior-realism gates, and updated v2 acceptance.
+19. **Behavior validation harness**: offline simulator for agency, planning, building, progression, and humanization; shared simulate/live scenario spec; declarative behavior assertions; trace inspector with human-likeness reports; CI run without a server. This is intentionally last, after milestones 1–18. It validates those implementations and changes no runtime behavior.
 
 Documentation gate: every implementation phase updates design docs first, then implements, then updates the architecture graph when the planned modules exist, then runs tests and validation. See [docs/cognitive-architecture.md](docs/cognitive-architecture.md).
 
 **v1 done when:** 8 bots run unattended on `home-full` for 2 hours (4 bots on `home-min` with the same guarantees), maintain one consistent SIP, build/repair farms/houses/roads cooperatively, detect and reuse existing infrastructure, never overwrite active work without a valid grant, and resume their roles/tasks correctly after stop/restart.
 
-**v2 done when:** bots run with the planner disabled and no seed jobs, pursue self-generated goals, build personal homes, maintain routines, decline unsuitable jobs, chat and cooperate, and resume needs, intentions, homes, and relationships after stop/restart without long idle drift or goal thrash.
+**v2 done when:** bots run with the planner disabled and no seed jobs, pursue self-generated goals, complete the early-game progression from wood to tools, stone, furnace, chest, base, and bed, build personal homes, maintain routines, decline unsuitable jobs, chat and cooperate, and resume needs, intentions, plans, homes, and relationships after stop/restart without long idle drift or goal thrash. Bot behavior must pass the player-likeness gates: no unplanned scaffolding, view-cone and line-of-sight targeting, look-before-interact, bounded dwell and switch rates, paced movement, delayed chat, bounded idle time, and early-game milestone completion in simulated and live modes.
 
 **Harness done when:** behavior scenarios pass in simulated mode without a Minecraft server, live mode runs the same scenarios and assertions, failed checks produce readable evidence, and the trace inspector explains goal, planner, skill, and building decisions without manual log reading.
 
@@ -564,7 +581,13 @@ Documentation gate: every implementation phase updates design docs first, then i
 - **Multi-bot conflicts** → SIP revisions, atomic claims, leases + fencing tokens, idempotent placement, edit grants.
 - **Coordinator single point of failure** → restart + lease expiry + SQLite recovery + coordinator epoch; distributed mode deferred.
 - **Stale bot state after restart** → delta sync + reconcile with world before resuming.
-- **Pathfinding/terrain failures** → bridge/scaffold, replan, region blacklist.
+- **Pathfinding/terrain failures** → explicit bridge or clear plan steps, alternate route, replan, region blacklist. Pathfinder never scaffolds on its own.
+- **Over-humanization harms responsiveness** → safety reactions bypass pacing; non-urgent delays are bounded; A/B gate rejects task-time regression above 10%.
+- **View-cone perception stalls** → remembered sightings, survey behavior, and a bounded fallback that still respects line of sight before interaction.
+- **Progression-plan thrash** → immutable plan, per-step attempts, pivot to an alternate source, and minimum dwell before replacing a milestone.
+- **Auto-scaffold regression** → explicit movement configuration plus an `auto-scaffold` oddity detector in CI.
+- **Humanization hides real failures** → behavior trace records planned versus actual actions, and pacing never suppresses a skill failure event.
+- **Duplicate perception models** → one bot-local snapshot plus one coordinator world model; village and farm detections feed the snapshot, not a second agency scanner.
 - **Placement physics/reach** → reachability planner, verification, rollback.
 - **Cloud cost/latency** → fleet-level event-driven planning, caps, caching, local fallback.
 - **Server anti-cheat/rate limits** → configurable action rate, no impossible reach.
@@ -594,6 +617,11 @@ Documentation gate: every implementation phase updates design docs first, then i
 13. **Strategic intent:** optional, fleet defaults plus per-bot overrides, persisted as last validated intent, delivered on resume and as an update event, and applied at the next goal boundary. See §8.
 14. **Project goals:** agency focus, project proposal plus construction task seeding, with project sub-tasks executed through the task board. See §10 and §20.
 15. **Documentation gate:** each implementation phase updates design docs before tests and validation; architecture graph updates land only when planned module paths exist. See [docs/cognitive-architecture.md](docs/cognitive-architecture.md).
+16. **Movement:** pathfinding never places scaffold or bridge blocks and never digs for navigation. Movement uses segmented travel, walk-first pacing, sprint only on long open stretches, waypoint pauses, and a look-at pause before interaction. See §11 and §23.
+17. **Perception:** new targets require a view cone and line of sight or a remembered sighting. Container contents are known only after opening. See §23.
+18. **Bounded imperfection:** pauses, scans, short detours, and occasional re-checks are allowed; harmful mistakes, destructive accidents, and unsafe exploration are not. See §23.
+19. **Village policy:** harvest mature crops and replant only when the plot is self-owned, allowlisted, or granted by a base-linked player at or above the confidence threshold. Do not take from village chests and do not trade. See §21 and §23.
+20. **Progression:** the early-game plan is a persistent, bounded milestone plan expanded with live recipes. Survival and night preparation interrupt it; the plan resumes after the interruption clears. See §20 and [docs/behavior-roadmap.md](docs/behavior-roadmap.md).
 
 ## 19. Self-contained bootstrap
 
@@ -628,7 +656,11 @@ AgencyState {
     commitments,
     interruption,
     recentExperiences,
-    lastTacticalDecision
+    lastTacticalDecision,
+    plan: { id, revision, milestoneIndex, milestones, attempts, blocked } | null,
+    lastDecisionAt,
+    lastSwitchAt,
+    lastGazeAt
   }
   routine: { phase, lastMealAt, lastRestAt }
   homeStructureId, personalStorageId
@@ -643,6 +675,7 @@ Goal {
   successCriteria
   estimatedCost, estimatedRisk, expectedValue
   deadline?, source: "need"|"job"|"social"|"curiosity"|"routine"|"project"
+  plan?: { planId, milestoneId }
   project?: { kind: "home"|"storage"|"build", structureId?, blueprintRef? }
 }
 ```
@@ -663,15 +696,19 @@ Personality traits are seeded from bot index, persisted, and modulate urgency, c
 
 Goal generation:
 
-- Collect needs, inventory, world model, landmarks, time, nearby entities, home, relationships, active job, and recent episodes.
+- Collect needs, inventory, world model, landmarks, time, nearby entities, home, relationships, active job, recent episodes, and the active progression plan.
 - Emit 4–12 concrete goal candidates.
+- When the bot is idle, the progression plan proposes the next milestone goal first. Survival, eating, night preparation, and active project work can still interrupt it.
 - Each candidate maps to existing skills or a local multi-step plan.
 - Reject illegal or unsafe candidates before scoring.
+- A plan step that cannot be satisfied pivots to an alternate source or target instead of abandoning the whole plan.
 
 Goal arbitration:
 
 - Score `urgency × trait weight × expected value × feasibility − cost − risk`.
 - Add commitment hysteresis; an active intention keeps a bonus until completion, abandonment, or preemption.
+- Enforce a minimum dwell before replacing a non-urgent goal, and use seeded satisficing among close candidates instead of always taking the exact argmax.
+- Non-urgent decisions wait for a bounded reaction delay. Guardian and emergency reactions bypass it.
 - Ask Laya for goal tie-break only when top scores are close, after repeated failure, or at a slow heartbeat, and only after the tactical task path has been evaluated.
 - Goal tie-break is implemented behind `agency.goalTieBreak.enabled`, default off until the behavioral evaluation gate passes; fallback is always the deterministic winner.
 - Below the confidence gate or on a stale revision, use the deterministic utility policy or continue the current commitment.
@@ -680,9 +717,42 @@ Working memory:
 
 - Tracks exactly one focus: agency goal, project, or task.
 - Records commitments, interruption reason, resume condition, and recent experiences.
+- Stores the bounded progression plan, its revision, milestone index, attempts, and blocked steps.
+- Records decision and switch timestamps for dwell and reaction-latency policy.
 - Prevents a late tactical result from overwriting a newer focus.
 - Preserves task leases during survival or recovery interruptions.
 - Bounded to a small number of commitments and recent events; full episodes stay in `agent_episodes`.
+
+Progression plan:
+
+- The plan is an ordered list of early-game milestones: forage, crafting table, wooden tools, stone, furnace and chest, base provisioning, farm, night routine.
+- Each milestone expands into concrete goals from the current inventory and snapshot, using a recipe port.
+- The plan is immutable and persisted with working memory. Old snapshots restore to an empty plan.
+- Completed or already-satisfied milestones are skipped. Partial counts carry over.
+- A blocked milestone records an attempt and pivots to an alternate source or target.
+- The plan never overrides survival, night preparation, or an active project task. It resumes after the interruption clears.
+
+Decision rhythm and bounded imperfection:
+
+- Non-urgent decisions use a bounded reaction delay and minimum dwell.
+- Close candidates are selected with seeded satisficing, not a fixed deterministic winner every time.
+- Movement includes walk-first pacing, occasional waypoint pauses, scans, short detours, and a look-at pause before interaction.
+- Imperfection is bounded: no harmful mistakes, destructive accidents, or unsafe exploration.
+- Guardian, threat, hunger, fall, lava, and emergency stop bypass all delays.
+
+Movement and gaze:
+
+- Pathfinding never places scaffold or bridge blocks and never digs for navigation. Bridges and clearance are explicit plan steps.
+- Travel is segmented. Sprint is used only on long open stretches, never indoors or near hazards.
+- The bot looks toward the next waypoint or interaction target with rate-limited yaw and pitch, and pauses before acting.
+- A new interaction target must be looked at before breaking, placing, using, attacking, or opening a container.
+
+Perception realism:
+
+- New targets require a view cone and line of sight, or a remembered sighting.
+- The bot remembers discovered trees, stone, stations, farms, villages, and containers.
+- Depleted resources are tracked and retried only after a cooldown or a new sighting.
+- Container contents are known only after opening the container.
 
 Intention lifecycle:
 
@@ -700,25 +770,28 @@ Reflection:
 
 Routine:
 
-- Morning: eat, check needs, resume project or accept a job.
+- Morning: eat, check needs, resume the progression plan, project, or accept a job.
 - Day: work, gather, build, farm, explore, socialize.
-- Evening: deposit, craft, visit home, chat.
+- Evening: return home, deposit, craft, place or check stations, chat.
 - Night: shelter, sleep if a bed exists, or keep working with caution.
 - Dusk preparation: return home, secure shelter, check food, bed, and gear.
 - Routine is a prior, not a script.
+- Idle time is purposeful and bounded: organize storage, inspect the base, patrol, scan for resources, eat, or rest. Empty leisure loops are not acceptable.
 
 Personal homes and projects:
 
 - Each bot may claim a home area, bed, and storage.
 - Personal projects request claims and, when needed, SIP structure proposals.
 - A project is agency focus. Construction tasks are sub-work and do not replace project focus.
+- Project focus must allow provisioning goals such as gather, craft, and deposit so the bot can supply its own project.
+- A home brief includes a bed, chest, crafting table, furnace, and lighting where materials allow.
 - A project proposal must seed construction tasks, or the project remains incomplete.
 - Shared areas and other bots' active builds still require grants.
 - Project abandonment releases claims and leaves a recorded episode.
 
 Persistence:
 
-- `agent_state` stores current needs, intention, working memory, routine, home, mood, and last deliberation time.
+- `agent_state` stores current needs, intention, working memory, progression plan, decision timestamps, routine, home, mood, and last deliberation time.
 - `agent_episodes` stores episodic memories: deaths, discoveries, gifts, chats, builds, goal outcomes.
 - Relationships stay in the bot profile.
 
@@ -746,8 +819,10 @@ Chat intents:
 
 Conversation engine:
 
+- Wire the chat adapter to incoming bot chat events. A social engine with no event source is not implemented behavior.
 - Parse direct messages into typed intents.
-- Reply with personality-styled local templates.
+- Reply with personality-styled local templates and vary templates so consecutive replies are not identical.
+- Reply after a human-like delay of roughly 0.8–3 seconds, never instantly.
 - Optional richer text later, but never block the agency loop on a model.
 - Ignore malformed or hostile messages. Never echo arbitrary text.
 - Rate limit: 2–5 messages/minute per bot, configurable.
@@ -760,7 +835,19 @@ Relationships:
 - Cooperation, gifts, and positive chat raise trust.
 - Ignored requests or unsafe behavior lower trust.
 - Trust influences goal weight for helping, sharing, and socializing.
-- `bots.relationship-store` remains the owner.
+- `bots.relationship-store` remains the owner for bot-to-bot trust.
+
+Player confidence is separate from bot trust:
+
+- Keyed by player UUID, scored from `0` to `1`, initial value `0.5`.
+- Farm permission requires a score of at least `0.6` and a link to the nearby
+  base.
+- Positive chat, gifts, help, and kept farm-permission promises raise the score;
+  crop theft, claim violation, and unsafe base behavior lower it.
+- Confidence decays toward `0.5` with a 30-day half-life.
+- Unlinked players never grant farm permission, regardless of score.
+- `player_confidence` is coordinator-owned; bots receive snapshots and never
+  derive trust from chat text alone.
 
 Social goals:
 
@@ -798,14 +885,19 @@ Required behavior:
 - Each bot survives at least 30 minutes without operator intervention.
 - Each bot eats before starvation, shelters or sleeps at night, and avoids known hazards.
 - Each bot completes multiple self-initiated goals covering at least three categories: survival, resources, shelter, exploration, social, or projects.
-- Each bot maintains a personal home or shelter with a bed and storage.
+- Each bot completes the early-game progression from an empty inventory to wooden and stone tools, a crafting table, a furnace, a chest, and a bed.
+- Each bot maintains a personal home or shelter with a bed, crafting table, furnace, and storage. It deposits surplus and returns home before dusk.
+- Each bot harvests mature crops and replants them when a farm or village is known and ownership permits access. It does not take from village chests and does not trade.
 - Bots decline or defer unsuitable jobs with a recorded reason.
-- Bots greet, reply, share, and cooperate at a bounded chat rate.
+- Bots greet, reply, share, and cooperate at a bounded chat rate. Replies are delayed and varied.
 - Personal projects acquire claims and never overlap another bot's home or active build.
 - Project proposals create construction tasks and complete through the task board.
 - Survival interruptions preserve task leases and resume the same task.
 - A late Laya result cannot overwrite a newer focus or commitment.
-- Restart restores needs, intention, working memory, home, claims, and relationships before new work begins.
+- Restart restores needs, intention, working memory, progression plan, home, claims, and relationships before new work begins.
+- Movement and decisions pass the player-likeness gates: no unplanned scaffolding or navigation digging, no teleport steps or instant turns, look-before-interact, bounded dwell and switch rates, paced travel, delayed chat, and bounded idle time.
+- New targets respect the view cone and line of sight, or a remembered sighting. Container contents are unknown until opened.
+- Farm permission is granted only by a base-linked player at or above the confidence threshold. Unlinked or low-confidence players cannot grant access.
 - `home-full` runs tactical Laya by default; `home-min` remains deterministic-first with background advisory only.
 
 Required scenarios:
@@ -820,6 +912,13 @@ Required scenarios:
 - `tactical-interruption`
 - `stale-decision`
 - `project-build`
+- `early-game-bootstrap`
+- `human-signature`
+- `human-movement`
+- `village-farm`
+- `idle-life`
+- `social-chat`
+- `no-oscillation`
 
 Required metrics:
 
@@ -836,6 +935,12 @@ Required metrics:
 - Stale tactical decisions dropped.
 - Project completion rate and time to first construction task.
 - Focus switch rate and goal oscillation.
+- Early-game milestone completion time and progression-plan abandonment rate.
+- Dwell time, goal switches per 10 minutes, and plan-step attempts.
+- Action-start jitter, pause frequency, scans per travel segment, and look-before-interact rate.
+- Chat reply latency and duplicate-reply rate.
+- Farm ownership verdicts, player-confidence grants, denials, and timeouts.
+- Oddity-detector counts: `auto-scaffold`, `teleport-step`, `instant-turn`, `zero-look-interact`, `same-target-retry`, `switch-storm`, `sprint-indoor`, `xray-target`, `instant-chat`, `no-idle`, `incomplete-action`, `unpermitted-farm-harvest`.
 
 Required soak:
 
@@ -846,3 +951,55 @@ Required soak:
 - No unbounded goal churn.
 - Claims stable.
 - Bots still pursuing goals at the end of the run.
+- No unplanned scaffolding, zero-look interactions, same-target retry loops, or chat spam.
+
+## 23. Behavior realism and early-game progression
+
+This section is the normative summary for milestones 15–18. The detailed
+implementation plan lives in
+[docs/behavior-roadmap.md](docs/behavior-roadmap.md); agency semantics live in
+[docs/cognitive-architecture.md](docs/cognitive-architecture.md); validation
+lives in
+[docs/behavior-validation-harness.md](docs/behavior-validation-harness.md).
+
+Behavior realism is an execution-layer policy, not a second decision authority.
+
+- Pathfinding never places scaffold or bridge blocks and never digs for
+  navigation. Bridges, clearance, and tunnels are explicit plan steps.
+- Travel is segmented and paced. Sprint is used only on long open stretches.
+- The bot looks toward waypoints and interaction targets with rate-limited yaw
+  and pitch, and pauses before breaking, placing, using, attacking, or opening a
+  container.
+- Non-urgent decisions use a bounded reaction delay, minimum dwell, switch
+  hysteresis, and seeded satisficing among close candidates.
+- Bounded imperfection is allowed: pauses, scans, short detours, and occasional
+  re-checks. Harmful mistakes and unsafe exploration are not.
+- New targets require a view cone and line of sight, or a remembered sighting.
+- Container contents are known only after opening.
+- Chat is wired to incoming messages, delayed, varied, and rate-limited.
+- Idle time is purposeful and bounded: storage organization, base inspection,
+  patrol, resource scanning, eating, or resting.
+
+The early-game progression is a persistent, bounded milestone plan expanded with
+live recipes:
+
+1. Forage wood and nearby food.
+2. Craft and place a crafting table.
+3. Craft wooden pickaxe and sword.
+4. Mine cobblestone in batches.
+5. Craft stone tools, a furnace, and a chest.
+6. Establish or improve a home; place bed, crafting table, furnace, and chest.
+7. Harvest and replant crops when a farm or village is known and ownership
+   permits access.
+8. Return home before dusk, eat, store surplus, and sleep.
+9. Scout for a village or the next resource; maintain the base.
+
+Village policy is harvest and replant only. The bot resolves ownership from farm
+claims, the nearest base, and linked players. Unknown plots trigger one bounded
+chat inquiry. Only a base-linked player at or above the confidence threshold can
+grant access; unlinked or low-confidence players cannot. A known different owner
+always wins. Bots do not take from village chests and do not trade. Safety
+reactions bypass all behavior-realism delays.
+
+Acceptance is part of v2. See §22 for required behavior, scenarios, metrics, and
+soak gates.

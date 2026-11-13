@@ -45,6 +45,10 @@ interface FakeBotState {
     controlClears: number;
     entities: Record<string, unknown>;
     container: FakeContainer;
+    furnaceInput: number;
+    furnaceFuel: number;
+    furnaceOutputBatches: number[];
+    furnaceOutputPulls: number;
 }
 
 const logger = {
@@ -76,6 +80,10 @@ function createFakeBot(): FakeBotState {
             deposit: async () => undefined,
             withdraw: async () => undefined,
         },
+        furnaceInput: 0,
+        furnaceFuel: 0,
+        furnaceOutputBatches: [],
+        furnaceOutputPulls: 0,
     };
     state.blocks.set('4,64,0', {
         name: 'oak_planks',
@@ -116,8 +124,9 @@ function createFakeBot(): FakeBotState {
                 wheat_seeds: { id: 2 },
                 coal: { id: 3 },
                 iron_ingot: { id: 4 },
+                sand: { id: 6 },
             },
-            blocksByName: { crafting_table: { id: 5 } },
+            blocksByName: { crafting_table: { id: 5 }, furnace: { id: 7 } },
         },
         pathfinder,
         loadPlugin: () => undefined,
@@ -148,6 +157,20 @@ function createFakeBot(): FakeBotState {
             state.equippedItem = item;
         },
         openContainer: async () => state.container,
+        openFurnace: async () => ({
+            putFuel: async (_itemType: number, _metadata: null, count: number) => {
+                state.furnaceFuel = count;
+            },
+            putInput: async (_itemType: number, _metadata: null, count: number) => {
+                state.furnaceInput = count;
+            },
+            takeOutput: async () => {
+                state.furnaceOutputPulls += 1;
+                const count = state.furnaceOutputBatches.shift();
+                return count === undefined ? null : { count };
+            },
+            close: async () => undefined,
+        }),
         moveSlotItem: async (sourceSlot: number, destinationSlot: number) => {
             state.movedSlots.push([sourceSlot, destinationSlot]);
         },
@@ -352,6 +375,34 @@ describe('mineflayer action executor', () => {
         const outcome = await waitForOutcome(executor, handle);
         expect(outcome?.status).toBe('failed');
         expect(outcome?.message?.includes('furnace')).toBe(true);
+    });
+
+    it('places separate input and fuel counts and collects all smelted output', async () => {
+        const state = createFakeBot();
+        state.blocks.set('4,64,1', {
+            name: 'furnace',
+            position: new Vec3(4, 64, 1),
+            boundingBox: 'block',
+            getProperties: () => ({}),
+        });
+        state.furnaceOutputBatches = [1, 1];
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'smelt',
+            inputItem: 'sand',
+            fuelItem: 'coal',
+            outputItem: 'glass',
+            count: 2,
+            inputCount: 2,
+            furnace: { x: 4, y: 64, z: 1 },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.furnaceInput).toBe(2);
+        expect(state.furnaceFuel).toBe(1);
+        expect(state.furnaceOutputPulls).toBe(2);
     });
 
     it('enables path shortcuts for long moves', async () => {

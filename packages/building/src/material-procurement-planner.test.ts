@@ -43,6 +43,7 @@ class FakeCatalog implements ProcurementCatalogPort {
 
     smeltFor(item: string): Result<{ input: string; count: number } | null, BuildingFailure> {
         if (item === 'glass') return [{ input: 'sand', count: 1 }, null];
+        if (item === 'brick') return [{ input: 'clay_ball', count: 2 }, null];
         return [null, null];
     }
 }
@@ -95,8 +96,24 @@ describe('MaterialProcurementPlanner', () => {
         const [plan, planError] = planner.plan([{ item: 'glass', count: 3 }]);
 
         expect(planError).toBeNull();
-        expect(plan?.smelting).toEqual([{ item: 'glass', count: 3, input: 'sand', fuel: 'coal' }]);
+        expect(plan?.smelting).toEqual([
+            { item: 'glass', count: 3, input: 'sand', inputCount: 3, fuel: 'coal' },
+        ]);
         expect(plan?.blocked).toBe(false);
+    });
+
+    it('scales smelting inputs by the catalog input count', () => {
+        const planner = new MaterialProcurementPlanner(
+            new FakeInventory([]),
+            new FakeContainers([]),
+            new FakeCatalog(),
+        );
+        const [plan, planError] = planner.plan([{ item: 'brick', count: 2 }]);
+
+        expect(planError).toBeNull();
+        expect(plan?.smelting).toEqual([
+            { item: 'brick', count: 2, input: 'clay_ball', inputCount: 4, fuel: 'coal' },
+        ]);
     });
 
     it('blocks when a shortage has no recipe or gathering source', () => {

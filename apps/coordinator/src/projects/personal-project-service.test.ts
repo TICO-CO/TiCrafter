@@ -33,7 +33,7 @@ class FakeSip implements ProjectSipPort {
     }
 }
 
-const fakeConstruction = (): ProjectConstructionPort => ({
+const fakeConstructionPort = (): ProjectConstructionPort => ({
     prepare: (input: {
         structureId: string;
         bbox: {
@@ -135,6 +135,24 @@ const fakeConstruction = (): ProjectConstructionPort => ({
     cancelProjectTasks: () => [undefined, null],
 });
 
+class FakeConstruction {
+    readonly cancelledProjects: string[] = [];
+    cancellationError: string | null = null;
+    private readonly port = fakeConstructionPort();
+
+    prepare: ProjectConstructionPort['prepare'] = this.port.prepare;
+    seedTasks: ProjectConstructionPort['seedTasks'] = this.port.seedTasks;
+    cancelTasks: ProjectConstructionPort['cancelTasks'] = this.port.cancelTasks;
+
+    cancelProjectTasks(
+        projectId: string,
+    ): ReturnType<ProjectConstructionPort['cancelProjectTasks']> {
+        if (this.cancellationError !== null) return [null, this.cancellationError];
+        this.cancelledProjects.push(projectId);
+        return [undefined, null];
+    }
+}
+
 const projectInput = (botId: string, id = 'project-1') => ({
     id,
     botId,
@@ -183,6 +201,7 @@ describe('PersonalProjectService', () => {
             epoch: 1,
         });
         const sip = new FakeSip();
+        const construction = new FakeConstruction();
         const projects = new PersonalProjectRepository(coordinatorDatabase);
         const service = new PersonalProjectService({
             projects,
@@ -203,12 +222,12 @@ describe('PersonalProjectService', () => {
             episodes: new AgentEpisodeRepository(coordinatorDatabase),
             events: new EventLogWriter(coordinatorDatabase),
             sip,
-            construction: fakeConstruction(),
+            construction,
             repair: {
-                prepare: (input) => fakeConstruction().prepare({ ...input, kind: 'home' }),
+                prepare: (input) => construction.prepare({ ...input, kind: 'home' }),
             },
             rollback: {
-                prepare: (input) => fakeConstruction().prepare({ ...input, kind: 'home' }),
+                prepare: (input) => construction.prepare({ ...input, kind: 'home' }),
             },
             logger: {
                 debug: () => undefined,
@@ -219,7 +238,16 @@ describe('PersonalProjectService', () => {
             now: () => now,
             id: () => 'episode-1',
         });
-        return { service, projects, profiles, agency, claims, sip, profile: allocated };
+        return {
+            service,
+            projects,
+            profiles,
+            agency,
+            claims,
+            sip,
+            construction,
+            profile: allocated,
+        };
     };
 
     afterEach(() => CoordinatorTestSupport.cleanup());
@@ -278,8 +306,8 @@ describe('PersonalProjectService', () => {
         expect(rolledBack?.claims).toHaveLength(2);
     });
 
-    it('abandons a project and releases claims and home state', () => {
-        const { service, projects, profiles, agency, claims, sip, profile } = fresh();
+    it('abandons a project, cancels tasks, and releases claims and home state', () => {
+        const { service, projects, profiles, agency, claims, sip, construction, profile } = fresh();
         service.propose(projectInput(profile.botId));
         const [abandoned, abandonError] = service.abandon(
             'project-1',
@@ -289,10 +317,26 @@ describe('PersonalProjectService', () => {
         expect(abandonError).toBeNull();
         expect(abandoned?.status).toBe('abandoned');
         expect(abandoned?.reason).toBe('no longer needed');
+        expect(construction.cancelledProjects).toEqual(['project-1']);
         expect(sip.abandoned).toEqual(['project-1']);
         expect(projects.get('project-1')[0]?.claims).toEqual([]);
         expect(profiles.get(profile.botId)[0]?.homeStructureId).toBeNull();
         expect(agency.load(profile.botId)[0]?.homeStructureId).toBeNull();
         expect(claims.listActive()[0]).toHaveLength(0);
+    });
+
+    it('keeps the project active when task cancellation fails', () => {
+        const { service, projects, claims, construction, profile } = fresh();
+        service.propose(projectInput(profile.botId));
+        construction.cancellationError = 'task storage unavailable';
+        const [abandoned, abandonError] = service.abandon(
+            'project-1',
+            profile.botId,
+            'no longer needed',
+        );
+        expect(abandoned).toBeNull();
+        expect(abandonError?.type).toBe('TASK_FAILED');
+        expect(projects.get('project-1')[0]?.status).toBe('active');
+        expect(claims.listActive()[0]).toHaveLength(2);
     });
 });

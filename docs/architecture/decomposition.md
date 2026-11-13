@@ -2954,12 +2954,12 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `skills.repair` | Repair | Repair a structure by diffing intended blueprint against observed blocks. | `packages/skills/src/repair` | 4 |
 | `skills.harvest-farm` | Harvest Farm | Harvest mature crops from an assigned farm plot. | `packages/skills/src/harvest-farm` | 4 |
 | `skills.plant-farm` | Plant Farm | Plant seeds and maintain water and crop state on an assigned plot. | `packages/skills/src/plant-farm` | 4 |
-| `skills.entity-targeting` | Entity Targeting | Find and track the nearest matching entity and verify that a target still exists. | `packages/skills/src/entity-targeting` | 15 |
-| `skills.equip-gear` | Equip Gear | Equip the best available weapon and armor into the correct slots. | `packages/skills/src/equip-gear` | 15 |
-| `skills.gather-food` | Gather Food | Hunt passive animals and collect their drops until enough food is carried. | `packages/skills/src/gather-food` | 15 |
-| `skills.gather-wool` | Gather Wool | Shear or hunt sheep for wool and skip already-sheared targets. | `packages/skills/src/gather-wool` | 15 |
-| `skills.place-bed` | Place Bed | Move to the target cell and place a carried bed with support-safe placement. | `packages/skills/src/place-bed` | 15 |
-| `skills.dig-shelter` | Dig Shelter | Dig a sealed two-block pocket, wait out the night, then unseal and refill it. | `packages/skills/src/dig-shelter` | 15 |
+| `skills.entity-targeting` | Entity Targeting | Find and track the nearest matching entity and verify that a target still exists. | `packages/skills/src/entity-targeting` | 18 |
+| `skills.equip-gear` | Equip Gear | Equip the best available weapon and armor into the correct slots. | `packages/skills/src/equip-gear` | 18 |
+| `skills.gather-food` | Gather Food | Hunt passive animals and collect their drops until enough food is carried. | `packages/skills/src/gather-food` | 18 |
+| `skills.gather-wool` | Gather Wool | Shear or hunt sheep for wool and skip already-sheared targets. | `packages/skills/src/gather-wool` | 18 |
+| `skills.place-bed` | Place Bed | Move to the target cell and place a carried bed with support-safe placement. | `packages/skills/src/place-bed` | 18 |
+| `skills.dig-shelter` | Dig Shelter | Dig a sealed two-block pocket, wait out the night, then unseal and refill it. | `packages/skills/src/dig-shelter` | 18 |
 | `skills.shared-utilities` | Skill Shared Utilities | Provide target selection, inventory math, reach checks, and progress helpers. | `packages/skills/src/shared-utilities` | 4 |
 
 ### `skills.navigate` — Navigate
@@ -3390,7 +3390,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `bot-runtime.world-cache-adapter`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - The skill declares canRun/plan/step/cancel and checkpoint/restore with typed effects.
   - Every effect passes the guardian veto gate before reaching the action executor.
@@ -3410,7 +3410,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `skills.shared-utilities`, `bot-runtime.action-executor`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Only inventory items may be equipped and no slot is filled with an incompatible item.
 - **Failure modes:**
@@ -3429,7 +3429,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `skills.entity-targeting`, `skills.shared-utilities`, `bot-runtime.action-executor`, `bot-runtime.world-cache-adapter`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Gathering stops at the requested food count and never attacks players or bots.
 - **Failure modes:**
@@ -3448,7 +3448,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `skills.entity-targeting`, `skills.shared-utilities`, `bot-runtime.action-executor`, `bot-runtime.world-cache-adapter`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - A sheared target is not retried indefinitely and gathering stops at the requested wool count.
 - **Failure modes:**
@@ -3467,7 +3467,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `skills.shared-utilities`, `bot-runtime.action-executor`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - A bed is placed only when a bed item is carried and the target cell is reachable.
 - **Failure modes:**
@@ -3486,7 +3486,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `skills.shared-utilities`, `bot-runtime.action-executor`
 - **Owns state:** none
 - **Source refs:** `main.md#9-skills`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Each dug block is recorded and restored when the shelter is left.
   - Digging advances only after the current break action completes.
@@ -4363,7 +4363,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.join-auth` | Join and Auth | Join the LAN server with the assigned identity and offline auth. | `apps/bot/src/join-auth` | 1 |
 | `bot-runtime.event-bridge` | Mineflayer Event Bridge | Translate mineflayer events into typed local and coordinator events. | `apps/bot/src/event-bridge` | 1 |
 | `bot-runtime.world-cache-adapter` | World Cache Adapter | Expose local block, chunk, entity, and inventory state to perception and skills. | `apps/bot/src/world-cache-adapter` | 1 |
-| `bot-runtime.shelter-inspector` | Shelter Inspector | Inspect the home bounding box for shelter and bed state and find a safe nearby dig site. | `apps/bot/src/shelter-inspector` | 15 |
+| `bot-runtime.shelter-inspector` | Shelter Inspector | Inspect the home bounding box for shelter and bed state and find a safe nearby dig site. | `apps/bot/src/shelter-inspector` | 18 |
 | `bot-runtime.reach-rate-guard` | Reach and Rate Guard | Reject impossible reach and enforce configurable action rates. | `apps/bot/src/reach-rate-guard` | 1 |
 | `bot-runtime.action-executor` | Action Executor | Execute only safety-approved place, break, use, attack, and movement actions. | `apps/bot/src/action-executor` | 1 |
 | `bot-runtime.building-execution-service` | Building Execution Service | Prepare, verify, journal, and complete block changes for construction skills. | `apps/bot/src/building-execution-service` | 6 |
@@ -4382,7 +4382,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.chat-adapter` | Chat Adapter | Send and receive typed social messages through mineflayer chat with rate limits and no physical actions. | `apps/bot/src/chat` | 14 |
 | `bot-runtime.agency-state-adapter` | Agency State Adapter | Load and persist agency snapshots through coordinator state and reconcile intention with the observed world. | `apps/bot/src/agency-state-adapter` | 12 |
 | `bot-runtime.reconnect-supervisor` | Reconnect Supervisor | Reconnect after disconnect and trigger delta resync and resume. | `apps/bot/src/reconnect-supervisor` | 1 |
-| `bot-runtime.headless-runtime` | Headless Bot Runtime | Compose the real agency, skill, building, guardian, task, and transport code against injected platform ports without Mineflayer. | `apps/bot/src/headless` | 16 |
+| `bot-runtime.headless-runtime` | Headless Bot Runtime | Compose the real agency, skill, building, guardian, task, and transport code against injected platform ports without Mineflayer. | `apps/bot/src/headless` | 19 |
 
 ### `bot-runtime.connection-lifecycle` — Connection Lifecycle
 
@@ -4472,7 +4472,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `bot-runtime.world-cache-adapter`
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Shelter is reported only while the bot is inside or next to the home bounds.
   - Dig sites exclude water, lava, bedrock, and storage blocks.
@@ -4853,7 +4853,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** none
 - **Owns state:** none
 - **Source refs:** `main.md#1-fleet-coordinator`
-- **Milestone:** 16
+- **Milestone:** 19
 - **Invariants:**
   - The adapter is the only path to mineflayer; higher tiers issue typed actions only.
   - Reach and action-rate guards run before every physical action.
@@ -5862,9 +5862,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `eval.soak-runner` | Soak Runner | Run 2+ hour stability tests and detect memory growth, deadlocks, and claim drift. | `packages/eval/src/soak-runner` | 10 |
 | `eval.architecture-guard-tests` | Architecture Guard Tests | Assert dependency rules, forbidden edges, and graph coverage in CI. | `packages/eval/src/architecture-guard-tests` | 10 |
 | `eval.laya-benchmark-harness` | Laya Benchmark Harness | Measure warm-model p50 and p95 for CPU and WebGPU with stability gates. | `packages/eval/src/laya-benchmark-harness` | 10 |
-| `eval.simulation-harness` | Simulation Harness | Run deterministic offline behavior scenarios with a fake world, inventory, clock, and action dispatch while exercising real runtime code. | `packages/eval/src/simulation-harness` | 16 |
-| `eval.behavior-assertions` | Behavior Assertions | Evaluate declarative world, task, event, metric, safety, and checkpoint assertions over scenario evidence. | `packages/eval/src/behavior-assertions` | 16 |
-| `eval.trace-inspector` | Trace Inspector | Normalize, filter, and render per-bot goal, planner, skill, safety, and building decisions. | `packages/eval/src/trace-inspector` | 16 |
+| `eval.simulation-harness` | Simulation Harness | Run deterministic offline behavior scenarios with a fake world, inventory, clock, and action dispatch while exercising real runtime code. | `packages/eval/src/simulation-harness` | 19 |
+| `eval.behavior-assertions` | Behavior Assertions | Evaluate declarative world, task, event, metric, safety, and checkpoint assertions over scenario evidence. | `packages/eval/src/behavior-assertions` | 19 |
+| `eval.trace-inspector` | Trace Inspector | Normalize, filter, and render per-bot goal, planner, skill, safety, and building decisions. | `packages/eval/src/trace-inspector` | 19 |
 
 ### `eval.unit-fixtures` — Unit Fixtures
 
@@ -6073,7 +6073,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `eval.scenario-runner`, `eval.unit-fixtures`, `bot-runtime.headless-runtime`
 - **Owns state:** none
 - **Source refs:** `main.md#15-testing-and-evaluation`
-- **Milestone:** 16
+- **Milestone:** 19
 - **Invariants:**
   - Harnesses use disposable servers and deterministic fixtures.
   - Benchmarks record hardware profile, execution provider, and p50/p95.
@@ -6093,7 +6093,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `eval.unit-fixtures`
 - **Owns state:** none
 - **Source refs:** `main.md#15-testing-and-evaluation`
-- **Milestone:** 16
+- **Milestone:** 19
 - **Invariants:**
   - Harnesses use disposable servers and deterministic fixtures.
   - Benchmarks record hardware profile, execution provider, and p50/p95.
@@ -6113,7 +6113,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `eval.simulation-harness`
 - **Owns state:** none
 - **Source refs:** `main.md#15-testing-and-evaluation`
-- **Milestone:** 16
+- **Milestone:** 19
 - **Invariants:**
   - Harnesses use disposable servers and deterministic fixtures.
   - Benchmarks record hardware profile, execution provider, and p50/p95.
@@ -6449,11 +6449,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `agency.goal-arbiter` | Goal Arbiter | Score goal candidates with utility, personality, commitment hysteresis, cost, and risk. | `packages/agency/src/goal-arbiter` | 12 |
 | `agency.intention-manager` | Intention Manager | Track the active goal, step index, retries, completion, abandonment, preemption, and expiry. | `packages/agency/src/intention-manager` | 12 |
 | `agency.routine-model` | Routine Model | Derive morning, day, evening, and night phases and expose work, rest, and social preferences. | `packages/agency/src/routine-model` | 12 |
-| `agency.item-knowledge` | Item Knowledge | Classify food, weapons, armor, wool, beds, and building materials from the bot inventory. | `packages/agency/src/item-knowledge` | 15 |
-| `agency.night-prep-config` | Night Preparation Config | Define night preparation thresholds, material requirements, and shelter strategy switches. | `packages/agency/src/night-prep-config` | 15 |
-| `agency.shelter-strategy` | Shelter Strategy | Choose keep, build, dig-in, or none from shelter state, daylight left, and available material. | `packages/agency/src/shelter-strategy` | 15 |
-| `agency.shelter-plan` | Shelter Plan | Generate a bounded support-first shell of blocks for a first shelter. | `packages/agency/src/shelter-plan` | 15 |
-| `agency.night-readiness` | Night Readiness | Assess home, shelter, bed, food, combat, and hostile gaps and emit ordered night preparation actions. | `packages/agency/src/night-readiness` | 15 |
+| `agency.item-knowledge` | Item Knowledge | Classify food, weapons, armor, wool, beds, and building materials from the bot inventory. | `packages/agency/src/item-knowledge` | 18 |
+| `agency.night-prep-config` | Night Preparation Config | Define night preparation thresholds, material requirements, and shelter strategy switches. | `packages/agency/src/night-prep-config` | 18 |
+| `agency.shelter-strategy` | Shelter Strategy | Choose keep, build, dig-in, or none from shelter state, daylight left, and available material. | `packages/agency/src/shelter-strategy` | 18 |
+| `agency.shelter-plan` | Shelter Plan | Generate a bounded support-first shell of blocks for a first shelter. | `packages/agency/src/shelter-plan` | 18 |
+| `agency.night-readiness` | Night Readiness | Assess home, shelter, bed, food, combat, and hostile gaps and emit ordered night preparation actions. | `packages/agency/src/night-readiness` | 18 |
 | `agency.social-engine` | Social Engine | Classify social messages, generate personality-styled replies, and enforce chat rate limits. | `packages/agency/src/social-engine` | 14 |
 | `agency.working-memory` | Working Memory | Track bounded focus, commitments, interruption, recent experience, and tactical revision for continuity across goals and restarts. | `packages/agency/src/working-memory` | 12 |
 | `agency.project-focus` | Project Focus Policy | Keep long-lived project focus as agency focus while allowing bounded survival and routine interruptions. | `packages/agency/src/project-focus` | 13 |
@@ -6606,7 +6606,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** none
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - The brain layer emits proposals only; it never calls mineflayer.
   - Deterministic policy is always available as the fallback path.
@@ -6626,7 +6626,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** none
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - The brain layer emits proposals only; it never calls mineflayer.
   - Deterministic policy is always available as the fallback path.
@@ -6646,7 +6646,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `agency.night-prep-config`
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Build is chosen only when enough daylight and material remain.
   - Dig-in is chosen only when a safe dig site is available.
@@ -6666,7 +6666,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** none
 - **Owns state:** none
 - **Source refs:** `main.md#10-building-three-layers`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Shelter blocks are ordered support-first and bounded to a small footprint.
 - **Failure modes:**
@@ -6685,7 +6685,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Requires:** `agency.item-knowledge`, `agency.night-prep-config`, `agency.routine-model`, `agency.shelter-plan`, `agency.shelter-strategy`
 - **Owns state:** none
 - **Source refs:** `main.md#20-agency-and-motivation`
-- **Milestone:** 15
+- **Milestone:** 18
 - **Invariants:**
   - Readiness is a pure assessment and never calls a skill directly.
   - Every emitted action names a supported skill id and typed input.

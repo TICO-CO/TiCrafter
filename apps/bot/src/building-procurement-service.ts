@@ -63,6 +63,7 @@ export class BuildingProcurementService implements SkillProcurementPort {
                 item: smelt.item,
                 count: smelt.count,
                 input: smelt.input,
+                inputCount: smelt.inputCount,
                 fuel: smelt.fuel,
             })),
             ...plan.crafting.map((craft) => ({

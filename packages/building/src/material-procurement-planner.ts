@@ -32,6 +32,7 @@ export interface SmeltingRequirement {
     item: string;
     count: number;
     input: string;
+    inputCount: number;
     fuel: string;
 }
 
@@ -96,6 +97,7 @@ export class MaterialProcurementPlanner {
                     item: shortage.item,
                     count: shortage.count,
                     input: smelt.input,
+                    inputCount: smelt.count * shortage.count,
                     fuel: 'coal',
                 });
                 continue;

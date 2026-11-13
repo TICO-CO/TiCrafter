@@ -4,7 +4,7 @@ Status: phase 1 implemented. The clock port, fake platform layer, headless bot
 runtime, in-process coordinator runner, simulated driver, assertions, trace
 inspector, and `simulated-build` scenario exist. Later phases remain open.
 
-This document defines the milestone 16 behavior validation harness. It is the
+This document defines the milestone 19 behavior validation harness. It is the
 canonical companion to the milestone description in `main.md`.
 
 The harness exists to validate the real agency, planning, skill, building, and
@@ -29,10 +29,12 @@ The behavior validation harness provides:
 - the same scenario definitions and assertions in simulated and live modes;
 - a per-bot decision timeline instead of raw event inspection;
 - readable evidence for every failed assertion;
-- controlled fault injection for restart, claim, material, and safety paths.
+- controlled fault injection for restart, claim, material, and safety paths;
+- behavior traces that prove movement, gaze, dwell, pacing, chat, and
+  progression stay inside player-likeness ranges.
 
-The target is confidence that the bots behave correctly, not that the simulation
-looks like Minecraft.
+The target is confidence that the bots behave correctly and plausibly, not that
+the simulation looks like Minecraft.
 
 ## 2. Scope
 
@@ -40,11 +42,14 @@ In scope:
 
 - single-bot and multi-bot behavior scenarios;
 - building, repair, procurement, project, and autonomy scenarios;
+- early-game progression, village-farm, idle-life, and social-chat scenarios;
+- movement, gaze, dwell, pause, and chat-latency realism checks;
 - restart and interruption scenarios;
 - controlled fault injection;
 - declarative assertions over events, metrics, world state, tasks, claims,
-  grants, projects, and safety;
-- a trace inspector for goal, planner, skill, and build decisions;
+  grants, projects, safety, behavior traces, and progression plans;
+- a trace inspector for goal, plan, planner, skill, gaze, movement, chat, and
+  build decisions;
 - CI execution without a Minecraft server;
 - a live mode that reuses the same scenario definitions and assertions.
 
@@ -59,11 +64,13 @@ Out of scope:
 
 ## 3. Relationship to existing docs
 
-- `main.md` defines the milestone 16 goal and required scenarios.
+- `main.md` defines the milestone 19 goal and required scenarios.
 - `docs/operations.md` defines the operator-facing commands and failure classes.
 - `docs/building-system.md` defines the single-bot building acceptance gate.
 - `docs/cognitive-architecture.md` defines agency, working memory, interruption,
-  and project focus.
+  project focus, progression, and behavior realism.
+- `docs/behavior-roadmap.md` defines the implementation order for behavior
+  realism, progression, perception realism, and validation.
 - `docs/architecture/graph.json` is updated only when the harness modules exist.
 
 This document is the detailed design for the validation system itself. It does
@@ -526,7 +533,9 @@ type ScenarioAssertion =
     | EventAssertion
     | MetricAssertion
     | SafetyAssertion
-    | CheckpointAssertion;
+    | CheckpointAssertion
+    | BehaviorAssertion
+    | ProgressionAssertion;
 ```
 
 Required assertion kinds:
@@ -546,6 +555,29 @@ Required assertion kinds:
 - `safety.veto`: a safety veto occurred with the expected reason.
 - `checkpoint.resumed`: a restart resumed the expected checkpoint.
 - `checkpoint.no-duplicate-blocks`: resume did not place duplicate blocks.
+- `behavior.no-unplanned-place`: no block was placed by navigation rather than a
+  plan or skill.
+- `behavior.max-yaw-rate`: yaw changes stay within the gaze limit.
+- `behavior.max-displacement`: displacement stays within the movement limit.
+- `behavior.look-before-interact`: every break, place, use, attack, and container
+  open is preceded by a look at the target.
+- `behavior.min-dwell`: non-urgent goals meet the minimum dwell.
+- `behavior.max-switch-rate`: goal and plan switches stay below the limit.
+- `behavior.chat-latency`: replies fall inside the configured delay range.
+- `behavior.sprint-policy`: sprint is not used indoors, near hazards, or while
+  eating.
+- `behavior.visible-target`: selected targets respect the view cone and line of
+  sight, or a remembered sighting.
+- `behavior.no-repeat-action`: identical action and target sequences stay below
+  the configured repeat limit.
+- `behavior.plan-progress`: the progression plan advances within the scenario
+  deadline.
+- `behavior.idle-fraction`: idle time stays inside the configured range.
+- `behavior.no-zero-look`: no interaction lacks a preceding gaze event.
+- `behavior.farm-permission`: every harvest or replant is self-owned,
+  allowlisted, or backed by a valid grant from a base-linked player at or above
+  the confidence threshold.
+- `behavior.trace-present`: required gaze, pause, and movement events exist.
 
 Each assertion must produce:
 
@@ -578,10 +610,18 @@ interface TraceEvent {
     kind:
         | 'goal'
         | 'focus'
+        | 'plan'
+        | 'progression'
         | 'planner'
         | 'laya'
         | 'task'
         | 'skill'
+        | 'movement'
+        | 'gaze'
+        | 'pause'
+        | 'humanization'
+        | 'chat'
+        | 'permission'
         | 'block'
         | 'safety'
         | 'project'
@@ -597,6 +637,32 @@ The trace inspector renders per-bot timelines with filters for bot, tick range,
 event kind, task, project, structure, and assertion. It may read the temporary
 SQLite database directly and must also support replay from a stored artifact
 directory.
+
+The inspector also produces a human-likeness report:
+
+- dwell times and switches per 10 minutes;
+- action-start jitter and pause frequency;
+- look-before-interact rate and zero-look interactions;
+- scans per travel segment and route segments;
+- sprint policy violations;
+- chat reply latency and duplicate replies;
+- idle fraction;
+- progression milestone timeline;
+- farm ownership verdicts, permission inquiries, grants, denials, and timeouts;
+- player confidence and base-link evidence;
+- oddity-detector counts with evidence references.
+
+Trace events that support these checks include:
+
+- `decision`: goal, plan step, candidates, chosen option, revision, latency;
+- `movement`: segment start and end, distance, sprint flag, pause, scan;
+- `gaze`: target, yaw, pitch, delta, reason;
+- `pause`: reason, duration, resumed;
+- `action`: skill, action kind, target, planned flag, duration, outcome;
+- `chat`: incoming or outgoing, intent, delay, text;
+- `permission`: plot, ownership verdict, linked base, player confidence, inquiry,
+  reply, decision, reason;
+- `progression`: milestone, attempt, blocked, pivot, completed.
 
 ## 13. CLI and CI
 
@@ -623,6 +689,21 @@ Defaults:
 CI runs simulated scenarios only. Live scenarios remain manual or nightly
 integration signoff. The simulated suite must be runnable from a clean checkout
 with no Minecraft server, no credentials, and no network access.
+
+Live player-likeness review rubric:
+
+- movement looks paced and deliberate; no sliding, teleporting, or instant turns;
+- the bot looks at what it interacts with;
+- no bridge or scaffold appears unless a plan reported one;
+- the bot pauses, scans, and changes approach after failure;
+- goals last long enough to be readable;
+- chat replies feel delayed and varied;
+- idle behavior looks purposeful;
+- the early-game arc is recognizable from wood to base.
+
+A live signoff records the artifact directory, seed, bot list, and reviewer
+notes. Any oddity found in review becomes a scenario assertion or an oddity
+detector before the scenario is marked `both`.
 
 ## 14. Scenario catalog
 
@@ -672,6 +753,23 @@ Each scenario declares which modes it supports.
 | `stale-decision`        | Late Laya result cannot overwrite newer focus or revision      | both  |
 | `project-build`         | Project proposal creates construction tasks and completes      | both  |
 
+### Behavior realism and progression
+
+| Scenario               | Purpose                                                                                      | Modes |
+| ---------------------- | -------------------------------------------------------------------------------------------- | ----- |
+| `early-game-bootstrap` | Empty inventory reaches tools, stations, chest, and bed                                      | both  |
+| `human-signature`      | Movement, gaze, dwell, pauses, and chat stay in player ranges                                | both  |
+| `human-movement`       | No auto-scaffold, teleport steps, or instant turns                                           | both  |
+| `village-farm`         | Resolve ownership, harvest permitted plots, replant, store surplus, and leave village chests | both  |
+| `idle-life`            | Idle time is bounded and purposeful                                                          | both  |
+| `social-chat`          | Delayed, varied, rate-limited replies without duplication                                    | both  |
+| `no-oscillation`       | Goal and plan switching stays below the configured rate                                      | both  |
+
+`village-farm` covers self-owned plots, other-owned plots, unknown plots with an
+operator allowlist, linked high-confidence players, linked low-confidence
+players, unlinked players, affirmative replies, denials, timeouts, and ambiguous
+nearby bases.
+
 A scenario may start as `simulate` only and become `both` when its live adapter
 is verified.
 
@@ -679,14 +777,17 @@ is verified.
 
 Determinism rules:
 
-- one seed drives world generation, bot randomness, planner fixtures, and fault
-  schedules;
+- one seed drives world generation, bot randomness, humanization variation,
+  planner fixtures, and fault schedules;
 - all ids are stable or generated from deterministic counters;
 - all timers use the simulation clock;
 - transport frames are delivered in deterministic order;
 - task, claim, and package ordering uses stable sort keys;
+- behavior assertions use configured ranges, not exact wall-clock values;
 - no assertion depends on real wall-clock duration;
-- no scenario depends on network access.
+- no scenario depends on network access;
+- humanization remains deterministic per seed, so replaying a scenario
+  reproduces the same pauses, scans, and decision delays.
 
 A failed simulated scenario must reproduce with the same seed. A failure that
 does not reproduce is a harness defect and must be fixed before the scenario is
@@ -726,7 +827,7 @@ Planned modules:
 | `packages/eval/src/scenario-runner/`     | Shared scenario contract and live driver compatibility       |
 | `tools/eval/run.mjs`                     | CLI wiring for simulate, inspect, and check                  |
 
-The full milestone 16 graph components are added only when implementation
+The full milestone 19 graph components are added only when implementation
 starts:
 
 - `eval.simulation-harness`;
@@ -773,6 +874,16 @@ Phase 5: live parity.
   definition and assertions;
 - keep simulated mode as the fast feedback path and live mode as final signoff.
 
+Phase 6: behavior realism and progression.
+
+- add movement, gaze, pause, and chat traces to the fake and live drivers;
+- model travel time, action latency, and gaze events in simulation;
+- add `early-game-bootstrap`, `human-signature`, `human-movement`,
+  `village-farm`, `idle-life`, `social-chat`, and `no-oscillation`;
+- add behavior and progression assertions and oddity detectors;
+- add the human-likeness report to the trace inspector;
+- add the live review rubric and A/B humanization comparison.
+
 ## 19. Acceptance criteria
 
 The harness is done when:
@@ -781,11 +892,16 @@ The harness is done when:
 - no scenario requires manual observation to explain a failure;
 - `simulated-build`, `personal-homes`, and `simulated-multi-bot` pass in
   simulated mode;
+- `early-game-bootstrap`, `human-signature`, `human-movement`, `village-farm`,
+  `idle-life`, `social-chat`, and `no-oscillation` pass in simulated mode;
+- behavior realism gates pass: no unplanned scaffold, no zero-look interaction,
+  dwell and switch rates in range, paced movement, delayed chat, and bounded
+  idle time;
 - the same scenario definitions and assertions are used in live mode;
 - rerunning a failed scenario with the same seed reproduces the failure;
 - CI runs the simulated suite from a clean checkout;
-- the trace inspector explains goal, planner, skill, safety, and building
-  decisions with filters;
+- the trace inspector explains goal, plan, planner, skill, gaze, movement, chat,
+  safety, and building decisions with filters;
 - graph validation, lint, typecheck, formatting, and tests pass.
 
 ## 20. Risks and limitations
@@ -800,6 +916,9 @@ The harness is done when:
 | Slow scenarios               | Measure virtual ticks; avoid wall-clock waits                       |
 | Maintenance cost             | Keep scenarios declarative and assert only important behavior       |
 | Over-simulation of Minecraft | Add mobs, fluids, and physics only when a scenario needs them       |
+| Humanization hides failures  | Trace planned versus actual actions; never suppress skill failures  |
+| Range assertions too strict  | Calibrate ranges against live traces and A/B results                |
+| Seeded variation drift       | One seed per scenario; record and replay the seed in artifacts      |
 
 ## 21. Open questions
 

@@ -19,6 +19,7 @@ const MAXIMUM_STEPS = 256;
 const GATHER_RADIUS = 32;
 const GATHER_REACH = 2;
 const COLLECT_RADIUS = 4;
+const ITEMS_PER_FUEL = 8;
 
 interface GatherState {
     position: Vec3;
@@ -299,6 +300,14 @@ export class ProcurementSkill implements Skill {
             );
         }
         if (action.kind === 'smelt') {
+            const missing = this.missingSmeltItems(context, action);
+            if (missing.length > 0) {
+                return this.advance(context, {
+                    ...nextState,
+                    active: null,
+                    extraNeeds: this.mergeExtraNeeds(state.extraNeeds, missing),
+                });
+            }
             return SkillSharedUtilities.running(
                 run,
                 {
@@ -307,6 +316,7 @@ export class ProcurementSkill implements Skill {
                     fuelItem: action.fuel,
                     outputItem: action.item,
                     count: action.count,
+                    inputCount: action.inputCount,
                 },
                 state.steps,
                 MAXIMUM_STEPS,
@@ -519,6 +529,7 @@ export class ProcurementSkill implements Skill {
                     fuelItem: action.fuel,
                     outputItem: action.item,
                     count: action.count,
+                    inputCount: action.inputCount,
                 },
                 steps,
                 MAXIMUM_STEPS,
@@ -670,8 +681,16 @@ export class ProcurementSkill implements Skill {
         if (kind === 'smelt') {
             const input = SkillSharedUtilities.readString(value.input);
             const fuel = SkillSharedUtilities.readString(value.fuel);
+            const storedInputCount = value.inputCount;
+            if (
+                storedInputCount !== undefined &&
+                (typeof storedInputCount !== 'number' || storedInputCount <= 0)
+            ) {
+                return undefined;
+            }
             if (input === null || fuel === null) return undefined;
-            return { kind, item, count, input, fuel };
+            const inputCount = typeof storedInputCount === 'number' ? storedInputCount : count;
+            return { kind, item, count, input, inputCount, fuel };
         }
         return undefined;
     }
@@ -704,6 +723,21 @@ export class ProcurementSkill implements Skill {
             ...(entityName === undefined ? {} : { entityName }),
             ...(itemName === undefined ? {} : { itemName }),
         };
+    }
+
+    private missingSmeltItems(
+        context: SkillContext,
+        action: Extract<SkillProcurementAction, { kind: 'smelt' }>,
+    ): SkillMaterialNeed[] {
+        const missing: SkillMaterialNeed[] = [];
+        const inputMissing =
+            action.inputCount - SkillSharedUtilities.itemCount(context.inventory, action.input);
+        if (inputMissing > 0) missing.push({ item: action.input, count: inputMissing });
+        const fuelRequired = Math.max(1, Math.ceil(action.inputCount / ITEMS_PER_FUEL));
+        const fuelMissing =
+            fuelRequired - SkillSharedUtilities.itemCount(context.inventory, action.fuel);
+        if (fuelMissing > 0) missing.push({ item: action.fuel, count: fuelMissing });
+        return missing;
     }
 
     private mergeExtraNeeds(

@@ -45,6 +45,19 @@ describe('StylePalette', () => {
             expect(palette.glass).not.toBe('glass');
             expect(palette.glass).not.toBe('glass_pane');
             expect(palette.floor).not.toBe('smooth_sandstone');
+            expect(palette.floor).not.toBe('stone');
+            expect(palette.accent).not.toBe('stone');
         }
+    });
+
+    it('floors the starter spruce palette with gatherable cobblestone', () => {
+        const palette = StylePalette.resolve({
+            palette: 'starter_spruce_and_cobblestone',
+            roof: 'gable',
+            symmetry: 0.8,
+            decoration: 0,
+        });
+
+        expect(palette.floor).toBe('cobblestone');
     });
 });

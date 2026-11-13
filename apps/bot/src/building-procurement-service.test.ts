@@ -19,6 +19,11 @@ class FakeCatalog implements ProcurementCatalogPort {
         if (item === 'dirt') return ['dirt', null];
         return [null, null];
     }
+
+    smeltFor(item: string): Result<{ input: string; count: number } | null, BuildingFailure> {
+        if (item === 'glass') return [{ input: 'sand', count: 2 }, null];
+        return [null, null];
+    }
 }
 
 class FakeContainers {
@@ -68,6 +73,28 @@ describe('BuildingProcurementService', () => {
             },
         ]);
         expect(plan?.blocked).toBe(false);
+    });
+
+    it('maps smelting requirements with their input counts', () => {
+        const service = new BuildingProcurementService(new FakeContainers([]), new FakeCatalog());
+
+        const [plan, error] = service.plan({
+            needs: [{ item: 'glass', count: 3 }],
+            inventory: [],
+            position: { x: 0, y: 64, z: 0 },
+        });
+
+        expect(error).toBeNull();
+        expect(plan?.actions).toEqual([
+            {
+                kind: 'smelt',
+                item: 'glass',
+                count: 3,
+                input: 'sand',
+                inputCount: 6,
+                fuel: 'coal',
+            },
+        ]);
     });
 
     it('records completed withdrawals against the container snapshot', () => {
