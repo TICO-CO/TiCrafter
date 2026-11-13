@@ -23,6 +23,8 @@ const KIND_NEEDS: Readonly<Record<GoalKind, NeedName>> = {
     'gather-wool': 'materials',
     'gather-food': 'hunger',
     'equip-gear': 'tools',
+    'harvest-farm': 'materials',
+    'plant-farm': 'materials',
 };
 
 export function goalNeedFor(kind: GoalKind): NeedName {
@@ -68,6 +70,15 @@ export class GoalArbiter {
             return [null, 'closeScore must be between 0 and 1'];
         }
         return [new GoalArbiter(options), null];
+    }
+
+    scoreGoal(
+        goal: Goal,
+        needs: NeedsModel,
+        personality: PersonalityModel,
+        intention: Intention | null,
+    ): number {
+        return this.score(goal, needs, personality, intention);
     }
 
     select(
@@ -142,6 +153,8 @@ export class GoalArbiter {
             case 'gather-wool':
             case 'gather-food':
             case 'equip-gear':
+            case 'harvest-farm':
+            case 'plant-farm':
                 return 0.5 + personality.weight('orderliness');
             case 'explore':
                 return 0.5 + personality.weight('curiosity');

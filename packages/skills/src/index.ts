@@ -18,6 +18,7 @@ export * from './farm.js';
 export * from './flee-defend.js';
 export * from './follow-path.js';
 export * from './gather-food.js';
+export * from './gather-resource.js';
 export * from './gather-wool.js';
 export * from './harvest-farm.js';
 export * from './lifecycle-executor.js';

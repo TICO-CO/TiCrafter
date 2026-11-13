@@ -1,4 +1,6 @@
-import type { StrategicGoalKind, StrategicIntent, Vec3 } from '@ticrafter/core';
+import type { ProgressionPlan, StrategicGoalKind, StrategicIntent, Vec3 } from '@ticrafter/core';
+
+export type { ProgressionMilestone, ProgressionPlan } from '@ticrafter/core';
 
 export type NeedName =
     | 'safety'
@@ -71,6 +73,24 @@ export interface AgencySnapshot {
     armorInventoryPieces: number;
     nightIntent: NightIntent | null;
     project?: ProjectSummary | null;
+    hasCraftingTable?: boolean;
+    hasFurnace?: boolean;
+    hasContainer?: boolean;
+    stations?: readonly { kind: string; position: Vec3 }[];
+    woodClusters?: readonly { position: Vec3; count: number }[];
+    farmPlots?: readonly {
+        id: string;
+        bbox: SnapshotBoundingBox;
+        cropBlockIds?: readonly string[];
+        seedItem?: string;
+        permitted?: boolean;
+    }[];
+    villageCandidates?: readonly {
+        id: string;
+        bbox: SnapshotBoundingBox;
+        confidence: number;
+    }[];
+    waterSources?: readonly Vec3[];
 }
 
 export interface SnapshotBoundingBox {
@@ -146,6 +166,7 @@ export interface Intention {
     stepIndex: number;
     createdAt: string;
     deadline: string | null;
+    deadlineExtended?: boolean;
     attempts: number;
 }
 
@@ -194,6 +215,7 @@ export interface WorkingMemory {
     recentExperiences: readonly WorkingMemoryExperience[];
     lastTacticalDecision: WorkingMemoryTacticalDecision | null;
     strategicIntent?: StrategicIntent | null;
+    progressionPlan?: ProgressionPlan | null;
 }
 
 export type ProjectKind = 'home' | 'storage' | 'build';
@@ -212,7 +234,13 @@ export interface ProjectSummary {
 }
 
 export type AbandonmentReason =
-    'unsafe' | 'infeasible' | 'preempted' | 'expired' | 'claim_conflict' | 'social_rejection';
+    | 'unsafe'
+    | 'infeasible'
+    | 'preempted'
+    | 'expired'
+    | 'deadline'
+    | 'claim_conflict'
+    | 'social_rejection';
 
 export type SocialIntent =
     'greeting' | 'status' | 'request' | 'offer' | 'danger' | 'discovery' | 'small-talk' | 'unknown';

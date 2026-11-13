@@ -19,6 +19,7 @@ const EXPECTED_SKILLS = [
     'flee-defend',
     'follow-path',
     'gather-food',
+    'gather-resource',
     'gather-wool',
     'harvest-farm',
     'mine',

@@ -13,6 +13,7 @@ import { ExploreSkill } from './explore.js';
 import { FleeDefendSkill } from './flee-defend.js';
 import { FollowPathSkill } from './follow-path.js';
 import { GatherFoodSkill } from './gather-food.js';
+import { GatherResourceSkill } from './gather-resource.js';
 import { GatherWoolSkill } from './gather-wool.js';
 import { HarvestFarmSkill } from './harvest-farm.js';
 import { MineSkill } from './mine.js';
@@ -43,6 +44,7 @@ export class SkillCatalog {
             new SleepSkill(),
             new EquipGearSkill(),
             new GatherFoodSkill(),
+            new GatherResourceSkill(),
             new GatherWoolSkill(),
             new PlaceBedSkill(),
             new DigShelterSkill(),

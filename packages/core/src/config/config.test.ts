@@ -32,6 +32,14 @@ describe('config', () => {
         expect(config.agency.goalTieBreak.closeScore).toBe(0.12);
         expect(config.agency.reflection.enabled).toBe(true);
         expect(config.agency.reflection.maxTraitDelta).toBe(0.01);
+        expect(config.agency.needDecayByNeed?.hunger).toBe(0.02);
+        expect(config.agency.progression.enabled).toBe(true);
+        expect(config.behavior.rhythm.minimumDwellMilliseconds).toBe(30000);
+        expect(config.behavior.rhythm.progressTimeoutMilliseconds).toBe(120000);
+        expect(config.behavior.perception.visibilityRefreshHz).toBe(4);
+        expect(config.behavior.perception.maxRaycastsPerTick).toBe(8);
+        expect(config.behavior.perception.sightingTtlMs).toBe(60000);
+        expect(config.behavior.gaze.updateHz).toBe(10);
         expect(config.building.maxStructureBlocks).toBe(4000);
         expect(config.building.maxWorkPackageBlocks).toBe(128);
         expect(config.building.allowRawBlockBlueprints).toBe(false);

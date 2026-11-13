@@ -11,6 +11,12 @@ import type { SkillBBox, SkillBlock, SkillBlockState } from '@ticrafter/skills';
 
 export type FakeTerrainKind = 'flat' | 'uneven';
 
+export interface FakeEntity {
+    id?: number;
+    name: string;
+    position: Vec3;
+}
+
 export interface FakeWorldOptions {
     seed: number;
     kind: FakeTerrainKind;
@@ -19,6 +25,7 @@ export interface FakeWorldOptions {
     groundY: number;
     maximumStep?: number;
     clearRegion?: { min: Vec3; max: Vec3 };
+    entities?: readonly FakeEntity[];
 }
 
 const AIR = 'air';
@@ -34,11 +41,13 @@ export class FakeWorld implements HeadlessWorldView, SafetyWorldView {
     private readonly blocks = new Map<string, SkillBlockState>();
     private readonly listeners = new Set<(change: HeadlessBlockChange) => void>();
     private readonly protectedZones: { min: Vec3; max: Vec3 }[] = [];
+    private readonly entityList: FakeEntity[] = [];
     private activeBotList: SafetyActiveBot[] = [];
     private claimList: SafetyClaimRegion[] = [];
     private grantList: SafetyGrantRegion[] = [];
 
     constructor(private readonly options: FakeWorldOptions) {
+        this.entityList.push(...(options.entities ?? []).map((entity) => ({ ...entity })));
         this.generate();
     }
 
@@ -80,7 +89,7 @@ export class FakeWorld implements HeadlessWorldView, SafetyWorldView {
     }
 
     entities(): readonly { id?: number; name: string; position: Vec3 }[] {
-        return [];
+        return this.entityList;
     }
 
     onBlockChanged(listener: (change: HeadlessBlockChange) => void): () => void {

@@ -3,7 +3,7 @@
 > Generated from `docs/architecture/graph.json`. Edit the graph, then run `bun tools/architecture/render-graphs.mjs`.
 
 
-**Relations:** 608  
+**Relations:** 627  
 **State owners:** 23  
 **Allowed cycles:** 0
 
@@ -29,7 +29,7 @@
 |---|---:|
 | `controls` | 22 |
 | `delegates_to` | 22 |
-| `depends_on` | 426 |
+| `depends_on` | 445 |
 | `observes` | 8 |
 | `persists_to` | 2 |
 | `proposes_to` | 7 |
@@ -142,7 +142,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Skill Library` | `Building` | 10 | depends_on×10 |
 | `Skill Library` | `Autonomy and Safety` | 2 | depends_on×2 |
 | `Skill Library` | `Shared Infrastructure Plan` | 3 | depends_on×3 |
-| `Skill Library` | `Skill Runtime` | 4 | depends_on×4 |
+| `Skill Library` | `Skill Runtime` | 5 | depends_on×5 |
 | `Skill Library` | `World Model and Landmarks` | 4 | depends_on×4 |
 | `Building` | `Bot Runtime and Mineflayer Adapter` | 3 | depends_on×2, reads×1 |
 | `Building` | `Memory and Persistence` | 1 | writes×1 |
@@ -159,7 +159,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Bot Runtime and Mineflayer Adapter` | `Perception` | 4 | delegates_to×2, depends_on×2 |
 | `Bot Runtime and Mineflayer Adapter` | `Autonomy and Safety` | 2 | depends_on×2 |
 | `Bot Runtime and Mineflayer Adapter` | `Skill Runtime` | 3 | depends_on×2, delegates_to×1 |
-| `Bot Runtime and Mineflayer Adapter` | `Transport and Protocol` | 5 | depends_on×3, publishes×2 |
+| `Bot Runtime and Mineflayer Adapter` | `Transport and Protocol` | 6 | depends_on×4, publishes×2 |
 | `Autonomy and Safety` | `Bot Runtime and Mineflayer Adapter` | 2 | validates×1, controls×1 |
 | `Autonomy and Safety` | `Brains` | 1 | reads×1 |
 | `Autonomy and Safety` | `Building` | 1 | validates×1 |
@@ -189,7 +189,7 @@ Every `writes` edge must target a declared state owner and originate from a decl
 | `Laya Training` | `Laya Decision Service` | 1 | reads×1 |
 | `Laya Training` | `Testing and Evaluation` | 1 | depends_on×1 |
 | `Laya Training` | `Memory and Persistence` | 2 | reads×2 |
-| `Brains` | `Bot Runtime and Mineflayer Adapter` | 2 | depends_on×2 |
+| `Brains` | `Bot Runtime and Mineflayer Adapter` | 5 | depends_on×5 |
 | `Brains` | `Bot Registry and Profiles` | 1 | reads×1 |
 | `Brains` | `Config and Profiles` | 1 | depends_on×1 |
 | `Brains` | `Autonomy and Safety` | 7 | controls×1, depends_on×6 |
@@ -438,6 +438,7 @@ None.
 | `rel.0471` | `world.spatial-query-engine` | `depends_on` | `world.occupancy-grid` | `in-process` | sync | hard | depends on payload for Sparse Occupancy Grid | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Spatial Query Engine depends on Sparse Occupancy Grid. |
 | `rel.0472` | `world.world-reconciler` | `depends_on` | `world.landmark-registry` | `in-process` | sync | hard | depends on payload for Landmark Registry | Reject the operation, keep the last committed state, and surface a typed error to the caller. | World Reconciler depends on Landmark Registry. |
 | `rel.0473` | `world.world-reconciler` | `depends_on` | `world.spatial-query-engine` | `in-process` | sync | hard | spatial query | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Reconciliation queries observed geometry. |
+| `rel.0626` | `world.plot-ownership` | `depends_on` | `world.landmark-registry` | `in-process` | sync | hard | depends on payload for Landmark Registry | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Plot Ownership and Farm Permission depends on Landmark Registry. |
 
 ## Perception relations
 
@@ -460,6 +461,7 @@ None.
 | `rel.0248` | `perception.ring-sampler` | `depends_on` | `perception.perception-rate-limiter` | `in-process` | sync | hard | depends on payload for Perception Rate Limiter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Ring Sampler depends on Perception Rate Limiter. |
 | `rel.0249` | `perception.storage-workstation-detector` | `depends_on` | `perception.chunk-snapshot-encoder` | `in-process` | sync | hard | depends on payload for Chunk Snapshot Encoder | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Storage and Workstation Detector depends on Chunk Snapshot Encoder. |
 | `rel.0494` | `perception.block-update-listener` | `publishes` | `transport.event-stream` | `ws` | async | hard | block update | Reconnect with backoff and delta resync; the bot keeps running on deterministic policy while disconnected. | Block updates incrementally refresh the shared world model. |
+| `rel.0627` | `perception.village-scanner` | `depends_on` | `perception.farm-detector` | `in-process` | sync | soft | uses farm observations | Fall back to deterministic policy or the last good plan and record the downgrade. | Village scanning consumes farm observations. |
 
 ## Laya Decision Service relations
 
@@ -623,6 +625,7 @@ None.
 | `rel.0576` | `skills.construction` | `depends_on` | `building.construction-plan-planner` | `in-process` | sync | hard | construction plan and work packages | Fail the construction step with an execution failure. | Construction skill consumes the derived construction plan. |
 | `rel.0602` | `skills.procurement` | `depends_on` | `bot-runtime.building-procurement-service` | `in-process` | sync | hard | inventory, container, and catalog plan | Fail the procurement step and preserve the package task dependency. | Procurement skill delegates material planning. |
 | `rel.0603` | `skills.procurement` | `depends_on` | `building.material-procurement-planner` | `in-process` | sync | hard | material procurement plan | Fail the procurement step and preserve the package task dependency. | Procurement skill consumes shortages, withdrawals, crafting, and gathering. |
+| `rel.0625` | `skills.gather-resource` | `depends_on` | `skill-runtime.skill-contract` | `in-process` | sync | hard | depends on payload for Skill Contract | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gather Resource depends on Skill Contract. |
 
 ## Building relations
 
@@ -743,6 +746,13 @@ None.
 | `rel.0606` | `bot-runtime.building-procurement-service` | `depends_on` | `bot-runtime.procurement-catalog` | `in-process` | sync | hard | recipes and gather sources | Fail the procurement step and preserve the package task dependency. | Procurement resolves crafting and gathering requirements. |
 | `rel.0607` | `bot-runtime.container-scanner` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | nearby block queries | Fail the procurement step and preserve the package task dependency. | Container scanner uses local world state. |
 | `rel.0608` | `bot-runtime.procurement-catalog` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | block and item registry | Fail the procurement step and preserve the package task dependency. | Procurement catalog uses local registries and recipes. |
+| `rel.0617` | `bot-runtime.behavior-trace` | `depends_on` | `transport.message-schema-registry` | `in-process` | sync | hard | depends on payload for Message Schema Registry | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Behavior Trace depends on Message Schema Registry. |
+| `rel.0618` | `bot-runtime.human-mover` | `depends_on` | `bot-runtime.behavior-trace` | `in-process` | sync | hard | depends on payload for Behavior Trace | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Human Mover depends on Behavior Trace. |
+| `rel.0619` | `bot-runtime.sightings-source` | `depends_on` | `bot-runtime.world-cache-adapter` | `in-process` | sync | hard | depends on payload for World Cache Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Sightings Source depends on World Cache Adapter. |
+| `rel.0620` | `bot-runtime.social-presence` | `depends_on` | `bot-runtime.chat-adapter` | `in-process` | sync | hard | depends on payload for Chat Adapter | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Social Presence depends on Chat Adapter. |
+| `rel.0628` | `bot.farm-permission` | `depends_on` | `bot-runtime.event-bridge` | `in-process` | sync | hard | consumes sender-aware chat | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Farm permission consumes sender-aware chat events. |
+| `rel.0629` | `bot.farm-permission` | `depends_on` | `bot.farm-plot-registry` | `in-process` | sync | hard | uses discovered farm plots | Reject the operation, keep the last committed state, and surface a typed error to the caller. | bot.farm-permission depends on bot.farm-plot-registry. |
+| `rel.0630` | `bot.visibility-source` | `depends_on` | `bot-runtime.perception-host` | `in-process` | sync | hard | uses discovered farm plots | Reject the operation, keep the last committed state, and surface a typed error to the caller. | bot.visibility-source depends on bot-runtime.perception-host. |
 
 ## Autonomy and Safety relations
 
@@ -862,6 +872,7 @@ None.
 | `rel.0609` | `eval.simulation-harness` | `depends_on` | `bot-runtime.headless-runtime` | `in-process` | sync | hard | headless bot runtime and platform ports | Fail the simulated scenario with evidence. | Dev-only dependency; runtime code must not import the simulator. |
 | `rel.0610` | `eval.simulation-harness` | `depends_on` | `eval.behavior-assertions` | `in-process` | sync | hard | behavior assertion evaluation | Fail the scenario with assertion or inspection evidence. | Evaluation-only dependency. |
 | `rel.0611` | `eval.trace-inspector` | `depends_on` | `eval.simulation-harness` | `in-process` | sync | hard | stored simulation trace artifacts | Fail the scenario with assertion or inspection evidence. | Evaluation-only dependency. |
+| `rel.0621` | `eval.behavior-oddities` | `depends_on` | `eval.behavior-assertions` | `in-process` | sync | hard | depends on payload for Behavior Assertions | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Behavior Oddity Detectors depends on Behavior Assertions. |
 
 ## Laya Training relations
 
@@ -903,6 +914,9 @@ None.
 | `rel.0479` | `brains.laya-client` | `depends_on` | `brains.deterministic-policy` | `in-process` | sync | hard | timeout fallback | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Laya Client depends on Deterministic Policy. |
 | `rel.0584` | `brains.laya-client` | `depends_on` | `brains.tactical-policy` | `in-process` | sync | hard | tactical policy | Use the deterministic fallback and record the downgrade. | Laya Client applies tactical profile and rate policy. |
 | `rel.0585` | `brains.tactical-policy` | `depends_on` | `config.config-schema-validator` | `in-process` | sync | hard | tactical config | Use the deterministic fallback and record the downgrade. | Tactical policy is configured by profile. |
+| `rel.0614` | `brains.gaze-controller` | `depends_on` | `bot-runtime.action-executor` | `in-process` | sync | hard | depends on payload for Action Executor | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Gaze Controller depends on Action Executor. |
+| `rel.0615` | `brains.humanization-policy` | `depends_on` | `bot-runtime.human-mover` | `in-process` | sync | hard | depends on payload for Human Mover | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Humanization Policy depends on Human Mover. |
+| `rel.0616` | `brains.perception-filter` | `depends_on` | `bot-runtime.sightings-source` | `in-process` | sync | hard | depends on payload for Sightings Source | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Perception Filter depends on Sightings Source. |
 
 ## Agency relations
 
@@ -934,6 +948,11 @@ None.
 | `rel.0558` | `agency.goal-generator` | `depends_on` | `agency.routine-model` | `in-process` | sync | hard | depends on payload for Routine Model | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Generator depends on Routine Model. |
 | `rel.0586` | `agency.strategic-intent` | `depends_on` | `agency.goal-arbiter` | `in-process` | sync | hard | priority adjustments | Use the deterministic fallback and record the downgrade. | Strategic intent biases goal utility before arbitration. |
 | `rel.0587` | `agency.strategic-intent` | `depends_on` | `agency.working-memory` | `in-process` | sync | hard | latest intent | Use the deterministic fallback and record the downgrade. | Strategic intent is stored in working memory. |
+| `rel.0612` | `agency.deadline-policy` | `depends_on` | `agency.intention-manager` | `in-process` | sync | hard | depends on payload for Intention Manager | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Goal Deadline Policy depends on Intention Manager. |
+| `rel.0613` | `agency.idle-life` | `depends_on` | `agency.goal-generator` | `in-process` | sync | hard | depends on payload for Goal Generator | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Idle Life depends on Goal Generator. |
+| `rel.0622` | `agency.progression-plan` | `depends_on` | `agency.working-memory` | `in-process` | sync | hard | depends on payload for Working Memory | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Progression Plan depends on Working Memory. |
+| `rel.0623` | `agency.progression-planner` | `depends_on` | `agency.progression-plan` | `in-process` | sync | hard | depends on payload for Progression Plan | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Progression Planner depends on Progression Plan. |
+| `rel.0624` | `agency.recipe-port` | `depends_on` | `agency.progression-plan` | `in-process` | sync | hard | depends on payload for Progression Plan | Reject the operation, keep the last committed state, and surface a typed error to the caller. | Recipe Port depends on Progression Plan. |
 
 ## Bootstrap and Toolchain relations
 

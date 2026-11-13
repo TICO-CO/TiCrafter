@@ -25,6 +25,7 @@ import {
     MergeConflictResolver,
     type NearestLandmark,
     ObservationIngestor,
+    type OwnershipQueryPort,
     type PlanTag,
     PlanTagging,
     SparseOccupancyGrid,
@@ -54,6 +55,7 @@ export class CoordinatorWorldModel {
     constructor(
         database: CoordinatorDatabase,
         private readonly logger: LoggerPort,
+        ownership?: OwnershipQueryPort,
     ) {
         const store = new WorldStore(database);
         const chunkStore = new SqliteChunkStore(store);
@@ -73,6 +75,7 @@ export class CoordinatorWorldModel {
         this.spatial = new SpatialQueryEngine(this.landmarks, {
             occupancy: this.occupancy,
             containers: this.containers,
+            ...(ownership === undefined ? {} : { ownership }),
         });
         this.decay = new LandmarkDecayService(landmarkStore, confidenceDecay);
         this.reconciler = new WorldReconciler(this.spatial);

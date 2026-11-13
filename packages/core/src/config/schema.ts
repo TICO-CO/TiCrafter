@@ -78,13 +78,99 @@ export const configSchema = zod
                 maxBotOverrides: zod.number().int().min(0).max(8),
             }),
         }),
+        behavior: zod.object({
+            movement: zod.object({
+                sprintDistanceThreshold: zod.number().positive(),
+                waypointPauseChance: zod.number().min(0).max(1),
+                waypointPauseMilliseconds: zod.object({
+                    minimum: zod.number().int().nonnegative(),
+                    maximum: zod.number().int().nonnegative(),
+                }),
+                scanChance: zod.number().min(0).max(1),
+                finalApproachPauseMilliseconds: zod.number().int().nonnegative(),
+            }),
+            gaze: zod.object({
+                yawRateRadiansPerSecond: zod.number().positive(),
+                pitchRateRadiansPerSecond: zod.number().positive(),
+                updateHz: zod.number().positive(),
+                scanSweepRadians: zod.number().positive(),
+            }),
+            rhythm: zod.object({
+                reactionLatencyMilliseconds: zod.object({
+                    minimum: zod.number().int().nonnegative(),
+                    maximum: zod.number().int().nonnegative(),
+                }),
+                minimumDwellMilliseconds: zod.number().int().nonnegative(),
+                switchThreshold: zod.number().min(0).max(1),
+                progressTimeoutMilliseconds: zod.number().int().positive(),
+                actionGapMilliseconds: zod.number().int().nonnegative(),
+            }),
+            perception: zod.object({
+                visibilityRefreshHz: zod.number().positive(),
+                maxRaycastsPerTick: zod.number().int().positive(),
+                sightingTtlMs: zod.number().int().positive(),
+                focusRadius: zod.number().positive(),
+                viewHalfAngleRadians: zod.number().positive(),
+            }),
+            social: zod.object({
+                replyDelayMilliseconds: zod.object({
+                    minimum: zod.number().int().nonnegative(),
+                    maximum: zod.number().int().nonnegative(),
+                }),
+                greetingCooldownMilliseconds: zod.number().int().nonnegative(),
+            }),
+            idle: zod.object({
+                minimumMilliseconds: zod.number().int().nonnegative(),
+                maximumMilliseconds: zod.number().int().nonnegative(),
+            }),
+            village: zod.object({
+                ownershipRadius: zod.number().positive(),
+                allowedPlotRegions: zod.array(
+                    zod.object({
+                        id: zod.string().min(1),
+                        min: zod.object({
+                            x: zod.number(),
+                            y: zod.number(),
+                            z: zod.number(),
+                        }),
+                        max: zod.object({
+                            x: zod.number(),
+                            y: zod.number(),
+                            z: zod.number(),
+                        }),
+                    }),
+                ),
+                playerBaseLinks: zod.array(
+                    zod.object({
+                        playerId: zod.string().min(1),
+                        username: zod.string().min(1),
+                        baseId: zod.string().min(1),
+                        confidence: zod.number().min(0).max(1).optional(),
+                    }),
+                ),
+                playerConfidenceInitial: zod.number().min(0).max(1),
+                playerConfidenceThreshold: zod.number().min(0).max(1),
+                playerConfidenceHalfLifeDays: zod.number().positive(),
+                playerLinkRadius: zod.number().positive(),
+                playerLinkMinSightings: zod.number().int().positive(),
+                playerLinkWindowMs: zod.number().int().positive(),
+                permissionAskCooldownMs: zod.number().int().nonnegative(),
+                permissionTimeoutMs: zod.number().int().positive(),
+                permissionGrantTtlMs: zod.number().int().positive(),
+            }),
+        }),
         agency: zod.object({
             enabled: zod.boolean(),
             goalCadenceMilliseconds: zod.number().int().min(250),
             idleThresholdMilliseconds: zod.number().int().min(1000),
             chatRatePerMinute: zod.number().int().min(0).max(30),
             needDecayPerMinute: zod.number().min(0).max(1),
+            needDecayByNeed: zod.record(zod.string(), zod.number().min(0).max(1)).optional(),
             committedGoalBonus: zod.number().min(0).max(1),
+            goalDeadlines: zod.record(zod.string(), zod.number().positive()).optional(),
+            progression: zod.object({
+                enabled: zod.boolean(),
+            }),
             workingMemory: zod.object({
                 maxCommitments: zod.number().int().min(1).max(16),
                 maxExperiences: zod.number().int().min(1).max(32),

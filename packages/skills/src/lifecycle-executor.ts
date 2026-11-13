@@ -9,6 +9,7 @@ import type {
     Skill,
     SkillCheckpoint,
     SkillContext,
+    SkillFailureClass,
     SkillInput,
     SkillRun,
     SkillStep,
@@ -40,19 +41,37 @@ export class SkillLifecycleExecutor {
         if (resolveError) return [null, resolveError];
         if (skill === null) return [null, `skill ${skillId} resolved null`];
         const [canRun, canRunError] = skill.canRun(context, input);
-        if (canRunError) return [null, canRunError];
-        if (canRun !== true) return [null, `skill ${skillId} cannot run`];
+        if (canRunError) {
+            return this.failStart(context, skillId, 'invalid-input', canRunError);
+        }
+        if (canRun !== true) {
+            return this.failStart(context, skillId, 'unsupported', `skill ${skillId} cannot run`);
+        }
         const [plannedInput, planError] = skill.plan(context, input);
-        if (planError) return [null, planError];
-        if (plannedInput === null) return [null, `skill ${skillId} plan returned null`];
+        if (planError) {
+            return this.failStart(context, skillId, 'invalid-input', planError);
+        }
+        if (plannedInput === null) {
+            return this.failStart(
+                context,
+                skillId,
+                'invalid-input',
+                `skill ${skillId} plan returned null`,
+            );
+        }
         const [step, startError] = skill.start(context, plannedInput);
         if (startError) {
             this.active = null;
-            return [null, startError];
+            return this.failStart(context, skillId, 'execution-failed', startError);
         }
         if (step === null) {
             this.active = null;
-            return [null, `skill ${skillId} start returned null`];
+            return this.failStart(
+                context,
+                skillId,
+                'execution-failed',
+                `skill ${skillId} start returned null`,
+            );
         }
         this.active = { skill, run: step.run, handleId: null };
         return this.applyStep(step, context);
@@ -82,11 +101,16 @@ export class SkillLifecycleExecutor {
         const [step, stepError] = skill.step(context, run);
         if (stepError) {
             this.active = null;
-            return [null, stepError];
+            return this.failStart(context, skillId, 'execution-failed', stepError);
         }
         if (step === null) {
             this.active = null;
-            return [null, `skill ${skillId} step returned null`];
+            return this.failStart(
+                context,
+                skillId,
+                'execution-failed',
+                `skill ${skillId} step returned null`,
+            );
         }
         return this.applyStep(step, context);
     }
@@ -172,8 +196,19 @@ export class SkillLifecycleExecutor {
     private stepActive(context: SkillContext): Result<SkillStep | null, string> {
         if (this.active === null) return [null, null];
         const [step, stepError] = this.active.skill.step(context, this.active.run);
-        if (stepError) return [null, stepError];
-        if (step === null) return [null, 'skill step returned null'];
+        if (stepError) {
+            const run = this.active.run;
+            this.active = null;
+            this.reportFailure(context, run, 'execution-failed', stepError);
+            return [null, stepError];
+        }
+        if (step === null) {
+            const run = this.active.run;
+            this.active = null;
+            const message = 'skill step returned null';
+            this.reportFailure(context, run, 'execution-failed', message);
+            return [null, message];
+        }
         return this.applyStep(step, context);
     }
 
@@ -183,20 +218,26 @@ export class SkillLifecycleExecutor {
             const [action, effectError] = this.options.effects.emit(step.action);
             if (effectError) {
                 this.active = null;
+                this.reportFailure(context, step.run, 'execution-failed', effectError);
                 return [null, effectError];
             }
             if (action === null) {
                 this.active = null;
-                return [null, 'effect emitter returned null'];
+                const message = 'effect emitter returned null';
+                this.reportFailure(context, step.run, 'execution-failed', message);
+                return [null, message];
             }
             const [handleId, dispatchError] = this.options.dispatch.dispatch(action);
             if (dispatchError) {
                 this.active = null;
+                this.reportFailure(context, step.run, 'execution-failed', dispatchError);
                 return [null, dispatchError];
             }
             if (handleId === null) {
                 this.active = null;
-                return [null, 'action dispatch returned null'];
+                const message = 'action dispatch returned null';
+                this.reportFailure(context, step.run, 'execution-failed', message);
+                return [null, message];
             }
             if (this.active !== null) this.active.handleId = handleId;
         }
@@ -213,6 +254,32 @@ export class SkillLifecycleExecutor {
             if (checkpointError) return [null, checkpointError];
         }
         return [step, null];
+    }
+
+    private failStart(
+        context: SkillContext,
+        skillId: string,
+        failureClass: SkillFailureClass,
+        message: string,
+    ): Result<SkillStep, string> {
+        this.reportFailure(context, { skillId, state: {} }, failureClass, message);
+        return [null, message];
+    }
+
+    private reportFailure(
+        context: SkillContext,
+        run: SkillRun,
+        failureClass: SkillFailureClass,
+        message: string,
+    ): void {
+        const step: SkillStep = {
+            run,
+            status: 'failed',
+            action: null,
+            progress: { done: 0, total: 0, label: message },
+            failure: { class: failureClass, message },
+        };
+        this.report(context, step);
     }
 
     private deleteCheckpoint(context: SkillContext, skillId: string): Result<void, string> {

@@ -93,7 +93,128 @@ export class AssertionEngine {
                     assertion.reason,
                     context.vetoes.map((veto) => veto.reason),
                 );
+            case 'inventory.has': {
+                const inventory =
+                    assertion.botId === undefined
+                        ? context.inventory
+                        : (context.inventories?.[assertion.botId] ?? []);
+                const actual =
+                    inventory.find((item) => item.name === assertion.itemName)?.count ?? 0;
+                return AssertionEngine.result(
+                    assertion,
+                    actual >= assertion.minimum,
+                    assertion.minimum,
+                    actual,
+                );
+            }
+            case 'world.blocks-in-box': {
+                const blocks = context.world.blocksInBox?.(assertion.bbox) ?? [];
+                const actual = blocks.filter((block) => block.name === assertion.blockId).length;
+                const maximum = assertion.maximum ?? Number.POSITIVE_INFINITY;
+                return AssertionEngine.result(
+                    assertion,
+                    actual >= assertion.minimum && actual <= maximum,
+                    { minimum: assertion.minimum, maximum: assertion.maximum ?? null },
+                    actual,
+                );
+            }
+            case 'behavior.trace-present': {
+                const entries = context.behavior.filter(
+                    (entry) =>
+                        entry.kind === assertion.traceKind &&
+                        entry.subject === assertion.subject &&
+                        (assertion.plotId === undefined ||
+                            entry.detail.plotId === assertion.plotId) &&
+                        (assertion.botId === undefined || entry.botId === assertion.botId),
+                );
+                return AssertionEngine.result(
+                    assertion,
+                    entries.length >= assertion.minimum,
+                    assertion.minimum,
+                    entries.length,
+                );
+            }
+            case 'metric.threshold': {
+                const actual = context.metrics[assertion.metric] ?? 0;
+                const passed =
+                    assertion.comparator === 'gte'
+                        ? actual >= assertion.value
+                        : actual <= assertion.value;
+                return AssertionEngine.result(assertion, passed, assertion.value, actual);
+            }
+            case 'behavior.idle-fraction': {
+                const metrics = AssertionEngine.metricsFor(assertion.botId, context);
+                const actual = metrics.idleFraction ?? 0;
+                return AssertionEngine.result(
+                    assertion,
+                    actual >= assertion.minimum && actual <= assertion.maximum,
+                    { minimum: assertion.minimum, maximum: assertion.maximum },
+                    actual,
+                );
+            }
+            case 'behavior.switch-rate': {
+                const metrics = AssertionEngine.metricsFor(assertion.botId, context);
+                const actual = metrics.goalSwitchesPerTenMinutes ?? 0;
+                return AssertionEngine.result(
+                    assertion,
+                    actual <= assertion.maximumPerTenMinutes,
+                    assertion.maximumPerTenMinutes,
+                    actual,
+                );
+            }
+            case 'behavior.dwell': {
+                const metrics = AssertionEngine.metricsFor(assertion.botId, context);
+                const actual = metrics.dwellMedianMilliseconds ?? 0;
+                return AssertionEngine.result(
+                    assertion,
+                    actual >= assertion.minimumMedianMilliseconds,
+                    assertion.minimumMedianMilliseconds,
+                    actual,
+                );
+            }
+            case 'behavior.farm-permission': {
+                const entries = context.behavior.filter(
+                    (entry) =>
+                        entry.kind === 'permission' &&
+                        entry.subject === 'farm-permission' &&
+                        entry.detail.plotId === assertion.plotId &&
+                        (assertion.botId === undefined || entry.botId === assertion.botId),
+                );
+                const last = entries.at(-1);
+                const decision = last?.detail.decision;
+                const reason = last?.detail.reason;
+                const allowed =
+                    assertion.decision === 'allow' &&
+                    entries.some((entry) => entry.detail.decision === 'allow');
+                const denied =
+                    assertion.decision === 'deny' &&
+                    entries.some((entry) => entry.detail.decision === 'deny');
+                const asked =
+                    assertion.decision === 'ask' &&
+                    entries.some((entry) => entry.detail.decision === 'ask');
+                const timedOut =
+                    assertion.decision === 'timeout' &&
+                    entries.some(
+                        (entry) =>
+                            entry.detail.decision === 'deny' &&
+                            entry.detail.reason === 'inquiry-timeout',
+                    );
+                return AssertionEngine.result(
+                    assertion,
+                    allowed || denied || asked || timedOut,
+                    assertion.decision,
+                    { decision: decision ?? null, reason: reason ?? null },
+                );
+            }
         }
+    }
+
+    private static metricsFor(
+        botId: string | undefined,
+        context: AssertionContext,
+    ): Readonly<Record<string, number>> {
+        if (botId === undefined) return context.metrics;
+        return context.metricsByBot?.[botId] ?? context.metrics;
     }
 
     private static diffEmpty(

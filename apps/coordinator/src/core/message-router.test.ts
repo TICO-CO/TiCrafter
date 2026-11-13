@@ -1,6 +1,10 @@
 import {
     BLOCK_UPDATE_EVENT,
     type BlockUpdateMessage,
+    BOT_PERMISSION_OUTCOME_EVENT,
+    BOT_PLAYER_SIGHTING_EVENT,
+    type BotPermissionOutcome,
+    type BotPlayerSighting,
     CHUNK_SNAPSHOT_EVENT,
     type ChunkSnapshotMessage,
     DECISION_REQUEST,
@@ -232,5 +236,46 @@ describe('MessageRouter perception events', () => {
         );
 
         expect(received.chunks).toHaveLength(0);
+    });
+});
+
+describe('MessageRouter confidence events', () => {
+    it('routes player sightings and permission outcomes', () => {
+        const sightings: BotPlayerSighting[] = [];
+        const outcomes: BotPermissionOutcome[] = [];
+        const messageRouter = new MessageRouter({
+            sessions: new SessionManager(),
+            router: {} as unknown as CommandRouter,
+            handshake: {} as unknown as SessionHandshake,
+            events: { append: () => [undefined, null] } as unknown as EventLogWriter,
+            logger,
+            onPlayerSighting: (payload) => sightings.push(payload),
+            onPermissionOutcome: (payload) => outcomes.push(payload),
+        });
+        const client = connection();
+        const sighting: BotPlayerSighting = {
+            botId: 'bot.tibot1',
+            playerId: 'uuid.alex',
+            username: 'Alex',
+            position: { x: 1, y: 64, z: 1 },
+            at: '2026-11-10T12:00:00.000Z',
+        };
+        const outcome: BotPermissionOutcome = {
+            botId: 'bot.tibot1',
+            playerId: 'uuid.alex',
+            plotId: 'farm.1.63.2',
+            kept: true,
+            at: '2026-11-10T12:00:00.000Z',
+        };
+        messageRouter.handleMessage(
+            client,
+            ProtocolEnvelope.create('event', BOT_PLAYER_SIGHTING_EVENT, sighting),
+        );
+        messageRouter.handleMessage(
+            client,
+            ProtocolEnvelope.create('event', BOT_PERMISSION_OUTCOME_EVENT, outcome),
+        );
+        expect(sightings).toEqual([sighting]);
+        expect(outcomes).toEqual([outcome]);
     });
 });

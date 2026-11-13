@@ -22,6 +22,7 @@ export type ActionRequest =
           face?: Vec3;
       }
     | { kind: 'use-block'; position: Vec3; itemName?: string }
+    | { kind: 'look-at'; position: Vec3 }
     | { kind: 'attack'; entityId?: number; entityName?: string }
     | {
           kind: 'equip';

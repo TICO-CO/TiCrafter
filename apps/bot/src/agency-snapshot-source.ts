@@ -9,6 +9,7 @@ import type { Result } from '@ticrafter/core';
 import type { Bot } from 'mineflayer';
 
 import { ShelterInspector } from './shelter-inspector.js';
+import type { SightingSource } from './sightings-source.js';
 import { StateDigest } from './state-digest.js';
 import type { WorldCacheAdapter } from './world-cache.js';
 
@@ -26,9 +27,12 @@ export interface AgencyHomeSnapshot {
 export interface AgencySnapshotSourceOptions {
     bot: Bot;
     world: WorldCacheAdapter;
+    sightings?: SightingSource;
     home?: () => AgencyHomeSnapshot | null;
     project?: () => ProjectSummary | null;
     nightIntent?: () => NightIntent | null;
+    farmPlots?: () => AgencySnapshot['farmPlots'];
+    villages?: () => AgencySnapshot['villageCandidates'];
     now?: () => Date;
 }
 
@@ -49,6 +53,7 @@ export class AgencySnapshotSource {
             .map((player) => player.username)
             .filter((username) => username !== bot.username);
         const home = this.options.home?.() ?? null;
+        const sightingTime = (this.options.now?.() ?? new Date()).getTime();
         const inspection = ShelterInspector.inspect(
             this.options.world,
             snapshotPosition,
@@ -66,8 +71,8 @@ export class AgencySnapshotSource {
                 nearbyPlayers: players,
                 hostiles: digest.hazards ?? [],
                 home: home?.anchor ?? null,
-                hasBed: this.bedNearby(),
-                knownResourceSites: this.resourceSites(),
+                hasBed: this.bedNearby(sightingTime),
+                knownResourceSites: this.resourceSites(sightingTime),
                 homeBbox: home?.bbox ?? null,
                 homeStatus: home?.status ?? null,
                 homeStructureId: home?.structureId ?? null,
@@ -79,12 +84,41 @@ export class AgencySnapshotSource {
                 armorInventoryPieces: this.armorInventoryPieces(inventory),
                 nightIntent: this.options.nightIntent?.() ?? null,
                 project: this.options.project?.() ?? null,
+                hasCraftingTable:
+                    this.options.world.nearestBlock(['crafting_table'], RESOURCE_RADIUS) !== null,
+                hasFurnace: this.options.world.nearestBlock(['furnace'], RESOURCE_RADIUS) !== null,
+                hasContainer: this.options.world.nearestContainer(RESOURCE_RADIUS) !== null,
+                stations: this.stations(),
+                waterSources: this.waterSources(),
+                ...(this.options.farmPlots === undefined
+                    ? {}
+                    : { farmPlots: this.options.farmPlots() }),
+                ...(this.options.villages === undefined
+                    ? {}
+                    : { villageCandidates: this.options.villages() }),
             },
             null,
         ];
     }
 
-    private bedNearby(): boolean {
+    private stations(): readonly { kind: string; position: { x: number; y: number; z: number } }[] {
+        const stations: { kind: string; position: { x: number; y: number; z: number } }[] = [];
+        for (const kind of ['crafting_table', 'furnace', 'chest']) {
+            const position = this.options.world.nearestBlock([kind], RESOURCE_RADIUS);
+            if (position !== null) stations.push({ kind, position });
+        }
+        return stations;
+    }
+
+    private waterSources(): readonly { x: number; y: number; z: number }[] {
+        const water = this.options.world.nearestBlock(['water'], RESOURCE_RADIUS);
+        return water === null ? [] : [water];
+    }
+
+    private bedNearby(at: number): boolean {
+        if (this.options.sightings !== undefined) {
+            return this.options.sightings.nearestBed(at) !== null;
+        }
         return this.options.world.nearestBlock(['*_bed'], BED_RADIUS) !== null;
     }
 
@@ -107,14 +141,18 @@ export class AgencySnapshotSource {
             .reduce((total, item) => total + item.count, 0);
     }
 
-    private resourceSites(): readonly {
+    private resourceSites(at: number): readonly {
         kind: string;
         position: { x: number; y: number; z: number };
     }[] {
         const sites: { kind: string; position: { x: number; y: number; z: number } }[] = [];
-        const wood = this.options.world.nearestBlock(['*_log'], RESOURCE_RADIUS);
+        const wood =
+            this.options.sightings?.nearestResource('wood', at) ??
+            this.options.world.nearestBlock(['*_log'], RESOURCE_RADIUS);
         if (wood !== null) sites.push({ kind: 'wood', position: wood });
-        const stone = this.options.world.nearestBlock(['stone', 'deepslate'], RESOURCE_RADIUS);
+        const stone =
+            this.options.sightings?.nearestResource('stone', at) ??
+            this.options.world.nearestBlock(['stone', 'deepslate'], RESOURCE_RADIUS);
         if (stone !== null) sites.push({ kind: 'stone', position: stone });
         return sites;
     }

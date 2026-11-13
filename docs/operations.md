@@ -99,6 +99,31 @@ Chat rate, goal cadence, need decay, idle threshold, and job acceptance
 thresholds come from the `agency` config block. Lower chat rate or disable social
 output through config when running unattended demos.
 
+## Behavior realism
+
+Behavior pacing is configured under `behavior`. Movement controls sprint
+distance, waypoint pause chance and duration, scan chance, and final approach.
+Gaze controls yaw rate, pitch rate, update frequency, and scan sweep. Rhythm
+controls reaction latency, minimum dwell, switch threshold, progress watchdog
+timeout, and action gap. Perception controls visibility refresh, raycasts per
+tick, sighting TTL, focus radius, and view half angle. Social controls reply
+delay and greeting cooldown. Idle controls the bounded idle window.
+
+`behavior.perception.visibilityRefreshHz`, `maxRaycastsPerTick`, and
+`viewHalfAngleRadians` gate target selection. A target must be inside the view
+cone and line of sight, or remembered from a recent sighting. Interaction
+actions look at the target first unless the guardian is reacting.
+
+The early-game progression plan is persisted in working memory and advances
+through forage, crafting table, wooden tools, stone tools, furnace and chest,
+and base provisioning. Progress is checkpointed per milestone. Unknown plan
+versions restore to an empty plan and emit `plan-migrated`.
+
+The agency progress watchdog defaults to `behavior.rhythm.progressTimeoutMilliseconds`
+and preempts a stalled skill before retry. Goal deadlines are per-kind and can
+be overridden with `agency.goalDeadlines`. Deadline expiry abandons with reason
+`deadline`; one extension is allowed when progress advanced.
+
 The planner client sends `x-opencode-session` and a TiCrafter user agent. For
 OpenCode Go, set `PLANNER_BASE_URL=https://opencode.ai/inference/go/openai/v1`
 and `PLANNER_MODEL=muse-spark-1.3-contributor`.
@@ -229,7 +254,28 @@ Config groups:
 - `behavior.social.*` — reply delay, rate, greeting cooldown;
 - `behavior.idle.*` — idle duration and micro-behavior weights;
 - `behavior.village.*` — ownership radius, allowed regions, player base links,
-  confidence threshold, inquiry cooldown, and permission TTL;
+  confidence threshold, inquiry cooldown, and permission TTL.
+
+Village defaults:
+
+- `ownershipRadius` — 32 blocks;
+- `allowedPlotRegions` — empty;
+- `playerBaseLinks` — operator-only player-to-base mappings;
+- `playerConfidenceInitial` — 0.5;
+- `playerConfidenceThreshold` — 0.6;
+- `permissionAskCooldownMs` — 300000;
+- `permissionTimeoutMs` — 60000;
+- `permissionGrantTtlMs` — 600000.
+
+Player confidence is coordinator-owned. Bots report nearby players through
+`bot.player-sighting` and granted permissions through `bot.permission-outcome`.
+The coordinator maps sightings to the nearest house, updates confidence from
+operator links and repeated proximity, and records kept permission outcomes.
+Bots receive confidence snapshots through ownership responses and never compute
+trust from chat text alone. Unknown farmland without a claim, nearby claimed
+house, linked player, or `allowedPlotRegions` entry is denied. No village
+permission path opens containers or trades.
+
 - `agency.progression.*` — progression plan cadence, attempts, pivot threshold,
   plan version.
 

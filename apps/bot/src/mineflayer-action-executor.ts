@@ -1,3 +1,4 @@
+import { GazeController } from '@ticrafter/brains';
 import {
     type ActionDispatchPort,
     type ActionFailure,
@@ -14,6 +15,8 @@ import type { Bot } from 'mineflayer';
 import { goals, Movements, pathfinder } from 'mineflayer-pathfinder';
 import { Vec3 } from 'vec3';
 
+import type { BehaviorTracePort } from './behavior-trace.js';
+import { HumanMover, type TravelContext } from './human-mover.js';
 import { ReachRateGuard } from './reach-rate-guard.js';
 
 interface ActiveAction {
@@ -73,9 +76,21 @@ const PLACEMENT_OFFSETS = [
 ] as const;
 
 const AIR_BLOCKS = new Set(['air', 'cave_air', 'void_air']);
+const GAZE_INTERVAL_MILLISECONDS = 50;
+const GAZE_MAXIMUM_STEPS = 64;
+const GAZE_TARGET_HEIGHT = 0.5;
+
+export interface ActionBehaviorOptions {
+    gaze?: GazeController;
+    trace?: BehaviorTracePort;
+    now?: () => number;
+    sleep?: (milliseconds: number) => Promise<void>;
+    mover?: HumanMover;
+}
 
 export class MineflayerActionExecutor implements ActionDispatchPort {
     private active: ActiveAction | null = null;
+    private movements: Movements | null = null;
     private lastFailureValue: ActionFailure | null = null;
     private lastFailureTime: string | null = null;
 
@@ -84,6 +99,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         private readonly logger: LoggerPort,
         private readonly timeoutMilliseconds = DEFAULT_ACTION_TIMEOUT_MILLISECONDS,
         private readonly reachRateGuard: ReachRateGuard | null = null,
+        private readonly movementsFactory: (bot: Bot) => Movements = (bot) => new Movements(bot),
+        private readonly behavior: ActionBehaviorOptions = {},
     ) {}
 
     get lastFailure(): ActionFailure | null {
@@ -97,10 +114,14 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     install(): Result<void, string> {
         const [, error] = attempt(() => {
             this.bot.loadPlugin(pathfinder);
-            const movements = new Movements(this.bot);
+            const movements = this.movementsFactory(this.bot);
             movements.allowSprinting = true;
             movements.allowParkour = true;
+            movements.allow1by1towers = false;
+            movements.canDig = false;
+            movements.scafoldingBlocks = [];
             this.bot.pathfinder.setMovements(movements);
+            this.movements = movements;
         });
         if (error) return [null, this.describe(error)];
         return [undefined, null];
@@ -136,6 +157,11 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     private async run(handleId: string, request: ActionRequest): Promise<void> {
         const [outcome, failure] = await this.execute(request);
         if (this.active?.id !== handleId) return;
+        this.behavior.trace?.record('action', request.kind, {
+            target: this.actionTarget(request),
+            status: outcome?.status ?? 'failed',
+            failure: failure?.class ?? outcome?.failure?.class ?? null,
+        });
         if (outcome !== null) {
             this.lastFailureValue = null;
             this.lastFailureTime = null;
@@ -182,6 +208,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
                 );
             case 'use-block':
                 return this.useBlock(request.position, request.itemName);
+            case 'look-at':
+                return this.lookAt(request.position);
             case 'attack':
                 return this.attack(request.entityId, request.entityName);
             case 'equip':
@@ -219,6 +247,12 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     private async moveTo(position: CoreVec3, range: number): Promise<Result<void, string>> {
         const pathfinder = this.bot.pathfinder as ShortcutCapablePathfinder;
         const previousPathShortcut = pathfinder.enablePathShortcut;
+        const distance = this.bot.entity.position.distanceTo(this.vector(position));
+        const travel = this.travelContext(distance);
+        if (this.movements !== null && this.behavior.mover !== undefined) {
+            this.movements.allowSprinting = this.behavior.mover.sprintAllowed(travel);
+        }
+        await this.behavior.mover?.beforeTravel(travel);
         pathfinder.enablePathShortcut = previousPathShortcut || this.isLongDistance(position);
         const [, error] = await attemptAsync(() =>
             this.withTimeout(
@@ -230,7 +264,18 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         );
         pathfinder.enablePathShortcut = previousPathShortcut;
         if (error) return [null, this.describe(error)];
+        await this.behavior.mover?.afterTravel(travel);
         return [undefined, null];
+    }
+
+    private travelContext(distance: number): TravelContext {
+        return {
+            distance,
+            indoor: false,
+            nearHazard: false,
+            surface: 'open',
+            urgent: false,
+        };
     }
 
     private isLongDistance(position: CoreVec3): boolean {
@@ -249,6 +294,91 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         return [undefined, null];
     }
 
+    private async lookAt(position: CoreVec3): Promise<Result<void, string>> {
+        const origin = this.bot.entity.position;
+        const angles = GazeController.desiredAngles(
+            { x: origin.x, y: origin.y + 1.62, z: origin.z },
+            { x: position.x, y: position.y + GAZE_TARGET_HEIGHT, z: position.z },
+        );
+        return this.gazeTo(angles.yaw, angles.pitch, 'explicit look');
+    }
+
+    private async lookBeforeInteract(
+        position: CoreVec3,
+        reason: string,
+    ): Promise<Result<void, string>> {
+        const gaze = this.behavior.gaze;
+        if (gaze === undefined) return [undefined, null];
+        const origin = this.bot.entity.position;
+        const target = {
+            x: position.x,
+            y: position.y + GAZE_TARGET_HEIGHT,
+            z: position.z,
+        };
+        for (let stepIndex = 0; stepIndex < GAZE_MAXIMUM_STEPS; stepIndex += 1) {
+            const now = this.behavior.now?.() ?? Date.now();
+            const rotation = gaze.rotateTowards(
+                { x: origin.x, y: origin.y + 1.62, z: origin.z },
+                target,
+                now,
+            );
+            const [, lookError] = await attemptAsync(() =>
+                this.bot.look(rotation.yaw, rotation.pitch, true),
+            );
+            if (lookError) return [null, this.describe(lookError)];
+            if (stepIndex === 0) {
+                this.behavior.trace?.record('gaze', 'interaction', {
+                    target: position,
+                    yaw: rotation.yaw,
+                    pitch: rotation.pitch,
+                    yawDelta: rotation.yawDelta,
+                    pitchDelta: rotation.pitchDelta,
+                    reason,
+                });
+            }
+            if (rotation.aligned) return [undefined, null];
+            await this.pause(GAZE_INTERVAL_MILLISECONDS);
+        }
+        return [undefined, null];
+    }
+
+    private async gazeTo(
+        yaw: number,
+        pitch: number,
+        reason: string,
+    ): Promise<Result<void, string>> {
+        const gaze = this.behavior.gaze;
+        if (gaze === undefined) {
+            const [, lookError] = await attemptAsync(() => this.bot.look(yaw, pitch, true));
+            return lookError === null ? [undefined, null] : [null, this.describe(lookError)];
+        }
+        for (let stepIndex = 0; stepIndex < GAZE_MAXIMUM_STEPS; stepIndex += 1) {
+            const now = this.behavior.now?.() ?? Date.now();
+            const rotation = gaze.rotateTo({ yaw, pitch }, now);
+            const [, lookError] = await attemptAsync(() =>
+                this.bot.look(rotation.yaw, rotation.pitch, true),
+            );
+            if (lookError) return [null, this.describe(lookError)];
+            if (stepIndex === 0) {
+                this.behavior.trace?.record('gaze', 'orientation', {
+                    yaw: rotation.yaw,
+                    pitch: rotation.pitch,
+                    yawDelta: rotation.yawDelta,
+                    pitchDelta: rotation.pitchDelta,
+                    reason,
+                });
+            }
+            if (rotation.aligned) return [undefined, null];
+            await this.pause(GAZE_INTERVAL_MILLISECONDS);
+        }
+        return [undefined, null];
+    }
+
+    private pause(milliseconds: number): Promise<void> {
+        if (this.behavior.sleep !== undefined) return this.behavior.sleep(milliseconds);
+        return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+    }
+
     private async breakBlock(
         position: CoreVec3,
         expectedBlockId: string | undefined,
@@ -262,6 +392,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (expectedBlockId !== undefined && block.name !== expectedBlockId) {
             return [null, `expected ${expectedBlockId}, found ${block.name}`];
         }
+        const [, gazeError] = await this.lookBeforeInteract(position, 'break-block');
+        if (gazeError) return [null, gazeError];
         const [, toolError] = await this.equipBestTool(block);
         if (toolError) return [null, toolError];
         const [, error] = await attemptAsync(() => this.bot.dig(block));
@@ -304,6 +436,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (approachError) return [null, approachError];
         const [, guardError] = this.enforceGuard(position);
         if (guardError) return [null, guardError];
+        const [, gazeError] = await this.lookBeforeInteract(position, 'place-block');
+        if (gazeError) return [null, gazeError];
         const [placement, placementError] = this.placementReference(
             position,
             referencePosition,
@@ -391,9 +525,7 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
     ): Promise<Result<void, string>> {
         const yaw = this.placementYaw(properties);
         if (yaw === null) return [undefined, null];
-        const [, lookError] = await attemptAsync(() => this.bot.look(yaw, 0, true));
-        if (lookError) return [null, this.describe(lookError)];
-        return [undefined, null];
+        return this.gazeTo(yaw, 0, 'place-orientation');
     }
 
     private placementYaw(properties: Readonly<Record<string, string>> | undefined): number | null {
@@ -435,6 +567,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (guardError) return [null, guardError];
         const block = this.bot.blockAt(this.vector(position));
         if (block === null) return [null, 'target block is missing'];
+        const [, gazeError] = await this.lookBeforeInteract(position, 'use-block');
+        if (gazeError) return [null, gazeError];
         const [, error] = await attemptAsync(() =>
             this.withTimeout(this.bot.activateBlock(block), this.timeoutMilliseconds),
         );
@@ -450,6 +584,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (entity === null) return [null, 'hostile entity is missing'];
         const [, guardError] = this.enforceGuard(entity.position);
         if (guardError) return [null, guardError];
+        const [, gazeError] = await this.lookBeforeInteract(entity.position, 'attack');
+        if (gazeError) return [null, gazeError];
         this.bot.attack(entity);
         return [undefined, null];
     }
@@ -462,6 +598,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (entity === null) return [null, 'target entity is missing'];
         const [, guardError] = this.enforceGuard(entity.position);
         if (guardError) return [null, guardError];
+        const [, gazeError] = await this.lookBeforeInteract(entity.position, 'use-entity');
+        if (gazeError) return [null, gazeError];
         const [, error] = await attemptAsync(() => this.bot.activateEntity(entity));
         if (error) return [null, this.describe(error)];
         return [undefined, null];
@@ -500,6 +638,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
             if (approachError) return [null, approachError];
             const [, guardError] = this.enforceGuard(table.position);
             if (guardError) return [null, guardError];
+            const [, gazeError] = await this.lookBeforeInteract(table.position, 'craft');
+            if (gazeError) return [null, gazeError];
         }
         const recipes = this.bot.recipesFor(itemType.id, null, count, table);
         const recipe = recipes[0];
@@ -530,6 +670,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
             3,
         );
         if (approachError !== null) return [null, approachError];
+        const [, gazeError] = await this.lookBeforeInteract(furnaceBlock.position, 'smelt');
+        if (gazeError) return [null, gazeError];
         const [furnace, openError] = await attemptAsync(() =>
             (this.bot as FurnaceCapableBot).openFurnace(furnaceBlock),
         );
@@ -610,6 +752,8 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
         if (approachError) return [null, approachError];
         const [, guardError] = this.enforceGuard(request.container);
         if (guardError) return [null, guardError];
+        const [, gazeError] = await this.lookBeforeInteract(request.container, 'transfer');
+        if (gazeError) return [null, gazeError];
         const block = this.bot.blockAt(this.vector(request.container));
         if (block === null) return [null, 'container is missing'];
         const itemType = this.bot.registry.itemsByName[request.itemName];
@@ -791,6 +935,31 @@ export class MineflayerActionExecutor implements ActionDispatchPort {
 
     private vector(position: CoreVec3): Vec3 {
         return new Vec3(position.x, position.y, position.z);
+    }
+
+    private actionTarget(request: ActionRequest): CoreVec3 | null {
+        switch (request.kind) {
+            case 'move-to':
+            case 'break-block':
+            case 'place-block':
+            case 'use-block':
+            case 'look-at':
+                return request.position;
+            case 'transfer':
+                return request.container;
+            case 'smelt':
+                return request.furnace ?? null;
+            case 'follow-path':
+                return request.waypoints.at(-1) ?? null;
+            case 'attack':
+            case 'equip':
+            case 'use-entity':
+            case 'consume':
+            case 'craft':
+            case 'collect-drops':
+            case 'wait':
+                return null;
+        }
     }
 
     private failureFor(request: ActionRequest, message: string): ActionFailure {

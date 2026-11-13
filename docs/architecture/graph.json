@@ -1993,6 +1993,27 @@
                     "sourceRefs": ["main.md#6-perception-shared-world-model"],
                     "milestone": 3,
                     "template": "tpl.world-index"
+                },
+                {
+                    "id": "world.plot-ownership",
+                    "name": "Plot Ownership and Farm Permission",
+                    "responsibility": "Resolve farm plot ownership and decide harvest permission from claims, nearby bases, linked players, and confidence.",
+                    "plannedPath": "packages/worldmodel/src/ownership",
+                    "provides": ["world.plot-ownership.interface"],
+                    "requires": ["world.landmark-registry"],
+                    "ownsState": [],
+                    "metrics": [
+                        "world_plot_ownership_errors_total",
+                        "world_plot_ownership_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 17,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "A known different owner always overrides chat permission.",
+                        "Unlinked or low-confidence players never grant access.",
+                        "Ambiguous owners never become a guess."
+                    ]
                 }
             ]
         },
@@ -2193,6 +2214,23 @@
                     "sourceRefs": ["main.md#6-perception-shared-world-model"],
                     "milestone": 3,
                     "template": "tpl.detector"
+                },
+                {
+                    "id": "perception.village-scanner",
+                    "name": "Village Scanner",
+                    "responsibility": "Cluster villagers and nearby beds, doors, workstations, and farmland into village candidates.",
+                    "plannedPath": "packages/perception/src/village-scanner",
+                    "provides": ["perception.village-scanner.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": ["village_candidates_total", "village_scan_errors_total"],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 17,
+                    "template": "tpl.detector",
+                    "invariants": [
+                        "Village detection never grants permission.",
+                        "Village detection never opens containers or trades."
+                    ]
                 }
             ]
         },
@@ -3342,6 +3380,26 @@
                     "sourceRefs": ["main.md#9-skills"],
                     "milestone": 4,
                     "template": "tpl.skill"
+                },
+                {
+                    "id": "skills.gather-resource",
+                    "name": "Gather Resource",
+                    "responsibility": "Mine multiple matching resource blocks, collect drops, and checkpoint progress.",
+                    "plannedPath": "packages/skills/src/gather-resource",
+                    "provides": ["skills.gather-resource.interface"],
+                    "requires": ["skill-runtime.skill-contract", "bot-runtime.action-executor"],
+                    "ownsState": [],
+                    "metrics": [
+                        "skills_gather-resource_errors_total",
+                        "skills_gather-resource_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#9-skills"],
+                    "milestone": 16,
+                    "template": "tpl.skill",
+                    "invariants": [
+                        "Progress is checkpointed after each collected drop.",
+                        "A missing target fails closed instead of repeating."
+                    ]
                 }
             ]
         },
@@ -4536,6 +4594,138 @@
                     "sourceRefs": ["main.md#1-fleet-coordinator"],
                     "milestone": 19,
                     "template": "tpl.bot-adapter"
+                },
+                {
+                    "id": "bot-runtime.behavior-trace",
+                    "name": "Behavior Trace",
+                    "responsibility": "Record structured decision, action, gaze, pause, chat, permission, and perception events.",
+                    "plannedPath": "apps/bot/src/behavior-trace",
+                    "provides": ["bot-runtime.behavior-trace.interface"],
+                    "requires": ["transport.message-schema-registry"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot-runtime_behavior-trace_errors_total",
+                        "bot-runtime_behavior-trace_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#15-testing-and-evaluation"],
+                    "milestone": 15,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Behavior traces are additive telemetry and never change decisions."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.human-mover",
+                    "name": "Human Mover",
+                    "responsibility": "Apply walk-first pacing, reaction delay, pauses, and scans around pathfinder travel.",
+                    "plannedPath": "apps/bot/src/human-mover",
+                    "provides": ["bot-runtime.human-mover.interface"],
+                    "requires": ["brains.humanization-policy", "brains.gaze-controller"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot-runtime_human-mover_errors_total",
+                        "bot-runtime_human-mover_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 15,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Non-urgent travel waits for a bounded reaction delay.",
+                        "Sprinting is limited to long open stretches."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.sightings-source",
+                    "name": "Sightings Source",
+                    "responsibility": "Refresh short-lived wood, stone, container, and bed sightings from the local bot view.",
+                    "plannedPath": "apps/bot/src/sightings-source",
+                    "provides": ["bot-runtime.sightings-source.interface"],
+                    "requires": ["brains.perception-filter", "perception.perception-rate-limiter"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot-runtime_sightings-source_errors_total",
+                        "bot-runtime_sightings-source_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 15,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Visibility refresh uses the shared perception rate limiter.",
+                        "Candidates outside the view cone or line of sight are ignored."
+                    ]
+                },
+                {
+                    "id": "bot-runtime.social-presence",
+                    "name": "Social Presence",
+                    "responsibility": "Handle incoming chat, apply delayed replies, look at the speaker, and trace social events.",
+                    "plannedPath": "apps/bot/src/chat/social-presence",
+                    "provides": ["bot-runtime.social-presence.interface"],
+                    "requires": ["bot-runtime.chat-adapter", "brains.humanization-policy"],
+                    "ownsState": [],
+                    "metrics": [
+                        "bot-runtime_social-presence_errors_total",
+                        "bot-runtime_social-presence_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Replies are delayed and rate-limited.",
+                        "Self-messages are ignored."
+                    ]
+                },
+                {
+                    "id": "bot.farm-permission",
+                    "name": "Farm Permission Service",
+                    "responsibility": "Preauthorize farm plots, issue bounded ownership inquiries, and consume single-cycle grants.",
+                    "plannedPath": "apps/bot/src/farming/farm-permission-service",
+                    "provides": ["bot.farm-permission.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "farm_permission_verdicts_total",
+                        "farm_permission_inquiries_total",
+                        "farm_permission_grants_total"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 17,
+                    "template": "tpl.bot-adapter",
+                    "invariants": [
+                        "Grants are single-cycle and expire.",
+                        "Silence is denial.",
+                        "Permission never unlocks containers or trading."
+                    ]
+                },
+                {
+                    "id": "bot.farm-plot-registry",
+                    "name": "Farm Plot Registry",
+                    "responsibility": "Track discovered farm plots, crop IDs, and seed items and expose them to farm skills and agency snapshots.",
+                    "plannedPath": "apps/bot/src/farming/farm-plot-registry",
+                    "provides": ["bot.farm-plot-registry.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": ["farm_plots_discovered_total"],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 17,
+                    "template": "tpl.state-repository",
+                    "invariants": [
+                        "Remembered plots are bounded.",
+                        "Quest farms remain observation-only until permitted."
+                    ]
+                },
+                {
+                    "id": "bot.visibility-source",
+                    "name": "Visibility and Sighting Source",
+                    "responsibility": "Report visible resources, beds, and nearby players within the configured visibility filter.",
+                    "plannedPath": "apps/bot/src/sightings-source",
+                    "provides": ["bot.visibility-source.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": ["visibility_raycasts_total", "player_sightings_total"],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 15,
+                    "template": "tpl.detector",
+                    "invariants": ["Sightings respect the view cone and line of sight."]
                 }
             ]
         },
@@ -5584,6 +5774,26 @@
                     "sourceRefs": ["main.md#15-testing-and-evaluation"],
                     "milestone": 19,
                     "template": "tpl.test-harness"
+                },
+                {
+                    "id": "eval.behavior-oddities",
+                    "name": "Behavior Oddity Detectors",
+                    "responsibility": "Detect zero-look interactions, instant turns, instant chat, and repeated identical actions in behavior traces.",
+                    "plannedPath": "packages/eval/src/behavior-assertions/oddities",
+                    "provides": ["eval.behavior-oddities.interface"],
+                    "requires": ["eval.behavior-assertions"],
+                    "ownsState": [],
+                    "metrics": [
+                        "eval_behavior-oddities_errors_total",
+                        "eval_behavior-oddities_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#15-testing-and-evaluation"],
+                    "milestone": 15,
+                    "template": "tpl.test-harness",
+                    "invariants": [
+                        "Detectors never mutate the trace.",
+                        "Every finding carries the trace index as evidence."
+                    ]
                 }
             ]
         },
@@ -5879,6 +6089,66 @@
                     "metrics": [
                         "brains_tactical_policy_errors_total",
                         "brains_tactical_policy_latency_ms"
+                    ]
+                },
+                {
+                    "id": "brains.gaze-controller",
+                    "name": "Gaze Controller",
+                    "responsibility": "Rate-limit yaw and pitch toward movement waypoints and interaction targets.",
+                    "plannedPath": "packages/brains/src/gaze-controller",
+                    "provides": ["brains.gaze-controller.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "brains_gaze-controller_errors_total",
+                        "brains_gaze-controller_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Yaw and pitch changes are rate-limited.",
+                        "Gaze never reverses direction instantly."
+                    ]
+                },
+                {
+                    "id": "brains.humanization-policy",
+                    "name": "Humanization Policy",
+                    "responsibility": "Provide personality-driven pacing, pauses, scans, chat delay, and sprint decisions.",
+                    "plannedPath": "packages/brains/src/humanization-policy",
+                    "provides": ["brains.humanization-policy.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "brains_humanization-policy_errors_total",
+                        "brains_humanization-policy_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Humanization is advisory pacing only and never overrides the guardian.",
+                        "Seeded randomness keeps simulated runs deterministic."
+                    ]
+                },
+                {
+                    "id": "brains.perception-filter",
+                    "name": "Perception Filter",
+                    "responsibility": "Filter perception candidates by view cone and line of sight and remember short-lived sightings.",
+                    "plannedPath": "packages/brains/src/perception-filter",
+                    "provides": ["brains.perception-filter.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "brains_perception-filter_errors_total",
+                        "brains_perception-filter_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#23-behavior-realism-and-early-game-progression"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Only visible candidates or remembered sightings are retained.",
+                        "Sightings expire after the configured TTL."
                     ]
                 }
             ]
@@ -6263,6 +6533,102 @@
                         "Reflection failure never blocks goal completion or abandonment."
                     ],
                     "metrics": ["agency_reflection_errors_total", "agency_reflection_latency_ms"]
+                },
+                {
+                    "id": "agency.deadline-policy",
+                    "name": "Goal Deadline Policy",
+                    "responsibility": "Assign per-kind intention deadlines and decide extension or abandonment at decision boundaries.",
+                    "plannedPath": "packages/agency/src/deadline-policy",
+                    "provides": ["agency.deadline-policy.interface"],
+                    "requires": [],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_deadline-policy_errors_total",
+                        "agency_deadline-policy_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#11-autonomy-loop-and-safety"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Deadlines are checked only at decision boundaries.",
+                        "A deadline extends at most once when progress advanced."
+                    ]
+                },
+                {
+                    "id": "agency.idle-life",
+                    "name": "Idle Life",
+                    "responsibility": "Select bounded, purposeful idle behavior from the current snapshot.",
+                    "plannedPath": "packages/agency/src/idle-life",
+                    "provides": ["agency.idle-life.interface"],
+                    "requires": ["agency.agency-state"],
+                    "ownsState": [],
+                    "metrics": ["agency_idle-life_errors_total", "agency_idle-life_latency_ms"],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 15,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Idle behavior is bounded and never replaces survival, night preparation, or an active project."
+                    ]
+                },
+                {
+                    "id": "agency.progression-plan",
+                    "name": "Progression Plan",
+                    "responsibility": "Own the immutable early-game milestone plan, attempts, blocked steps, and version migration.",
+                    "plannedPath": "packages/agency/src/progression-plan",
+                    "provides": ["agency.progression-plan.interface"],
+                    "requires": ["agency.working-memory"],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_progression-plan_errors_total",
+                        "agency_progression-plan_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 16,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Unknown plan versions restore to an empty plan and emit a migration trace.",
+                        "The plan is immutable and transitions return a new revision."
+                    ]
+                },
+                {
+                    "id": "agency.progression-planner",
+                    "name": "Progression Planner",
+                    "responsibility": "Expand the current milestone into concrete goals from inventory, snapshot, and recipe knowledge.",
+                    "plannedPath": "packages/agency/src/progression-planner",
+                    "provides": ["agency.progression-planner.interface"],
+                    "requires": [
+                        "agency.progression-plan",
+                        "agency.recipe-port",
+                        "agency.goal-catalog"
+                    ],
+                    "ownsState": [],
+                    "metrics": [
+                        "agency_progression-planner_errors_total",
+                        "agency_progression-planner_latency_ms"
+                    ],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 16,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "Satisfied milestones are skipped.",
+                        "Failed steps record attempts and pivot instead of abandoning the plan."
+                    ]
+                },
+                {
+                    "id": "agency.recipe-port",
+                    "name": "Recipe Port",
+                    "responsibility": "Expose craftability, ingredients, and station requirements to progression planning.",
+                    "plannedPath": "packages/agency/src/recipe-port",
+                    "provides": ["agency.recipe-port.interface"],
+                    "requires": ["agency.progression-plan"],
+                    "ownsState": [],
+                    "metrics": ["agency_recipe-port_errors_total", "agency_recipe-port_latency_ms"],
+                    "sourceRefs": ["main.md#20-agency-and-motivation"],
+                    "milestone": 16,
+                    "template": "tpl.brain",
+                    "invariants": [
+                        "The recipe port is injected at composition and never reached for inside domain code."
+                    ]
                 }
             ]
         },
@@ -14385,6 +14751,253 @@
             "failureBehavior": "Fail the scenario with assertion or inspection evidence.",
             "notes": "Evaluation-only dependency.",
             "explicit": true
+        },
+        {
+            "id": "rel.0612",
+            "from": "agency.deadline-policy",
+            "to": "agency.intention-manager",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Intention Manager",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Goal Deadline Policy depends on Intention Manager.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0613",
+            "from": "agency.idle-life",
+            "to": "agency.goal-generator",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Goal Generator",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Idle Life depends on Goal Generator.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0614",
+            "from": "brains.gaze-controller",
+            "to": "bot-runtime.action-executor",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Action Executor",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gaze Controller depends on Action Executor.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0615",
+            "from": "brains.humanization-policy",
+            "to": "bot-runtime.human-mover",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Human Mover",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Humanization Policy depends on Human Mover.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0616",
+            "from": "brains.perception-filter",
+            "to": "bot-runtime.sightings-source",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Sightings Source",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Perception Filter depends on Sightings Source.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0617",
+            "from": "bot-runtime.behavior-trace",
+            "to": "transport.message-schema-registry",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Message Schema Registry",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Behavior Trace depends on Message Schema Registry.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0618",
+            "from": "bot-runtime.human-mover",
+            "to": "bot-runtime.behavior-trace",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Behavior Trace",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Human Mover depends on Behavior Trace.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0619",
+            "from": "bot-runtime.sightings-source",
+            "to": "bot-runtime.world-cache-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for World Cache Adapter",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Sightings Source depends on World Cache Adapter.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0620",
+            "from": "bot-runtime.social-presence",
+            "to": "bot-runtime.chat-adapter",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Chat Adapter",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Social Presence depends on Chat Adapter.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0621",
+            "from": "eval.behavior-oddities",
+            "to": "eval.behavior-assertions",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Behavior Assertions",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Behavior Oddity Detectors depends on Behavior Assertions.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0622",
+            "from": "agency.progression-plan",
+            "to": "agency.working-memory",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Working Memory",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Progression Plan depends on Working Memory.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0623",
+            "from": "agency.progression-planner",
+            "to": "agency.progression-plan",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Progression Plan",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Progression Planner depends on Progression Plan.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0624",
+            "from": "agency.recipe-port",
+            "to": "agency.progression-plan",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Progression Plan",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Recipe Port depends on Progression Plan.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0625",
+            "from": "skills.gather-resource",
+            "to": "skill-runtime.skill-contract",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Skill Contract",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Gather Resource depends on Skill Contract.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0626",
+            "from": "world.plot-ownership",
+            "to": "world.landmark-registry",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "depends on payload for Landmark Registry",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Plot Ownership and Farm Permission depends on Landmark Registry.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0627",
+            "from": "perception.village-scanner",
+            "to": "perception.farm-detector",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "uses farm observations",
+            "sync": true,
+            "criticality": "soft",
+            "failureBehavior": "Fall back to deterministic policy or the last good plan and record the downgrade.",
+            "notes": "Village scanning consumes farm observations.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0628",
+            "from": "bot.farm-permission",
+            "to": "bot-runtime.event-bridge",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "consumes sender-aware chat",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "Farm permission consumes sender-aware chat events.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0629",
+            "from": "bot.farm-permission",
+            "to": "bot.farm-plot-registry",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "uses discovered farm plots",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "bot.farm-permission depends on bot.farm-plot-registry.",
+            "explicit": false
+        },
+        {
+            "id": "rel.0630",
+            "from": "bot.visibility-source",
+            "to": "bot-runtime.perception-host",
+            "type": "depends_on",
+            "protocol": "in-process",
+            "payload": "uses discovered farm plots",
+            "sync": true,
+            "criticality": "hard",
+            "failureBehavior": "Reject the operation, keep the last committed state, and surface a typed error to the caller.",
+            "notes": "bot.visibility-source depends on bot-runtime.perception-host.",
+            "explicit": false
         }
     ]
 }

@@ -6,8 +6,8 @@
 **Version:** 1.3.0  
 **Source:** `main.md`  
 **Systems:** 24  
-**Components:** 304  
-**Relations:** 608  
+**Components:** 323  
+**Relations:** 627  
 **Externals:** 5
 
 ## Reading this catalog
@@ -25,22 +25,22 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `sys.claims` | [Claims and Leases](#claims-and-leases) | 9 | `apps/coordinator/src/claims` | 5 |
 | `sys.grants` | [Edit Grants and Collaboration](#edit-grants-and-collaboration) | 9 | `apps/coordinator/src/grants` | 5 |
 | `sys.bots` | [Bot Registry and Profiles](#bot-registry-and-profiles) | 10 | `apps/coordinator/src/bots` | 5 |
-| `sys.world` | [World Model and Landmarks](#world-model-and-landmarks) | 11 | `packages/worldmodel/src` | 3 |
-| `sys.perception` | [Perception](#perception) | 11 | `packages/perception/src` | 3 |
+| `sys.world` | [World Model and Landmarks](#world-model-and-landmarks) | 12 | `packages/worldmodel/src` | 3 |
+| `sys.perception` | [Perception](#perception) | 12 | `packages/perception/src` | 3 |
 | `sys.decision` | [Laya Decision Service](#laya-decision-service) | 12 | `apps/coordinator/src/decision` | 8 |
 | `sys.planner` | [Cloud Planner Advisor](#cloud-planner-advisor) | 13 | `packages/planning/src` | 9 |
 | `sys.skill-runtime` | [Skill Runtime](#skill-runtime) | 10 | `packages/skills/src` | 4 |
-| `sys.skills` | [Skill Library](#skill-library) | 28 | `packages/skills/src` | 4 |
+| `sys.skills` | [Skill Library](#skill-library) | 29 | `packages/skills/src` | 4 |
 | `sys.building` | [Building](#building) | 38 | `packages/building/src` | 6 |
-| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 24 | `apps/bot/src` | 1 |
+| `sys.bot-runtime` | [Bot Runtime and Mineflayer Adapter](#bot-runtime-and-mineflayer-adapter) | 31 | `apps/bot/src` | 1 |
 | `sys.safety` | [Autonomy and Safety](#autonomy-and-safety) | 14 | `packages/safety/src` | 4 |
 | `sys.memory` | [Memory and Persistence](#memory-and-persistence) | 10 | `packages/memory/src` | 1 |
 | `sys.ops` | [Ops and Observability](#ops-and-observability) | 10 | `apps/coordinator/src/ops` | 11 |
 | `sys.config` | [Config and Profiles](#config-and-profiles) | 8 | `packages/core/src/config` | 1 |
-| `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 13 | `packages/eval/src` | 10 |
+| `sys.eval` | [Testing and Evaluation](#testing-and-evaluation) | 14 | `packages/eval/src` | 10 |
 | `sys.training` | [Laya Training](#laya-training) | 7 | `tools/laya-train` | 10 |
-| `sys.brains` | [Brains](#brains) | 5 | `packages/brains/src` | 4 |
-| `sys.agency` | [Agency](#agency) | 18 | `packages/agency/src` | 12 |
+| `sys.brains` | [Brains](#brains) | 8 | `packages/brains/src` | 4 |
+| `sys.agency` | [Agency](#agency) | 23 | `packages/agency/src` | 12 |
 | `sys.toolchain` | [Bootstrap and Toolchain](#bootstrap-and-toolchain) | 5 | `tools` | 1 |
 
 ## Coordinator Runtime
@@ -1638,6 +1638,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `world.spatial-query-engine` | Spatial Query Engine | Answer nearest, inside-base, route, protected, container, and ownership queries. | `packages/worldmodel/src/spatial-query-engine` | 3 |
 | `world.container-memory` | Container Memory | Track observed container positions, roles, and contents snapshots. | `packages/worldmodel/src/container-memory` | 3 |
 | `world.world-reconciler` | World Reconciler | Compare observed state with intended state and emit deviation findings. | `packages/worldmodel/src/world-reconciler` | 3 |
+| `world.plot-ownership` | Plot Ownership and Farm Permission | Resolve farm plot ownership and decide harvest permission from claims, nearby bases, linked players, and confidence. | `packages/worldmodel/src/ownership` | 17 |
 
 ### `world.observation-ingestor` — Observation Ingestor
 
@@ -1857,6 +1858,27 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `world_world_reconciler_errors_total`
   - `world_world_reconciler_latency_ms`
 
+### `world.plot-ownership` — Plot Ownership and Farm Permission
+
+- **Responsibility:** Resolve farm plot ownership and decide harvest permission from claims, nearby bases, linked players, and confidence.
+- **Owner path:** `packages/worldmodel/src/ownership`
+- **Provides:** `world.plot-ownership.interface`
+- **Requires:** `world.landmark-registry`
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 17
+- **Invariants:**
+  - A known different owner always overrides chat permission.
+  - Unlinked or low-confidence players never grant access.
+  - Ambiguous owners never become a guess.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `world_plot_ownership_errors_total`
+  - `world_plot_ownership_latency_ms`
+
 ---
 
 ## Perception
@@ -1890,6 +1912,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `perception.detector-pipeline` | Detector Pipeline | Run detectors in a bounded order and merge candidates without duplicate landmarks. | `packages/perception/src/detector-pipeline` | 3 |
 | `perception.landmark-candidate-emitter` | Landmark Candidate Emitter | Emit deduplicated landmark candidates with confidence and evidence. | `packages/perception/src/landmark-candidate-emitter` | 3 |
 | `perception.perception-rate-limiter` | Perception Rate Limiter | Cap sampling and detector work per bot according to hardware profile. | `packages/perception/src/perception-rate-limiter` | 3 |
+| `perception.village-scanner` | Village Scanner | Cluster villagers and nearby beds, doors, workstations, and farmland into village candidates. | `packages/perception/src/village-scanner` | 17 |
 
 ### `perception.ring-sampler` — Ring Sampler
 
@@ -2110,6 +2133,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `perception_perception_rate_limiter_errors_total`
   - `perception_perception_rate_limiter_latency_ms`
+
+### `perception.village-scanner` — Village Scanner
+
+- **Responsibility:** Cluster villagers and nearby beds, doors, workstations, and farmland into village candidates.
+- **Owner path:** `packages/perception/src/village-scanner`
+- **Provides:** `perception.village-scanner.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 17
+- **Invariants:**
+  - Village detection never grants permission.
+  - Village detection never opens containers or trades.
+- **Failure modes:**
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
+- **Tests:**
+  - Fixture-based detector precision and recall checks.
+- **Metrics:**
+  - `village_candidates_total`
+  - `village_scan_errors_total`
 
 ---
 
@@ -2961,6 +3004,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `skills.place-bed` | Place Bed | Move to the target cell and place a carried bed with support-safe placement. | `packages/skills/src/place-bed` | 18 |
 | `skills.dig-shelter` | Dig Shelter | Dig a sealed two-block pocket, wait out the night, then unseal and refill it. | `packages/skills/src/dig-shelter` | 18 |
 | `skills.shared-utilities` | Skill Shared Utilities | Provide target selection, inventory math, reach checks, and progress helpers. | `packages/skills/src/shared-utilities` | 4 |
+| `skills.gather-resource` | Gather Resource | Mine multiple matching resource blocks, collect drops, and checkpoint progress. | `packages/skills/src/gather-resource` | 16 |
 
 ### `skills.navigate` — Navigate
 
@@ -3517,6 +3561,26 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `skills_shared_utilities_errors_total`
   - `skills_shared_utilities_latency_ms`
+
+### `skills.gather-resource` — Gather Resource
+
+- **Responsibility:** Mine multiple matching resource blocks, collect drops, and checkpoint progress.
+- **Owner path:** `packages/skills/src/gather-resource`
+- **Provides:** `skills.gather-resource.interface`
+- **Requires:** `skill-runtime.skill-contract`, `bot-runtime.action-executor`
+- **Owns state:** none
+- **Source refs:** `main.md#9-skills`
+- **Milestone:** 16
+- **Invariants:**
+  - Progress is checkpointed after each collected drop.
+  - A missing target fails closed instead of repeating.
+- **Failure modes:**
+  - Precondition loss or blocked path: cancel cleanly and report the failure class.
+- **Tests:**
+  - Happy path, blocked path, and checkpoint-resume fixtures.
+- **Metrics:**
+  - `skills_gather-resource_errors_total`
+  - `skills_gather-resource_latency_ms`
 
 ---
 
@@ -4383,6 +4447,13 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `bot-runtime.agency-state-adapter` | Agency State Adapter | Load and persist agency snapshots through coordinator state and reconcile intention with the observed world. | `apps/bot/src/agency-state-adapter` | 12 |
 | `bot-runtime.reconnect-supervisor` | Reconnect Supervisor | Reconnect after disconnect and trigger delta resync and resume. | `apps/bot/src/reconnect-supervisor` | 1 |
 | `bot-runtime.headless-runtime` | Headless Bot Runtime | Compose the real agency, skill, building, guardian, task, and transport code against injected platform ports without Mineflayer. | `apps/bot/src/headless` | 19 |
+| `bot-runtime.behavior-trace` | Behavior Trace | Record structured decision, action, gaze, pause, chat, permission, and perception events. | `apps/bot/src/behavior-trace` | 15 |
+| `bot-runtime.human-mover` | Human Mover | Apply walk-first pacing, reaction delay, pauses, and scans around pathfinder travel. | `apps/bot/src/human-mover` | 15 |
+| `bot-runtime.sightings-source` | Sightings Source | Refresh short-lived wood, stone, container, and bed sightings from the local bot view. | `apps/bot/src/sightings-source` | 15 |
+| `bot-runtime.social-presence` | Social Presence | Handle incoming chat, apply delayed replies, look at the speaker, and trace social events. | `apps/bot/src/chat/social-presence` | 15 |
+| `bot.farm-permission` | Farm Permission Service | Preauthorize farm plots, issue bounded ownership inquiries, and consume single-cycle grants. | `apps/bot/src/farming/farm-permission-service` | 17 |
+| `bot.farm-plot-registry` | Farm Plot Registry | Track discovered farm plots, crop IDs, and seed items and expose them to farm skills and agency snapshots. | `apps/bot/src/farming/farm-plot-registry` | 17 |
+| `bot.visibility-source` | Visibility and Sighting Source | Report visible resources, beds, and nearby players within the configured visibility filter. | `apps/bot/src/sightings-source` | 15 |
 
 ### `bot-runtime.connection-lifecycle` — Connection Lifecycle
 
@@ -4864,6 +4935,145 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `bot_runtime_headless_runtime_errors_total`
   - `bot_runtime_headless_runtime_latency_ms`
+
+### `bot-runtime.behavior-trace` — Behavior Trace
+
+- **Responsibility:** Record structured decision, action, gaze, pause, chat, permission, and perception events.
+- **Owner path:** `apps/bot/src/behavior-trace`
+- **Provides:** `bot-runtime.behavior-trace.interface`
+- **Requires:** `transport.message-schema-registry`
+- **Owns state:** none
+- **Source refs:** `main.md#15-testing-and-evaluation`
+- **Milestone:** 15
+- **Invariants:**
+  - Behavior traces are additive telemetry and never change decisions.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot-runtime_behavior-trace_errors_total`
+  - `bot-runtime_behavior-trace_latency_ms`
+
+### `bot-runtime.human-mover` — Human Mover
+
+- **Responsibility:** Apply walk-first pacing, reaction delay, pauses, and scans around pathfinder travel.
+- **Owner path:** `apps/bot/src/human-mover`
+- **Provides:** `bot-runtime.human-mover.interface`
+- **Requires:** `brains.humanization-policy`, `brains.gaze-controller`
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 15
+- **Invariants:**
+  - Non-urgent travel waits for a bounded reaction delay.
+  - Sprinting is limited to long open stretches.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot-runtime_human-mover_errors_total`
+  - `bot-runtime_human-mover_latency_ms`
+
+### `bot-runtime.sightings-source` — Sightings Source
+
+- **Responsibility:** Refresh short-lived wood, stone, container, and bed sightings from the local bot view.
+- **Owner path:** `apps/bot/src/sightings-source`
+- **Provides:** `bot-runtime.sightings-source.interface`
+- **Requires:** `brains.perception-filter`, `perception.perception-rate-limiter`
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 15
+- **Invariants:**
+  - Visibility refresh uses the shared perception rate limiter.
+  - Candidates outside the view cone or line of sight are ignored.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot-runtime_sightings-source_errors_total`
+  - `bot-runtime_sightings-source_latency_ms`
+
+### `bot-runtime.social-presence` — Social Presence
+
+- **Responsibility:** Handle incoming chat, apply delayed replies, look at the speaker, and trace social events.
+- **Owner path:** `apps/bot/src/chat/social-presence`
+- **Provides:** `bot-runtime.social-presence.interface`
+- **Requires:** `bot-runtime.chat-adapter`, `brains.humanization-policy`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - Replies are delayed and rate-limited.
+  - Self-messages are ignored.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `bot-runtime_social-presence_errors_total`
+  - `bot-runtime_social-presence_latency_ms`
+
+### `bot.farm-permission` — Farm Permission Service
+
+- **Responsibility:** Preauthorize farm plots, issue bounded ownership inquiries, and consume single-cycle grants.
+- **Owner path:** `apps/bot/src/farming/farm-permission-service`
+- **Provides:** `bot.farm-permission.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 17
+- **Invariants:**
+  - Grants are single-cycle and expire.
+  - Silence is denial.
+  - Permission never unlocks containers or trading.
+- **Failure modes:**
+  - Disconnect or blocked action: stop the skill and reconnect with backoff.
+- **Tests:**
+  - Adapter contract tests with mocked mineflayer and rate-limit cases.
+- **Metrics:**
+  - `farm_permission_verdicts_total`
+  - `farm_permission_inquiries_total`
+  - `farm_permission_grants_total`
+
+### `bot.farm-plot-registry` — Farm Plot Registry
+
+- **Responsibility:** Track discovered farm plots, crop IDs, and seed items and expose them to farm skills and agency snapshots.
+- **Owner path:** `apps/bot/src/farming/farm-plot-registry`
+- **Provides:** `bot.farm-plot-registry.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 17
+- **Invariants:**
+  - Remembered plots are bounded.
+  - Quest farms remain observation-only until permitted.
+- **Failure modes:**
+  - Storage failure: abort the transaction, leave prior state intact, and return a typed repository error.
+- **Tests:**
+  - Repository contract test with rollback, concurrency, and stale-read cases.
+- **Metrics:**
+  - `farm_plots_discovered_total`
+
+### `bot.visibility-source` — Visibility and Sighting Source
+
+- **Responsibility:** Report visible resources, beds, and nearby players within the configured visibility filter.
+- **Owner path:** `apps/bot/src/sightings-source`
+- **Provides:** `bot.visibility-source.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 15
+- **Invariants:**
+  - Sightings respect the view cone and line of sight.
+- **Failure modes:**
+  - Insufficient evidence: emit nothing rather than a low-confidence landmark.
+- **Tests:**
+  - Fixture-based detector precision and recall checks.
+- **Metrics:**
+  - `visibility_raycasts_total`
+  - `player_sightings_total`
 
 ---
 
@@ -5865,6 +6075,7 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `eval.simulation-harness` | Simulation Harness | Run deterministic offline behavior scenarios with a fake world, inventory, clock, and action dispatch while exercising real runtime code. | `packages/eval/src/simulation-harness` | 19 |
 | `eval.behavior-assertions` | Behavior Assertions | Evaluate declarative world, task, event, metric, safety, and checkpoint assertions over scenario evidence. | `packages/eval/src/behavior-assertions` | 19 |
 | `eval.trace-inspector` | Trace Inspector | Normalize, filter, and render per-bot goal, planner, skill, safety, and building decisions. | `packages/eval/src/trace-inspector` | 19 |
+| `eval.behavior-oddities` | Behavior Oddity Detectors | Detect zero-look interactions, instant turns, instant chat, and repeated identical actions in behavior traces. | `packages/eval/src/behavior-assertions/oddities` | 15 |
 
 ### `eval.unit-fixtures` — Unit Fixtures
 
@@ -6125,6 +6336,26 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `eval_trace_inspector_errors_total`
   - `eval_trace_inspector_latency_ms`
 
+### `eval.behavior-oddities` — Behavior Oddity Detectors
+
+- **Responsibility:** Detect zero-look interactions, instant turns, instant chat, and repeated identical actions in behavior traces.
+- **Owner path:** `packages/eval/src/behavior-assertions/oddities`
+- **Provides:** `eval.behavior-oddities.interface`
+- **Requires:** `eval.behavior-assertions`
+- **Owns state:** none
+- **Source refs:** `main.md#15-testing-and-evaluation`
+- **Milestone:** 15
+- **Invariants:**
+  - Detectors never mutate the trace.
+  - Every finding carries the trace index as evidence.
+- **Failure modes:**
+  - Environment unavailable: skip with an explicit reason; never pass silently.
+- **Tests:**
+  - Self-tests for fixture setup and metric reporting.
+- **Metrics:**
+  - `eval_behavior-oddities_errors_total`
+  - `eval_behavior-oddities_latency_ms`
+
 ---
 
 ## Laya Training
@@ -6321,6 +6552,9 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `brains.deterministic-policy` | Deterministic Policy | Choose a legal action from utility scores when Laya is unavailable, late, or low-confidence. | `packages/brains/src/deterministic-policy` | 4 |
 | `brains.laya-client` | Laya Client | Submit decision requests to the coordinator Laya service and apply typed responses with timeout fallback. | `packages/brains/src/laya-client` | 8 |
 | `brains.tactical-policy` | Tactical Decision Policy | Enforce tactical Laya enablement, profile mode, deadlines, rate limits, single-affordance skip, and circuit breaking. | `packages/brains/src/tactical-policy` | 8 |
+| `brains.gaze-controller` | Gaze Controller | Rate-limit yaw and pitch toward movement waypoints and interaction targets. | `packages/brains/src/gaze-controller` | 15 |
+| `brains.humanization-policy` | Humanization Policy | Provide personality-driven pacing, pauses, scans, chat delay, and sprint decisions. | `packages/brains/src/humanization-policy` | 15 |
+| `brains.perception-filter` | Perception Filter | Filter perception candidates by view cone and line of sight and remember short-lived sightings. | `packages/brains/src/perception-filter` | 15 |
 
 ### `brains.reflex-guardian-loop` — Reflex Guardian Loop
 
@@ -6419,6 +6653,66 @@ A component is the smallest owned implementation boundary in this architecture. 
   - `brains_tactical_policy_errors_total`
   - `brains_tactical_policy_latency_ms`
 
+### `brains.gaze-controller` — Gaze Controller
+
+- **Responsibility:** Rate-limit yaw and pitch toward movement waypoints and interaction targets.
+- **Owner path:** `packages/brains/src/gaze-controller`
+- **Provides:** `brains.gaze-controller.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 15
+- **Invariants:**
+  - Yaw and pitch changes are rate-limited.
+  - Gaze never reverses direction instantly.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `brains_gaze-controller_errors_total`
+  - `brains_gaze-controller_latency_ms`
+
+### `brains.humanization-policy` — Humanization Policy
+
+- **Responsibility:** Provide personality-driven pacing, pauses, scans, chat delay, and sprint decisions.
+- **Owner path:** `packages/brains/src/humanization-policy`
+- **Provides:** `brains.humanization-policy.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 15
+- **Invariants:**
+  - Humanization is advisory pacing only and never overrides the guardian.
+  - Seeded randomness keeps simulated runs deterministic.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `brains_humanization-policy_errors_total`
+  - `brains_humanization-policy_latency_ms`
+
+### `brains.perception-filter` — Perception Filter
+
+- **Responsibility:** Filter perception candidates by view cone and line of sight and remember short-lived sightings.
+- **Owner path:** `packages/brains/src/perception-filter`
+- **Provides:** `brains.perception-filter.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#23-behavior-realism-and-early-game-progression`
+- **Milestone:** 15
+- **Invariants:**
+  - Only visible candidates or remembered sightings are retained.
+  - Sightings expire after the configured TTL.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `brains_perception-filter_errors_total`
+  - `brains_perception-filter_latency_ms`
+
 ---
 
 ## Agency
@@ -6460,6 +6754,11 @@ A component is the smallest owned implementation boundary in this architecture. 
 | `agency.agency-state` | Agency State | Aggregate personality, needs, intention, routine, home, mood, working memory, and deliberation status into one snapshot. | `packages/agency/src/agency-state` | 12 |
 | `agency.strategic-intent` | Strategic Intent Policy | Apply validated fleet and per-bot strategic priorities and constraints to goal generation and tactical context. | `packages/agency/src/strategic-intent` | 12 |
 | `agency.reflection` | Reflection | Turn goal completion and abandonment into mood, bounded personality trait changes, and recent experience. | `packages/agency/src/reflection` | 12 |
+| `agency.deadline-policy` | Goal Deadline Policy | Assign per-kind intention deadlines and decide extension or abandonment at decision boundaries. | `packages/agency/src/deadline-policy` | 15 |
+| `agency.idle-life` | Idle Life | Select bounded, purposeful idle behavior from the current snapshot. | `packages/agency/src/idle-life` | 15 |
+| `agency.progression-plan` | Progression Plan | Own the immutable early-game milestone plan, attempts, blocked steps, and version migration. | `packages/agency/src/progression-plan` | 16 |
+| `agency.progression-planner` | Progression Planner | Expand the current milestone into concrete goals from inventory, snapshot, and recipe knowledge. | `packages/agency/src/progression-planner` | 16 |
+| `agency.recipe-port` | Recipe Port | Expose craftability, ingredients, and station requirements to progression planning. | `packages/agency/src/recipe-port` | 16 |
 
 ### `agency.personality-model` — Personality Model
 
@@ -6818,6 +7117,104 @@ A component is the smallest owned implementation boundary in this architecture. 
 - **Metrics:**
   - `agency_reflection_errors_total`
   - `agency_reflection_latency_ms`
+
+### `agency.deadline-policy` — Goal Deadline Policy
+
+- **Responsibility:** Assign per-kind intention deadlines and decide extension or abandonment at decision boundaries.
+- **Owner path:** `packages/agency/src/deadline-policy`
+- **Provides:** `agency.deadline-policy.interface`
+- **Requires:** none
+- **Owns state:** none
+- **Source refs:** `main.md#11-autonomy-loop-and-safety`
+- **Milestone:** 15
+- **Invariants:**
+  - Deadlines are checked only at decision boundaries.
+  - A deadline extends at most once when progress advanced.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_deadline-policy_errors_total`
+  - `agency_deadline-policy_latency_ms`
+
+### `agency.idle-life` — Idle Life
+
+- **Responsibility:** Select bounded, purposeful idle behavior from the current snapshot.
+- **Owner path:** `packages/agency/src/idle-life`
+- **Provides:** `agency.idle-life.interface`
+- **Requires:** `agency.agency-state`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 15
+- **Invariants:**
+  - Idle behavior is bounded and never replaces survival, night preparation, or an active project.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_idle-life_errors_total`
+  - `agency_idle-life_latency_ms`
+
+### `agency.progression-plan` — Progression Plan
+
+- **Responsibility:** Own the immutable early-game milestone plan, attempts, blocked steps, and version migration.
+- **Owner path:** `packages/agency/src/progression-plan`
+- **Provides:** `agency.progression-plan.interface`
+- **Requires:** `agency.working-memory`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 16
+- **Invariants:**
+  - Unknown plan versions restore to an empty plan and emit a migration trace.
+  - The plan is immutable and transitions return a new revision.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_progression-plan_errors_total`
+  - `agency_progression-plan_latency_ms`
+
+### `agency.progression-planner` — Progression Planner
+
+- **Responsibility:** Expand the current milestone into concrete goals from inventory, snapshot, and recipe knowledge.
+- **Owner path:** `packages/agency/src/progression-planner`
+- **Provides:** `agency.progression-planner.interface`
+- **Requires:** `agency.progression-plan`, `agency.recipe-port`, `agency.goal-catalog`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 16
+- **Invariants:**
+  - Satisfied milestones are skipped.
+  - Failed steps record attempts and pivot instead of abandoning the plan.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_progression-planner_errors_total`
+  - `agency_progression-planner_latency_ms`
+
+### `agency.recipe-port` — Recipe Port
+
+- **Responsibility:** Expose craftability, ingredients, and station requirements to progression planning.
+- **Owner path:** `packages/agency/src/recipe-port`
+- **Provides:** `agency.recipe-port.interface`
+- **Requires:** `agency.progression-plan`
+- **Owns state:** none
+- **Source refs:** `main.md#20-agency-and-motivation`
+- **Milestone:** 16
+- **Invariants:**
+  - The recipe port is injected at composition and never reached for inside domain code.
+- **Failure modes:**
+  - Model or profile unavailable: use the deterministic utility policy and record the downgrade.
+- **Tests:**
+  - Affordance enumeration, utility fallback, and Laya-client timeout tests.
+- **Metrics:**
+  - `agency_recipe-port_errors_total`
+  - `agency_recipe-port_latency_ms`
 
 ---
 

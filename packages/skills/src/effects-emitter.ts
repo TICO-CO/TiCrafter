@@ -6,6 +6,7 @@ const SUPPORTED_EFFECTS = new Set<ActionRequest['kind']>([
     'break-block',
     'place-block',
     'use-block',
+    'look-at',
     'attack',
     'equip',
     'consume',

@@ -1,8 +1,11 @@
+import { GazeController } from '@ticrafter/brains';
 import type { ActionOutcome } from '@ticrafter/core';
 import { describe, expect, it } from 'bun:test';
 import type { Bot } from 'mineflayer';
+import type { Movements } from 'mineflayer-pathfinder';
 import { Vec3 } from 'vec3';
 
+import { type BehaviorTraceEntry, BehaviorTraceRecorder } from './behavior-trace.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { ReachRateGuard } from './reach-rate-guard.js';
 
@@ -36,6 +39,7 @@ interface FakeBotState {
     placedFace: Vec3 | null;
     placedProperties: Record<string, string>;
     lookYaw: number | null;
+    lookCalls: number;
     blocks: Map<string, FakeBlock>;
     equippedItem: FakeItem | null;
     activatedBlock: { name: string } | null;
@@ -65,6 +69,7 @@ function createFakeBot(): FakeBotState {
         placedFace: null,
         placedProperties: {},
         lookYaw: null,
+        lookCalls: 0,
         blocks: new Map(),
         equippedItem: null,
         activatedBlock: null,
@@ -149,6 +154,7 @@ function createFakeBot(): FakeBotState {
         },
         look: async (yaw: number) => {
             state.lookYaw = yaw;
+            state.lookCalls += 1;
         },
         activateBlock: async (block: { name: string }) => {
             state.activatedBlock = block;
@@ -199,6 +205,33 @@ async function waitForOutcome(
 }
 
 describe('mineflayer action executor', () => {
+    it('disables navigation digging, towering, and scaffold blocks', () => {
+        const state = createFakeBot();
+        const movements = {
+            allowSprinting: false,
+            allowParkour: false,
+            allow1by1towers: true,
+            canDig: true,
+            scafoldingBlocks: [1],
+        };
+        const executor = new MineflayerActionExecutor(
+            state.bot,
+            logger,
+            undefined,
+            null,
+            () => movements as unknown as Movements,
+        );
+
+        const [, installError] = executor.install();
+
+        expect(installError).toBeNull();
+        expect(movements.allowSprinting).toBe(true);
+        expect(movements.allowParkour).toBe(true);
+        expect(movements.allow1by1towers).toBe(false);
+        expect(movements.canDig).toBe(false);
+        expect(movements.scafoldingBlocks).toEqual([]);
+    });
+
     it('uses an explicit placement reference and face', async () => {
         const state = createFakeBot();
         const executor = new MineflayerActionExecutor(state.bot, logger);
@@ -281,6 +314,52 @@ describe('mineflayer action executor', () => {
         const outcome = await waitForOutcome(executor, handle);
         expect(outcome?.status).toBe('failed');
         expect(outcome?.message?.includes('exceeds reach')).toBe(true);
+    });
+
+    it('looks at an interaction target before acting', async () => {
+        const state = createFakeBot();
+        const traces: BehaviorTraceEntry[] = [];
+        let now = 0;
+        const executor = new MineflayerActionExecutor(
+            state.bot,
+            logger,
+            undefined,
+            null,
+            undefined,
+            {
+                gaze: new GazeController({ yaw: 0, pitch: 0 }),
+                trace: new BehaviorTraceRecorder('bot.test', (entry) => traces.push(entry)),
+                now: () => {
+                    now += 50;
+                    return now;
+                },
+                sleep: async () => undefined,
+            },
+        );
+        const [handle] = executor.dispatch({
+            kind: 'use-block',
+            position: { x: 4, y: 64, z: 0 },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.lookCalls > 0).toBe(true);
+        expect(traces.some((entry) => entry.kind === 'gaze')).toBe(true);
+    });
+
+    it('supports an explicit look-at action', async () => {
+        const state = createFakeBot();
+        const executor = new MineflayerActionExecutor(state.bot, logger);
+        const [handle] = executor.dispatch({
+            kind: 'look-at',
+            position: { x: 8, y: 64, z: 0 },
+        });
+        if (handle === null) return;
+
+        const outcome = await waitForOutcome(executor, handle);
+        expect(outcome?.status).toBe('completed');
+        expect(state.lookCalls).toBe(1);
     });
 
     it('equips items before using blocks', async () => {

@@ -15,6 +15,9 @@ const context = {
         },
     ],
     vetoes: [],
+    inventory: [],
+    behavior: [],
+    metrics: {},
 };
 
 describe('AssertionEngine', () => {

@@ -1,10 +1,28 @@
-import { AgencyState, PersonalityModel, StrategicIntentPolicy } from '@ticrafter/agency';
-import { DeterministicPolicy, LayaClient, TacticalDecisionPolicy } from '@ticrafter/brains';
+import {
+    AgencyState,
+    NeedsModel,
+    PersonalityModel,
+    ProgressionPlanner,
+    RoutineModel,
+    SocialEngine,
+    StaticRecipePort,
+    StrategicIntentPolicy,
+} from '@ticrafter/agency';
+import {
+    DeterministicPolicy,
+    GazeController,
+    HumanizationPolicy,
+    LayaClient,
+    SeededRandomSource,
+    TacticalDecisionPolicy,
+} from '@ticrafter/brains';
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
     BOT_AUTONOMY_PAUSE,
     BOT_AUTONOMY_RESUME,
+    BOT_PERMISSION_OUTCOME_EVENT,
+    BOT_PLAYER_SIGHTING_EVENT,
     BOT_SAFETY_RESUME,
     BOT_SAFETY_STOP,
     BOT_SKILL_CANCEL,
@@ -24,6 +42,7 @@ import {
     PLANNER_STRATEGIC_INTENT_EVENT,
     plannerStrategicIntentEventSchema,
     type Result,
+    type SessionResume,
     SKILL_PROGRESS_EVENT,
     type TicrafterConfig,
 } from '@ticrafter/core';
@@ -33,10 +52,14 @@ import {
     type SkillCheckpointStore,
     type SkillInput,
     type SkillProgressSink,
+    type SkillServices,
 } from '@ticrafter/skills';
 
+import { ChatAdapter, SocialPresence } from '../chat/index.js';
+import { BehavioralDispatch } from '../index.js';
 import { ActionExecutor } from '../index.js';
-import { AgencyRuntime } from '../index.js';
+import { BehaviorTraceRecorder } from '../index.js';
+import { AgencyRuntime, type AgencyRuntimeConfig } from '../index.js';
 import { type AgencyHomeSnapshot } from '../index.js';
 import { AgencyStateAdapter } from '../index.js';
 import { BlueprintFetchClient } from '../index.js';
@@ -47,7 +70,9 @@ import { ConstructionPlanFetchClient } from '../index.js';
 import { GuardianHook } from '../index.js';
 import { SkillHost } from '../index.js';
 import { TaskAutonomy } from '../index.js';
+import { PlotOwnershipClient } from '../index.js';
 import { BotTransportClient } from '../transport/index.js';
+import { PlayerSightingReporter, VillageRuntime } from '../village/index.js';
 import type { BotPlatformPorts } from './ports.js';
 import { HeadlessAgencySnapshotSource, HeadlessSkillContextSource } from './sources.js';
 
@@ -62,6 +87,8 @@ export interface HeadlessBotRuntimeOptions {
     dataDirectory: string;
     ports: BotPlatformPorts;
     checkpointStore?: SkillCheckpointStore;
+    traits?: Readonly<Record<string, number>>;
+    needs?: Readonly<Record<string, number>>;
 }
 
 export class HeadlessBotRuntime {
@@ -75,10 +102,20 @@ export class HeadlessBotRuntime {
     private unsubscribeInbound: (() => void) | null = null;
     private unsubscribeBlocks: (() => void) | null = null;
     private heartbeat: ClockHandle | null = null;
+    private social: SocialPresence | null = null;
+    private villageRuntime: VillageRuntime | null = null;
+    private playerSightings: PlayerSightingReporter | null = null;
+    private perceptionTimer: ClockHandle | null = null;
+    private unsubscribeChat: (() => void) | null = null;
     private closed = false;
     private autonomyPausedReason: string | null = null;
+    private pendingResume: SessionResume | null = null;
 
     constructor(private readonly options: HeadlessBotRuntimeOptions) {}
+
+    get botId(): string {
+        return this.options.botId;
+    }
 
     async start(): Promise<Result<void, string>> {
         const transport = new BotTransportClient({
@@ -98,10 +135,23 @@ export class HeadlessBotRuntime {
             transport.close();
             return [null, hello?.reason ?? 'coordinator rejected session'];
         }
+        this.pendingResume = hello.resume ?? null;
 
         const { config } = this.options;
         const { ports } = this.options;
         const actionPort = ports.dispatch;
+        const trace = new BehaviorTraceRecorder(
+            this.options.botId,
+            (entry) => {
+                transport.sendEvent('bot.event', {
+                    botId: this.options.botId,
+                    event: 'behavior.trace',
+                    at: entry.at,
+                    data: entry,
+                });
+            },
+            () => this.options.ports.clock.now(),
+        );
         this.guardian = new GuardianHook({
             source: { read: () => ports.safety() },
             logger: this.options.logger,
@@ -123,7 +173,6 @@ export class HeadlessBotRuntime {
                 },
             },
         });
-        const actionExecutor = new ActionExecutor(this.guardian, actionPort, this.options.logger);
         this.buildExecution = new BuildingExecutionService({
             world: ports.world,
             snapshot: () => ports.safety(),
@@ -152,6 +201,120 @@ export class HeadlessBotRuntime {
         );
         this.buildingServices = buildingServices;
 
+        const [personality, personalityError] = this.options.traits
+            ? PersonalityModel.create(this.options.traits)
+            : [PersonalityModel.fromBotIndex(this.options.botIndex), null];
+        if (personalityError || personality === null) {
+            transport.close();
+            return [null, personalityError ?? 'personality creation failed'];
+        }
+        const humanization = new HumanizationPolicy(
+            new SeededRandomSource(this.options.botIndex + 1),
+            {
+                caution: personality.traits.caution,
+                orderliness: personality.traits.orderliness,
+                patience: personality.traits.patience,
+            },
+            {
+                reactionLatencyMilliseconds: config.behavior.rhythm.reactionLatencyMilliseconds,
+                pauseChance: config.behavior.movement.waypointPauseChance,
+                pauseDurationMilliseconds: config.behavior.movement.waypointPauseMilliseconds,
+                scanChance: config.behavior.movement.scanChance,
+                chatDelayMilliseconds: config.behavior.social.replyDelayMilliseconds,
+                switchThreshold: config.behavior.rhythm.switchThreshold,
+                sprintDistanceThreshold: config.behavior.movement.sprintDistanceThreshold,
+            },
+        );
+        const gaze = new GazeController(
+            { yaw: 0, pitch: 0 },
+            {
+                yawRateRadiansPerSecond: config.behavior.gaze.yawRateRadiansPerSecond,
+                pitchRateRadiansPerSecond: config.behavior.gaze.pitchRateRadiansPerSecond,
+                updateHz: config.behavior.gaze.updateHz,
+            },
+        );
+        const behavioralDispatch = new BehavioralDispatch({
+            inner: actionPort,
+            clock: ports.clock,
+            policy: humanization,
+            trace,
+            gaze,
+            position: () => ports.position(),
+            urgent: () => this.guardian?.emergencyStopActive === true,
+        });
+        const actionExecutor = new ActionExecutor(
+            this.guardian,
+            behavioralDispatch,
+            this.options.logger,
+        );
+        const social = new SocialPresence({
+            botName: this.options.name,
+            adapter: new ChatAdapter({
+                transport: {
+                    send: (text) => ports.chat?.send(text) ?? [undefined, null],
+                },
+                engine: new SocialEngine(),
+                personality,
+                ratePerMinute: config.agency.chatRatePerMinute,
+                now: () => ports.clock.now(),
+            }),
+            clock: ports.clock,
+            logger: this.options.logger,
+            chatDelay: () => humanization.chatDelay(),
+            trace,
+            context: (username) => ({
+                botName: this.options.name,
+                recipient: username,
+                phase: RoutineModel.phase(ports.timeOfDay()),
+                activeGoal: null,
+            }),
+            permissionReply: (playerId, _username, message) =>
+                this.villageRuntime?.handlePermissionReply(playerId, message) ?? false,
+        });
+        this.social = social;
+        const plotOwnership = new PlotOwnershipClient(transport, this.options.botId);
+        this.villageRuntime = new VillageRuntime({
+            botId: this.options.botId,
+            config: config.behavior.village,
+            clock: ports.clock,
+            logger: this.options.logger,
+            trace,
+            world: ports.world,
+            ownership: (plot) => plotOwnership.resolve({ plotId: plot.id, bbox: plot.bbox }),
+            chat: {
+                inquire: (text, usernames) => social.inquire(text, usernames),
+            },
+            onOutcome: (playerId, plotId, kept, at) => {
+                transport.sendEvent(BOT_PERMISSION_OUTCOME_EVENT, {
+                    botId: this.options.botId,
+                    playerId,
+                    plotId,
+                    kept,
+                    at,
+                });
+            },
+        });
+        this.playerSightings = new PlayerSightingReporter({
+            clock: ports.clock,
+            logger: this.options.logger,
+            botId: this.options.botId,
+            intervalMilliseconds: 5000,
+            radius: config.behavior.village.playerLinkRadius,
+            position: () => ports.position(),
+            players: () => ports.players?.() ?? [],
+            send: (payload) => {
+                const [, sendError] = transport.sendEvent(BOT_PLAYER_SIGHTING_EVENT, payload);
+                return sendError === null ? [undefined, null] : [null, sendError.type];
+            },
+        });
+        this.unsubscribeChat =
+            ports.chat?.listen((username, message, playerId) => {
+                const [, socialError] = social.handleIncoming(username, message, playerId);
+                if (socialError !== null) {
+                    this.options.logger.warn({ error: socialError }, 'social message failed');
+                }
+            }) ?? null;
+
         const progressSink: SkillProgressSink = {
             report: (event) => {
                 this.autonomy?.observeProgress(event);
@@ -164,7 +327,7 @@ export class HeadlessBotRuntime {
             source: new HeadlessSkillContextSource(
                 this.options.botId,
                 ports,
-                buildingServices ?? undefined,
+                this.skillServices(buildingServices),
             ),
             dispatch: actionExecutor,
             progressSink,
@@ -192,11 +355,19 @@ export class HeadlessBotRuntime {
         });
         const [restored, restoreError] = persistence.restore(hello.resume?.agency);
         if (restoreError) return [null, restoreError];
+        const [needs, needsError] = this.options.needs
+            ? NeedsModel.create(this.options.needs)
+            : [null, null];
+        if (needsError) {
+            transport.close();
+            return [null, needsError];
+        }
         const [created, createError] =
             restored === null
                 ? AgencyState.create({
                       botId: this.options.botId,
-                      traits: PersonalityModel.fromBotIndex(this.options.botIndex),
+                      traits: personality,
+                      ...(needs === null ? {} : { needs }),
                       timeOfDay: ports.timeOfDay(),
                   })
                 : [restored, null];
@@ -209,15 +380,19 @@ export class HeadlessBotRuntime {
                     () => ports.home(),
                     () => ports.project(),
                     () => ports.nightIntent(),
+                    () => this.villageRuntime?.farmSnapshots() ?? [],
+                    () => this.villageRuntime?.villageSnapshots() ?? [],
                 ),
                 skills,
                 persistence,
                 logger: this.options.logger,
-                config: config.agency,
+                config: this.agencyRuntimeConfig(),
                 clock: ports.clock,
                 isPaused: () => this.autonomyPausedReason !== null,
                 isJobActive: () => this.autonomy?.hasActiveTask === true,
                 isProjectTaskActive: () => this.autonomy?.activeTaskProjectId !== null,
+                progressionPlanner: new ProgressionPlanner(new StaticRecipePort()),
+                trace,
             },
             created,
         );
@@ -243,7 +418,12 @@ export class HeadlessBotRuntime {
             logger: this.options.logger,
             now: () => ports.clock.now(),
             clock: ports.clock,
-            jobMarket: { context: () => ({ ...agency.jobContext(), role: null }) },
+            jobMarket: {
+                context: () => ({
+                    ...agency.jobContext(),
+                    role: this.pendingResume?.role ?? null,
+                }),
+            },
             canClaim: () => !agency.hasActiveGoal && skills.activeSkillId === null,
             tacticalContext: () => agency.tacticalContext(),
             recordTacticalDecision: (input) => agency.recordTacticalDecision(input),
@@ -261,7 +441,31 @@ export class HeadlessBotRuntime {
         skills.start();
         agency.restore();
         this.autonomy.start();
+        void this.applyPendingResume();
         agency.start();
+        this.villageRuntime.start();
+        this.playerSightings.start();
+        if (ports.perception !== undefined) {
+            this.perceptionTimer = ports.clock.setInterval(() => {
+                const [candidates, perceptionError] = attempt(
+                    () => ports.perception?.candidates() ?? [],
+                );
+                if (perceptionError !== null) {
+                    trace.record('perception', 'candidates', {
+                        error:
+                            perceptionError instanceof Error
+                                ? perceptionError.message
+                                : String(perceptionError),
+                    });
+                    return;
+                }
+                trace.record('perception', 'candidates', {
+                    count: candidates?.length ?? 0,
+                    farms: candidates?.filter((candidate) => candidate.type === 'farm').length ?? 0,
+                });
+                this.villageRuntime?.observeCandidates(candidates ?? [], ports.villagers?.() ?? []);
+            }, 1000);
+        }
         this.heartbeat = ports.clock.setInterval(() => this.sendHeartbeat(transport), 1000);
         return [undefined, null];
     }
@@ -274,13 +478,100 @@ export class HeadlessBotRuntime {
         this.skills?.stop();
         this.unsubscribeInbound?.();
         this.unsubscribeBlocks?.();
+        this.unsubscribeChat?.();
         if (this.heartbeat !== null) this.options.ports.clock.clearInterval(this.heartbeat);
+        if (this.perceptionTimer !== null) {
+            this.options.ports.clock.clearInterval(this.perceptionTimer);
+        }
+        this.villageRuntime?.stop();
+        this.playerSightings?.stop();
+        this.social?.close();
         this.transport?.close();
         this.agency = null;
         this.autonomy = null;
         this.guardian = null;
         this.skills = null;
         this.transport = null;
+        this.social = null;
+        this.villageRuntime = null;
+        this.playerSightings = null;
+        this.unsubscribeChat = null;
+        this.perceptionTimer = null;
+    }
+
+    private async applyPendingResume(): Promise<void> {
+        const autonomy = this.autonomy;
+        const resume = this.pendingResume;
+        if (autonomy === null || resume === null) return;
+        if (resume.task === null || resume.fencingToken === null) {
+            this.pendingResume = null;
+            return;
+        }
+        if (!autonomy.resumeTask(resume)) {
+            this.pendingResume = null;
+            return;
+        }
+        const skillId = resume.task.payload.skillId;
+        if (
+            this.skills === null ||
+            resume.task === null ||
+            resume.checkpoint === null ||
+            resume.checkpoint === undefined ||
+            typeof skillId !== 'string'
+        ) {
+            return;
+        }
+        if (skillId === 'construction' || skillId === 'procurement') {
+            const planId = resume.task.payload.planId;
+            const planRevision = resume.task.payload.planRevision;
+            if (typeof planId !== 'string' || typeof planRevision !== 'number') return;
+            const [, prefetchError] = (await this.buildingServices?.prefetch(
+                { planId, planRevision },
+                skillId,
+            )) ?? [null, 'building services are unavailable'];
+            if (prefetchError !== null) return;
+        }
+        this.skills.resume(skillId, resume.task.id);
+        this.pendingResume = null;
+    }
+
+    private skillServices(building: BuildingSkillServices | null): SkillServices | undefined {
+        const farms = this.villageRuntime?.farmSource();
+        if (building === null && farms === undefined) return undefined;
+        return {
+            ...(building ?? {}),
+            ...(farms === undefined ? {} : { farms }),
+        };
+    }
+
+    private agencyRuntimeConfig(): AgencyRuntimeConfig {
+        const config = this.options.config;
+        return {
+            enabled: config.agency.enabled,
+            goalCadenceMilliseconds: config.agency.goalCadenceMilliseconds,
+            needDecayPerMinute: config.agency.needDecayPerMinute,
+            committedGoalBonus: config.agency.committedGoalBonus,
+            workingMemory: config.agency.workingMemory,
+            goalTieBreak: config.agency.goalTieBreak,
+            progression: config.agency.progression,
+            reflection: config.agency.reflection,
+            nightPrep: config.agency.nightPrep,
+            minimumDwellMilliseconds: config.behavior.rhythm.minimumDwellMilliseconds,
+            switchThreshold: config.behavior.rhythm.switchThreshold,
+            progressTimeoutMilliseconds: config.behavior.rhythm.progressTimeoutMilliseconds,
+            ...(config.agency.needDecayByNeed === undefined
+                ? {}
+                : {
+                      needDecayByNeed: config.agency
+                          .needDecayByNeed as AgencyRuntimeConfig['needDecayByNeed'],
+                  }),
+            ...(config.agency.goalDeadlines === undefined
+                ? {}
+                : {
+                      goalDeadlines: config.agency
+                          .goalDeadlines as AgencyRuntimeConfig['goalDeadlines'],
+                  }),
+        };
     }
 
     private handleCommand(envelope: Envelope): void {

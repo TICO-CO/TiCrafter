@@ -41,6 +41,17 @@ describe('ClaimService', () => {
         expect(active).toHaveLength(1);
     });
 
+    it('lists owners for active overlapping claims', () => {
+        const { service } = fresh();
+        const [, firstError] = service.acquire(ClaimFixtures.input(), now);
+        expect(firstError).toBeNull();
+        const [owners, ownersError] = service.ownersIn(ClaimFixtures.bbox());
+        expect(ownersError).toBeNull();
+        expect(owners).toEqual(['bot.one']);
+        const [outside] = service.ownersIn(ClaimFixtures.bbox(10, 10));
+        expect(outside).toEqual([]);
+    });
+
     it('rejects overlapping claims with the configured margin', () => {
         const { service } = fresh();
         service.acquire(ClaimFixtures.input(), now);

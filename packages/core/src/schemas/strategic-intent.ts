@@ -21,6 +21,8 @@ export const STRATEGIC_GOAL_KINDS = [
     'gather-wool',
     'gather-food',
     'equip-gear',
+    'harvest-farm',
+    'plant-farm',
 ] as const;
 
 export const strategicGoalKindSchema = zod.enum(STRATEGIC_GOAL_KINDS);
@@ -66,6 +68,8 @@ const strategicPriorityModifiersSchema = zod.strictObject({
     'gather-wool': strategicGoalPrioritySchema.optional(),
     'gather-food': strategicGoalPrioritySchema.optional(),
     'equip-gear': strategicGoalPrioritySchema.optional(),
+    'harvest-farm': strategicGoalPrioritySchema.optional(),
+    'plant-farm': strategicGoalPrioritySchema.optional(),
 });
 
 const strategicBotOverrideSchema = zod.strictObject({

@@ -1,54 +1,56 @@
 flowchart LR
-n303["Unit Fixtures"]
-n262["Detector Fixtures"]
-n304["Docker Server Harness"]
-n305["Scenario Runner"]
-n299["Replay Engine"]
-n227["Contention Harness"]
-n301["Metrics Reporter"]
-n306["Soak Runner"]
-n307["Architecture Guard Tests"]
-n265["Laya Benchmark Harness"]
-n294["Simulation Harness"]
-n308["Behavior Assertions"]
-n309["Trace Inspector"]
-n230["Claim Repository (Claims and Leases)"]
-n218["Task Repository (Task Board)"]
-n260["Detector Pipeline (Perception)"]
+n316["Unit Fixtures"]
+n274["Detector Fixtures"]
+n317["Docker Server Harness"]
+n318["Scenario Runner"]
+n312["Replay Engine"]
+n237["Contention Harness"]
+n314["Metrics Reporter"]
+n319["Soak Runner"]
+n320["Architecture Guard Tests"]
+n277["Laya Benchmark Harness"]
+n307["Simulation Harness"]
+n321["Behavior Assertions"]
+n322["Trace Inspector"]
+n323["Behavior Oddity Detectors"]
+n240["Claim Repository (Claims and Leases)"]
+n228["Task Repository (Task Board)"]
+n271["Detector Pipeline (Perception)"]
 n24(["Minecraft 1.20.1 LAN Server"])
 n80["Latency Metrics (Laya Decision Service)"]
 n34["Model Loader (Laya Decision Service)"]
-n158["Metrics Registry (Ops and Observability)"]
-n229["Event Log Writer (Memory and Persistence)"]
-n310["Promotion Gate (Laya Training)"]
-n298["Episode Store (Memory and Persistence)"]
+n165["Metrics Registry (Ops and Observability)"]
+n239["Event Log Writer (Memory and Persistence)"]
+n324["Promotion Gate (Laya Training)"]
+n311["Episode Store (Memory and Persistence)"]
 n143["Headless Bot Runtime (Bot Runtime and Mineflayer Adapter)"]
-n80 -->|observes| n158
-n80 -->|writes| n158
-n307 -->|depends_on| n303
-n227 -->|depends_on| n230
-n227 -->|delegates_to| n305
-n227 -->|depends_on| n218
-n262 -->|depends_on| n303
-n262 -->|depends_on| n260
-n304 -->|depends_on| n303
-n304 -->|depends_on| n24
-n265 -->|depends_on| n80
-n265 -->|depends_on| n34
-n265 -->|delegates_to| n305
-n301 -->|observes| n158
-n299 -->|depends_on| n305
-n299 -->|depends_on| n229
-n305 -->|controls| n304
-n305 -->|publishes| n301
-n306 -->|depends_on| n301
-n306 -->|delegates_to| n305
-n310 -->|depends_on| n265
-n299 -->|reads| n298
-n294 -->|depends_on| n143
-n294 -->|depends_on| n308
-n309 -->|depends_on| n294
+n80 -->|observes| n165
+n80 -->|writes| n165
+n320 -->|depends_on| n316
+n237 -->|depends_on| n240
+n237 -->|delegates_to| n318
+n237 -->|depends_on| n228
+n274 -->|depends_on| n316
+n274 -->|depends_on| n271
+n317 -->|depends_on| n316
+n317 -->|depends_on| n24
+n277 -->|depends_on| n80
+n277 -->|depends_on| n34
+n277 -->|delegates_to| n318
+n314 -->|observes| n165
+n312 -->|depends_on| n318
+n312 -->|depends_on| n239
+n318 -->|controls| n317
+n318 -->|publishes| n314
+n319 -->|depends_on| n314
+n319 -->|delegates_to| n318
+n324 -->|depends_on| n277
+n312 -->|reads| n311
+n307 -->|depends_on| n143
+n307 -->|depends_on| n321
+n322 -->|depends_on| n307
+n323 -->|depends_on| n321
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n303,n262,n304,n305,n299,n227,n301,n306,n307,n265,n294,n308,n309 internal;
-class n230,n218,n260,n80,n34,n158,n229,n310,n298,n143,n24 external;
+class n316,n274,n317,n318,n312,n237,n314,n319,n320,n277,n307,n321,n322,n323 internal;
+class n240,n228,n271,n80,n34,n165,n239,n324,n311,n143,n24 external;

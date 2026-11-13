@@ -3,7 +3,7 @@ import type { Result } from '@ticrafter/core';
 import { NeedsModel } from './needs-model.js';
 import { PersonalityModel } from './personality-model.js';
 import { RoutineModel } from './routine-model.js';
-import type { Intention, NeedName, RoutineState, WorkingMemory } from './types.js';
+import type { Intention, NeedLevels, NeedName, RoutineState, WorkingMemory } from './types.js';
 import { type WorkingMemoryBounds, WorkingMemoryModel } from './working-memory.js';
 
 export interface AgencyStateSnapshot {
@@ -78,6 +78,13 @@ export class AgencyState {
         return new AgencyState({
             ...this.snapshot,
             needs: this.snapshot.needs.decayUniform(elapsedMilliseconds, ratePerMinute),
+        });
+    }
+
+    decayNeedsByNeed(elapsedMilliseconds: number, rates: Partial<NeedLevels>): AgencyState {
+        return new AgencyState({
+            ...this.snapshot,
+            needs: this.snapshot.needs.decay(elapsedMilliseconds, rates),
         });
     }
 

@@ -1,6 +1,6 @@
 # TiCrafter Behavior Roadmap
 
-Status: planned. This document is the implementation roadmap for human-like
+Status: Milestones 15-17 runtime implemented. Milestone 17 acceptance and the first milestone 18 behavior scenarios are implemented; remaining behavior scenarios, the full acceptance matrix, live parity, and milestone 19 remain open. This document is the implementation roadmap for human-like
 movement, human-like decisions, early-game progression, farm ownership, and the
 validation that proves them. `main.md` remains the normative summary; this file
 owns the detailed behavior design and delivery plan.
@@ -523,7 +523,6 @@ Village defaults:
 
 - `behavior.village.ownershipRadius` — 32.
 - `behavior.village.allowedPlotRegions` — empty.
-- `behavior.village.allowUnknownOwnership` — false.
 - `behavior.village.playerBaseLinks` — empty.
 - `behavior.village.playerConfidenceInitial` — 0.5.
 - `behavior.village.playerConfidenceThreshold` — 0.6.

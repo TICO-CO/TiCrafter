@@ -129,6 +129,11 @@ import {
     TaskRepository,
 } from './tasks/index.js';
 import { TransportServer } from './transport/index.js';
+import {
+    PlayerConfidenceStore,
+    PlotOwnershipCommandHandler,
+    PlotOwnershipService,
+} from './village/index.js';
 import { CoordinatorWorldModel } from './world-model.js';
 
 const ACTIONABLE_TASK_STATUSES = new Set(['pending', 'ready', 'claimed', 'running']);
@@ -151,9 +156,21 @@ export class CoordinatorComposition {
         const registry = MessageSchemaRegistry.withDefaults();
         const events = new EventLogWriter(options.database);
         const blockChanges = new BlockChangelogWriter(options.database);
-        const worldModel = new CoordinatorWorldModel(options.database, options.logger);
         const transactions = new TransactionManager(options.database);
         const claimRepository = new ClaimRepository(options.database);
+        let claims: ClaimService | null = null;
+        const worldModel = new CoordinatorWorldModel(options.database, options.logger, {
+            whoOwns: (bbox) => {
+                if (claims === null) {
+                    return [null, { type: 'QUERY_UNAVAILABLE', query: 'whoOwns' }];
+                }
+                const [owners, ownersError] = claims.ownersIn(bbox);
+                if (ownersError) {
+                    return [null, { type: 'STORAGE_FAILED', message: ownersError.type }];
+                }
+                return [owners, null];
+            },
+        });
         let grants: GrantService | null = null;
         let plannerRuntime: PlannerRuntime | null = null;
         const sip = new SipTransactionalCommitter(options.database, (commit) => {
@@ -191,7 +208,6 @@ export class CoordinatorComposition {
             },
             events,
         );
-        let claims: ClaimService | null = null;
         const tasks = new TaskBoard({
             database: options.database,
             events,
@@ -247,6 +263,18 @@ export class CoordinatorComposition {
         const taskRepository = new TaskRepository(options.database);
         const grantRepository = new EditGrantRepository(options.database);
         const botStore = new BotProfileStore(options.database);
+        const confidenceStore = new PlayerConfidenceStore(options.database, {
+            initialScore: options.config.behavior.village.playerConfidenceInitial,
+            halfLifeDays: options.config.behavior.village.playerConfidenceHalfLifeDays,
+            linkMinSightings: options.config.behavior.village.playerLinkMinSightings,
+            linkWindowMs: options.config.behavior.village.playerLinkWindowMs,
+        });
+        const [, confidenceSeedError] = confidenceStore.seedLinks(
+            options.config.behavior.village.playerBaseLinks,
+        );
+        if (confidenceSeedError) {
+            options.logger.warn({ error: confidenceSeedError }, 'player confidence seed failed');
+        }
         const plannerSchema = new PlannerSchemaValidator();
         const plannerCache = new PlannerPlanCache({
             store: new SqlitePlannerPlanStore(options.database),
@@ -446,6 +474,13 @@ export class CoordinatorComposition {
             botDelta,
             options.epoch,
         );
+        const plotOwnership = new PlotOwnershipService({
+            claims: claimService,
+            world: worldModel,
+            confidence: confidenceStore,
+            ownershipRadius: options.config.behavior.village.ownershipRadius,
+            now: () => new Date(options.clock?.now() ?? Date.now()).toISOString(),
+        });
         let messageRouter: MessageRouter | null = null;
         const transport = new TransportServer({
             host: options.config.transport.host,
@@ -518,6 +553,11 @@ export class CoordinatorComposition {
             options.logger,
         );
         const jobCommands = new JobCommandHandler(jobMarket, transport, options.logger);
+        const plotOwnershipCommands = new PlotOwnershipCommandHandler(
+            plotOwnership,
+            transport,
+            options.logger,
+        );
         const blueprintCommands = new BlueprintCommandHandler(
             blueprintDocuments,
             transport,
@@ -728,6 +768,38 @@ export class CoordinatorComposition {
                 projectCommands.handleRepair(connection, payload, envelope),
             onProjectRevise: (connection, payload, envelope) =>
                 projectCommands.handleRevise(connection, payload, envelope),
+            onPlotOwnership: (connection, payload, envelope) =>
+                plotOwnershipCommands.handle(connection, payload, envelope),
+            onPlayerSighting: (payload) => {
+                const [nearest] = worldModel.nearest(payload.position, 'house');
+                if (nearest === null) return;
+                if (nearest.distance > options.config.behavior.village.playerLinkRadius) return;
+                const [, sightingError] = confidenceStore.recordSighting(
+                    payload.playerId,
+                    payload.username,
+                    nearest.landmark.id,
+                    payload.at,
+                );
+                if (sightingError) {
+                    options.logger.warn(
+                        { error: sightingError, playerId: payload.playerId },
+                        'player sighting update failed',
+                    );
+                }
+            },
+            onPermissionOutcome: (payload) => {
+                const [, outcomeError] = confidenceStore.recordPermissionOutcome(
+                    payload.playerId,
+                    payload.kept,
+                    payload.at,
+                );
+                if (outcomeError) {
+                    options.logger.warn(
+                        { error: outcomeError, playerId: payload.playerId },
+                        'permission outcome update failed',
+                    );
+                }
+            },
             onBlueprintGet: (connection, payload, envelope) =>
                 blueprintCommands.handleGet(connection, payload, envelope),
             onConstructionPlanGet: (connection, payload, envelope) =>

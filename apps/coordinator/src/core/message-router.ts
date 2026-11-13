@@ -8,6 +8,9 @@ import {
     BOT_CONSTRUCTION_PLAN_GET,
     BOT_JOB_DECIDE,
     BOT_JOB_OFFERS,
+    BOT_PERMISSION_OUTCOME_EVENT,
+    BOT_PLAYER_SIGHTING_EVENT,
+    BOT_PLOT_OWNERSHIP_REQUEST,
     BOT_PROJECT_ABANDON,
     BOT_PROJECT_PROPOSE,
     BOT_PROJECT_REPAIR,
@@ -26,6 +29,12 @@ import {
     botJobDecideSchema,
     type BotJobOffers,
     botJobOffersSchema,
+    type BotPermissionOutcome,
+    botPermissionOutcomeSchema,
+    type BotPlayerSighting,
+    botPlayerSightingSchema,
+    type BotPlotOwnershipRequest,
+    botPlotOwnershipRequestSchema,
     type BotProjectAbandon,
     botProjectAbandonSchema,
     type BotProjectPropose,
@@ -80,6 +89,8 @@ export interface MessageRouterOptions {
     onChunkSnapshot?: (payload: ChunkSnapshotMessage) => void;
     onLandmarkCandidate?: (payload: LandmarkCandidateMessage) => void;
     onBlockUpdate?: (payload: BlockUpdateMessage) => void;
+    onPlayerSighting?: (payload: BotPlayerSighting) => void;
+    onPermissionOutcome?: (payload: BotPermissionOutcome) => void;
     onDecisionRequest?: (
         connection: ClientConnection,
         payload: DecisionRequest,
@@ -108,6 +119,11 @@ export interface MessageRouterOptions {
     onProjectRevise?: (
         connection: ClientConnection,
         payload: BotProjectRevise,
+        envelope: Envelope,
+    ) => void;
+    onPlotOwnership?: (
+        connection: ClientConnection,
+        payload: BotPlotOwnershipRequest,
         envelope: Envelope,
     ) => void;
     onBlueprintGet?: (
@@ -182,6 +198,28 @@ export class MessageRouter {
             this.options.onAgencyEpisode?.(parsed.data);
             return;
         }
+        if (envelope.kind === 'event' && envelope.type === BOT_PLAYER_SIGHTING_EVENT) {
+            const parsed = botPlayerSightingSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid player sighting');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.appendEvent(connection.botId, BOT_PLAYER_SIGHTING_EVENT, parsed.data);
+            this.options.onPlayerSighting?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'event' && envelope.type === BOT_PERMISSION_OUTCOME_EVENT) {
+            const parsed = botPermissionOutcomeSchema.safeParse(envelope.payload);
+            if (!parsed.success || parsed.data.botId !== connection.botId) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid permission outcome');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.appendEvent(connection.botId, BOT_PERMISSION_OUTCOME_EVENT, parsed.data);
+            this.options.onPermissionOutcome?.(parsed.data);
+            return;
+        }
         if (envelope.kind === 'event' && envelope.type === 'bot.event') {
             this.options.logger.debug(
                 { botId: connection.botId, event: envelope.payload },
@@ -228,6 +266,16 @@ export class MessageRouter {
             }
             this.options.sessions.touch(connection.botId);
             this.options.onBlockUpdate?.(parsed.data);
+            return;
+        }
+        if (envelope.kind === 'request' && envelope.type === BOT_PLOT_OWNERSHIP_REQUEST) {
+            const parsed = botPlotOwnershipRequestSchema.safeParse(envelope.payload);
+            if (!parsed.success) {
+                this.options.logger.warn({ botId: connection.botId }, 'invalid ownership request');
+                return;
+            }
+            this.options.sessions.touch(connection.botId);
+            this.options.onPlotOwnership?.(connection, parsed.data, envelope);
             return;
         }
         if (envelope.kind === 'request' && envelope.type === BOT_BLUEPRINT_GET) {

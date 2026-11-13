@@ -1,13 +1,17 @@
 # TiCrafter Cognitive Architecture
 
-Status: current baseline implemented; behavior realism and the early-game
-progression plan are planned. Working memory, focus, interruption, project focus,
-tactical Laya revision guards, tactical profile policy, strategic intent,
-planner integration, agency goal tie-break, and reflection are implemented. Goal
-tie-break is disabled by default until the behavioral evaluation gate passes.
-The progression plan, humanized movement and gaze, view-cone perception, and
-behavior-realism gates are defined here and in
-[`behavior-roadmap.md`](behavior-roadmap.md) but are not yet fully implemented.
+Status: milestone 15 behavior realism and milestone 16 progression core implemented. Working memory, focus,
+interruption, project focus, tactical Laya revision guards, tactical profile
+policy, strategic intent, planner integration, agency goal tie-break, reflection,
+failure reporting, checkpoint retry, progress watchdog, per-kind deadlines,
+minimum dwell, per-need decay, humanized pace, gaze, look-before-interact,
+short-lived view-cone sightings, delayed chat, initial idle life, behavior
+traces, and first oddity detectors are implemented. The progression plan,
+planner, recipe port, multi-block gather, and milestone goals are implemented;
+full early-game acceptance remains open. Plot ownership and farm permission resolution are implemented in world-model
+policy, coordinator persistence, transport, village scanning, bot-side
+permission flow, live farm-plot discovery, and preauthorization. Milestone 17
+acceptance scenarios and the full behavior harness remain planned.
 
 This document defines the boundary between reflex safety, local agency, tactical
 Laya decisions, working memory, and the optional cloud planner. It is the

@@ -17,6 +17,7 @@ const RECOVERY_ACTION_KINDS: ReadonlySet<ActionRequest['kind']> = new Set([
     'move-to',
     'follow-path',
     'use-block',
+    'look-at',
     'attack',
     'equip',
     'consume',

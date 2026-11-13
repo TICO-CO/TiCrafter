@@ -65,8 +65,11 @@ function skillStep(status: SkillStep['status'], failureClass?: string): SkillSte
 
 class FakeSkills implements AgencySkillPort {
     readonly runs: { skillId: string; input: SkillInput }[] = [];
+    readonly resumes: { skillId: string; taskId: string }[] = [];
+    readonly preempts: string[] = [];
     activeSkillId: string | null = null;
     result: SkillStep = skillStep('running');
+    resumeResult: Result<SkillStep, string> = [skillStep('running'), null];
 
     run(skillId: string, input: SkillInput): Result<SkillStep, string> {
         this.runs.push({ skillId, input });
@@ -74,7 +77,15 @@ class FakeSkills implements AgencySkillPort {
         return [this.result, null];
     }
 
-    preempt(): Result<SkillStep | null, string> {
+    resume(skillId: string, taskId: string): Result<SkillStep, string> {
+        this.resumes.push({ skillId, taskId });
+        const [step] = this.resumeResult;
+        this.activeSkillId = step?.status === 'running' ? skillId : null;
+        return this.resumeResult;
+    }
+
+    preempt(reason: string): Result<SkillStep | null, string> {
+        this.preempts.push(reason);
         this.activeSkillId = null;
         return [null, null];
     }
@@ -109,6 +120,7 @@ function createRuntime(
         snapshot?: AgencySnapshot;
         project?: ProjectSummary | null;
         reflection?: { enabled: boolean; maxTraitDelta: number };
+        progressTimeoutMilliseconds?: number;
     } = {},
 ): RuntimeFixture | null {
     const skills = options.skills ?? new FakeSkills();
@@ -137,6 +149,9 @@ function createRuntime(
                 needDecayPerMinute: 0.02,
                 committedGoalBonus: 0.15,
                 reflection: options.reflection ?? { enabled: false, maxTraitDelta: 0.01 },
+                ...(options.progressTimeoutMilliseconds === undefined
+                    ? {}
+                    : { progressTimeoutMilliseconds: options.progressTimeoutMilliseconds }),
             },
             isJobActive: options.isJobActive,
             isProjectTaskActive: options.isProjectTaskActive,
@@ -254,6 +269,7 @@ describe('agency runtime', () => {
     it('retries then abandons a failing goal', async () => {
         const skills = new FakeSkills();
         skills.result = skillStep('failed', 'target-missing');
+        skills.resumeResult = [null, 'no checkpoint for eat'];
         const created = createRuntime({ skills });
         expect(created).not.toBeNull();
         if (created === null) return;
@@ -265,6 +281,76 @@ describe('agency runtime', () => {
         expect(persistence.episodes.some((episode) => episode.kind === 'goal.abandoned')).toBe(
             true,
         );
+    });
+
+    it('resumes a valid checkpoint when retrying a failed goal', async () => {
+        const skills = new FakeSkills();
+        skills.result = skillStep('failed', 'target-missing');
+        const created = createRuntime({ skills });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime } = created;
+        const [first] = await runtime.tick(1000);
+        expect(first?.action).toBe('retry');
+        expect(skills.resumes.at(-1)?.taskId).toBe(first?.goalId);
+        expect(skills.activeSkillId).toBe('eat');
+        expect((await runtime.tick(1000))[0]?.action).toBe('running');
+    });
+
+    it('abandons an expired goal with the deadline reason', async () => {
+        const intention: Intention = {
+            goalId: 'goal:eat:eat-food-to-restore-hunger',
+            label: 'Eat food to restore hunger',
+            stepIndex: 0,
+            createdAt: '1970-01-01T00:00:00.000Z',
+            deadline: '1970-01-01T00:00:00.000Z',
+            deadlineExtended: true,
+            attempts: 0,
+        };
+        const created = createRuntime({ intention });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime, persistence } = created;
+        const [, restoreError] = runtime.restore();
+        expect(restoreError).toBeNull();
+        expect((await runtime.tick(1000))[0]?.action).toBe('abandoned');
+        const abandoned = persistence.episodes.find((episode) => episode.kind === 'goal.abandoned');
+        expect((abandoned?.payload as { reason?: string } | undefined)?.reason).toBe('deadline');
+    });
+
+    it('extends an expired goal once when work advanced', async () => {
+        const intention: Intention = {
+            goalId: 'goal:eat:eat-food-to-restore-hunger',
+            label: 'Eat food to restore hunger',
+            stepIndex: 0,
+            createdAt: '1970-01-01T00:00:00.000Z',
+            deadline: '1970-01-01T00:00:00.000Z',
+            attempts: 0,
+        };
+        const created = createRuntime({ intention });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime } = created;
+        runtime.restore();
+        runtime.observeProgress({
+            botId: 'bot.one',
+            taskId: intention.goalId,
+            at: '1970-01-01T00:00:00.500Z',
+            skillId: 'eat',
+            status: 'running',
+            progress: { done: 1, total: 2, label: 'eating' },
+        });
+        expect((await runtime.tick(1000))[0]?.action).toBe('running');
+    });
+
+    it('preempts and retries a stalled skill', async () => {
+        const created = createRuntime({ progressTimeoutMilliseconds: 10 });
+        expect(created).not.toBeNull();
+        if (created === null) return;
+        const { runtime, skills } = created;
+        expect((await runtime.tick(1000))[0]?.action).toBe('running');
+        expect((await runtime.tick(2000))[0]?.action).toBe('retry');
+        expect(skills.preempts.includes('progress timeout')).toBe(true);
     });
 
     it('restores a persisted intention when its goal still exists', async () => {

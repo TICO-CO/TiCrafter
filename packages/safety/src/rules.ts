@@ -49,6 +49,7 @@ export class MaterialBanRule implements SafetyRule {
             case 'move-to':
             case 'follow-path':
             case 'use-block':
+            case 'look-at':
             case 'attack':
             case 'use-entity':
             case 'equip':
@@ -114,6 +115,7 @@ export class ClaimBoundaryRule implements SafetyRule {
             case 'move-to':
             case 'follow-path':
             case 'use-block':
+            case 'look-at':
             case 'attack':
             case 'use-entity':
             case 'equip':
@@ -167,6 +169,7 @@ export class ProtectedBboxRule implements SafetyRule {
             case 'move-to':
             case 'follow-path':
             case 'use-block':
+            case 'look-at':
             case 'attack':
             case 'use-entity':
             case 'equip':

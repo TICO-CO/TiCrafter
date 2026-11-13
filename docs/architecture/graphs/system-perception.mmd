@@ -1,45 +1,47 @@
 flowchart LR
-n253["Ring Sampler"]
-n254["Chunk Snapshot Encoder"]
-n193["Block Update Listener"]
-n255["Path and Road Detector"]
-n256["House Detector"]
-n257["Farm Detector"]
-n258["Storage and Workstation Detector"]
-n259["Linear Structure Detector"]
-n260["Detector Pipeline"]
-n190["Landmark Candidate Emitter"]
-n261["Perception Rate Limiter"]
+n264["Ring Sampler"]
+n265["Chunk Snapshot Encoder"]
+n203["Block Update Listener"]
+n266["Path and Road Detector"]
+n267["House Detector"]
+n268["Farm Detector"]
+n269["Storage and Workstation Detector"]
+n270["Linear Structure Detector"]
+n271["Detector Pipeline"]
+n200["Landmark Candidate Emitter"]
+n272["Perception Rate Limiter"]
+n273["Village Scanner"]
 n55["Mineflayer Event Bridge (Bot Runtime and Mineflayer Adapter)"]
 n140["Perception Host (Bot Runtime and Mineflayer Adapter)"]
 n56["World Cache Adapter (Bot Runtime and Mineflayer Adapter)"]
-n262["Detector Fixtures (Testing and Evaluation)"]
-n185["Event Stream (Transport and Protocol)"]
-n181["Profile Resolver (Config and Profiles)"]
-n55 -->|delegates_to| n193
-n140 -->|depends_on| n260
-n140 -->|depends_on| n253
+n274["Detector Fixtures (Testing and Evaluation)"]
+n195["Event Stream (Transport and Protocol)"]
+n191["Profile Resolver (Config and Profiles)"]
+n55 -->|delegates_to| n203
+n140 -->|depends_on| n271
+n140 -->|depends_on| n264
 n56 -->|depends_on| n55
-n56 -->|delegates_to| n253
-n262 -->|depends_on| n260
-n254 -->|depends_on| n253
-n260 -->|depends_on| n254
-n260 -->|depends_on| n257
-n260 -->|depends_on| n256
-n260 -->|depends_on| n259
-n260 -->|depends_on| n255
-n260 -->|depends_on| n258
-n257 -->|depends_on| n254
-n256 -->|depends_on| n254
-n190 -->|depends_on| n260
-n190 -->|publishes| n185
-n259 -->|depends_on| n254
-n255 -->|depends_on| n254
-n261 -->|depends_on| n181
-n253 -->|depends_on| n261
-n258 -->|depends_on| n254
-n193 -->|publishes| n185
+n56 -->|delegates_to| n264
+n274 -->|depends_on| n271
+n265 -->|depends_on| n264
+n271 -->|depends_on| n265
+n271 -->|depends_on| n268
+n271 -->|depends_on| n267
+n271 -->|depends_on| n270
+n271 -->|depends_on| n266
+n271 -->|depends_on| n269
+n268 -->|depends_on| n265
+n267 -->|depends_on| n265
+n200 -->|depends_on| n271
+n200 -->|publishes| n195
+n270 -->|depends_on| n265
+n266 -->|depends_on| n265
+n272 -->|depends_on| n191
+n264 -->|depends_on| n272
+n269 -->|depends_on| n265
+n203 -->|publishes| n195
+n273 -->|depends_on| n268
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n253,n254,n193,n255,n256,n257,n258,n259,n260,n190,n261 internal;
-class n55,n140,n56,n262,n185,n181 external;
+class n264,n265,n203,n266,n267,n268,n269,n270,n271,n200,n272,n273 internal;
+class n55,n140,n56,n274,n195,n191 external;

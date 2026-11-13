@@ -1,11 +1,13 @@
 import type { AgencySnapshot, NightIntent, ProjectSummary } from '@ticrafter/agency';
 import type { ProcurementCatalogPort } from '@ticrafter/building';
 import type { ActionDispatchPort, ClockPort, Result, Vec3 } from '@ticrafter/core';
+import type { DetectionCandidate } from '@ticrafter/perception';
 import type { SafetyHostile, SafetySnapshot } from '@ticrafter/safety';
 import type { SkillBBox, SkillBlock, SkillBlockState, SkillWorldView } from '@ticrafter/skills';
 
 import type { AgencyHomeSnapshot } from '../index.js';
 import type { BuildingWorldView, ContainerRefreshPort } from '../index.js';
+import type { ObservedPlayer } from '../village/index.js';
 
 export type { ContainerRefreshPort } from '../index.js';
 
@@ -29,6 +31,15 @@ export interface HeadlessInventoryPort {
     remove(name: string, count: number): Result<void, string>;
 }
 
+export interface HeadlessChatPort {
+    send(text: string): Result<void, string>;
+    listen(listener: (username: string, message: string, playerId?: string) => void): () => void;
+}
+
+export interface HeadlessPerceptionPort {
+    candidates(): readonly DetectionCandidate[];
+}
+
 export interface BotPlatformPorts {
     world: HeadlessWorldView;
     inventory: HeadlessInventoryPort;
@@ -45,6 +56,13 @@ export interface BotPlatformPorts {
     home: () => AgencyHomeSnapshot | null;
     project: () => ProjectSummary | null;
     nightIntent: () => NightIntent | null;
+    chat?: HeadlessChatPort;
+    players?: () => readonly ObservedPlayer[];
+    villagers?: () => readonly Vec3[];
+    perception?: HeadlessPerceptionPort;
+    resources?: () => readonly { kind: string; position: Vec3 }[];
+    stations?: () => readonly { kind: string; position: Vec3 }[];
+    waterSources?: () => readonly Vec3[];
 }
 
 export type AgencySnapshotPort = { read(): Result<AgencySnapshot, string> };

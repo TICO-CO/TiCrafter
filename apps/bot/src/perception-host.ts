@@ -36,6 +36,7 @@ export interface PerceptionHostOptions {
     maxChunksPerTick?: number;
     pipeline?: DetectorPipeline;
     clock?: ClockPort;
+    onCandidates?: (candidates: readonly DetectionCandidate[]) => void;
 }
 
 export class PerceptionHost {
@@ -112,6 +113,7 @@ export class PerceptionHost {
             if (emitError) return [null, `landmark emitter: ${emitError.type}`];
             candidates.push(...(detected ?? []));
         }
+        this.options.onCandidates?.(candidates);
         return [candidates, null];
     }
 

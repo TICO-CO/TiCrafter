@@ -4,14 +4,20 @@ import {
     AgencyState,
     type Goal,
     GoalArbiter,
+    type GoalDeadlineOverrides,
+    GoalDeadlinePolicy,
     GoalGenerator,
     goalNeedFor,
     type Intention,
     IntentionManager,
     type JobMarketContext,
+    type NeedLevels,
     type NightPrepConfig,
     NightPrepDefaults,
     NightReadinessModel,
+    type ProgressionPlan,
+    ProgressionPlanModel,
+    type ProgressionPlannerPort,
     type ProjectSummary,
     ReflectionModel,
     type ReflectionResult,
@@ -36,17 +42,20 @@ import {
 import type { SkillInput, SkillProgressEvent, SkillStep } from '@ticrafter/skills';
 
 import type { AgencyEpisodeInput } from './agency-state-adapter.js';
-import { AgentLoop } from './agent-loop.js';
+import { AgentLoop, type AgentLoopTick } from './agent-loop.js';
+import type { BehaviorTracePort } from './behavior-trace.js';
 import type { GoalTieBreakPort } from './goal-tie-break.js';
 
 const DEFAULT_MAXIMUM_ATTEMPTS = 2;
 const DEFAULT_TELEMETRY_MILLISECONDS = 5000;
+const DEFAULT_PROGRESS_TIMEOUT_MILLISECONDS = 120_000;
 const NEED_SATISFACTION = 0.6;
 const MAXIMUM_RESTORE_DISTANCE = 128;
 
 export interface AgencySkillPort {
     readonly activeSkillId: string | null;
     run(skillId: string, input: SkillInput): Result<SkillStep, string>;
+    resume(skillId: string, taskId: string): Result<SkillStep, string>;
     preempt(reason: string): Result<SkillStep | null, string>;
 }
 
@@ -68,6 +77,12 @@ export interface AgencyRuntimeConfig {
         enabled: boolean;
         closeScore: number;
     };
+    goalDeadlines?: GoalDeadlineOverrides;
+    progression?: { enabled: boolean };
+    minimumDwellMilliseconds?: number;
+    switchThreshold?: number;
+    progressTimeoutMilliseconds?: number;
+    needDecayByNeed?: Partial<NeedLevels>;
     reflection?: {
         enabled: boolean;
         maxTraitDelta: number;
@@ -86,6 +101,8 @@ export interface AgencyRuntimeOptions {
     isJobActive?: () => boolean;
     isProjectTaskActive?: () => boolean;
     goalTieBreak?: GoalTieBreakPort;
+    progressionPlanner?: ProgressionPlannerPort;
+    trace?: BehaviorTracePort;
     now?: () => number;
     clock?: ClockPort;
     maximumAttempts?: number;
@@ -113,10 +130,14 @@ export class AgencyRuntime {
     private readonly now: () => number;
     private readonly maximumAttempts: number;
     private readonly telemetryMilliseconds: number;
+    private readonly progressTimeoutMilliseconds: number;
     private state: AgencyState;
     private timer: ClockHandle | null = null;
     private lastTickAt: number;
     private lastPersistAt = 0;
+    private lastProgressAt: number;
+    private progressSinceDeadline = 0;
+    private watchdogPreempting = false;
     private lastNightReadinessKey: string | null = null;
     private launching = false;
     private ticking = false;
@@ -133,7 +154,10 @@ export class AgencyRuntime {
         this.maximumAttempts = options.maximumAttempts ?? DEFAULT_MAXIMUM_ATTEMPTS;
         this.telemetryMilliseconds =
             options.telemetryMilliseconds ?? DEFAULT_TELEMETRY_MILLISECONDS;
+        this.progressTimeoutMilliseconds =
+            options.config.progressTimeoutMilliseconds ?? DEFAULT_PROGRESS_TIMEOUT_MILLISECONDS;
         this.lastTickAt = this.now();
+        this.lastProgressAt = this.lastTickAt;
         this.agent = new AgentLoop({
             botId: options.botId,
             generator: this.generator,
@@ -148,6 +172,11 @@ export class AgencyRuntime {
             tacticalContext: () => this.tacticalContext(),
             recordTacticalDecision: (input) => this.recordTacticalDecision(input),
             recordTacticalDrop: (input) => this.recordTacticalDrop(input),
+            deadlineFor: (goal, now) =>
+                GoalDeadlinePolicy.deadlineFor(goal.kind, now, options.config.goalDeadlines),
+            progressionGoal: (snapshot, now) => this.progressionGoal(snapshot, now),
+            minimumDwellMilliseconds: options.config.minimumDwellMilliseconds,
+            switchThreshold: options.config.switchThreshold,
         });
     }
 
@@ -385,6 +414,8 @@ export class AgencyRuntime {
             return [undefined, null];
         }
         this.state = this.state.withIntention(restored);
+        this.progressSinceDeadline = 0;
+        this.lastProgressAt = this.now();
         this.applyAgencyFocus(restored.goalId, restored.label, new Date(this.now()).toISOString());
         this.persist(this.now(), true);
         return [undefined, null];
@@ -405,13 +436,40 @@ export class AgencyRuntime {
         this.reportNightReadiness(state.snapshot, now);
         const active = this.agent.intention;
         if (active !== null) {
-            if (this.agent.expired(now)) {
-                const goal = this.agent.goal;
-                if (goal === null) return [null, 'active intention has no goal'];
-                return this.abandonGoal(goal, 'expired', now);
-            }
             const goal = this.agent.goal;
             if (goal === null) return [null, 'active intention has no goal'];
+            if (this.options.skills.activeSkillId !== null) {
+                const [watchdog, watchdogError] = this.checkProgressWatchdog(
+                    goal,
+                    state.snapshot,
+                    nowMilliseconds,
+                );
+                if (watchdogError) return [null, watchdogError];
+                if (watchdog !== null) return [watchdog, null];
+                return [{ action: 'running', goalId: goal.id }, null];
+            }
+            if (GoalDeadlinePolicy.expired(active.deadline, now)) {
+                const [extended, extendError] = this.extendDeadline(goal, active);
+                if (extendError) return [null, extendError];
+                if (extended !== null) {
+                    this.state = this.state.withIntention(extended);
+                    this.options.trace?.record('decision', 'agency.deadline.extended', {
+                        goalId: goal.id,
+                        deadline: extended.deadline,
+                    });
+                    return this.continueGoal(goal, extended, state.snapshot, now);
+                }
+                this.options.trace?.record('decision', 'agency.deadline.abandoned', {
+                    goalId: goal.id,
+                    deadline: active.deadline,
+                });
+                return this.abandonGoal(goal, 'deadline', now);
+            }
+            const [switched, switchError] = await this.agent.reconsider(now);
+            if (switchError) return [null, switchError];
+            if (switched !== null) {
+                return this.switchGoal(goal, switched, state.snapshot, nowMilliseconds, now);
+            }
             return this.continueGoal(goal, active, state.snapshot, now);
         }
         if (this.options.isProjectTaskActive?.() === true) {
@@ -433,6 +491,8 @@ export class AgencyRuntime {
             return [null, 'agent tick returned null'];
         }
         this.state = this.state.withIntention(tick.intention).touchDeliberation(now);
+        this.progressSinceDeadline = 0;
+        this.lastProgressAt = nowMilliseconds;
         this.applyAgencyFocus(tick.goalId, tick.goal.label, now);
         this.persist(nowMilliseconds, true);
         this.options.persistence.episode({
@@ -447,12 +507,15 @@ export class AgencyRuntime {
             },
             at: now,
         });
+        this.recordGoalStarted(tick.goal);
         return this.executeCurrentStep(tick.goal, tick.intention, state.snapshot, now);
     }
 
     observeProgress(event: SkillProgressEvent): void {
-        if (!this.options.config.enabled || this.launching) return;
+        if (!this.options.config.enabled || this.launching || this.watchdogPreempting) return;
         if (this.options.isPaused?.() === true) return;
+        this.lastProgressAt = Date.parse(event.at);
+        this.progressSinceDeadline += 1;
         const goal = this.agent.goal;
         const intention = this.agent.intention;
         if (goal === null || intention === null) return;
@@ -497,6 +560,147 @@ export class AgencyRuntime {
         }
     }
 
+    private progressionGoal(snapshot: AgencySnapshot, now: string): Result<Goal | null, string> {
+        const planner = this.options.progressionPlanner;
+        if (planner === undefined || this.options.config.progression?.enabled === false) {
+            return [null, null];
+        }
+        const [plan, planError] = this.progressionPlan(now);
+        if (planError) return [null, planError];
+        if (plan === null) return [null, 'progression plan returned null'];
+        const [decision, decisionError] = planner.nextGoal(plan, snapshot);
+        if (decisionError) return [null, decisionError];
+        if (decision === null) return [null, 'progression decision returned null'];
+        if (decision.plan.revision !== plan.revision) this.saveProgressionPlan(decision.plan);
+        return [decision.goal, null];
+    }
+
+    private progressionPlan(now: string): Result<ProgressionPlan | null, string> {
+        const memory = this.memory();
+        const [restored, restoreError] = ProgressionPlanModel.restore(memory.progressionPlan, now);
+        if (restoreError) return [null, restoreError];
+        if (restored === null) return [null, 'progression plan restore returned null'];
+        if (restored.migrated) {
+            this.options.trace?.record('plan', 'plan-migrated', {
+                version: ProgressionPlanModel.create(now).version,
+            });
+        }
+        if (memory.progressionPlan === null || restored.migrated) {
+            this.saveProgressionPlan(restored.plan);
+        }
+        return [restored.plan, null];
+    }
+
+    private saveProgressionPlan(plan: ProgressionPlan): void {
+        const memory = this.memory().withProgressionPlan(plan);
+        this.state = this.state.withWorkingMemory(memory.snapshot);
+        this.persist(this.now(), true);
+    }
+
+    private observeProgression(goal: Goal, status: 'completed' | 'abandoned', now: string): void {
+        const planner = this.options.progressionPlanner;
+        if (planner === undefined || !goal.id.startsWith('goal:progression:')) return;
+        const plan = this.memory().progressionPlan;
+        if (plan === null || plan === undefined) return;
+        const next = planner.observe(plan, { goal, status, at: now });
+        if (next.revision !== plan.revision) this.saveProgressionPlan(next);
+    }
+
+    private switchGoal(
+        previousGoal: Goal,
+        tick: AgentLoopTick,
+        snapshot: AgencySnapshot,
+        nowMilliseconds: number,
+        now: string,
+    ): Result<AgencyTickReport, string> {
+        if (this.options.skills.activeSkillId !== null) {
+            const [, preemptError] = this.options.skills.preempt('goal switched');
+            if (preemptError) return [null, preemptError];
+        }
+        this.state = this.state.withIntention(tick.intention).touchDeliberation(now);
+        this.progressSinceDeadline = 0;
+        this.lastProgressAt = nowMilliseconds;
+        this.applyAgencyFocus(tick.goalId, tick.goal.label, now);
+        this.observeProgression(previousGoal, 'abandoned', now);
+        this.options.trace?.record('decision', 'agency.goal.switched', {
+            previousGoalId: previousGoal.id,
+            previousGoalKind: previousGoal.kind,
+            goalId: tick.goalId,
+            goalKind: tick.goal.kind,
+        });
+        this.recordGoalStarted(tick.goal);
+        this.persist(nowMilliseconds, true);
+        this.options.persistence.episode({
+            goalId: previousGoal.id,
+            kind: 'goal.abandoned',
+            summary: `Abandoned ${previousGoal.label}: preempted by ${tick.goal.label}`,
+            position: snapshot.position,
+            payload: { kind: previousGoal.kind, reason: 'preempted', replacement: tick.goalId },
+            at: now,
+        });
+        return this.executeCurrentStep(tick.goal, tick.intention, snapshot, now);
+    }
+
+    private recordGoalStarted(goal: Goal): void {
+        this.options.trace?.record('decision', 'agency.goal.started', {
+            goalId: goal.id,
+            goalKind: goal.kind,
+            source: goal.source,
+            label: goal.label,
+        });
+        if (goal.kind === 'leisure') {
+            this.options.trace?.record('plan', 'idle-life', {
+                goalId: goal.id,
+                plan: goal.label,
+                target: goal.target,
+            });
+        }
+    }
+
+    private extendDeadline(goal: Goal, intention: Intention): Result<Intention | null, string> {
+        if (intention.deadline === null || intention.deadlineExtended === true) {
+            return [null, null];
+        }
+        if (intention.stepIndex === 0 && this.progressSinceDeadline === 0) return [null, null];
+        const deadline = GoalDeadlinePolicy.extend(
+            intention.deadline,
+            goal.kind,
+            this.options.config.goalDeadlines,
+        );
+        if (deadline === null) return [null, null];
+        const [extended, extendError] = this.agent.extendDeadline(deadline);
+        if (extendError) return [null, extendError];
+        this.progressSinceDeadline = 0;
+        return [extended, null];
+    }
+
+    private checkProgressWatchdog(
+        goal: Goal,
+        snapshot: AgencySnapshot,
+        nowMilliseconds: number,
+    ): Result<AgencyTickReport | null, string> {
+        if (this.options.skills.activeSkillId === null) return [null, null];
+        if (nowMilliseconds - this.lastProgressAt <= this.progressTimeoutMilliseconds) {
+            return [null, null];
+        }
+        this.options.trace?.record('decision', 'agency.progress.watchdog', {
+            goalId: goal.id,
+            skillId: this.options.skills.activeSkillId,
+            timeoutMilliseconds: this.progressTimeoutMilliseconds,
+        });
+        this.watchdogPreempting = true;
+        const [, preemptError] = this.options.skills.preempt('progress timeout');
+        this.watchdogPreempting = false;
+        this.lastProgressAt = nowMilliseconds;
+        if (preemptError) return [null, preemptError];
+        return this.retryOrAbandon(
+            goal,
+            'infeasible',
+            snapshot,
+            new Date(nowMilliseconds).toISOString(),
+        );
+    }
+
     private continueGoal(
         goal: Goal,
         intention: Intention,
@@ -524,6 +728,7 @@ export class AgencyRuntime {
                 return this.retryOrAbandon(goal, 'infeasible', snapshot, now);
             }
             if (input === null) return [null, 'skill input returned null'];
+            this.lastProgressAt = this.now();
             this.launching = true;
             const [skillStep, runError] = this.options.skills.run(step.skillId, input);
             this.launching = false;
@@ -563,10 +768,33 @@ export class AgencyRuntime {
             const [retried, retryError] = this.agent.retry();
             if (retryError) return [null, retryError];
             if (retried !== null) this.state = this.state.withIntention(retried);
+            this.lastProgressAt = Date.parse(now);
             this.persist(this.now(), true);
+            const [, resumeError] = this.resumeCurrentStep(goal, retried ?? intention);
+            if (resumeError !== null) {
+                this.options.logger.debug(
+                    { error: resumeError, goalId: goal.id },
+                    'agency retry checkpoint unavailable',
+                );
+            }
             return [{ action: 'retry', goalId: goal.id }, null];
         }
         return this.abandonGoal(goal, reason, now);
+    }
+
+    private resumeCurrentStep(goal: Goal, intention: Intention): Result<SkillStep | null, string> {
+        const step = goal.steps[intention.stepIndex];
+        if (step === undefined) return [null, null];
+        const [resumed, resumeError] = this.options.skills.resume(step.skillId, goal.id);
+        if (resumeError) {
+            this.options.trace?.record('decision', 'agency.retry.checkpoint', {
+                goalId: goal.id,
+                skillId: step.skillId,
+                reason: resumeError,
+            });
+            return [null, resumeError];
+        }
+        return [resumed, null];
     }
 
     private completeGoal(
@@ -579,6 +807,7 @@ export class AgencyRuntime {
         if (intention === null) return [null, 'intention complete returned null'];
         const need = goalNeedFor(goal.kind);
         this.state = this.state.withIntention(null).satisfyNeed(need, NEED_SATISFACTION);
+        this.observeProgression(goal, 'completed', now);
         const reflection = this.applyReflection(goal, intention, 'completed', null, now);
         this.restoreProjectFocus(now);
         if (goal.kind === 'eat' || goal.kind === 'rest') {
@@ -592,6 +821,10 @@ export class AgencyRuntime {
             );
         }
         this.persist(this.now(), true);
+        this.options.trace?.record('decision', 'agency.goal.completed', {
+            goalId: goal.id,
+            goalKind: goal.kind,
+        });
         this.options.persistence.episode({
             goalId: goal.id,
             kind: 'goal.completed',
@@ -612,9 +845,15 @@ export class AgencyRuntime {
         if (abandonError) return [null, abandonError];
         if (intention === null) return [null, 'intention abandon returned null'];
         this.state = this.state.withIntention(null);
+        this.observeProgression(goal, 'abandoned', now);
         const reflection = this.applyReflection(goal, intention, 'abandoned', reason, now);
         this.restoreProjectFocus(now);
         this.persist(this.now(), true);
+        this.options.trace?.record('decision', 'agency.goal.abandoned', {
+            goalId: goal.id,
+            goalKind: goal.kind,
+            reason,
+        });
         this.options.persistence.episode({
             goalId: goal.id,
             kind: 'goal.abandoned',
@@ -797,7 +1036,7 @@ export class AgencyRuntime {
         const elapsed = Math.max(0, nowMilliseconds - this.lastTickAt);
         this.lastTickAt = nowMilliseconds;
         if (elapsed > 0) {
-            this.state = this.state.decayNeeds(elapsed, this.options.config.needDecayPerMinute);
+            this.state = this.applyNeedDecay(elapsed);
         }
         this.state = this.state.withRoutine(
             RoutineModel.update(
@@ -807,6 +1046,14 @@ export class AgencyRuntime {
                 this.iso(nowMilliseconds),
             ),
         );
+    }
+
+    private applyNeedDecay(elapsedMilliseconds: number): AgencyState {
+        const perNeed = this.options.config.needDecayByNeed;
+        if (perNeed !== undefined) {
+            return this.state.decayNeedsByNeed(elapsedMilliseconds, perNeed);
+        }
+        return this.state.decayNeeds(elapsedMilliseconds, this.options.config.needDecayPerMinute);
     }
 
     private readSnapshot(): Result<

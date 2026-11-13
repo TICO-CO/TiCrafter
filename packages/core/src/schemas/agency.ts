@@ -1,5 +1,6 @@
 import { z as zod } from 'zod';
 
+import { progressionPlanSchema } from './progression.js';
 import { positionSchema } from './shared.js';
 import { strategicIntentSchema } from './strategic-intent.js';
 
@@ -37,6 +38,7 @@ export const agencyIntentionSchema = zod.object({
     stepIndex: zod.number().int().nonnegative(),
     createdAt: zod.string().min(1),
     deadline: zod.string().min(1).nullable(),
+    deadlineExtended: zod.boolean().optional(),
     attempts: zod.number().int().nonnegative(),
 });
 
@@ -89,6 +91,7 @@ export const workingMemorySchema = zod.object({
     recentExperiences: zod.array(workingMemoryExperienceSchema).max(32),
     lastTacticalDecision: workingMemoryTacticalDecisionSchema.nullable(),
     strategicIntent: strategicIntentSchema.nullable().optional(),
+    progressionPlan: progressionPlanSchema.nullable().optional(),
 });
 
 export const agencyStateSchema = zod.object({

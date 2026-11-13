@@ -83,6 +83,12 @@ export class ReflectionModel {
                     { orderliness: -delta },
                     `Abandoned ${input.goal.label}: expired`,
                 ];
+            case 'deadline':
+                return [
+                    'restless',
+                    { orderliness: -delta },
+                    `Abandoned ${input.goal.label}: deadline`,
+                ];
             case 'claim_conflict':
                 return [
                     'wary',
@@ -116,6 +122,8 @@ export class ReflectionModel {
             case 'gather-wool':
             case 'gather-food':
             case 'equip-gear':
+            case 'harvest-farm':
+            case 'plant-farm':
                 return 'orderliness';
             case 'gather':
             case 'craft':

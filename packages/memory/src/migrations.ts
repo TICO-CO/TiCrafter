@@ -228,4 +228,21 @@ export const migrations: Migration[] = [
       ALTER TABLE construction_plans ADD COLUMN purpose TEXT NOT NULL DEFAULT 'build';
     `,
     },
+    {
+        version: 14,
+        name: 'player-confidence',
+        sql: `
+      CREATE TABLE IF NOT EXISTS player_confidence (
+        player_id TEXT PRIMARY KEY,
+        username TEXT NOT NULL,
+        score REAL NOT NULL,
+        linked_base_ids_json TEXT NOT NULL DEFAULT '[]',
+        link_sightings_json TEXT NOT NULL DEFAULT '{}',
+        last_interaction_at TEXT,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_player_confidence_updated_at
+        ON player_confidence(updated_at);
+    `,
+    },
 ];

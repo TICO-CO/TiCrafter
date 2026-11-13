@@ -18,6 +18,7 @@ export class BotEventBridge {
         private readonly emit: BridgeEmitter,
         private readonly logger: LoggerPort,
         private readonly blockUpdate?: BlockUpdateHandler,
+        private readonly chat?: (username: string, message: string, playerId?: string) => void,
     ) {}
 
     attach(): void {
@@ -30,6 +31,7 @@ export class BotEventBridge {
         }));
         this.bind('end', (reason) => ({ reason }));
         this.bindBlockUpdates();
+        this.bindChat();
     }
 
     detachAll(): void {
@@ -41,6 +43,21 @@ export class BotEventBridge {
         const handler = (...argumentsList: unknown[]) => this.handle(event, data, argumentsList);
         this.bot.on(event as never, handler as never);
         this.detach.push(() => this.bot.removeListener(event as never, handler as never));
+    }
+
+    private bindChat(): void {
+        if (this.chat === undefined) return;
+        const handler = (username: string, message: string) => {
+            const playerId = this.bot.players[username]?.uuid;
+            this.emit({
+                event: 'chat',
+                at: new Date().toISOString(),
+                data: { username, message, playerId },
+            });
+            this.chat?.(username, message, playerId);
+        };
+        this.bot.on('chat', handler as never);
+        this.detach.push(() => this.bot.removeListener('chat', handler as never));
     }
 
     private bindBlockUpdates(): void {

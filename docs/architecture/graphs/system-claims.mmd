@@ -1,69 +1,69 @@
 flowchart LR
-n230["Claim Repository"]
-n207["Overlap Margin Checker"]
-n166["Atomic Claim Acquirer"]
-n231["Lease Heartbeat"]
-n172["Lease Reaper"]
-n164["Fencing Token Authority"]
-n226["Claim Releaser"]
-n194["Bot Claim Command Handler"]
-n232["Contention Metrics"]
-n179["Resume Orchestrator (Bot Registry and Profiles)"]
-n171["Transaction Manager (Memory and Persistence)"]
-n225["Task State Machine (Task Board)"]
-n158["Metrics Registry (Ops and Observability)"]
+n240["Claim Repository"]
+n217["Overlap Margin Checker"]
+n176["Atomic Claim Acquirer"]
+n241["Lease Heartbeat"]
+n182["Lease Reaper"]
+n174["Fencing Token Authority"]
+n236["Claim Releaser"]
+n204["Bot Claim Command Handler"]
+n242["Contention Metrics"]
+n189["Resume Orchestrator (Bot Registry and Profiles)"]
+n181["Transaction Manager (Memory and Persistence)"]
+n235["Task State Machine (Task Board)"]
+n165["Metrics Registry (Ops and Observability)"]
 n30["Coordinator Epoch Authority (Coordinator Runtime)"]
-n203["Spatial Overlap Validator (Shared Infrastructure Plan)"]
+n213["Spatial Overlap Validator (Shared Infrastructure Plan)"]
 n29["Command Router (Coordinator Runtime)"]
 n31["Global Scheduler (Coordinator Runtime)"]
 n32["Restart Recovery Orchestrator (Coordinator Runtime)"]
-n227["Contention Harness (Testing and Evaluation)"]
-n208["Compatibility Checker (Edit Grants and Collaboration)"]
-n233["Grant Revoker (Edit Grants and Collaboration)"]
-n155["Status Aggregator (Ops and Observability)"]
-n151["Active Bot Support Rule (Autonomy and Safety)"]
-n149["Claim Loss Evaluator (Autonomy and Safety)"]
-n150["Protected BBox Rule (Autonomy and Safety)"]
-n153["Safety Policy Engine (Autonomy and Safety)"]
-n178["WebSocket Codec (Transport and Protocol)"]
-n179 -->|delegates_to| n226
-n166 -->|writes| n230
-n166 -->|depends_on| n207
-n166 -->|depends_on| n171
-n226 -->|writes| n230
-n226 -->|depends_on| n225
-n230 -->|depends_on| n171
-n232 -->|depends_on| n230
-n232 -->|observes| n158
-n164 -->|depends_on| n30
-n164 -->|depends_on| n171
-n231 -->|writes| n230
-n172 -->|writes| n230
-n172 -->|depends_on| n225
-n207 -->|depends_on| n230
-n207 -->|depends_on| n203
-n29 -->|controls| n166
-n30 -->|controls| n164
-n30 -->|depends_on| n171
-n31 -->|delegates_to| n172
+n237["Contention Harness (Testing and Evaluation)"]
+n218["Compatibility Checker (Edit Grants and Collaboration)"]
+n243["Grant Revoker (Edit Grants and Collaboration)"]
+n162["Status Aggregator (Ops and Observability)"]
+n158["Active Bot Support Rule (Autonomy and Safety)"]
+n156["Claim Loss Evaluator (Autonomy and Safety)"]
+n157["Protected BBox Rule (Autonomy and Safety)"]
+n160["Safety Policy Engine (Autonomy and Safety)"]
+n188["WebSocket Codec (Transport and Protocol)"]
+n189 -->|delegates_to| n236
+n176 -->|writes| n240
+n176 -->|depends_on| n217
+n176 -->|depends_on| n181
+n236 -->|writes| n240
+n236 -->|depends_on| n235
+n240 -->|depends_on| n181
+n242 -->|depends_on| n240
+n242 -->|observes| n165
+n174 -->|depends_on| n30
+n174 -->|depends_on| n181
+n241 -->|writes| n240
+n182 -->|writes| n240
+n182 -->|depends_on| n235
+n217 -->|depends_on| n240
+n217 -->|depends_on| n213
+n29 -->|controls| n176
+n30 -->|controls| n174
+n30 -->|depends_on| n181
+n31 -->|delegates_to| n182
 n31 -->|depends_on| n30
-n32 -->|depends_on| n179
-n32 -->|delegates_to| n172
-n32 -->|depends_on| n171
-n227 -->|depends_on| n230
-n208 -->|reads| n230
-n233 -->|depends_on| n164
-n155 -->|reads| n230
-n155 -->|observes| n158
-n151 -->|reads| n230
-n149 -->|reads| n230
-n150 -->|reads| n230
-n153 -->|reads| n230
-n153 -->|depends_on| n151
-n153 -->|depends_on| n150
-n194 -->|depends_on| n230
-n194 -->|depends_on| n178
+n32 -->|depends_on| n189
+n32 -->|delegates_to| n182
+n32 -->|depends_on| n181
+n237 -->|depends_on| n240
+n218 -->|reads| n240
+n243 -->|depends_on| n174
+n162 -->|reads| n240
+n162 -->|observes| n165
+n158 -->|reads| n240
+n156 -->|reads| n240
+n157 -->|reads| n240
+n160 -->|reads| n240
+n160 -->|depends_on| n158
+n160 -->|depends_on| n157
+n204 -->|depends_on| n240
+n204 -->|depends_on| n188
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n230,n207,n166,n231,n172,n164,n226,n194,n232 internal;
-class n179,n171,n225,n158,n30,n203,n29,n31,n32,n227,n208,n233,n155,n151,n149,n150,n153,n178 external;
+class n240,n217,n176,n241,n182,n174,n236,n204,n242 internal;
+class n189,n181,n235,n165,n30,n213,n29,n31,n32,n237,n218,n243,n162,n158,n156,n157,n160,n188 external;

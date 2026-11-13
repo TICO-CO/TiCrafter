@@ -16,6 +16,10 @@ import {
     BOT_JOB_DECIDE_RESPONSE,
     BOT_JOB_OFFERS,
     BOT_JOB_OFFERS_RESPONSE,
+    BOT_PERMISSION_OUTCOME_EVENT,
+    BOT_PLAYER_SIGHTING_EVENT,
+    BOT_PLOT_OWNERSHIP_REQUEST,
+    BOT_PLOT_OWNERSHIP_RESPONSE,
     BOT_PROJECT_ABANDON,
     BOT_PROJECT_ABANDON_RESPONSE,
     BOT_PROJECT_PROPOSE,
@@ -43,6 +47,10 @@ import {
     botJobDecideSchema,
     botJobOffersResponseSchema,
     botJobOffersSchema,
+    botPermissionOutcomeSchema,
+    botPlayerSightingSchema,
+    botPlotOwnershipRequestSchema,
+    botPlotOwnershipResponseSchema,
     botProjectAbandonResponseSchema,
     botProjectAbandonSchema,
     botProjectProposeSchema,
@@ -177,7 +185,11 @@ export class MessageSchemaRegistry {
             .register(BOT_JOB_OFFERS, botJobOffersSchema)
             .register(BOT_JOB_OFFERS_RESPONSE, botJobOffersResponseSchema)
             .register(BOT_JOB_DECIDE, botJobDecideSchema)
-            .register(BOT_JOB_DECIDE_RESPONSE, botJobDecideResponseSchema);
+            .register(BOT_JOB_DECIDE_RESPONSE, botJobDecideResponseSchema)
+            .register(BOT_PLOT_OWNERSHIP_REQUEST, botPlotOwnershipRequestSchema)
+            .register(BOT_PLOT_OWNERSHIP_RESPONSE, botPlotOwnershipResponseSchema)
+            .register(BOT_PLAYER_SIGHTING_EVENT, botPlayerSightingSchema)
+            .register(BOT_PERMISSION_OUTCOME_EVENT, botPermissionOutcomeSchema);
     }
 
     private static describe(error: unknown): string {

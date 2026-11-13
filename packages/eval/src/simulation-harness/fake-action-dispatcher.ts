@@ -16,6 +16,8 @@ export interface FakeActionDispatcherOptions {
     setPosition?: (position: Vec3) => void;
     latencyTicks?: number;
     recipes?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+    drops?: Readonly<Record<string, string>>;
+    outputs?: Readonly<Record<string, number>>;
 }
 
 interface PendingAction {
@@ -25,21 +27,72 @@ interface PendingAction {
 
 const PLACEABLE = new Set(['air', 'water', 'lava', 'short_grass', 'tall_grass']);
 const TOOL_SUFFIXES = ['_pickaxe', '_axe', '_shovel', '_hoe', '_sword'];
+const SEED_CROPS: Readonly<Record<string, string>> = {
+    beetroot_seeds: 'beetroots',
+    carrot: 'carrots',
+    melon_seeds: 'melon_stem',
+    nether_wart: 'nether_wart',
+    potato: 'potatoes',
+    pumpkin_seeds: 'pumpkin_stem',
+    sweet_berries: 'sweet_berry_bush',
+    wheat_seeds: 'wheat',
+};
 
 export class FakeActionDispatcher {
     private sequence = 0;
+    private latencyTicks: number;
     private readonly pending = new Map<string, PendingAction>();
     private readonly unreachable = new Set<string>();
+    private readonly recipes: Map<string, Readonly<Record<string, number>>>;
+    private injectedFailures = 0;
+    private injectedFailureKinds: ReadonlySet<string> | null = null;
 
-    constructor(private readonly options: FakeActionDispatcherOptions) {}
+    constructor(private readonly options: FakeActionDispatcherOptions) {
+        this.latencyTicks = options.latencyTicks ?? 0;
+        this.recipes = new Map(Object.entries(options.recipes ?? {}));
+    }
+
+    setLatencyTicks(ticks: number): void {
+        this.latencyTicks = Math.max(0, ticks);
+    }
+
+    removeRecipe(itemName: string): void {
+        this.recipes.delete(itemName);
+    }
+
+    injectFailures(count = 1, kinds?: readonly string[]): void {
+        this.injectedFailures = Math.max(this.injectedFailures, count);
+        this.injectedFailureKinds =
+            kinds === undefined || kinds.length === 0 ? null : new Set(kinds);
+    }
 
     dispatch(request: ActionRequest): Result<string, string> {
         const handle = `action.${this.sequence}`;
         this.sequence += 1;
+        if (
+            this.injectedFailures > 0 &&
+            (this.injectedFailureKinds === null || this.injectedFailureKinds.has(request.kind))
+        ) {
+            this.injectedFailures -= 1;
+            const [failure, failureError] = this.fail(
+                request,
+                'execution-failed',
+                'injected action failure',
+            );
+            if (failureError !== null) return [null, failureError];
+            if (failure === null) return [null, 'injected failure produced no outcome'];
+            const handle = `action.${this.sequence}`;
+            this.sequence += 1;
+            this.pending.set(handle, {
+                outcome: failure,
+                readyAt: this.options.clock.now() + this.latencyTicks,
+            });
+            return [handle, null];
+        }
         const [outcome, error] = this.execute(request);
         if (error !== null) return [null, error];
         if (outcome === null) return [null, 'action produced no outcome'];
-        const latency = this.options.latencyTicks ?? 0;
+        const latency = this.latencyTicks;
         this.pending.set(handle, {
             outcome,
             readyAt: this.options.clock.now() + latency,
@@ -90,9 +143,12 @@ export class FakeActionDispatcher {
                 return this.options.inventory.count(request.itemName) > 0
                     ? this.completed(request)
                     : this.fail(request, 'missing-item', `missing ${request.itemName}`);
-            case 'use-block':
             case 'attack':
             case 'use-entity':
+                return this.interactWithEntity(request);
+            case 'use-block':
+                return this.useBlock(request);
+            case 'look-at':
             case 'collect-drops':
                 return this.completed(request);
             case 'wait':
@@ -143,19 +199,66 @@ export class FakeActionDispatcher {
             return this.fail(request, 'missing-tool', `missing tool for ${current.name}`);
         }
         this.options.world.applyBlock(request.position, null);
-        this.options.inventory.add(current.name, 1);
+        const drop = this.options.drops?.[current.name] ?? current.name;
+        this.options.inventory.add(drop, 1);
+        return this.completed(request);
+    }
+
+    private interactWithEntity(
+        request: Extract<ActionRequest, { kind: 'attack' | 'use-entity' }>,
+    ): Result<ActionOutcome, string> {
+        const target = this.options.world
+            .entities()
+            .find(
+                (entity) =>
+                    (request.entityId !== undefined && entity.id === request.entityId) ||
+                    (request.entityId === undefined &&
+                        entity.name === (request.entityName ?? entity.name)),
+            );
+        if (target === undefined) {
+            return this.fail(request, 'target-missing', 'entity target is missing');
+        }
+        if (target.name === 'sheep') {
+            const [added, addError] = this.options.inventory.add('white_wool', 1);
+            if (addError !== null || added === null) {
+                return this.fail(request, 'execution-failed', addError ?? 'wool add failed');
+            }
+        }
+        return this.completed(request);
+    }
+
+    private useBlock(
+        request: Extract<ActionRequest, { kind: 'use-block' }>,
+    ): Result<ActionOutcome, string> {
+        const itemName = request.itemName;
+        if (itemName === undefined) return this.completed(request);
+        const crop = SEED_CROPS[itemName];
+        if (crop === undefined) return this.completed(request);
+        const soil = this.options.world.blockAt(request.position);
+        if (soil !== 'farmland') return this.completed(request);
+        if (this.options.inventory.count(itemName) === 0) {
+            return this.fail(request, 'missing-item', `missing ${itemName}`);
+        }
+        const [, removeError] = this.options.inventory.remove(itemName, 1);
+        if (removeError !== null) {
+            return this.fail(request, 'missing-item', removeError);
+        }
+        this.options.world.applyBlock(
+            { x: request.position.x, y: request.position.y + 1, z: request.position.z },
+            { name: crop, properties: { age: '0' } },
+        );
         return this.completed(request);
     }
 
     private craft(
         request: Extract<ActionRequest, { kind: 'craft' }>,
     ): Result<ActionOutcome, string> {
-        const recipe = this.options.recipes?.[request.itemName];
+        const recipe = this.recipes.get(request.itemName);
         if (recipe === undefined) {
             return this.fail(request, 'missing-item', `missing recipe for ${request.itemName}`);
         }
         const available = Object.entries(recipe).every(
-            ([item, count]) => this.options.inventory.count(item) >= count * request.count,
+            ([item, count]) => this.options.inventory.count(item) >= count,
         );
         if (!available) {
             return this.fail(
@@ -165,9 +268,12 @@ export class FakeActionDispatcher {
             );
         }
         Object.entries(recipe).forEach(([item, count]) => {
-            this.options.inventory.remove(item, count * request.count);
+            this.options.inventory.remove(item, count);
         });
-        this.options.inventory.add(request.itemName, request.count);
+        this.options.inventory.add(
+            request.itemName,
+            request.count * (this.options.outputs?.[request.itemName] ?? 1),
+        );
         return this.completed(request);
     }
 

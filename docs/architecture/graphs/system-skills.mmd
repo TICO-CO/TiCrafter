@@ -1,41 +1,42 @@
 flowchart LR
-n268["Navigate"]
-n215["Follow Path"]
-n270["Mine"]
-n271["Collect"]
-n267["Craft"]
-n272["Smelt"]
-n273["Eat"]
-n249["Deposit"]
-n252["Withdraw"]
-n274["Sleep"]
-n275["Flee or Defend"]
-n250["Explore"]
-n276["Bridge"]
-n277["Clear"]
-n269["Place Build"]
-n278["Construction"]
-n279["Procurement"]
-n280["Schematic Build"]
-n281["Repair"]
-n216["Harvest Farm"]
-n217["Plant Farm"]
-n282["Entity Targeting"]
-n283["Equip Gear"]
-n284["Gather Food"]
-n285["Gather Wool"]
-n286["Place Bed"]
-n287["Dig Shelter"]
-n251["Skill Shared Utilities"]
+n280["Navigate"]
+n225["Follow Path"]
+n283["Mine"]
+n284["Collect"]
+n279["Craft"]
+n285["Smelt"]
+n286["Eat"]
+n260["Deposit"]
+n263["Withdraw"]
+n287["Sleep"]
+n288["Flee or Defend"]
+n261["Explore"]
+n289["Bridge"]
+n290["Clear"]
+n281["Place Build"]
+n291["Construction"]
+n292["Procurement"]
+n293["Schematic Build"]
+n294["Repair"]
+n226["Harvest Farm"]
+n227["Plant Farm"]
+n295["Entity Targeting"]
+n296["Equip Gear"]
+n297["Gather Food"]
+n298["Gather Wool"]
+n299["Place Bed"]
+n300["Dig Shelter"]
+n262["Skill Shared Utilities"]
+n282["Gather Resource"]
 n53["Block Executor (Building)"]
 n63["Action Veto Gate (Autonomy and Safety)"]
 n57["Action Executor (Bot Runtime and Mineflayer Adapter)"]
 n52["Skill Context Builder (Skill Runtime)"]
-n211["Container Memory (World Model and Landmarks)"]
-n212["Spatial Query Engine (World Model and Landmarks)"]
-n145["Mob Threat Evaluator (Autonomy and Safety)"]
-n200["Path Graph Store (Shared Infrastructure Plan)"]
-n198["Farm Store (Shared Infrastructure Plan)"]
+n221["Container Memory (World Model and Landmarks)"]
+n222["Spatial Query Engine (World Model and Landmarks)"]
+n152["Mob Threat Evaluator (Autonomy and Safety)"]
+n210["Path Graph Store (Shared Infrastructure Plan)"]
+n208["Farm Store (Shared Infrastructure Plan)"]
 n83["Skill Contract (Skill Runtime)"]
 n104["Schematic Diff (Building)"]
 n106["Build Order Planner (Building)"]
@@ -50,77 +51,78 @@ n56 -->|delegates_to| n52
 n53 -->|depends_on| n57
 n53 -->|depends_on| n63
 n106 -->|depends_on| n105
-n104 -->|reads| n212
+n104 -->|reads| n222
 n63 -->|validates| n57
 n63 -->|validates| n53
 n52 -->|reads| n56
-n52 -->|reads| n212
-n276 -->|depends_on| n53
-n276 -->|depends_on| n268
-n277 -->|depends_on| n53
-n277 -->|depends_on| n63
-n271 -->|depends_on| n57
-n271 -->|depends_on| n270
-n271 -->|depends_on| n268
-n267 -->|depends_on| n57
-n267 -->|depends_on| n52
-n249 -->|depends_on| n57
-n249 -->|depends_on| n211
-n273 -->|depends_on| n57
-n250 -->|depends_on| n268
-n250 -->|depends_on| n212
-n275 -->|depends_on| n57
-n275 -->|depends_on| n145
-n275 -->|depends_on| n268
-n215 -->|depends_on| n200
-n215 -->|depends_on| n268
-n216 -->|depends_on| n57
-n216 -->|depends_on| n198
-n216 -->|depends_on| n268
-n270 -->|depends_on| n57
-n270 -->|depends_on| n268
-n268 -->|depends_on| n57
-n268 -->|depends_on| n83
-n269 -->|depends_on| n53
-n269 -->|depends_on| n52
-n217 -->|depends_on| n57
-n217 -->|depends_on| n198
-n217 -->|depends_on| n268
-n281 -->|depends_on| n53
-n281 -->|depends_on| n104
-n280 -->|depends_on| n53
-n280 -->|depends_on| n106
-n280 -->|depends_on| n105
-n251 -->|depends_on| n52
-n251 -->|depends_on| n212
-n274 -->|depends_on| n57
-n274 -->|depends_on| n268
-n272 -->|depends_on| n57
-n272 -->|depends_on| n268
-n252 -->|depends_on| n57
-n252 -->|depends_on| n211
-n212 -->|reads| n200
-n124 -->|depends_on| n126
-n282 -->|depends_on| n56
-n283 -->|depends_on| n251
-n283 -->|depends_on| n57
-n284 -->|depends_on| n282
-n284 -->|depends_on| n251
+n52 -->|reads| n222
+n289 -->|depends_on| n53
+n289 -->|depends_on| n280
+n290 -->|depends_on| n53
+n290 -->|depends_on| n63
 n284 -->|depends_on| n57
-n284 -->|depends_on| n56
-n285 -->|depends_on| n282
-n285 -->|depends_on| n251
-n285 -->|depends_on| n57
-n285 -->|depends_on| n56
-n286 -->|depends_on| n251
+n284 -->|depends_on| n283
+n284 -->|depends_on| n280
+n279 -->|depends_on| n57
+n279 -->|depends_on| n52
+n260 -->|depends_on| n57
+n260 -->|depends_on| n221
 n286 -->|depends_on| n57
-n287 -->|depends_on| n251
+n261 -->|depends_on| n280
+n261 -->|depends_on| n222
+n288 -->|depends_on| n57
+n288 -->|depends_on| n152
+n288 -->|depends_on| n280
+n225 -->|depends_on| n210
+n225 -->|depends_on| n280
+n226 -->|depends_on| n57
+n226 -->|depends_on| n208
+n226 -->|depends_on| n280
+n283 -->|depends_on| n57
+n283 -->|depends_on| n280
+n280 -->|depends_on| n57
+n280 -->|depends_on| n83
+n281 -->|depends_on| n53
+n281 -->|depends_on| n52
+n227 -->|depends_on| n57
+n227 -->|depends_on| n208
+n227 -->|depends_on| n280
+n294 -->|depends_on| n53
+n294 -->|depends_on| n104
+n293 -->|depends_on| n53
+n293 -->|depends_on| n106
+n293 -->|depends_on| n105
+n262 -->|depends_on| n52
+n262 -->|depends_on| n222
 n287 -->|depends_on| n57
-n278 -->|depends_on| n132
-n278 -->|depends_on| n124
-n279 -->|depends_on| n136
-n279 -->|depends_on| n126
+n287 -->|depends_on| n280
+n285 -->|depends_on| n57
+n285 -->|depends_on| n280
+n263 -->|depends_on| n57
+n263 -->|depends_on| n221
+n222 -->|reads| n210
+n124 -->|depends_on| n126
+n295 -->|depends_on| n56
+n296 -->|depends_on| n262
+n296 -->|depends_on| n57
+n297 -->|depends_on| n295
+n297 -->|depends_on| n262
+n297 -->|depends_on| n57
+n297 -->|depends_on| n56
+n298 -->|depends_on| n295
+n298 -->|depends_on| n262
+n298 -->|depends_on| n57
+n298 -->|depends_on| n56
+n299 -->|depends_on| n262
+n299 -->|depends_on| n57
+n300 -->|depends_on| n262
+n300 -->|depends_on| n57
+n291 -->|depends_on| n132
+n291 -->|depends_on| n124
+n292 -->|depends_on| n136
+n292 -->|depends_on| n126
+n282 -->|depends_on| n83
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n268,n215,n270,n271,n267,n272,n273,n249,n252,n274,n275,n250,n276,n277,n269,n278,n279,n280,n281,n216,n217,n282,n283,n284,n285,n286,n287,n251 internal;
-class n53,n63,n57,n52,n211,n212,n145,n200,n198,n83,n104,n106,n105,n56,n132,n124,n136,n126 external;
+class n280,n225,n283,n284,n279,n285,n286,n260,n263,n287,n288,n261,n289,n290,n281,n291,n292,n293,n294,n226,n227,n295,n296,n297,n298,n299,n300,n262,n282 internal;
+class n53,n63,n57,n52,n221,n222,n152,n210,n208,n83,n104,n106,n105,n56,n132,n124,n136,n126 external;

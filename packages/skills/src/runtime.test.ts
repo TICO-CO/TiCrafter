@@ -12,6 +12,7 @@ import { EffectsEmitter } from './effects-emitter.js';
 import { SkillLifecycleExecutor } from './lifecycle-executor.js';
 import { MemoryCheckpointStore } from './memory-checkpoint-store.js';
 import { PreemptionHandler } from './preemption-handler.js';
+import { ProgressReporter } from './progress-reporter.js';
 import { SkillRegistry } from './registry.js';
 import { RestoreValidator } from './restore-validator.js';
 import { SkillCatalog } from './skill-catalog.js';
@@ -20,6 +21,8 @@ import type {
     SkillCheckpoint,
     SkillContext,
     SkillInput,
+    SkillProgressEvent,
+    SkillProgressSink,
     SkillRun,
     SkillStep,
     SkillWorldView,
@@ -128,6 +131,7 @@ interface ExecutorOptions {
     checkpoints?: CheckpointManager;
     restoreValidator?: RestoreValidator;
     effects?: EffectsEmitter;
+    progressSink?: SkillProgressSink;
 }
 
 function context(overrides: Partial<SkillContext> = {}): SkillContext {
@@ -157,6 +161,9 @@ function executor(dispatch: FakeDispatch, options: ExecutorOptions = {}): SkillL
         ...(options.restoreValidator === undefined
             ? {}
             : { restoreValidator: options.restoreValidator }),
+        ...(options.progressSink === undefined
+            ? {}
+            : { reporter: new ProgressReporter(options.progressSink) }),
     });
 }
 
@@ -342,10 +349,13 @@ describe('skill lifecycle', () => {
         expect(after).toBeNull();
     });
 
-    it('leaves no active skill when dispatch fails', () => {
+    it('reports dispatch failure without an active skill', () => {
         const dispatch = new FakeDispatch();
         dispatch.dispatchError = 'dispatch offline';
-        const lifecycle = executor(dispatch);
+        const events: SkillProgressEvent[] = [];
+        const lifecycle = executor(dispatch, {
+            progressSink: { report: (event) => (events.push(event), [undefined, null]) },
+        });
         const [step, startError] = lifecycle.start(
             'navigate',
             { target: { x: 4, y: 64, z: 0 } },
@@ -354,10 +364,16 @@ describe('skill lifecycle', () => {
         expect(step).toBeNull();
         expect(startError).toBe('dispatch offline');
         expect(lifecycle.activeSkillId).toBeNull();
+        expect(events.at(-1)?.status).toBe('failed');
+        expect(events.at(-1)?.failureClass).toBe('execution-failed');
     });
 
-    it('leaves no active skill when effect veto fails', () => {
-        const lifecycle = executor(new FakeDispatch(), { effects: new VetoEffects() });
+    it('reports effect veto without an active skill', () => {
+        const events: SkillProgressEvent[] = [];
+        const lifecycle = executor(new FakeDispatch(), {
+            effects: new VetoEffects(),
+            progressSink: { report: (event) => (events.push(event), [undefined, null]) },
+        });
         const [step, startError] = lifecycle.start(
             'navigate',
             { target: { x: 4, y: 64, z: 0 } },
@@ -366,5 +382,7 @@ describe('skill lifecycle', () => {
         expect(step).toBeNull();
         expect(startError).toBe('veto rejected move-to');
         expect(lifecycle.activeSkillId).toBeNull();
+        expect(events.at(-1)?.status).toBe('failed');
+        expect(events.at(-1)?.failureClass).toBe('execution-failed');
     });
 });

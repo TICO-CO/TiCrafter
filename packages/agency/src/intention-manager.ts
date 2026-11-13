@@ -47,6 +47,17 @@ export class IntentionManager {
         return [next, null];
     }
 
+    extendDeadline(deadline: string): Result<Intention, string> {
+        const intention = this.current;
+        if (intention === null) return [null, 'no active intention'];
+        if (intention.deadlineExtended === true) {
+            return [null, 'intention deadline was already extended'];
+        }
+        const next: Intention = { ...intention, deadline, deadlineExtended: true };
+        this.current = next;
+        return [next, null];
+    }
+
     complete(now: string): Result<IntentionOutcome, string> {
         const intention = this.current;
         if (intention === null) return [null, 'no active intention'];

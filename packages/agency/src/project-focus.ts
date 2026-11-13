@@ -6,6 +6,17 @@ const INTERRUPTION_GOALS: ReadonlySet<GoalKind> = new Set([
     'rest',
     'shelter',
     'prepare-night',
+    'gather',
+    'craft',
+    'deposit',
+    'gather-wool',
+    'gather-food',
+    'secure-bed',
+    'build-shelter',
+    'dig-shelter',
+    'equip-gear',
+    'harvest-farm',
+    'plant-farm',
 ]);
 
 export class ProjectFocusPolicy {

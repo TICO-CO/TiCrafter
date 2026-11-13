@@ -29,4 +29,15 @@ export class ChatAdapter {
     send(text: string): Result<void, string> {
         return this.options.transport.send(text);
     }
+
+    sendNotice(text: string): Result<void, string> {
+        const now = this.options.now?.() ?? Date.now();
+        if (!this.options.engine.canSpeak(now, this.options.ratePerMinute)) {
+            return [null, 'chat rate limit reached'];
+        }
+        if (!this.options.engine.recordMessage(now)) {
+            return [null, 'chat rate limit reached'];
+        }
+        return this.options.transport.send(text);
+    }
 }

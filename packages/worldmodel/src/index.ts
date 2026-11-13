@@ -8,6 +8,7 @@ export * from './landmark-registry.js';
 export * from './merge-conflict-resolver.js';
 export * from './observation-ingestor.js';
 export * from './occupancy-grid.js';
+export * from './ownership.js';
 export * from './plan-tagging.js';
 export * from './spatial-query-engine.js';
 export * from './sqlite-chunk-store.js';

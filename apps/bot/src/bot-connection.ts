@@ -1,23 +1,30 @@
 import path from 'node:path';
 
 import {
+    type AgencySnapshot,
     AgencyState,
     type NightIntent,
     PersonalityModel,
     type ProjectSummary,
+    RoutineModel,
+    SocialEngine,
     StrategicIntentPolicy,
 } from '@ticrafter/agency';
+import { ProgressionPlanner } from '@ticrafter/agency';
 import {
     DeterministicPolicy,
     type GuardianReport,
     LayaClient,
     TacticalDecisionPolicy,
 } from '@ticrafter/brains';
+import { GazeController, HumanizationPolicy, SeededRandomSource } from '@ticrafter/brains';
 import {
     attempt,
     BLOCK_UPDATE_EVENT,
     BOT_AUTONOMY_PAUSE,
     BOT_AUTONOMY_RESUME,
+    BOT_PERMISSION_OUTCOME_EVENT,
+    BOT_PLAYER_SIGHTING_EVENT,
     BOT_PROJECT_ABANDON,
     BOT_PROJECT_PROPOSE,
     BOT_SAFETY_RESUME,
@@ -46,9 +53,15 @@ import {
     type SessionResume,
     SKILL_PROGRESS_EVENT,
     type StrategicIntent,
+    SystemClock,
     type TicrafterConfig,
 } from '@ticrafter/core';
-import { BlockUpdateListener, PerceptionRateLimiter, RingSampler } from '@ticrafter/perception';
+import {
+    BlockUpdateListener,
+    type DetectionCandidate,
+    PerceptionRateLimiter,
+    RingSampler,
+} from '@ticrafter/perception';
 import { type EmergencyStopController, type SafetyClaim } from '@ticrafter/safety';
 import {
     MemoryCheckpointStore,
@@ -56,35 +69,51 @@ import {
     type SkillInput,
     type SkillProgressEvent,
     type SkillProgressSink,
+    type SkillServices,
 } from '@ticrafter/skills';
+import { FarmPermissionPolicy } from '@ticrafter/worldmodel';
 import { type Bot, createBot } from 'mineflayer';
 
 import { ActionExecutor } from './action-executor.js';
-import { AgencyRuntime } from './agency-runtime.js';
+import { AgencyRuntime, type AgencyRuntimeConfig } from './agency-runtime.js';
 import { type AgencyHomeSnapshot, AgencySnapshotSource } from './agency-snapshot-source.js';
 import { AgencyStateAdapter } from './agency-state-adapter.js';
+import { BehaviorTraceRecorder } from './behavior-trace.js';
 import { BlueprintFetchClient } from './blueprint-fetch-client.js';
 import { type BotConnectionFailure, BotConnectionFailures } from './bot-connection-failures.js';
 import { BuildingExecutionService } from './building-execution-service.js';
 import { BuildingProcurementService } from './building-procurement-service.js';
 import { BuildingSkillServices } from './building-services.js';
+import { ChatAdapter } from './chat/index.js';
+import { SocialPresence } from './chat/index.js';
 import { ConstructionPlanFetchClient } from './construction-plan-fetch-client.js';
 import { ContainerScanner } from './container-scanner.js';
 import { BotEventBridge } from './event-bridge.js';
+import {
+    AuthorizedFarmPlotSource,
+    FarmPermissionCoordinator,
+    FarmPermissionService,
+    FarmPlotRegistry,
+} from './farming/index.js';
 import { GoalTieBreakClient } from './goal-tie-break.js';
 import { GuardianHook } from './guardian.js';
 import { HomeProjectFailure, HomeProjectRecovery } from './home-project-failure.js';
+import { HumanMover } from './human-mover.js';
 import { MineflayerActionExecutor } from './mineflayer-action-executor.js';
 import { PerceptionHost } from './perception-host.js';
 import { MineflayerPerceptionSource } from './perception-source.js';
+import { PlotOwnershipClient } from './plot-ownership-client.js';
 import { MineflayerProcurementCatalog } from './procurement-catalog.js';
 import { ReachRateGuard } from './reach-rate-guard.js';
+import { MineflayerRecipePort } from './recipe-adapter.js';
 import { SafetySnapshotSource } from './safety-snapshot.js';
+import { SightingSource } from './sightings-source.js';
 import { BotSkillContextSource } from './skill-context-source.js';
 import { SkillHost } from './skill-host.js';
 import { StateDigest } from './state-digest.js';
 import { TaskAutonomy, type TaskAutonomySnapshot } from './task-autonomy.js';
 import { BotTransportClient } from './transport/index.js';
+import { type ObservedPlayer, PlayerSightingReporter, VillageRuntime } from './village/index.js';
 import { WorldCacheAdapter } from './world-cache.js';
 
 export interface BotConnectionOptions {
@@ -128,6 +157,9 @@ export class BotConnection {
     private role: string | null = null;
     private buildingServices: BuildingSkillServices | null = null;
     private buildExecution: BuildingExecutionService | null = null;
+    private social: SocialPresence | null = null;
+    private villageRuntime: VillageRuntime | null = null;
+    private playerSightings: PlayerSightingReporter | null = null;
     private homeProjectRequested = false;
     private readonly homeProjectRecovery: HomeProjectRecovery;
     private lastReflexAt = 0;
@@ -205,6 +237,73 @@ export class BotConnection {
         }
         const world = new WorldCacheAdapter(bot);
         this.world = world;
+        const perceptionBehavior = this.options.config.behavior.perception;
+        const [visibilityLimiter] = PerceptionRateLimiter.create(
+            {
+                tokensPerSecond: perceptionBehavior.visibilityRefreshHz,
+                burst: Math.max(1, Math.ceil(perceptionBehavior.visibilityRefreshHz)),
+            },
+            () => Date.now(),
+        );
+        const sightings =
+            visibilityLimiter === null
+                ? undefined
+                : new SightingSource(bot, visibilityLimiter, {
+                      focusRadius: perceptionBehavior.focusRadius,
+                      sightingTtlMilliseconds: perceptionBehavior.sightingTtlMs,
+                      halfAngleRadians: perceptionBehavior.viewHalfAngleRadians,
+                      maxRaycastsPerTick: perceptionBehavior.maxRaycastsPerTick,
+                  });
+        const trace = new BehaviorTraceRecorder(this.options.botId, (entry) => {
+            const [, sendError] = transport.sendEvent('bot.event', {
+                botId: this.options.botId,
+                event: 'behavior.trace',
+                at: entry.at,
+                data: entry,
+            });
+            if (sendError) {
+                this.options.logger.debug({ error: sendError.type }, 'behavior trace send failed');
+            }
+        });
+        const gazeConfig = this.options.config.behavior.gaze;
+        const gaze = new GazeController(
+            {
+                yaw: bot.entity.yaw,
+                pitch: bot.entity.pitch,
+            },
+            {
+                yawRateRadiansPerSecond: gazeConfig.yawRateRadiansPerSecond,
+                pitchRateRadiansPerSecond: gazeConfig.pitchRateRadiansPerSecond,
+                updateHz: gazeConfig.updateHz,
+            },
+        );
+        const personality = PersonalityModel.fromBotIndex(this.options.botIndex);
+        const traits = personality.traits;
+        const behaviorConfig = this.options.config.behavior;
+        const policy = new HumanizationPolicy(
+            new SeededRandomSource(this.options.botIndex + 1),
+            {
+                caution: traits.caution,
+                orderliness: traits.orderliness,
+                patience: traits.patience,
+            },
+            {
+                reactionLatencyMilliseconds: behaviorConfig.rhythm.reactionLatencyMilliseconds,
+                pauseChance: behaviorConfig.movement.waypointPauseChance,
+                pauseDurationMilliseconds: behaviorConfig.movement.waypointPauseMilliseconds,
+                scanChance: behaviorConfig.movement.scanChance,
+                chatDelayMilliseconds: behaviorConfig.social.replyDelayMilliseconds,
+                switchThreshold: behaviorConfig.rhythm.switchThreshold,
+                sprintDistanceThreshold: behaviorConfig.movement.sprintDistanceThreshold,
+            },
+        );
+        const mover = new HumanMover({
+            policy,
+            gaze,
+            now: () => Date.now(),
+            sleep: (milliseconds) =>
+                new Promise<void>((resolve) => setTimeout(resolve, milliseconds)),
+        });
         const actionPort = new MineflayerActionExecutor(
             bot,
             this.options.logger,
@@ -213,7 +312,97 @@ export class BotConnection {
                 maximumReach: this.options.config.safety.interactionReach,
                 actionsPerSecond: this.options.config.safety.actionsPerSecond,
             }),
+            undefined,
+            { gaze, trace, mover },
         );
+        const social = new SocialPresence({
+            botName: this.options.name,
+            adapter: new ChatAdapter({
+                transport: {
+                    send: (text) => {
+                        const [, sendError] = attempt(() => bot.chat(text));
+                        return sendError === null
+                            ? [undefined, null]
+                            : [null, this.describe(sendError)];
+                    },
+                },
+                engine: new SocialEngine(),
+                personality,
+                ratePerMinute: this.options.config.agency.chatRatePerMinute,
+            }),
+            clock: new SystemClock(),
+            logger: this.options.logger,
+            chatDelay: () => policy.chatDelay(),
+            trace,
+            lookAt: (username) => {
+                const entity = bot.players[username]?.entity;
+                if (entity === undefined) return;
+                actionPort.dispatch({
+                    kind: 'look-at',
+                    position: {
+                        x: entity.position.x,
+                        y: entity.position.y,
+                        z: entity.position.z,
+                    },
+                });
+            },
+            context: (username) => ({
+                botName: this.options.name,
+                recipient: username,
+                phase: RoutineModel.phase(bot.time?.timeOfDay ?? null),
+                activeGoal: null,
+            }),
+            permissionReply: (playerId, _username, message) =>
+                this.villageRuntime?.handlePermissionReply(playerId, message) ?? false,
+        });
+        this.social = social;
+        const plotOwnership = new PlotOwnershipClient(transport, this.options.botId);
+        const villageConfig = this.options.config.behavior.village;
+        this.villageRuntime = new VillageRuntime({
+            botId: this.options.botId,
+            config: villageConfig,
+            clock: new SystemClock(),
+            logger: this.options.logger,
+            trace,
+            world,
+            ownership: (plot) => plotOwnership.resolve({ plotId: plot.id, bbox: plot.bbox }),
+            chat: {
+                inquire: (text, usernames) => social.inquire(text, usernames),
+            },
+            onOutcome: (playerId, plotId, kept, at) => {
+                const [, sendError] = transport.sendEvent(BOT_PERMISSION_OUTCOME_EVENT, {
+                    botId: this.options.botId,
+                    playerId,
+                    plotId,
+                    kept,
+                    at,
+                });
+                if (sendError) {
+                    this.options.logger.warn(
+                        { error: sendError.type, playerId },
+                        'permission outcome send failed',
+                    );
+                }
+            },
+        });
+        this.playerSightings = new PlayerSightingReporter({
+            clock: new SystemClock(),
+            logger: this.options.logger,
+            botId: this.options.botId,
+            intervalMilliseconds: 5000,
+            radius: villageConfig.playerLinkRadius,
+            position: () => {
+                const position = bot.entity?.position;
+                return position === undefined
+                    ? null
+                    : { x: position.x, y: position.y, z: position.z };
+            },
+            players: () => BotConnection.observedPlayers(bot),
+            send: (payload) => {
+                const [, sendError] = transport.sendEvent(BOT_PLAYER_SIGHTING_EVENT, payload);
+                return sendError === null ? [undefined, null] : [null, sendError.type];
+            },
+        });
         const [, installError] = actionPort.install();
         if (installError) {
             this.options.logger.warn({ error: installError }, 'pathfinder install failed');
@@ -315,7 +504,7 @@ export class BotConnection {
         this.buildingServices = buildingServices ?? null;
         this.buildExecution = buildExecution;
         const [skills, skillsError] = SkillHost.create({
-            source: new BotSkillContextSource(bot, world, buildingServices ?? undefined),
+            source: new BotSkillContextSource(bot, world, this.skillServices(buildingServices)),
             dispatch: actionExecutor,
             progressSink,
             logger: this.options.logger,
@@ -336,7 +525,13 @@ export class BotConnection {
             this.unsubscribeInbound = transport.onMessage((envelope) =>
                 this.handleCommand(envelope),
             );
-            const [agencyRuntime, agencyError] = this.createAgencyRuntime(bot, world, transport);
+            const [agencyRuntime, agencyError] = this.createAgencyRuntime(
+                bot,
+                world,
+                transport,
+                sightings,
+                trace,
+            );
             if (agencyError) {
                 this.options.logger.warn({ error: agencyError }, 'agency runtime creation failed');
             } else {
@@ -350,12 +545,20 @@ export class BotConnection {
             (event) => transport.sendEvent('bot.event', { botId: this.options.botId, ...event }),
             this.options.logger,
             (block) => this.forwardBlockUpdate(block, blockUpdates, transport),
+            (username, message) => {
+                const [, socialError] = social.handleIncoming(username, message);
+                if (socialError !== null) {
+                    this.options.logger.warn({ error: socialError }, 'social message failed');
+                }
+            },
         );
         let spawned = false;
         bot.once('spawn', () => {
             spawned = true;
             bridge.attach();
             this.startPerception(bot, transport);
+            this.villageRuntime?.start();
+            this.playerSightings?.start();
             this.options.logger.info({ name: this.options.name }, 'bot spawned');
             this.startAutonomy();
         });
@@ -374,6 +577,12 @@ export class BotConnection {
         this.unsubscribeInbound = null;
         this.perception?.stop();
         this.perception = null;
+        this.villageRuntime?.stop();
+        this.villageRuntime = null;
+        this.playerSightings?.stop();
+        this.playerSightings = null;
+        this.social?.close();
+        this.social = null;
         bridge.detachAll();
         this.closeTransport();
         this.bot = null;
@@ -389,6 +598,12 @@ export class BotConnection {
         this.unsubscribeInbound = null;
         this.perception?.stop();
         this.perception = null;
+        this.villageRuntime?.stop();
+        this.villageRuntime = null;
+        this.playerSightings?.stop();
+        this.playerSightings = null;
+        this.social?.close();
+        this.social = null;
         const bot = this.bot;
         if (bot !== null && typeof bot.quit === 'function') {
             const [, quitError] = attempt(() => bot.quit());
@@ -410,6 +625,8 @@ export class BotConnection {
         bot: Bot,
         world: WorldCacheAdapter,
         transport: BotTransportClient,
+        sightings: SightingSource | undefined,
+        trace: BehaviorTraceRecorder,
     ): Result<AgencyRuntime, string> {
         const skills = this.skills;
         if (skills === null) return [null, 'skill host unavailable'];
@@ -440,20 +657,25 @@ export class BotConnection {
                 context: new AgencySnapshotSource({
                     bot,
                     world,
+                    ...(sightings === undefined ? {} : { sightings }),
                     home: () => this.homeSnapshot,
                     project: () => this.projectSummary,
                     nightIntent: () => this.nightIntent(),
+                    farmPlots: () => this.farmPlotSnapshots(),
+                    villages: () => this.villageSnapshots(),
                 }),
                 skills,
                 persistence,
                 logger: this.options.logger,
-                config: this.options.config.agency,
+                config: this.agencyRuntimeConfig(),
                 isPaused: () =>
                     this.autonomyPausedReason !== null ||
                     this.guardian?.emergencyStopActive === true,
                 isJobActive: () => this.taskAutonomy?.hasActiveTask === true,
                 isProjectTaskActive: () => this.taskAutonomy?.activeTaskProjectId !== null,
                 goalTieBreak: new GoalTieBreakClient({ decisions }),
+                progressionPlanner: new ProgressionPlanner(new MineflayerRecipePort(bot)),
+                trace,
             },
             state,
         );
@@ -464,6 +686,54 @@ export class BotConnection {
             runtime.setStrategicIntent(this.pendingStrategicIntent);
         }
         return [runtime, null];
+    }
+
+    private farmPlotSnapshots(): AgencySnapshot['farmPlots'] {
+        return this.villageRuntime?.farmSnapshots() ?? [];
+    }
+
+    private villageSnapshots(): AgencySnapshot['villageCandidates'] {
+        return this.villageRuntime?.villageSnapshots() ?? [];
+    }
+
+    private skillServices(building: BuildingSkillServices | null): SkillServices | undefined {
+        const runtime = this.villageRuntime;
+        const farms = runtime === null ? undefined : runtime.farmSource();
+        if (building === null && farms === undefined) return undefined;
+        return {
+            ...(building ?? {}),
+            ...(farms === undefined ? {} : { farms }),
+        };
+    }
+
+    private agencyRuntimeConfig(): AgencyRuntimeConfig {
+        const config = this.options.config;
+        return {
+            enabled: config.agency.enabled,
+            goalCadenceMilliseconds: config.agency.goalCadenceMilliseconds,
+            needDecayPerMinute: config.agency.needDecayPerMinute,
+            committedGoalBonus: config.agency.committedGoalBonus,
+            workingMemory: config.agency.workingMemory,
+            goalTieBreak: config.agency.goalTieBreak,
+            progression: config.agency.progression,
+            reflection: config.agency.reflection,
+            nightPrep: config.agency.nightPrep,
+            minimumDwellMilliseconds: config.behavior.rhythm.minimumDwellMilliseconds,
+            switchThreshold: config.behavior.rhythm.switchThreshold,
+            progressTimeoutMilliseconds: config.behavior.rhythm.progressTimeoutMilliseconds,
+            ...(config.agency.needDecayByNeed === undefined
+                ? {}
+                : {
+                      needDecayByNeed: config.agency
+                          .needDecayByNeed as AgencyRuntimeConfig['needDecayByNeed'],
+                  }),
+            ...(config.agency.goalDeadlines === undefined
+                ? {}
+                : {
+                      goalDeadlines: config.agency
+                          .goalDeadlines as AgencyRuntimeConfig['goalDeadlines'],
+                  }),
+        };
     }
 
     private startAutonomy(): void {
@@ -1254,8 +1524,41 @@ export class BotConnection {
             ringRadius: config.ringRadius,
             intervalMilliseconds: 1000,
             maxChunksPerTick: Math.max(1, Math.ceil(config.chunksPerSecond)),
+            onCandidates: (candidates) => this.observeCandidates(candidates),
         });
         this.perception.start();
+    }
+
+    private observeCandidates(candidates: readonly DetectionCandidate[]): void {
+        const bot = this.bot;
+        const villagers =
+            bot === null
+                ? []
+                : Object.values(bot.entities)
+                      .filter(
+                          (entity) =>
+                              entity.name === 'villager' || entity.name === 'wandering_trader',
+                      )
+                      .map((entity) => ({
+                          x: entity.position.x,
+                          y: entity.position.y,
+                          z: entity.position.z,
+                      }));
+        this.villageRuntime?.observeCandidates(candidates, villagers);
+    }
+
+    private static observedPlayers(bot: Bot): readonly ObservedPlayer[] {
+        return Object.values(bot.players)
+            .filter((player) => player.username !== bot.username && player.entity !== undefined)
+            .map((player) => ({
+                playerId: player.uuid,
+                username: player.username,
+                position: {
+                    x: player.entity?.position.x ?? 0,
+                    y: player.entity?.position.y ?? 0,
+                    z: player.entity?.position.z ?? 0,
+                },
+            }));
     }
 
     private sendHeartbeat(): void {

@@ -88,6 +88,20 @@ describe('agency', () => {
         expect(invalidTraitsError).not.toBeNull();
     });
 
+    it('decays needs at per-need rates', () => {
+        const decayed = NeedsModel.defaults().decay(60_000, {
+            hunger: 0.5,
+            materials: 0,
+        });
+        expect(decayed.levels.hunger).toBe(0.5);
+        expect(decayed.levels.materials).toBe(0.5);
+        const [state, stateError] = AgencyState.create({ botId: 'bot.tibot1' });
+        expect(stateError).toBeNull();
+        if (state === null) return;
+        const next = state.decayNeedsByNeed(60_000, { hunger: 0.2 });
+        expect(next.snapshot.needs.levels.hunger).toBe(0.8);
+    });
+
     it('decays all needs at a uniform configured rate', () => {
         const decayed = NeedsModel.defaults().decayUniform(60_000, 0.1);
         expect(decayed.levels.safety < 1).toBe(true);
@@ -110,6 +124,51 @@ describe('agency', () => {
         expect(gather?.steps[0]?.input.target).toEqual({ x: 4, y: 64, z: 2 });
         const explore = goals.find((goal) => goal.kind === 'explore');
         expect(explore?.steps[0]?.input.center).toEqual({ x: 0, y: 64, z: 0 });
+    });
+
+    it('materializes farm goals only for permitted plots', () => {
+        const [needs, needsError] = NeedsModel.create({ materials: 0.1, hunger: 0.8 });
+        expect(needsError).toBeNull();
+        if (needs === null) return;
+        const [permitted] = new GoalGenerator().generate(
+            snapshot({
+                farmPlots: [
+                    {
+                        id: 'farm.1',
+                        bbox: {
+                            min: { x: 0, y: 63, z: 0 },
+                            max: { x: 2, y: 64, z: 2 },
+                        },
+                        permitted: true,
+                    },
+                ],
+            }),
+            needs,
+            PersonalityModel.fromBotIndex(4),
+            'day',
+        );
+        const harvest = permitted?.find((goal) => goal.kind === 'harvest-farm');
+        expect(harvest?.steps[0]?.input.plotId).toBe('farm.1');
+        expect(harvest?.target).toEqual({ x: 1, y: 63.5, z: 1 });
+
+        const [unpermitted] = new GoalGenerator().generate(
+            snapshot({
+                farmPlots: [
+                    {
+                        id: 'farm.2',
+                        bbox: {
+                            min: { x: 0, y: 63, z: 0 },
+                            max: { x: 2, y: 64, z: 2 },
+                        },
+                        permitted: false,
+                    },
+                ],
+            }),
+            needs,
+            PersonalityModel.fromBotIndex(4),
+            'day',
+        );
+        expect(unpermitted?.some((goal) => goal.kind === 'harvest-farm')).toBe(false);
     });
 
     it('generates and arbitrates a goal from low food', () => {

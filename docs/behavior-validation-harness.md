@@ -1,8 +1,12 @@
 # TiCrafter Behavior Validation Harness
 
-Status: phase 1 implemented. The clock port, fake platform layer, headless bot
-runtime, in-process coordinator runner, simulated driver, assertions, trace
-inspector, and `simulated-build` scenario exist. Later phases remain open.
+Status: phase 1 and the milestone 18 behavior-harness foundation are implemented.
+The clock port, fake platform layer, headless bot runtime, in-process coordinator
+runner, simulated driver, assertions, trace inspector, shared farm/village
+runtime, and `simulated-build`, `early-game-bootstrap`, `village-farm`,
+`human-movement`, `human-signature`, and `social-chat` scenarios exist. Live
+parity, remaining behavior scenarios, and the full acceptance matrix remain
+open.
 
 This document defines the milestone 19 behavior validation harness. It is the
 canonical companion to the milestone description in `main.md`.

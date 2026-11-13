@@ -1,4 +1,10 @@
-import { type Result, type StrategicIntent, strategicIntentSchema } from '@ticrafter/core';
+import {
+    type ProgressionPlan,
+    progressionPlanSchema,
+    type Result,
+    type StrategicIntent,
+    strategicIntentSchema,
+} from '@ticrafter/core';
 
 import type {
     WorkingMemory,
@@ -39,6 +45,7 @@ export class WorkingMemoryModel {
                 recentExperiences: [],
                 lastTacticalDecision: null,
                 strategicIntent: null,
+                progressionPlan: null,
             },
             bounds,
         );
@@ -82,6 +89,10 @@ export class WorkingMemoryModel {
 
     get strategicIntent(): StrategicIntent | null {
         return this.snapshot.strategicIntent ?? null;
+    }
+
+    get progressionPlan(): ProgressionPlan | null {
+        return this.snapshot.progressionPlan ?? null;
     }
 
     withFocus(focus: WorkingMemoryFocus): WorkingMemoryModel {
@@ -144,6 +155,11 @@ export class WorkingMemoryModel {
         return this.next({ strategicIntent });
     }
 
+    withProgressionPlan(progressionPlan: ProgressionPlan | null): WorkingMemoryModel {
+        if (this.snapshot.progressionPlan?.revision === progressionPlan?.revision) return this;
+        return this.next({ progressionPlan });
+    }
+
     private next(changes: Partial<WorkingMemory>): WorkingMemoryModel {
         return new WorkingMemoryModel(
             {
@@ -169,6 +185,7 @@ export class WorkingMemoryModel {
             commitments: [...input.commitments],
             recentExperiences: [...input.recentExperiences],
             strategicIntent,
+            progressionPlan: input.progressionPlan ?? null,
         };
     }
 
@@ -196,6 +213,8 @@ export class WorkingMemoryModel {
         if (experienceError !== undefined) return 'working memory experience is invalid';
         const intentError = WorkingMemoryModel.validateStrategicIntent(input.strategicIntent);
         if (intentError !== null) return intentError;
+        const planError = WorkingMemoryModel.validateProgressionPlan(input.progressionPlan);
+        if (planError !== null) return planError;
         const decision = input.lastTacticalDecision;
         if (decision !== null) {
             if (decision.choiceId.length === 0) {
@@ -204,6 +223,17 @@ export class WorkingMemoryModel {
             if (!Number.isInteger(decision.revision) || decision.revision < 0) {
                 return 'working memory tactical revision must be a non-negative integer';
             }
+        }
+        return null;
+    }
+
+    private static validateProgressionPlan(
+        progressionPlan: ProgressionPlan | null | undefined,
+    ): string | null {
+        if (progressionPlan === null || progressionPlan === undefined) return null;
+        const parsed = progressionPlanSchema.safeParse(progressionPlan);
+        if (!parsed.success) {
+            return `working memory progression plan is invalid: ${parsed.error.message}`;
         }
         return null;
     }

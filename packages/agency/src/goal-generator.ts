@@ -1,6 +1,7 @@
 import type { Result, Vec3 } from '@ticrafter/core';
 
 import { GoalCatalog, type GoalTemplate } from './goal-catalog.js';
+import { IdleLife } from './idle-life.js';
 import type { NeedsModel } from './needs-model.js';
 import type { NightPrepConfig } from './night-prep-config.js';
 import { NightPrepDefaults } from './night-prep-config.js';
@@ -85,7 +86,7 @@ export class GoalGenerator {
             case 'return-home':
                 return snapshot.home !== null && this.distanceToHome(snapshot) > 12;
             case 'deposit':
-                return false;
+                return snapshot.hasContainer === true && this.surplusItem(snapshot) !== null;
             case 'explore':
                 return needs.pressure('novelty') > 0.35 || personality.weight('curiosity') > 0.6;
             case 'social':
@@ -100,6 +101,10 @@ export class GoalGenerator {
             case 'gather-food':
             case 'equip-gear':
                 return false;
+            case 'harvest-farm':
+                return snapshot.farmPlots?.some((plot) => plot.permitted === true) === true;
+            case 'plant-farm':
+                return snapshot.farmPlots?.some((plot) => plot.permitted === true) === true;
         }
     }
 
@@ -170,6 +175,11 @@ export class GoalGenerator {
     }
 
     private materialize(template: GoalTemplate, snapshot: AgencySnapshot): Goal {
+        if (template.kind === 'leisure') return this.materializeIdle(template, snapshot);
+        if (template.kind === 'deposit') return this.materializeDeposit(template, snapshot);
+        if (template.kind === 'harvest-farm' || template.kind === 'plant-farm') {
+            return this.materializeFarm(template, snapshot);
+        }
         const target = this.target(template, snapshot);
         return {
             id: `goal:${template.kind}:${template.label.toLowerCase().replace(/\s+/g, '-')}`,
@@ -179,6 +189,88 @@ export class GoalGenerator {
             source: template.source,
             target,
             steps: this.steps(template, snapshot, target),
+            expectedValue: template.expectedValue,
+            estimatedCost: template.estimatedCost,
+            estimatedRisk: template.estimatedRisk,
+            deadline: null,
+        };
+    }
+
+    private materializeDeposit(template: GoalTemplate, snapshot: AgencySnapshot): Goal {
+        const item = this.surplusItem(snapshot);
+        return {
+            id: `goal:deposit:${item?.name ?? 'surplus'}`,
+            kind: 'deposit',
+            label: template.label,
+            priority: template.priority,
+            source: template.source,
+            target: null,
+            steps: [
+                {
+                    skillId: 'deposit',
+                    label: template.label,
+                    input: item === null ? {} : { itemName: item.name, count: item.count },
+                },
+            ],
+            expectedValue: template.expectedValue,
+            estimatedCost: template.estimatedCost,
+            estimatedRisk: template.estimatedRisk,
+            deadline: null,
+        };
+    }
+
+    private surplusItem(snapshot: AgencySnapshot): { name: string; count: number } | null {
+        const protectedNames = new Set(['bread', 'apple', 'carrot', 'potato']);
+        return (
+            snapshot.inventory.find((item) => item.count >= 16 && !protectedNames.has(item.name)) ??
+            null
+        );
+    }
+
+    private materializeFarm(template: GoalTemplate, snapshot: AgencySnapshot): Goal {
+        const plot = snapshot.farmPlots?.find((candidate) => candidate.permitted === true) ?? null;
+        const target =
+            plot === null
+                ? null
+                : {
+                      x: (plot.bbox.min.x + plot.bbox.max.x) / 2,
+                      y: (plot.bbox.min.y + plot.bbox.max.y) / 2,
+                      z: (plot.bbox.min.z + plot.bbox.max.z) / 2,
+                  };
+        return {
+            id: `goal:${template.kind}:${plot?.id ?? 'unavailable'}`,
+            kind: template.kind,
+            label: template.label,
+            priority: template.priority,
+            source: template.source,
+            target,
+            steps: template.steps.map((step) => ({
+                ...step,
+                input: plot === null ? {} : { plotId: plot.id },
+            })),
+            expectedValue: template.expectedValue,
+            estimatedCost: template.estimatedCost,
+            estimatedRisk: template.estimatedRisk,
+            deadline: null,
+        };
+    }
+
+    private materializeIdle(template: GoalTemplate, snapshot: AgencySnapshot): Goal {
+        const plan = IdleLife.plan(snapshot);
+        return {
+            id: `goal:leisure:${plan.id}`,
+            kind: 'leisure',
+            label: plan.label,
+            priority: template.priority,
+            source: template.source,
+            target: snapshot.position,
+            steps: [
+                {
+                    skillId: 'explore',
+                    label: plan.label,
+                    input: { radius: plan.radius, maxSteps: plan.maxSteps },
+                },
+            ],
             expectedValue: template.expectedValue,
             estimatedCost: template.estimatedCost,
             estimatedRisk: template.estimatedRisk,

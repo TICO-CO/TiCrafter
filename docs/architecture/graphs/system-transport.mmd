@@ -1,12 +1,12 @@
 flowchart LR
-n170["Message Schema Registry"]
-n178["WebSocket Codec"]
-n184["Request Correlator"]
-n185["Event Stream"]
-n186["Delta Sync Protocol"]
-n187["Reconnect Supervisor"]
-n188["Transport Authentication"]
-n165["Flow Control"]
+n180["Message Schema Registry"]
+n188["WebSocket Codec"]
+n194["Request Correlator"]
+n195["Event Stream"]
+n196["Delta Sync Protocol"]
+n197["Reconnect Supervisor"]
+n198["Transport Authentication"]
+n175["Flow Control"]
 n70["Deterministic Policy (Brains)"]
 n62["Reconnect Supervisor (Bot Runtime and Mineflayer Adapter)"]
 n139["State Digest Collector (Bot Runtime and Mineflayer Adapter)"]
@@ -18,74 +18,76 @@ n74["Bot Session Manager (Coordinator Runtime)"]
 n79["Digest Assembler (Laya Decision Service)"]
 n38["Output Parser (Laya Decision Service)"]
 n76["Decision Queue (Laya Decision Service)"]
-n189["Arbitration Adapter (Edit Grants and Collaboration)"]
+n199["Arbitration Adapter (Edit Grants and Collaboration)"]
 n68["Fleet Emergency Stop (Ops and Observability)"]
 n66["Ops API (Ops and Observability)"]
 n67["Pause and Resume Controller (Ops and Observability)"]
-n190["Landmark Candidate Emitter (Perception)"]
+n200["Landmark Candidate Emitter (Perception)"]
 n50["Planner Arbitration Handler (Cloud Planner Advisor)"]
 n65["Emergency Stop Controller (Autonomy and Safety)"]
 n64["Recovery Ladder (Autonomy and Safety)"]
 n90["Typed Effects Emitter (Skill Runtime)"]
 n87["Skill Progress Reporter (Skill Runtime)"]
-n182["Bot Identity Authenticator (Bot Registry and Profiles)"]
-n191["Secrets Loader (Config and Profiles)"]
-n192["Observation Ingestor (World Model and Landmarks)"]
+n192["Bot Identity Authenticator (Bot Registry and Profiles)"]
+n201["Secrets Loader (Config and Profiles)"]
+n202["Observation Ingestor (World Model and Landmarks)"]
 n71["Laya Client (Brains)"]
-n193["Block Update Listener (Perception)"]
+n203["Block Update Listener (Perception)"]
 n61["Chat Adapter (Bot Runtime and Mineflayer Adapter)"]
-n194["Bot Claim Command Handler (Claims and Leases)"]
+n204["Bot Claim Command Handler (Claims and Leases)"]
 n133["Blueprint Fetch Client (Bot Runtime and Mineflayer Adapter)"]
 n134["Construction Plan Fetch Client (Bot Runtime and Mineflayer Adapter)"]
+n144["Behavior Trace (Bot Runtime and Mineflayer Adapter)"]
 n70 -->|depends_on| n139
-n70 -->|subscribes| n185
-n62 -->|depends_on| n187
-n139 -->|publishes| n185
-n182 -->|depends_on| n191
-n111 -->|subscribes| n185
-n75 -->|depends_on| n165
-n29 -->|depends_on| n170
-n72 -->|depends_on| n178
-n74 -->|depends_on| n182
-n74 -->|depends_on| n178
-n79 -->|depends_on| n170
-n38 -->|publishes| n185
-n76 -->|subscribes| n185
-n189 -->|publishes| n185
+n70 -->|subscribes| n195
+n62 -->|depends_on| n197
+n139 -->|publishes| n195
+n192 -->|depends_on| n201
+n111 -->|subscribes| n195
+n75 -->|depends_on| n175
+n29 -->|depends_on| n180
+n72 -->|depends_on| n188
+n74 -->|depends_on| n192
+n74 -->|depends_on| n188
+n79 -->|depends_on| n180
+n38 -->|publishes| n195
+n76 -->|subscribes| n195
+n199 -->|publishes| n195
 n68 -->|controls| n65
-n68 -->|depends_on| n185
+n68 -->|depends_on| n195
 n66 -->|depends_on| n68
 n66 -->|depends_on| n67
-n66 -->|depends_on| n170
-n67 -->|depends_on| n185
-n190 -->|publishes| n185
-n50 -->|subscribes| n185
+n66 -->|depends_on| n180
+n67 -->|depends_on| n195
+n200 -->|publishes| n195
+n50 -->|subscribes| n195
 n65 -->|controls| n29
-n65 -->|depends_on| n185
+n65 -->|depends_on| n195
 n64 -->|proposes_to| n29
 n64 -->|controls| n65
-n64 -->|depends_on| n185
-n90 -->|publishes| n185
-n87 -->|publishes| n185
-n188 -->|depends_on| n182
-n188 -->|depends_on| n191
-n186 -->|depends_on| n170
-n185 -->|depends_on| n178
-n185 -->|publishes| n192
-n165 -->|depends_on| n184
-n187 -->|depends_on| n178
-n184 -->|depends_on| n178
-n178 -->|depends_on| n170
-n192 -->|subscribes| n185
-n192 -->|reads| n170
-n71 -->|depends_on| n178
+n64 -->|depends_on| n195
+n90 -->|publishes| n195
+n87 -->|publishes| n195
+n198 -->|depends_on| n192
+n198 -->|depends_on| n201
+n196 -->|depends_on| n180
+n195 -->|depends_on| n188
+n195 -->|publishes| n202
+n175 -->|depends_on| n194
+n197 -->|depends_on| n188
+n194 -->|depends_on| n188
+n188 -->|depends_on| n180
+n202 -->|subscribes| n195
+n202 -->|reads| n180
+n71 -->|depends_on| n188
 n71 -->|depends_on| n70
-n193 -->|publishes| n185
-n61 -->|publishes| n185
-n194 -->|depends_on| n178
-n133 -->|depends_on| n184
-n134 -->|depends_on| n184
+n203 -->|publishes| n195
+n61 -->|publishes| n195
+n204 -->|depends_on| n188
+n133 -->|depends_on| n194
+n134 -->|depends_on| n194
+n144 -->|depends_on| n180
 classDef internal fill:#eef6ff,stroke:#2563eb,color:#0f172a;
 classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-class n170,n178,n184,n185,n186,n187,n188,n165 internal;
-class n70,n62,n139,n111,n75,n29,n72,n74,n79,n38,n76,n189,n68,n66,n67,n190,n50,n65,n64,n90,n87,n182,n191,n192,n71,n193,n61,n194,n133,n134 external;
+class n180,n188,n194,n195,n196,n197,n198,n175 internal;
+class n70,n62,n139,n111,n75,n29,n72,n74,n79,n38,n76,n199,n68,n66,n67,n200,n50,n65,n64,n90,n87,n192,n201,n202,n71,n203,n61,n204,n133,n134,n144 external;

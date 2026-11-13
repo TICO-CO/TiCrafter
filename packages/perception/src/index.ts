@@ -11,3 +11,4 @@ export * from './perception-rate-limiter.js';
 export * from './ring-sampler.js';
 export * from './storage-workstation-detector.js';
 export * from './types.js';
+export * from './village-scanner.js';

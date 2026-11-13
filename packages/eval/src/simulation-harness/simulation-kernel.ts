@@ -6,8 +6,9 @@ export interface SimulationKernelOptions {
     clock: SimulationClock;
     tickMilliseconds?: number;
     maximumTicks: number;
+    durationTicks?: number;
     shouldStop: () => boolean;
-    onTick?: (tick: number) => void;
+    onTick?: (tick: number) => void | Promise<void>;
 }
 
 export class SimulationKernel {
@@ -18,14 +19,16 @@ export class SimulationKernel {
     }
 
     async run(): Promise<Result<number, string>> {
-        for (let tick = 1; tick <= this.options.maximumTicks; tick += 1) {
+        const maximumTicks = this.options.durationTicks ?? this.options.maximumTicks;
+        for (let tick = 1; tick <= maximumTicks; tick += 1) {
             await this.settle();
             if (this.options.shouldStop()) return [tick, null];
             this.options.clock.advanceBy(this.tickMilliseconds);
-            this.options.onTick?.(tick);
+            await this.options.onTick?.(tick);
             await this.settle();
             if (this.options.shouldStop()) return [tick, null];
         }
+        if (this.options.durationTicks !== undefined) return [maximumTicks, null];
         return [null, `scenario exceeded ${this.options.maximumTicks} ticks`];
     }
 

@@ -187,6 +187,19 @@ export class ClaimService {
         return [claims, null];
     }
 
+    ownersIn(bbox: ClaimRecord['bbox']): Result<readonly string[], ClaimFailure> {
+        const [claims, claimsError] = this.activeClaimsIn(bbox);
+        if (claimsError) return [null, claimsError];
+        return [[...new Set((claims ?? []).map((claim) => claim.botId))], null];
+    }
+
+    activeClaimsIn(bbox: ClaimRecord['bbox']): Result<readonly ClaimRecord[], ClaimFailure> {
+        const [active, activeError] = this.repository.listActive();
+        if (activeError) return [null, ClaimFailures.storage(activeError)];
+        if (active === null) return [null, ClaimFailures.malformedClaim('claims missing')];
+        return [active.filter((claim) => ClaimService.intersects(bbox, claim.bbox)), null];
+    }
+
     hasActiveOverlap(bbox: ClaimRecord['bbox']): Result<boolean, string> {
         const [active, activeError] = this.repository.listActive();
         if (activeError) return [null, activeError.message];
@@ -199,6 +212,17 @@ export class ClaimService {
         if (overlapError === null) return [false, null];
         if (overlapError.type === 'OVERLAP') return [true, null];
         return [null, overlapError.type];
+    }
+
+    private static intersects(left: ClaimRecord['bbox'], right: ClaimRecord['bbox']): boolean {
+        return (
+            left.min.x <= right.max.x &&
+            left.max.x >= right.min.x &&
+            left.min.y <= right.max.y &&
+            left.max.y >= right.min.y &&
+            left.min.z <= right.max.z &&
+            left.max.z >= right.min.z
+        );
     }
 
     get contention(): ClaimContentionSnapshot {

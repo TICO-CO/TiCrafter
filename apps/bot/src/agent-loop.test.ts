@@ -186,6 +186,28 @@ describe('agent loop goal tie-break', () => {
         expect(records.drops[0]?.reason.includes('revision')).toBe(true);
     });
 
+    it('switches a committed goal only after the minimum dwell', async () => {
+        const first = goal('goal:first');
+        const second = { ...goal('goal:second'), priority: 90 };
+        const selected = loop([first, second], new FakeTieBreak(second), () => context(1), {
+            decisions: [],
+            drops: [],
+        });
+        selected.restore(first, {
+            goalId: first.id,
+            label: first.label,
+            stepIndex: 0,
+            createdAt: '2026-11-12T12:00:00.000Z',
+            deadline: null,
+            attempts: 0,
+        });
+        const [held] = await selected.reconsider('2026-11-12T12:00:10.000Z');
+        expect(held).toBeNull();
+        const [switched] = await selected.reconsider('2026-11-12T12:00:40.000Z');
+        expect(switched?.goal.id).toBe(second.id);
+        expect(selected.intention?.goalId).toBe(second.id);
+    });
+
     it('does not consult Laya when scores are not close', async () => {
         const first = goal('goal:first');
         const distant = { ...goal('goal:distant'), priority: 0, expectedValue: 0 };

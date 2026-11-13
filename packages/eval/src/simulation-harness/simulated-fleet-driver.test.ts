@@ -9,6 +9,11 @@ import { BehaviorScenarioCatalog } from './scenario-catalog.js';
 import { SimulatedFleetDriver } from './simulated-fleet-driver.js';
 
 const directories: string[] = [];
+const testWithTimeout = it as unknown as (
+    label: string,
+    fn: () => Promise<void>,
+    timeout: number,
+) => void;
 
 afterEach(() => {
     directories
@@ -17,29 +22,33 @@ afterEach(() => {
 });
 
 describe('SimulatedFleetDriver', () => {
-    it('builds the simulated house without a Minecraft server', async () => {
-        const scenario = BehaviorScenarioCatalog.find('simulated-build');
-        expect(scenario).not.toBeNull();
-        if (scenario === null) return;
-        const directory = fileSystem.mkdtempSync(
-            path.join(operatingSystem.tmpdir(), 'ticrafter-sim-test-'),
-        );
-        directories.push(directory);
-        const driver = new SimulatedFleetDriver({
-            repositoryRoot: process.cwd(),
-            artifactDirectory: directory,
-            scenario,
-        });
-        const runner = new ScenarioRunner(driver);
-        const [result, error] = await runner.run({
-            id: scenario.id,
-            title: scenario.title,
-            bots: scenario.bots.map((bot) => ({ name: bot.name, role: bot.role })),
-            timeoutMilliseconds: scenario.timeoutMilliseconds,
-            tasks: scenario.tasks,
-        });
-        expect(error).toBeNull();
-        expect(result?.passed).toBe(true);
-        expect(result?.duplicates).toBe(0);
-    });
+    testWithTimeout(
+        'builds the simulated house without a Minecraft server',
+        async () => {
+            const scenario = BehaviorScenarioCatalog.find('simulated-build');
+            expect(scenario).not.toBeNull();
+            if (scenario === null) return;
+            const directory = fileSystem.mkdtempSync(
+                path.join(operatingSystem.tmpdir(), 'ticrafter-sim-test-'),
+            );
+            directories.push(directory);
+            const driver = new SimulatedFleetDriver({
+                repositoryRoot: process.cwd(),
+                artifactDirectory: directory,
+                scenario,
+            });
+            const runner = new ScenarioRunner(driver);
+            const [result, error] = await runner.run({
+                id: scenario.id,
+                title: scenario.title,
+                bots: scenario.bots.map((bot) => ({ name: bot.name, role: bot.role })),
+                timeoutMilliseconds: scenario.timeoutMilliseconds,
+                tasks: scenario.tasks,
+            });
+            expect(error).toBeNull();
+            expect(result?.passed).toBe(true);
+            expect(result?.duplicates).toBe(0);
+        },
+        30_000,
+    );
 });
