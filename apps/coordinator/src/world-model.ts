@@ -10,6 +10,7 @@ import {
     type BlockUpdateObservation,
     type BoundingBox,
     type ChunkBlockObservation,
+    type ChunkIngestResult,
     ConfidenceDecay,
     ContainerMemory,
     type ContainerObservation,
@@ -131,17 +132,18 @@ export class CoordinatorWorldModel {
         return [undefined, null];
     }
 
-    ingestBlockUpdate(payload: BlockUpdateObservation): Result<void, string> {
+    ingestBlockUpdate(payload: BlockUpdateObservation): Result<ChunkIngestResult, string> {
         const [result, ingestError] = this.chunks.applyBlockUpdate(payload);
         if (ingestError) return [null, CoordinatorWorldModel.failure(ingestError)];
-        if (result !== null) {
+        if (result === null) return [null, 'block update ingest returned null'];
+        if (result.outcome === 'stored') {
             this.occupancy.applyBlock(payload.block);
             this.logger.debug(
                 { chunk: result.chunk, version: result.version },
                 'block update ingested',
             );
         }
-        return [undefined, null];
+        return [result, null];
     }
 
     applyDecay(observedAt: string): Result<readonly DecayedLandmark[], string> {

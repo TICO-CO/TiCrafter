@@ -3,10 +3,11 @@
 Status: phase 1 and the milestone 18 behavior-harness foundation are implemented.
 The clock port, fake platform layer, headless bot runtime, in-process coordinator
 runner, simulated driver, assertions, trace inspector, shared farm/village
-runtime, and `simulated-build`, `early-game-bootstrap`, `village-farm`,
-`human-movement`, `human-signature`, and `social-chat` scenarios exist. Live
-parity, remaining behavior scenarios, and the full acceptance matrix remain
-open.
+runtime, and `simulated-build`, `simulated-multi-bot`, `bot-restart-resume`,
+`early-game-bootstrap`, `village-farm`, `human-movement`, `human-signature`,
+`social-chat`, `idle-life`, and `no-oscillation` scenarios exist and pass in
+simulated mode. Live parity, remaining v2 acceptance scenarios, and the full
+acceptance matrix remain open.
 
 This document defines the milestone 19 behavior validation harness. It is the
 canonical companion to the milestone description in `main.md`.

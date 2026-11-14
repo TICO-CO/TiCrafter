@@ -555,7 +555,6 @@ export class BehaviorScenarioCatalog {
                 groundY: 59,
                 blocks,
             },
-            resourceSites: [{ kind: 'wood', position: { x: 4, y: 60, z: 4 } }],
             actionLatencyMilliseconds: 20_000,
             bots: [
                 {
@@ -577,8 +576,8 @@ export class BehaviorScenarioCatalog {
                     position: { x: 4, y: 66, z: 4 },
                 },
             ],
-            startTime: { timeOfDay: 1000 },
-            durationTicks: 7200,
+            startTime: { timeOfDay: 0 },
+            durationTicks: 2000,
             stopOnAssertions: false,
             assertions: [
                 {
@@ -588,6 +587,22 @@ export class BehaviorScenarioCatalog {
                     comparator: 'gte',
                     value: 2,
                     message: 'the bot must start at least two goals',
+                },
+                {
+                    id: 'goals-completed',
+                    kind: 'metric.threshold',
+                    metric: 'goalsCompleted',
+                    comparator: 'gte',
+                    value: 2,
+                    message: 'goals must complete instead of churning through infeasibility',
+                },
+                {
+                    id: 'goals-abandoned-bounded',
+                    kind: 'metric.threshold',
+                    metric: 'goalsAbandoned',
+                    comparator: 'lte',
+                    value: 5,
+                    message: 'goal abandonment must stay bounded',
                 },
                 {
                     id: 'switch-rate',

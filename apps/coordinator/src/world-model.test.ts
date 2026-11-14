@@ -194,10 +194,17 @@ describe('CoordinatorWorldModel', () => {
             },
         };
 
-        const [, updateError] = model.ingestBlockUpdate(update);
+        const [result, updateError] = model.ingestBlockUpdate(update);
+        const [duplicate, duplicateError] = model.ingestBlockUpdate({
+            ...update,
+            botId: 'bot.tibot2',
+        });
         const [block, blockError] = model.blockAt({ x: 1, y: 64, z: 1 });
 
         expect(updateError).toBeNull();
+        expect(result?.outcome).toBe('stored');
+        expect(duplicateError).toBeNull();
+        expect(duplicate?.outcome).toBe('ignored');
         expect(blockError).toBeNull();
         expect(block?.blockId).toBe('dirt');
         database.close();

@@ -93,6 +93,32 @@ describe('behavior scenarios', () => {
     );
 
     testWithTimeout(
+        'runs no-oscillation across fixed seeds',
+        async () => {
+            const scenario = BehaviorScenarioCatalog.find('no-oscillation');
+            expect(scenario).not.toBeNull();
+            if (scenario === null) return;
+            for (const seed of scenario.seeds ?? [scenario.seed]) {
+                await runScenario('no-oscillation', seed);
+            }
+        },
+        900_000,
+    );
+
+    testWithTimeout(
+        'runs simulated-multi-bot across fixed seeds',
+        async () => {
+            const scenario = BehaviorScenarioCatalog.find('simulated-multi-bot');
+            expect(scenario).not.toBeNull();
+            if (scenario === null) return;
+            for (const seed of scenario.seeds ?? [scenario.seed]) {
+                await runScenario('simulated-multi-bot', seed);
+            }
+        },
+        300_000,
+    );
+
+    testWithTimeout(
         'runs bot-restart-resume across fixed seeds',
         async () => {
             const scenario = BehaviorScenarioCatalog.find('bot-restart-resume');

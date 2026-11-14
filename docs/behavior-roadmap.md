@@ -1,6 +1,12 @@
 # TiCrafter Behavior Roadmap
 
-Status: Milestones 15-17 runtime implemented. Milestone 17 acceptance and the first milestone 18 behavior scenarios are implemented; remaining behavior scenarios, the full acceptance matrix, live parity, and milestone 19 remain open. This document is the implementation roadmap for human-like
+Status: Milestones 15-17 runtime implemented. All milestone 18 behavior scenarios
+(`early-game-bootstrap`, `human-movement`, `human-signature`, `village-farm`,
+`idle-life`, `social-chat`, and `no-oscillation`) and the `simulated-build`,
+`simulated-multi-bot`, and `bot-restart-resume` acceptance scenarios pass in
+simulated mode across fixed seeds. Live parity, the remaining v2 acceptance
+scenarios, A/B humanization validation, and milestone 19 remain open. This
+document is the implementation roadmap for human-like
 movement, human-like decisions, early-game progression, farm ownership, and the
 validation that proves them. `main.md` remains the normative summary; this file
 owns the detailed behavior design and delivery plan.

@@ -63,6 +63,28 @@ export class ObservationIngestor {
         }
         const [existing, readError] = this.chunks.get(update.chunk);
         if (readError) return [null, readError];
+        const current = existing?.blocks.find(
+            (block) =>
+                ObservationIngestor.key(block.position) ===
+                ObservationIngestor.key(update.block.position),
+        );
+        const nextIsAir = airBlockIds.has(update.block.blockId);
+        if (
+            (current === undefined && nextIsAir) ||
+            (current !== undefined &&
+                !nextIsAir &&
+                current.blockId === update.block.blockId &&
+                current.solid === update.block.solid)
+        ) {
+            return [
+                {
+                    chunk: update.chunk,
+                    version: existing?.version ?? 0,
+                    outcome: 'ignored',
+                },
+                null,
+            ];
+        }
         const version = (existing?.version ?? 0) + 1;
         const blocks = ObservationIngestor.apply(existing?.blocks ?? [], update.block);
         const [, writeError] = this.chunks.save({

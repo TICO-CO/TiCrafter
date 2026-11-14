@@ -78,6 +78,34 @@ describe('ObservationIngestor', () => {
         expect(stored?.blocks.map((block) => block.blockId).sort()).toEqual(['dirt', 'stone']);
     });
 
+    it('ignores duplicate block updates without bumping the chunk version', () => {
+        const store = new InMemoryChunkStore();
+        const ingestor = new ObservationIngestor(store);
+        ingestor.ingest(observation);
+        const update: BlockUpdateObservation = {
+            botId: 'bot.tibot1',
+            chunk: { x: 0, z: 0 },
+            observedAt: '2026-11-10T12:00:10.000Z',
+            block: {
+                position: { x: 2, y: 64, z: 1 },
+                blockId: 'dirt',
+                solid: true,
+            },
+        };
+
+        ingestor.applyBlockUpdate(update);
+        const [result, error] = ingestor.applyBlockUpdate({
+            ...update,
+            botId: 'bot.tibot2',
+        });
+        const [stored] = store.get({ x: 0, z: 0 });
+
+        expect(error).toBeNull();
+        expect(result?.outcome).toBe('ignored');
+        expect(result?.version).toBe(3);
+        expect(stored?.blocks).toHaveLength(2);
+    });
+
     it('removes air blocks on update', () => {
         const store = new InMemoryChunkStore();
         const ingestor = new ObservationIngestor(store);

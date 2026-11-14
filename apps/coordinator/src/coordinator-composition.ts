@@ -623,6 +623,15 @@ export class CoordinatorComposition {
             },
             onBlockUpdate: (payload) => {
                 const [before, beforeError] = worldModel.blockAt(payload.block.position);
+                const [ingested, ingestError] = worldModel.ingestBlockUpdate(payload);
+                if (ingestError) {
+                    options.logger.warn(
+                        { error: ingestError, chunk: payload.chunk },
+                        'block update ingestion failed',
+                    );
+                    return;
+                }
+                if (ingested?.outcome !== 'stored') return;
                 const [decision, decisionError] = constructionEdits.authorize(
                     payload,
                     beforeError === null ? (before?.blockId ?? null) : null,
@@ -632,14 +641,6 @@ export class CoordinatorComposition {
                         { error: decisionError, botId: payload.botId },
                         'construction edit authorization failed',
                     );
-                }
-                const [, ingestError] = worldModel.ingestBlockUpdate(payload);
-                if (ingestError) {
-                    options.logger.warn(
-                        { error: ingestError, chunk: payload.chunk },
-                        'block update ingestion failed',
-                    );
-                    return;
                 }
                 const authorized = decision?.authorized ?? false;
                 const rejectionReason =

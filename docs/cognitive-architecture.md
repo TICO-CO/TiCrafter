@@ -11,7 +11,8 @@ planner, recipe port, multi-block gather, and milestone goals are implemented;
 full early-game acceptance remains open. Plot ownership and farm permission resolution are implemented in world-model
 policy, coordinator persistence, transport, village scanning, bot-side
 permission flow, live farm-plot discovery, and preauthorization. Milestone 17
-acceptance scenarios and the full behavior harness remain planned.
+acceptance scenarios and the milestone 18 behavior scenarios pass in simulated
+mode; live acceptance and the full behavior harness remain planned.
 
 This document defines the boundary between reflex safety, local agency, tactical
 Laya decisions, working memory, and the optional cloud planner. It is the

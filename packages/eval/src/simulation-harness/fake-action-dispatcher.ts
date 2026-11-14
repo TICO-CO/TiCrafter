@@ -14,7 +14,7 @@ export interface FakeActionDispatcherOptions {
     containers: FakeContainers;
     position: () => Vec3;
     setPosition?: (position: Vec3) => void;
-    latencyTicks?: number;
+    latencyMilliseconds?: number;
     recipes?: Readonly<Record<string, Readonly<Record<string, number>>>>;
     drops?: Readonly<Record<string, string>>;
     outputs?: Readonly<Record<string, number>>;
@@ -40,7 +40,7 @@ const SEED_CROPS: Readonly<Record<string, string>> = {
 
 export class FakeActionDispatcher {
     private sequence = 0;
-    private latencyTicks: number;
+    private latencyMilliseconds: number;
     private readonly pending = new Map<string, PendingAction>();
     private readonly unreachable = new Set<string>();
     private readonly recipes: Map<string, Readonly<Record<string, number>>>;
@@ -48,12 +48,12 @@ export class FakeActionDispatcher {
     private injectedFailureKinds: ReadonlySet<string> | null = null;
 
     constructor(private readonly options: FakeActionDispatcherOptions) {
-        this.latencyTicks = options.latencyTicks ?? 0;
+        this.latencyMilliseconds = options.latencyMilliseconds ?? 0;
         this.recipes = new Map(Object.entries(options.recipes ?? {}));
     }
 
-    setLatencyTicks(ticks: number): void {
-        this.latencyTicks = Math.max(0, ticks);
+    setLatencyMilliseconds(milliseconds: number): void {
+        this.latencyMilliseconds = Math.max(0, milliseconds);
     }
 
     removeRecipe(itemName: string): void {
@@ -85,17 +85,16 @@ export class FakeActionDispatcher {
             this.sequence += 1;
             this.pending.set(handle, {
                 outcome: failure,
-                readyAt: this.options.clock.now() + this.latencyTicks,
+                readyAt: this.options.clock.now() + this.latencyMilliseconds,
             });
             return [handle, null];
         }
         const [outcome, error] = this.execute(request);
         if (error !== null) return [null, error];
         if (outcome === null) return [null, 'action produced no outcome'];
-        const latency = this.latencyTicks;
         this.pending.set(handle, {
             outcome,
-            readyAt: this.options.clock.now() + latency,
+            readyAt: this.options.clock.now() + this.latencyMilliseconds,
         });
         return [handle, null];
     }

@@ -295,10 +295,7 @@ export class SimulatedFleetDriver implements ScenarioDriver {
                 recipes: scenario.recipes ?? { oak_planks: { oak_log: 1 } },
                 drops: scenario.drops ?? {},
                 outputs: scenario.outputs ?? {},
-                latencyTicks:
-                    scenario.actionLatencyMilliseconds === undefined
-                        ? 0
-                        : Math.ceil(scenario.actionLatencyMilliseconds / 250),
+                latencyMilliseconds: scenario.actionLatencyMilliseconds ?? 0,
             });
             const chat = new FakeChat();
             const perception = new FakePerception(world, `bot.${bot.name.toLowerCase()}`);
@@ -479,8 +476,9 @@ export class SimulatedFleetDriver implements ScenarioDriver {
                 return null;
             }
             case 'action-delay': {
-                const ticks = Math.max(0, Math.ceil(fault.milliseconds / 250));
-                for (const bot of bots) bot.dispatcher.setLatencyTicks(ticks);
+                for (const bot of bots) {
+                    bot.dispatcher.setLatencyMilliseconds(fault.milliseconds);
+                }
                 return null;
             }
             case 'block-mismatch': {
